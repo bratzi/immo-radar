@@ -749,8 +749,15 @@ describe("parseImmoweltDetailPage", () => {
 });
 
 describe("parseImmoweltDetailPage — Einheiten-Erkennung mit synthetischem Text", () => {
+  // WICHTIG: replaceAll (nicht replace) verwenden. Der Anker-Satz kommt in der
+  // Fixture zweimal vor: einmal im sichtbar gerenderten HTML (data-testid
+  // "cdp-main-description-expandable-text"), einmal im eingebetteten
+  // __UFRN_LIFECYCLE_SERVERREQUEST__-JSON-Blob, den parseImmoweltDetailPage
+  // tatsächlich ausliest. Die JSON-Kopie steht im Dokument SPÄTER als die
+  // HTML-Kopie — ein einfaches replace() träfe nur die falsche (erste,
+  // sichtbare) Stelle und der Parser würde die Injektion nie sehen.
   it("erkennt eine explizite Angabe wie '6 Wohneinheiten'", () => {
-    const html = fixtureHtml.replace(
+    const html = fixtureHtml.replaceAll(
       "Bei der hier angebotenen Immobilie",
       "Das Haus verfügt über 6 Wohneinheiten. Bei der hier angebotenen Immobilie"
     );
@@ -760,7 +767,7 @@ describe("parseImmoweltDetailPage — Einheiten-Erkennung mit synthetischem Text
   });
 
   it("erkennt eine explizite Kaltmieten-Angabe", () => {
-    const html = fixtureHtml.replace(
+    const html = fixtureHtml.replaceAll(
       "Bei der hier angebotenen Immobilie",
       "Die Kaltmiete beträgt insgesamt 2.400,00 € im Monat. Bei der hier angebotenen Immobilie"
     );
@@ -963,13 +970,13 @@ export async function scrapeImmowelt(): Promise<ImmoweltDetailData[]> {
 
 - [ ] **Step 2: `tsc --noEmit` zur Typprüfung ausführen**
 
-Run: `cd C:\immo-radar\scraper && npx tsc --noEmit`
+Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npx tsc --noEmit`
 Expected: Keine Fehler.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd C:\immo-radar
+cd C:\immo-radar\.worktrees\foundation-plan
 git add scraper/scrapers/immowelt/index.ts
 git commit -m "feat(scraper): Immowelt Live-Scraper-Orchestrierung (Seite 1, gedrosselt)"
 ```
@@ -1040,16 +1047,27 @@ create table notifications (
   sent_at timestamptz not null default now(),
   detail jsonb
 );
+
+-- RLS auf allen Tabellen aktivieren, bewusst OHNE Policies: dieser Plan hat
+-- kein Dashboard/Anon-Zugriff, daher soll fuer anon/authenticated grundsaetzlich
+-- nichts sichtbar/schreibbar sein. Nur der service_role-Key (ausschliesslich
+-- im Scraper verwendet) umgeht RLS und behaelt vollen Zugriff. Macht das
+-- Projekt-Erstellungs-Haekchen "Automatically expose new tables" wirkungslos,
+-- unabhaengig davon wie es beim Anlegen gesetzt war.
+alter table listings enable row level security;
+alter table listing_versions enable row level security;
+alter table rent_estimates enable row level security;
+alter table notifications enable row level security;
 ```
 
 - [ ] **Step 3: Schema in Supabase ausführen**
 
-Im Supabase-Dashboard des neuen Projekts: SQL Editor → Inhalt von `schema.sql` einfügen → Run. Erwartet: keine Fehler, 4 neue Tabellen sichtbar unter Table Editor.
+Im Supabase-Dashboard des neuen Projekts: SQL Editor → Inhalt von `schema.sql` einfügen → Run. Erwartet: keine Fehler, 4 neue Tabellen sichtbar unter Table Editor, und im Table Editor bei jeder der 4 Tabellen ein Schloss-Symbol/"RLS enabled"-Hinweis (kein "Unrestricted"-Badge mehr).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd C:\immo-radar
+cd C:\immo-radar\.worktrees\foundation-plan
 git add schema.sql
 git commit -m "feat(db): Schema fuer listings/listing_versions/rent_estimates/notifications"
 ```
@@ -1136,7 +1154,7 @@ describe("diffVersion", () => {
 
 - [ ] **Step 4: Test ausführen, Fehlschlag prüfen**
 
-Run: `cd C:\immo-radar\scraper && npm test -- db.test`
+Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test -- db.test`
 Expected: FAIL — `Cannot find module './db.js'`.
 
 - [ ] **Step 5: `db.ts` implementieren**
@@ -1284,13 +1302,13 @@ export async function logNotification(
 
 - [ ] **Step 6: Test ausführen, Erfolg prüfen**
 
-Run: `cd C:\immo-radar\scraper && npm test -- db.test`
+Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test -- db.test`
 Expected: PASS, alle 4 Tests grün (nur `diffVersion` wird hier getestet — `upsertListingAndVersion` braucht eine echte DB und wird in Task 13 manuell verifiziert).
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd C:\immo-radar
+cd C:\immo-radar\.worktrees\foundation-plan
 git add .env.example scraper/lib/supabase.ts scraper/lib/db.ts scraper/lib/db.test.ts
 git commit -m "feat(scraper): DB-Zugriffsschicht mit Aenderungs-/Preissenkungs-Erkennung"
 ```
@@ -1358,7 +1376,7 @@ describe("formatPreisaenderungMessage", () => {
 
 - [ ] **Step 3: Test ausführen, Fehlschlag prüfen**
 
-Run: `cd C:\immo-radar\scraper && npm test -- telegram.test`
+Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test -- telegram.test`
 Expected: FAIL — `Cannot find module './telegram.js'`.
 
 - [ ] **Step 4: `telegram.ts` implementieren**
@@ -1427,13 +1445,13 @@ export async function sendTelegramMessage(config: TelegramConfig, text: string):
 
 - [ ] **Step 5: Test ausführen, Erfolg prüfen**
 
-Run: `cd C:\immo-radar\scraper && npm test -- telegram.test`
+Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test -- telegram.test`
 Expected: PASS, beide Tests grün (`sendTelegramMessage` selbst wird in Task 13 manuell gegen den echten Bot verifiziert).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd C:\immo-radar
+cd C:\immo-radar\.worktrees\foundation-plan
 git add scraper/lib/telegram.ts scraper/lib/telegram.test.ts
 git commit -m "feat(scraper): Telegram-Benachrichtigung (Top-Treffer + Preisaenderung)"
 ```
@@ -1562,18 +1580,18 @@ main().catch((err) => {
 
 - [ ] **Step 2: Typprüfung ausführen**
 
-Run: `cd C:\immo-radar\scraper && npx tsc --noEmit`
+Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npx tsc --noEmit`
 Expected: Keine Fehler.
 
 - [ ] **Step 3: Alle bisherigen Tests erneut ausführen**
 
-Run: `cd C:\immo-radar\scraper && npm test`
+Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test`
 Expected: PASS, alle Tests aus allen bisherigen Tasks weiterhin grün (main.ts selbst hat keine eigenen Tests — reine Orchestrierung bereits getesteter Bausteine, siehe Task-Kopf).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd C:\immo-radar
+cd C:\immo-radar\.worktrees\foundation-plan
 git add scraper/main.ts
 git commit -m "feat(scraper): main.ts Pipeline (Scrape -> Kennzahlen -> Speichern -> Telegram-Alarm + Preisaenderung)"
 ```
@@ -1622,7 +1640,7 @@ jobs:
 - [ ] **Step 2: Commit**
 
 ```bash
-cd C:\immo-radar
+cd C:\immo-radar\.worktrees\foundation-plan
 git add .github/workflows/scrape.yml
 git commit -m "feat(ci): GitHub Actions Cron alle 3h fuer Immowelt-Scraper"
 ```
