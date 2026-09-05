@@ -33,3 +33,7 @@ export function grunderwerbsteuerSatz(plz: string): number {
   if (!bundesland) return BUNDESWEITER_GRUNDERWERBSTEUER_DURCHSCHNITT;
   return SATZ_JE_BUNDESLAND[bundesland] ?? BUNDESWEITER_GRUNDERWERBSTEUER_DURCHSCHNITT;
 }
+
+export function bundeslandFuerPlz(plz: string): string | null {
+  return plzBundesland[plz] ?? null;
+}

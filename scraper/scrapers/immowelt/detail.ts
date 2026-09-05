@@ -29,8 +29,10 @@ const SERVERREQUEST_PATTERN =
   /<script id="__UFRN_LIFECYCLE_SERVERREQUEST__">window\["__UFRN_LIFECYCLE_SERVERREQUEST__"\]=JSON\.parse\("([\s\S]*?)"\);?<\/script>/;
 
 const UNIT_COUNT_PATTERN = /(\d+)\s*(?:Wohneinheiten|WE\b|Parteien|Wohnungen)/i;
-const RENT_PATTERN =
-  /(?:Kaltmiete|Ist-Miete|monatliche(?:n)? Miete)[^\d]{0,25}(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€/i;
+const MONTHLY_RENT_PATTERN =
+  /(?<![A-Za-zÄÖÜäöüß])(?:Kaltmiete|Ist-Miete|monatliche(?:n)? Miete)[^\d]{0,25}(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€/i;
+const ANNUAL_RENT_PATTERN =
+  /(?:Jahreskaltmiete|Jahresnettokaltmiete|Jahresmiete)[^\d]{0,25}(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€/i;
 
 function parseGermanNumber(text: string): number {
   const cleaned = text.replace(/[^\d,]/g, "").replace(",", ".");
@@ -67,17 +69,28 @@ export function parseImmoweltDetailPage(
   ].join("\n");
 
   const unitMatch = description.match(UNIT_COUNT_PATTERN);
-  const rentMatch = description.match(RENT_PATTERN);
+  const annualRentMatch = description.match(ANNUAL_RENT_PATTERN);
+  const monthlyRentMatch = description.match(MONTHLY_RENT_PATTERN);
+  const rentColdMonthly = annualRentMatch
+    ? parseGermanNumber(annualRentMatch[1]) / 12
+    : monthlyRentMatch
+    ? parseGermanNumber(monthlyRentMatch[1])
+    : null;
 
   const livingSpace = factByType("livingSpace");
   const plotSpace = factByType("plotSpace");
   const rooms = factByType("numberOfRooms");
 
+  const priceCents = Math.round(parseGermanNumber(hardFacts.price.value) * 100);
+  if (!Number.isFinite(priceCents)) {
+    throw new Error(`Ungültiger Preis (nicht numerisch): "${hardFacts.price.value}"`);
+  }
+
   return {
     externalId: kontext.externalId,
     url: kontext.url,
     title: hardFacts.title,
-    priceCents: Math.round(parseGermanNumber(hardFacts.price.value) * 100),
+    priceCents,
     livingAreaM2: livingSpace ? parseGermanNumber(livingSpace.splitValue) : null,
     plotAreaM2: plotSpace ? parseGermanNumber(plotSpace.splitValue) : null,
     rooms: rooms ? parseGermanNumber(rooms.splitValue) : null,
@@ -86,7 +99,7 @@ export function parseImmoweltDetailPage(
     city: address.city,
     units: unitMatch ? parseInt(unitMatch[1], 10) : null,
     unitsConfident: unitMatch !== null,
-    rentColdMonthly: rentMatch ? parseGermanNumber(rentMatch[1]) : null,
+    rentColdMonthly,
     descriptionText: description,
   };
 }

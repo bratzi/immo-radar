@@ -80,4 +80,39 @@ describe("parseImmoweltDetailPage — Einheiten-Erkennung mit synthetischem Text
     const daten = parseImmoweltDetailPage(html, KONTEXT);
     expect(daten.rentColdMonthly).toBe(2400);
   });
+
+  it("liest 'Jahreskaltmiete' korrekt als Jahreswert, nicht als Monatswert", () => {
+    const html = fixtureHtml.replaceAll(
+      "Bei der hier angebotenen Immobilie",
+      "Die Jahreskaltmiete beträgt 32.400,00 €. Bei der hier angebotenen Immobilie"
+    );
+    const daten = parseImmoweltDetailPage(html, KONTEXT);
+    expect(daten.rentColdMonthly).toBeCloseTo(2700, 5);
+  });
+
+  it("liest 'Jahresnettokaltmiete' korrekt als Jahreswert", () => {
+    const html = fixtureHtml.replaceAll(
+      "Bei der hier angebotenen Immobilie",
+      "Jahresnettokaltmiete: 45.000,00 €. Bei der hier angebotenen Immobilie"
+    );
+    const daten = parseImmoweltDetailPage(html, KONTEXT);
+    expect(daten.rentColdMonthly).toBeCloseTo(3750, 5);
+  });
+
+  it("liest weiterhin eine echte monatliche Kaltmieten-Angabe korrekt (Regression)", () => {
+    const html = fixtureHtml.replaceAll(
+      "Bei der hier angebotenen Immobilie",
+      "Die Kaltmiete beträgt insgesamt 2.400,00 € im Monat. Bei der hier angebotenen Immobilie"
+    );
+    const daten = parseImmoweltDetailPage(html, KONTEXT);
+    expect(daten.rentColdMonthly).toBe(2400);
+  });
+
+  it("wirft einen Fehler bei nicht-numerischem Preis statt NaN durchzureichen", () => {
+    const html = fixtureHtml.replace(
+      '\\"value\\":\\"269.000 €\\"',
+      '\\"value\\":\\"Preis auf Anfrage\\"'
+    );
+    expect(() => parseImmoweltDetailPage(html, KONTEXT)).toThrow(/Ungültiger Preis/);
+  });
 });

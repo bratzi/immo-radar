@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { grunderwerbsteuerSatz } from "./grunderwerbsteuer.js";
+import { grunderwerbsteuerSatz, bundeslandFuerPlz } from "./grunderwerbsteuer.js";
 
 describe("grunderwerbsteuerSatz", () => {
   it("liefert 3.5 für München (Bayern)", () => {
@@ -20,5 +20,15 @@ describe("grunderwerbsteuerSatz", () => {
 
   it("liefert den bundesweiten Durchschnitt für eine unbekannte PLZ", () => {
     expect(grunderwerbsteuerSatz("00000")).toBeCloseTo(5.6, 5);
+  });
+});
+
+describe("bundeslandFuerPlz", () => {
+  it("liefert 'Bayern' für München", () => {
+    expect(bundeslandFuerPlz("80331")).toBe("Bayern");
+  });
+
+  it("liefert null für eine unbekannte PLZ", () => {
+    expect(bundeslandFuerPlz("00000")).toBeNull();
   });
 });

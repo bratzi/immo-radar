@@ -1,5 +1,5 @@
 import { scrapeImmowelt } from "./scrapers/immowelt/index.js";
-import { grunderwerbsteuerSatz } from "./lib/grunderwerbsteuer.js";
+import { grunderwerbsteuerSatz, bundeslandFuerPlz } from "./lib/grunderwerbsteuer.js";
 import { berechneKennzahlen } from "./lib/metrics.js";
 import { ermittleJahreskaltmiete } from "./lib/rentEstimate.js";
 import { upsertListingAndVersion, logNotification } from "./lib/db.js";
@@ -13,6 +13,13 @@ import {
 const MIN_EINHEITEN = 3;
 
 async function main() {
+  const REQUIRED_ENV_VARS = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"];
+  for (const key of REQUIRED_ENV_VARS) {
+    if (!process.env[key]) {
+      throw new Error(`Fehlende Umgebungsvariable: ${key}`);
+    }
+  }
+
   const telegramConfig = {
     botToken: process.env.TELEGRAM_BOT_TOKEN!,
     chatId: process.env.TELEGRAM_CHAT_ID!,
@@ -32,6 +39,7 @@ async function main() {
 
     const miete = ermittleJahreskaltmiete(objekt.rentColdMonthly, objekt.livingAreaM2 ?? 0);
     const satz = grunderwerbsteuerSatz(objekt.zipCode);
+    const bundesland = bundeslandFuerPlz(objekt.zipCode);
     const kennzahlen = berechneKennzahlen(
       {
         kaufpreis: objekt.priceCents / 100,
@@ -57,7 +65,7 @@ async function main() {
       yearBuilt: objekt.yearBuilt,
       zipCode: objekt.zipCode,
       city: objekt.city,
-      bundesland: null,
+      bundesland,
       title: objekt.title,
       kennzahlen,
     });
