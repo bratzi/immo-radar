@@ -68,13 +68,14 @@ export async function upsertListingAndVersion(
     .single();
   if (listingError) throw listingError;
 
-  const { data: previousVersion } = await supabase
+  const { data: previousVersion, error: previousVersionError } = await supabase
     .from("listing_versions")
     .select("price_cents, rent_cold_monthly_cents, units")
     .eq("listing_id", listing.id)
     .order("scanned_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (previousVersionError) throw previousVersionError;
 
   const diff = diffVersion({
     previous: previousVersion
