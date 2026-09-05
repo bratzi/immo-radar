@@ -71,25 +71,29 @@ async function main() {
       units: objekt.units,
     };
 
-    if (diff.changed && kennzahlen.topTreffer) {
-      const kennzahlenSummary = {
-        kaufpreisfaktor: kennzahlen.kaufpreisfaktor,
-        geschaetzterDscr: kennzahlen.geschaetzterDscr,
-        mietQuelle: miete.quelle,
-      };
-      await sendTelegramMessage(telegramConfig, formatTopTrefferMessage(listingSummary, kennzahlenSummary));
-      await logNotification(sb, diff.listingId, "top_treffer", { ...kennzahlenSummary, priceCents: objekt.priceCents });
-    }
+    try {
+      if (diff.changed && kennzahlen.topTreffer) {
+        const kennzahlenSummary = {
+          kaufpreisfaktor: kennzahlen.kaufpreisfaktor,
+          geschaetzterDscr: kennzahlen.geschaetzterDscr,
+          mietQuelle: miete.quelle,
+        };
+        await sendTelegramMessage(telegramConfig, formatTopTrefferMessage(listingSummary, kennzahlenSummary));
+        await logNotification(sb, diff.listingId, "top_treffer", { ...kennzahlenSummary, priceCents: objekt.priceCents });
+      }
 
-    if (diff.priceDropped && diff.previousPriceCents !== null) {
-      await sendTelegramMessage(
-        telegramConfig,
-        formatPreisaenderungMessage(listingSummary, diff.previousPriceCents, objekt.priceCents)
-      );
-      await logNotification(sb, diff.listingId, "preisaenderung", {
-        altPreisCents: diff.previousPriceCents,
-        neuPreisCents: objekt.priceCents,
-      });
+      if (diff.priceDropped && diff.previousPriceCents !== null) {
+        await sendTelegramMessage(
+          telegramConfig,
+          formatPreisaenderungMessage(listingSummary, diff.previousPriceCents, objekt.priceCents)
+        );
+        await logNotification(sb, diff.listingId, "preisaenderung", {
+          altPreisCents: diff.previousPriceCents,
+          neuPreisCents: objekt.priceCents,
+        });
+      }
+    } catch (err) {
+      console.error(`Benachrichtigung fehlgeschlagen fuer "${objekt.title}" (${objekt.url}):`, err);
     }
   }
 
