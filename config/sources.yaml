@@ -1,0 +1,276 @@
+# ---------------------------------------------------------------------------
+# Quellen-Registry
+#
+# Jede Quelle wird hier deklarativ beschrieben – kein Code nötig, um eine
+# weitere Nischenseite aufzunehmen.
+#
+#   type: html   -> generischer CSS-Selektor-Scraper
+#   type: rss    -> RSS/Atom-Feed (falls vorhanden, immer die bessere Wahl)
+#   type: kleinanzeigen -> Spezialmodul für kleinanzeigen.de
+#
+#   category: nische | kleinanzeigen | zwangsversteigerung | gross
+#
+# WICHTIG – Selektoren sind wartungsbedürftig:
+# Die unten hinterlegten CSS-Selektoren und URL-Muster sind Startwerte. Portale
+# ändern ihr Markup regelmäßig. Prüfe sie mit
+#     immosearch doctor
+# und repariere eine Quelle mit
+#     immosearch inspect <id> --save seite.html
+# Der `status`-Eintrag dokumentiert, ob eine Quelle schon einmal live
+# verifiziert wurde.
+#
+# Bitte robots.txt und Nutzungsbedingungen der Portale beachten. `ignore_robots`
+# steht bewusst nirgends auf true.
+# ---------------------------------------------------------------------------
+
+quellen:
+
+  # === Kleinanzeigen =======================================================
+  # Die wichtigste Quelle für Objekte unter Marktwert: Privatverkäufer,
+  # Erbengemeinschaften, Kleinvermieter ohne Makler.
+  - id: kleinanzeigen-haus
+    name: Kleinanzeigen – Häuser zum Kauf
+    type: kleinanzeigen
+    category: kleinanzeigen
+    enabled: true
+    kategorie: haus_kaufen
+    fetch_details: true
+    max_details: 25
+    status: ungeprueft
+
+  - id: kleinanzeigen-wohnung
+    name: Kleinanzeigen – Wohnungen zum Kauf
+    type: kleinanzeigen
+    category: kleinanzeigen
+    enabled: false          # für Einzelwohnungen; bei MFH-Suche meist aus
+    kategorie: wohnung_kaufen
+    fetch_details: true
+    max_details: 15
+    status: ungeprueft
+
+  # === Nischenportale ======================================================
+  - id: ohne-makler
+    name: ohne-makler.net (provisionsfrei, von privat)
+    type: html
+    category: nische
+    enabled: true
+    base_url: https://www.ohne-makler.net
+    search_url: "https://www.ohne-makler.net/suche/?objektart=haus&vermarktungsart=kauf&ort={ort}&umkreis={umkreis}&preis_max={preis_max}"
+    pagination: { param: "seite", start: 1, max_pages: 3 }
+    fetch_details: true
+    max_details: 15
+    selectors:
+      item: "article, .estate-item, .result-item"
+      url: "a@href"
+      title: "h2, h3, .title"
+      price: ".price, .estate-price"
+      living_area: ".living-space, .wohnflaeche"
+      city: ".location, .estate-location"
+      image: "img@src"
+    detail_selectors:
+      description: ".description, #objektbeschreibung, .estate-description"
+    status: ungeprueft
+
+  - id: immobilo
+    name: immobilo.de
+    type: html
+    category: nische
+    enabled: true
+    base_url: https://www.immobilo.de
+    search_url: "https://www.immobilo.de/kaufen/mehrfamilienhaus/{ort_slug}?priceTo={preis_max}&radius={umkreis}"
+    pagination: { param: "page", start: 1, max_pages: 3 }
+    fetch_details: true
+    max_details: 12
+    selectors:
+      item: "article, li.result-list__listing, .listing"
+      url: "a@href"
+      title: "h2, .listing__title"
+      price: ".listing__price, .price"
+      living_area: ".listing__area, .area"
+      city: ".listing__address, .address"
+    detail_selectors:
+      description: ".description, .object-description"
+    status: ungeprueft
+
+  - id: immoportal
+    name: immoportal.com
+    type: html
+    category: nische
+    enabled: true
+    base_url: https://www.immoportal.com
+    search_url: "https://www.immoportal.com/immobilien/kaufen/mehrfamilienhaus/{ort_slug}?preis_bis={preis_max}"
+    pagination: { param: "seite", start: 1, max_pages: 2 }
+    selectors:
+      item: ".immo-item, article, .result"
+      url: "a@href"
+      title: "h2, h3"
+      price: ".preis, .price"
+      city: ".ort, .location"
+    status: ungeprueft
+
+  - id: wohnungsboerse
+    name: wohnungsboerse.net
+    type: html
+    category: nische
+    enabled: true
+    base_url: https://www.wohnungsboerse.net
+    search_url: "https://www.wohnungsboerse.net/searchresult/{ort_slug}?estate_types%5B%5D=haus&marketing_type=kauf&price_to={preis_max}"
+    pagination: { param: "page", start: 1, max_pages: 2 }
+    selectors:
+      item: ".estate-item, article, .search-result-entry"
+      url: "a@href"
+      title: "h2, h3, .title"
+      price: ".price, .estate-price"
+      living_area: ".living-space"
+      city: ".address, .location"
+    status: ungeprueft
+
+  - id: quoka
+    name: quoka.de (Kleinanzeigenmarkt)
+    type: html
+    category: nische
+    enabled: true
+    base_url: https://www.quoka.de
+    search_url: "https://www.quoka.de/immobilien/haeuser-kauf/suchergebnisse.html?ort={ort}&umkreis={umkreis}&preis_bis={preis_max}"
+    pagination: { param: "page", start: 1, max_pages: 2 }
+    selectors:
+      item: ".search-result, article, li.q-listing"
+      url: "a@href"
+      title: "h2, .title"
+      price: ".price"
+      description: ".desc, .description"
+      city: ".loc, .location"
+    status: ungeprueft
+
+  - id: markt-de
+    name: markt.de – Immobilien
+    type: html
+    category: nische
+    enabled: false
+    base_url: https://www.markt.de
+    search_url: "https://www.markt.de/{ort_slug}/immobilien/haeuser/kaufen/kategorie.htm?maxPrice={preis_max}"
+    pagination: { param: "pageNum", start: 1, max_pages: 2 }
+    selectors:
+      item: ".clsy-c-resultlist-item, article"
+      url: "a@href"
+      title: ".clsy-c-resultlist-item__title, h2"
+      price: ".clsy-price, .price"
+      city: ".clsy-c-resultlist-item__location, .location"
+    status: ungeprueft
+
+  - id: kalaydo
+    name: kalaydo.de (regional Rheinland/NRW)
+    type: html
+    category: nische
+    enabled: false
+    base_url: https://www.kalaydo.de
+    search_url: "https://www.kalaydo.de/kleinanzeigen/haeuser-zum-kauf/{ort_slug}/k/c1602?priceTo={preis_max}"
+    pagination: { param: "page", start: 1, max_pages: 2 }
+    selectors:
+      item: "article, .result-item"
+      url: "a@href"
+      title: "h2, .title"
+      price: ".price"
+      city: ".location"
+    status: ungeprueft
+
+  # Beispiel für einen RSS-Feed. Viele regionale Makler, Sparkassen- und
+  # Volksbank-Immobilienseiten sowie Suchagenten liefern Feeds – die sind
+  # stabiler und höflicher als Scraping. Eigene Feeds hier ergänzen.
+  - id: beispiel-feed
+    name: Beispiel – regionaler Immobilien-Feed
+    type: rss
+    category: nische
+    enabled: false
+    feed_url: "https://beispiel-makler.de/immobilien/feed?ort={ort}&max={preis_max}"
+    status: ungeprueft
+
+  # === Zwangsversteigerungen / Auktionen ===================================
+  # Der klassische Weg zu Objekten deutlich unter Verkehrswert. Achtung:
+  # Finanzierung muss vor dem Termin stehen, Besichtigung oft nur von außen.
+  - id: zvg-portal
+    name: zvg-portal.de – amtliche Zwangsversteigerungstermine
+    type: html
+    category: zwangsversteigerung
+    enabled: true
+    base_url: https://www.zvg-portal.de
+    # land_abk kommt aus defaults – pro Bundesland eine eigene Quelle anlegen
+    search_url: "https://www.zvg-portal.de/index.php?button=Suchen&all=0&land_abk={land_abk}&ger_name="
+    defaults:
+      land_abk: nw
+    selectors:
+      item: "tr.EZ, table tr"
+      url: "a@href"
+      title: "td:nth-of-type(2)"
+      price: "td:nth-of-type(4)"
+      city: "td:nth-of-type(3)"
+    status: ungeprueft
+
+  - id: grundstuecksauktionen
+    name: Deutsche Grundstücksauktionen AG
+    type: html
+    category: zwangsversteigerung
+    enabled: false
+    base_url: https://www.dga-ag.de
+    search_url: "https://www.dga-ag.de/immobilien/"
+    selectors:
+      item: ".objekt, article, .property-item"
+      url: "a@href"
+      title: "h2, h3"
+      price: ".limit, .price"
+      city: ".ort, .location"
+    status: ungeprueft
+
+  # === Große Portale =======================================================
+  # Standardmäßig aus. Zuschalten mit `immosearch search --grosse-portale`.
+  # Diese Seiten setzen Bot-Erkennung ein und ihre AGB schränken automatisierte
+  # Abfragen ein – prüfe das für deinen Anwendungsfall. Der freundlichste Weg
+  # ist, dort einen Suchagenten per E-Mail einzurichten und die Mails
+  # auszuwerten, statt die Trefferliste abzurufen.
+  - id: immowelt
+    name: immowelt.de
+    type: html
+    category: gross
+    enabled: true
+    base_url: https://www.immowelt.de
+    search_url: "https://www.immowelt.de/classified-search?distributionTypes=Buy&estateTypes=House&locations={ort_slug}&priceMax={preis_max}"
+    pagination: { param: "page", start: 1, max_pages: 2 }
+    selectors:
+      item: "div[data-testid='serp-core-classified-card-testid'], article"
+      url: "a@href"
+      title: "h2, .title"
+      price: "div[data-testid='cardmfe-price-testid'], .price"
+      city: "div[data-testid='cardmfe-description-box-address'], .location"
+    status: ungeprueft
+
+  - id: immonet
+    name: immonet.de
+    type: html
+    category: gross
+    enabled: true
+    base_url: https://www.immonet.de
+    search_url: "https://www.immonet.de/classified-search?distributionTypes=Buy&estateTypes=House&locations={ort_slug}&priceMax={preis_max}"
+    pagination: { param: "page", start: 1, max_pages: 2 }
+    selectors:
+      item: "article, .item"
+      url: "a@href"
+      title: "h2, .title"
+      price: ".price"
+      city: ".location"
+    status: ungeprueft
+
+  - id: immoscout24
+    name: ImmobilienScout24
+    type: html
+    category: gross
+    enabled: false        # starke Bot-Erkennung; siehe docs/quellen.md
+    base_url: https://www.immobilienscout24.de
+    search_url: "https://www.immobilienscout24.de/Suche/de/{ort_slug}/haus-kaufen?price=-{preis_max}"
+    pagination: { param: "pagenumber", start: 1, max_pages: 2 }
+    selectors:
+      item: "article.result-list__listing, li.result-list__listing"
+      url: "a@href"
+      title: ".result-list-entry__brand-title"
+      price: ".result-list-entry__primary-criterion dd"
+      city: ".result-list-entry__address"
+    status: ungeprueft

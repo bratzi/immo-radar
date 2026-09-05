@@ -1,0 +1,23 @@
+# Konfiguration mit persönlichen Daten (Zugangsdaten, Suchprofile)
+config/config.yaml
+
+# Laufzeitdaten
+*.db
+reports/
+*.html
+!immosearch/**/*.html
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/

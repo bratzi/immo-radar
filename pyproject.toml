@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "immosearch"
+version = "0.1.0"
+description = "Findet und bewertet Anlageimmobilien (Mehrfamilienhäuser) für die 100%-Finanzierung – mit Fokus auf Nischenportale und Kleinanzeigen."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "PyYAML>=6.0",
+    "rich>=13.7",
+    "Jinja2>=3.1",
+]
+
+[project.scripts]
+immosearch = "immosearch.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["immosearch*"]

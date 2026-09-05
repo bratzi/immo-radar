@@ -1,0 +1,151 @@
+# ===========================================================================
+# ImmoSearch – Hauptkonfiguration
+#
+# Kopieren nach config/config.yaml (oder: immosearch init) und anpassen.
+# Alle Zahlen hier sind Startwerte, keine Empfehlung. Vor allem Zinssatz,
+# Tilgung und Marktmiete musst du an dein Bankgespräch und deine Region
+# anpassen – sie bestimmen das Ergebnis stärker als alles andere.
+# ===========================================================================
+
+datenbank: immosearch.db
+
+# Welche Quellenarten durchsucht werden. Große Portale sind bewusst nicht
+# dabei – zuschalten per `immosearch search --grosse-portale` oder indem du
+# "gross" hier ergänzt.
+quellen_kategorien:
+  - kleinanzeigen
+  - nische
+  - zwangsversteigerung
+
+# ---------------------------------------------------------------------------
+# Suchprofile – beliebig viele. Auswahl per `immosearch search -p ruhrgebiet`.
+# ---------------------------------------------------------------------------
+suchprofile:
+  - name: ruhrgebiet
+    ort: Gelsenkirchen
+    umkreis_km: 40
+    preis_min: 150000
+    preis_max: 900000
+    min_einheiten: 3
+    max_seiten: 3
+    keywords: [mehrfamilienhaus]
+    # Eigene Ausschlusswörter. Erbbaurecht, Nießbrauch und Teilverkauf
+    # erledigt bereits die K.o.-Logik – die nennt den Grund, statt das
+    # Inserat stillschweigend zu verwerfen.
+    ausschluss_keywords: [ferienhaus, wochenendhaus]
+    bundesland: NW
+
+  - name: ostwestfalen
+    ort: Bielefeld
+    umkreis_km: 50
+    preis_min: 150000
+    preis_max: 800000
+    min_einheiten: 3
+    max_seiten: 2
+    keywords: [mehrfamilienhaus]
+    bundesland: NW
+
+# ---------------------------------------------------------------------------
+# Finanzierung – das Modell hinter jeder Bewertung
+# ---------------------------------------------------------------------------
+finanzierung:
+  # "100" = Kaufpreis wird voll finanziert, Kaufnebenkosten aus Eigenkapital
+  # "110" = Kaufpreis UND Nebenkosten finanziert (echte Vollfinanzierung)
+  # "custom" = Eigenkapital frei setzen
+  mode: "110"
+  eigenkapital: 0
+
+  zinssatz: 4.0          # Sollzins p.a. in % – aktuelles Angebot deiner Bank
+  tilgung: 1.5           # anfängliche Tilgung p.a. in %
+  zinsbindung_jahre: 10
+
+  # Kaufnebenkosten in % des Kaufpreises
+  grunderwerbsteuer: null   # null = automatisch aus dem Bundesland (PLZ)
+  notar_prozent: 1.5
+  grundbuch_prozent: 0.5
+  makler_prozent: 3.57
+  makler_bei_provisionsfrei: 0.0
+
+  # Nicht umlagefähige Bewirtschaftungskosten – die Position, die in
+  # Verkäufer-Renditerechnungen typischerweise fehlt.
+  verwaltung_pro_einheit_monat: 25
+  instandhaltung_pro_qm_jahr: 10
+  mietausfallwagnis_prozent: 3
+
+  # Steuern
+  steuer_beruecksichtigen: true
+  grenzsteuersatz: 42      # dein persönlicher Grenzsteuersatz in %
+  gebaeudeanteil: 75       # % der Gesamtinvestition (Rest = Grund und Boden)
+  afa_satz: 2.0            # lineare AfA in %
+
+  # Mietschätzung, wenn das Inserat keine Ist-Miete nennt.
+  # Solche Treffer werden im Report als "Miete geschätzt" markiert.
+  miete_schaetzen: true
+  markt_miete_pro_qm: 7.5     # €/m²/Monat als Fallback
+  markt_miete_pro_plz:        # Schlüssel = PLZ oder PLZ-Präfix, längster gewinnt
+    "45": 7.2
+    "44": 7.4
+    "33": 8.0
+    "10": 12.5
+    "80": 17.0
+
+# ---------------------------------------------------------------------------
+# Bewertung
+# ---------------------------------------------------------------------------
+bewertung:
+  # Harte Filter: verletzt ein Objekt eine dieser Grenzen, wird es aussortiert
+  # (mit `--zeige-abgelehnte` bleibt es sichtbar, inklusive Begründung).
+  harte_filter:
+    min_cashflow_nach_steuer_monat: 0     # Kern der 100%-Finanzierung: muss sich selbst tragen
+    max_faktor: 20                        # Kaufpreis / Jahresnettokaltmiete
+    min_brutto_rendite: 5.5               # in %
+    min_dscr: 1.0                         # Kapitaldienstdeckungsgrad
+    min_einheiten: null                   # z. B. 3 für "nur Mehrfamilienhaus"
+    max_kaufpreis: null
+    knockout_keywords: true               # Erbbaurecht, Nießbrauch, Teilverkauf ...
+
+  # Gewichtete Kriterien. `schlecht` = 0 Punkte, `gut` = volle Punkte,
+  # dazwischen linear. Gewicht 0 schaltet ein Kriterium ab.
+  kriterien:
+    cashflow:        { gewicht: 30, schlecht: -300, gut: 400, pflicht: true }
+    faktor:          { gewicht: 20, schlecht: 25,   gut: 13,  pflicht: true }
+    brutto_rendite:  { gewicht: 15, schlecht: 4.0,  gut: 9.0, pflicht: true }
+    dscr:            { gewicht: 15, schlecht: 0.9,  gut: 1.4, pflicht: true }
+    einheiten:       { gewicht: 8,  schlecht: 1,    gut: 6 }
+    preis_pro_qm:    { gewicht: 7,  schlecht: 3000, gut: 900 }
+    baujahr:         { gewicht: 5,  schlecht: 1930, gut: 1995 }
+
+  bonus_pro_signal: 2      # je erkanntem Chancen-Signal (provisionsfrei, Erbengemeinschaft ...)
+  bonus_max: 12
+  malus_pro_risiko: 3      # je erkanntem Risiko (Sanierungsstau, Milieuschutz ...)
+  malus_max: 15
+
+# ---------------------------------------------------------------------------
+# Benachrichtigung
+# ---------------------------------------------------------------------------
+benachrichtigung:
+  console: true
+  html_report: reports/immosearch.html
+  min_score: 60            # ab diesem Score wird gemeldet
+
+  # Telegram (empfohlen für `immosearch watch`): Bot bei @BotFather anlegen,
+  # Chat-ID über @userinfobot ermitteln.
+  telegram_token: null
+  telegram_chat_id: null
+
+  # E-Mail
+  smtp_host: null
+  smtp_port: 587
+  smtp_user: null
+  smtp_password: null      # besser: Umgebungsvariable IMMOSEARCH_SMTP_PASSWORD
+  smtp_from: null
+  smtp_to: []
+
+# ---------------------------------------------------------------------------
+# HTTP-Verhalten – bitte defensiv lassen
+# ---------------------------------------------------------------------------
+http:
+  user_agent: "ImmoSearch/0.1 (privates Immobilien-Suchtool)"
+  delay_seconds: 2.5       # Mindestpause zwischen zwei Abrufen pro Host
+  timeout: 25
+  respect_robots: true     # robots.txt der Portale beachten
