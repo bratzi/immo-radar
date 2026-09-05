@@ -91,16 +91,60 @@ RSS) entschieden. Vorgehen zur Risikominimierung (analog Margns
 
 ## Bewertungslogik
 
+Professionalisiert gegenüber der ersten Fassung: statt einer pauschalen
+"Jahresnettomiete" wird ein echtes **NOI (Net Operating Income /
+Reinertrag)** nach dem in der Immobilienbewertung üblichen Schema
+(Rohertrag → Bewirtschaftungskosten → Reinertrag, vgl. § 8 ff. ImmoWertV)
+gebildet. Alle Kennzahlen bauen darauf auf.
+
+**1. Rohertrag** = Jahresnettokaltmiete (angegeben oder geschätzt, s.u.)
+
+**2. Bewirtschaftungskosten** (vom Rohertrag abgezogen), je Baustein:
+
+| Baustein | Ansatz | Quelle |
+|---|---|---|
+| Verwaltungskosten | 300 €/Einheit/Jahr (Mittelwert der üblichen 250–350 €) | [homeday.de](https://www.homeday.de/de/immobilienwissen/bewirtschaftungskosten/) |
+| Instandhaltungsrücklage | gestaffelt nach Gebäudealter (Baujahr aus Inserat, sonst „unbekannt" → mittlere Stufe): ≤22 Jahre 7,10 €/m²/Jahr, 22–32 Jahre 9,00 €/m²/Jahr, >32 Jahre 11,50 €/m²/Jahr | Statutorische Werte der II. BV / Peters'sche Formel, [bestehausverwaltung.com](https://bestehausverwaltung.com/articles/instandhaltungsrucklage-berechnung) |
+| Mietausfallwagnis | 2% der Bruttomiete | [kettenbach-immobilien.de](https://www.kettenbach-immobilien.de/bibliothek/immobilienbewertung/bewirtschaftungskosten) |
+
+Plausibilitätsgrenze: Die Summe der drei Bausteine wird auf 20–35% der
+Nettokaltmiete geklammert (branchenübliche Spanne für Mehrfamilien-/
+Zinshäuser laut [kim-bewertung.de](https://www.kim-bewertung.de/wissen/bewirtschaftungskosten/))
+— unrealistische Ausreißer bei sehr kleinen/großen Objekten werden so
+abgefangen, ohne die Objekt-spezifische Berechnung zu verwerfen.
+
+**3. NOI (Reinertrag)** = Rohertrag − Bewirtschaftungskosten
+
 **Kennzahlen je Objekt** (nur berechenbar mit Mietangabe/-schätzung):
 
-- Bruttomietrendite = Jahreskaltmiete ÷ Kaufpreis × 100
-- Nettomietrendite = (Jahreskaltmiete − nicht umlegbare Kosten) ÷
-  (Kaufpreis + Kaufnebenkosten) × 100
-- Kaufpreisfaktor = Kaufpreis ÷ Jahreskaltmiete
-- Geschätzter DSCR = Jahresnettomiete ÷ ((Kaufpreis + Kaufnebenkosten) × 6%)
-  — Kapitaldienst-Annahme 6%/Jahr (4,5% Zins + 1,5% Tilgung), leicht
+- Bruttomietrendite = Rohertrag ÷ Kaufpreis × 100
+- Nettomietrendite / Cap Rate = NOI ÷ (Kaufpreis + Kaufnebenkosten) × 100
+- Kaufpreisfaktor = Kaufpreis ÷ Rohertrag
+- Geschätzter DSCR = NOI ÷ ((Kaufpreis + Kaufnebenkosten) × 6%) —
+  Kapitaldienst-Annahme 6%/Jahr (4,5% Zins + 1,5% Tilgung), leicht
   konservativer als der recherchierte Vollfinanzierungs-Marktzins von 4,21%
-  (Stand September 2026, baufi24.de), als Sicherheitspuffer für die Schätzung.
+  (Stand September 2026, [baufi24.de](https://www.baufi24.de/bauzinsen/)),
+  als Sicherheitspuffer für die Schätzung.
+
+**4. Vereinfachte Beleihungswert-Schätzung + Finanzierungsrisiko-Flag**
+(neu, professionelle Ergänzung — der eigentliche Kern von "100%
+finanzierbar"): Banken finanzieren nicht gegen den Kaufpreis, sondern
+gegen ihren eigenen, meist konservativeren **Beleihungswert** (typisch
+70–90% des Marktwerts, [vr.de](https://www.vr.de/privatkunden/themenwelten/wohnen-immobilien/bauen-kaufen/beleihungswert.html)).
+Ein Objekt kann also einen guten Kaufpreisfaktor/DSCR haben und trotzdem
+für 100%-Finanzierung ungeeignet sein, wenn der Kaufpreis den
+bankseitigen Sicherheitswert deutlich übersteigt — dann müsste der
+Käufer die Differenz doch aus Eigenkapital decken.
+
+Vereinfachte Schätzung (ohne vollständiges, bodenrichtwert-abhängiges
+Ertragswertverfahren, s. Ausbaustufe 2 unten):
+
+`Geschätzter Beleihungswert ≈ NOI ÷ 6%` (Kapitalisierung mit demselben
+konservativen Satz wie beim DSCR, als grobe Ertragswert-Näherung ohne
+separaten Bodenwert-Split)
+
+`Finanzierungsrisiko-Flag` = Kaufpreis > 110% des geschätzten
+Beleihungswerts → Objekt wird als „Beleihungswert-Lücke" markiert.
 
 **Kaufnebenkosten-Annahme** (bundesweit einheitlich in den Formeln
 verwendet, aber je Bundesland unterschiedlich — sonst wäre "bundesweit"
@@ -142,10 +186,15 @@ Schätzung).
 
 **„Top-Treffer"-Kriterium** (löst Telegram-Sofort-Alarm aus):
 
-- Kaufpreisfaktor ≤ 15 **UND** geschätzter DSCR ≥ 1,3
+- Kaufpreisfaktor ≤ 15 **UND** geschätzter DSCR ≥ 1,3 **UND** kein
+  Finanzierungsrisiko-Flag (Kaufpreis ≤ 110% des geschätzten
+  Beleihungswerts) — die dritte Bedingung ist neu und stellt sicher, dass
+  nicht nur die Rendite stimmt, sondern die Bank das Objekt realistisch
+  auch nahe 100% beleihen würde.
 
-Alle anderen Objekte (auch unterhalb der Schwelle oder ohne jede
-Mietgrundlage) erscheinen weiterhin im Dashboard, nur ohne Sofort-Alarm.
+Alle anderen Objekte (auch unterhalb der Schwelle, mit
+Finanzierungsrisiko-Flag, oder ohne jede Mietgrundlage) erscheinen
+weiterhin im Dashboard, nur ohne Sofort-Alarm.
 
 **Filter-Kriterien für Aufnahme überhaupt:**
 
@@ -187,3 +236,14 @@ behandelt (nicht automatisch im Hintergrund angelegt).
 - Automatisierte Kontaktaufnahme mit Verkäufern/Maklern.
 - Geografische Umkreis-Filterung.
 - Feste Preisobergrenze.
+- **Vollständiges Ertragswertverfahren nach ImmoWertV** (statt der
+  vereinfachten Beleihungswert-Näherung oben): Bodenwert (Bodenrichtwert ×
+  Grundstücksfläche) + Gebäudeertrag (Reinertrag abzüglich
+  Bodenwertverzinsung, kapitalisiert mit einem lagespezifischen
+  Liegenschaftszinssatz von Gutachterausschüssen, typ. 1,5–4,5% bei
+  Wohnimmobilien) + Bodenwert. Fachlich präziser als die 6%-Pauschale,
+  aber setzt eine Bodenrichtwert-Anbindung voraus — die läuft in jedem
+  Bundesland über ein eigenes BORIS-Portal (uneinheitlich strukturiert,
+  meist ohne echte API, teils nur Kartenabfrage). Der Aufwand für 16
+  unterschiedliche Länder-Anbindungen lohnt sich erst, wenn sich die
+  einfache Näherung im Betrieb als zu ungenau erweist.
