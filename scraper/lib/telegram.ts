@@ -17,6 +17,8 @@ export interface ZvgListingSummary extends ListingSummary {
   court: string;
   auctionAt: string;
   caseNumber: string;
+  /** Vollstaendige amtliche Bekanntmachung, damit die Nachricht ohne Seitenbesuch reicht. */
+  rawNoticeText?: string | null;
 }
 
 export interface KennzahlenSummary {
@@ -61,9 +63,33 @@ function formatBerlinDatumzeit(isoDatum: string): string {
  */
 const ZVG_SUCHE_URL = "https://www.zvg-portal.de/index.php?button=Termine%20suchen";
 
+/** Zeilen der amtlichen Bekanntmachung, die in der Nachricht schon oben stehen. */
+const NOTICE_REDUNDANTE_ZEILEN = /^(Verkehrswert in €|Termin|GeoServer|Exposee|Amtliche Bekanntmachung \(PDF\)):/;
+
+/**
+ * Gibt die amtliche Bekanntmachung als Nachrichten-Block zurueck: alles, was
+ * der Nutzer sonst auf der (nicht verlinkbaren) Detailseite lesen wuerde --
+ * Grundbuch, Objekt/Lage, Beschreibung, Ort der Versteigerung.
+ */
+function formatNoticeBlock(rawNoticeText: string | null | undefined): string | null {
+  if (!rawNoticeText) return null;
+  const zeilen = rawNoticeText
+    .split("\n")
+    .map((z) => z.trim())
+    .filter((z) => z.length > 0 && !NOTICE_REDUNDANTE_ZEILEN.test(z));
+  if (zeilen.length === 0) return null;
+  return `📄 Aus der amtlichen Bekanntmachung:\n${zeilen.join("\n")}`;
+}
+
+/** Karten-Link zur Adresse -- funktioniert im Gegensatz zum zvg-portal-Direktlink. */
+function formatKartenLink(listing: ListingSummary): string {
+  const adresse = `${listing.zipCode} ${listing.city}`.trim();
+  return `🗺️ Karte: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`;
+}
+
 function formatListingLink(url: string): string {
   if (url.includes("zvg-portal.de")) {
-    return `Direktlink oeffnet sich nicht (Seite verlangt eigene Sitzung) -- bitte auf ${ZVG_SUCHE_URL} nach dem Aktenzeichen suchen.`;
+    return `🔎 Original-Bekanntmachung: auf ${ZVG_SUCHE_URL} nach dem Aktenzeichen suchen (die Seite sperrt Direktlinks von aussen).`;
   }
   return url;
 }
@@ -88,6 +114,8 @@ export function formatZvgTopTrefferMessage(listing: ZvgListingSummary, k: Kennza
     `Termin: ${formatBerlinDatumzeit(listing.auctionAt)} Uhr`,
     `Kaufpreisfaktor ${k.kaufpreisfaktor.toFixed(1)} · geschätzter DSCR ${k.geschaetzterDscr.toFixed(2)} · Miete: ${k.mietQuelle}`,
     formatDataGapsLine(listing.dataGaps),
+    formatNoticeBlock(listing.rawNoticeText),
+    formatKartenLink(listing),
     formatListingLink(listing.url),
   ]
     .filter((zeile): zeile is string => zeile !== null)

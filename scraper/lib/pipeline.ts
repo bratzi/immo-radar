@@ -138,6 +138,7 @@ export async function processCandidate(
                 court: candidate.court,
                 auctionAt: candidate.auctionAt,
                 caseNumber: candidate.caseNumber,
+                rawNoticeText: candidate.rawNoticeText,
               },
               kennzahlenSummary
             )

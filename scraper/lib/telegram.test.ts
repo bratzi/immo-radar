@@ -88,8 +88,39 @@ describe("formatZvgTopTrefferMessage", () => {
       mietQuelle: "geschaetzt_bundesweit",
     });
     expect(text).not.toContain(zvgListing.url);
-    expect(text).toContain("https://www.zvg-portal.de/index.php?button=Termine%20suchen");
-    expect(text).toContain("0467 K 0076/2022");
+  });
+
+  it("zeigt den vollstaendigen Inseratstext, damit die Seite gar nicht noetig ist", () => {
+    const mitText = {
+      ...zvgListing,
+      rawNoticeText: [
+        "Art der Versteigerung: Zwangsversteigerung zum Zwecke der Aufhebung der Gemeinschaft",
+        "Grundbuch: Bergfelde Blatt 2420",
+        "Objekt/Lage: Mehrfamilienhaus: Clara-Zetkin-Straße 27, 16562 Hohen Neuendorf",
+        "Beschreibung: Grundstück, bebaut mit einem Mehrfamilienhaus (Baujahr um 1904, Wohnfläche 252,34 m²)",
+        "Verkehrswert in €: 686.000,00 €",
+        "Ort der Versteigerung: Amtsgericht Neuruppin, Karl-Marx-Straße 18a, 16816 Neuruppin, 2. OG, Saal 325",
+      ].join("\n"),
+    };
+    const text = formatZvgTopTrefferMessage(mitText, {
+      kaufpreisfaktor: 8.5,
+      geschaetzterDscr: 1.6,
+      mietQuelle: "geschaetzt_bundesweit",
+    });
+    expect(text).toContain("Baujahr um 1904");
+    expect(text).toContain("Wohnfläche 252,34 m²");
+    expect(text).toContain("Saal 325");
+    expect(text).toContain("Zwangsversteigerung zum Zwecke der Aufhebung");
+  });
+
+  it("haengt einen funktionierenden Google-Maps-Link zur Adresse an", () => {
+    const text = formatZvgTopTrefferMessage(zvgListing, {
+      kaufpreisfaktor: 8.5,
+      geschaetzterDscr: 1.6,
+      mietQuelle: "geschaetzt_bundesweit",
+    });
+    expect(text).toContain("https://www.google.com/maps/search/?api=1&query=");
+    expect(text).toContain("Zwenkau");
   });
 
   it("hängt bei fehlenden Angaben ebenfalls die Warnzeile an", () => {
