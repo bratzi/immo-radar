@@ -20,12 +20,12 @@ export interface EinheitenAuswertung {
   dataGaps: string[];
 }
 
-export function bewerteEinheiten(units: number | null): EinheitenAuswertung {
-  if (units !== null && units < MIN_EINHEITEN) {
+export function bewerteEinheiten(units: number | null, unitsConfident: boolean): EinheitenAuswertung {
+  if (unitsConfident && units !== null && units < MIN_EINHEITEN) {
     return { ausschliessen: true, einheitenFuerBerechnung: units, dataGaps: [] };
   }
-  if (units === null) {
-    return { ausschliessen: false, einheitenFuerBerechnung: MIN_EINHEITEN, dataGaps: ["units_unconfirmed"] };
+  if (!unitsConfident || units === null) {
+    return { ausschliessen: false, einheitenFuerBerechnung: units ?? MIN_EINHEITEN, dataGaps: ["units_unconfirmed"] };
   }
   return { ausschliessen: false, einheitenFuerBerechnung: units, dataGaps: [] };
 }
@@ -55,7 +55,7 @@ export async function processCandidate(
   telegramConfig: TelegramConfig,
   candidate: PipelineCandidate
 ): Promise<void> {
-  const einheiten = bewerteEinheiten(candidate.units);
+  const einheiten = bewerteEinheiten(candidate.units, candidate.unitsConfident);
   if (einheiten.ausschliessen) {
     console.log(
       `Übersprungen (Einheiten bestätigt: ${candidate.units}, benötigt >=${MIN_EINHEITEN}): ${candidate.title}`
