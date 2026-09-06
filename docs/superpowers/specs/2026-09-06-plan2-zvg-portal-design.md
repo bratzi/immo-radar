@@ -87,14 +87,16 @@ müssten.
 
 ## Datenmodell (Delta zu `schema.sql`)
 
-`listing_versions` bekommt 4 neue nullable Spalten:
+`listing_versions` bekommt 5 neue Spalten (4 nullable, ZVG-spezifisch + 1
+`NOT NULL` mit Default, quellenübergreifend, s. Retrofit-Abschnitt unten):
 
 ```sql
 alter table listing_versions
   add column auction_at timestamptz,
   add column court text,
   add column case_number text,
-  add column raw_notice_text text;
+  add column raw_notice_text text,
+  add column data_gaps text[] not null default '{}';
 ```
 
 - `source = 'zvg-portal'` in `listings`.
@@ -117,16 +119,15 @@ alter table listing_versions
   eigene Mietangaben.
 - Grunderwerbsteuer/Kaufnebenkosten/NOI/Top-Treffer-Schwelle: unverändert
   aus Plan 1 übernommen, keine ZVG-Sonderformel.
-- **Einheiten-Mindestgrenze (≥3) — Annahme, im Implementierungsplan zu
-  verifizieren:** Die Objekttyp-Kategorie "Mehrfamilienhaus" (Wert 4) ist
-  laut ZVG-Portal-Kategorisierung von "Zweifamilienhaus" (Wert 19) und
-  "Einfamilienhaus" (Wert 3) abgegrenzt, was nahelegt, dass sie selbst
-  schon ≥3 Einheiten bedeutet. Bekanntmachungstexte nennen aber selten
-  eine exakte Einheitenzahl. Vorgeschlagener Default: bei fehlender
-  expliziter Zahl im Text `units = 3, unitsConfident = false` (Kategorie-
-  Minimum, nicht raten) ansetzen, damit Objekte nicht pauschal
-  rausfallen; wird im Text eine höhere Zahl genannt, hat die geparste Zahl
-  Vorrang. **Nutzer bitte beim Spec-Review bestätigen oder korrigieren.**
+- **Einheiten-Mindestgrenze (≥3):** ausschließen nur bei **bestätigter**
+  Zahl unter 3 (s. Retrofit-Abschnitt — gilt genauso für Immowelt). Nennt
+  eine Bekanntmachung keine exakte Einheitenzahl (der Regelfall bei
+  ZVG-Texten), wird das Objekt **nicht ausgeschlossen**: `units = 3` als
+  Rechen-Untergrenze für die Kennzahlen-Formeln (Kategorie "Mehrfamilienhaus"
+  Wert 4 ist von "Zweifamilienhaus" Wert 19/"Einfamilienhaus" Wert 3
+  abgegrenzt, also strukturell ≥3), plus `data_gaps: ["units_unconfirmed"]`.
+  Wird im Text eine konkrete Zahl genannt, hat sie Vorrang vor der
+  Untergrenze.
 
 ## Personendaten-Policy
 
@@ -143,10 +144,43 @@ herausgefiltert**, aber:
 - Keine Weiterverbreitung, keine Anzeige im Dashboard über die oben
   genannten strukturierten Felder hinaus.
 
+## Retrofit für Plan 1: `data_gaps` als quellenübergreifender Mechanismus
+
+Nutzer-Vorgabe (2026-09-06): Objekte dürfen **nie mehr stillschweigend
+wegen fehlender Angaben verworfen werden** — fehlende Infos werden
+stattdessen sichtbar markiert, portalübergreifend einheitlich. Das betrifft
+nicht nur ZVG-Portal, sondern auch das bereits **live laufende** Plan 1
+(Immowelt), das aktuell Objekte mit `units === null` in `main.ts` komplett
+überspringt (nicht mal in der DB landen sie).
+
+**Neue Regel (ersetzt die bisherige Skip-Logik in `main.ts`):**
+
+- Ausschluss aus der Pipeline nur noch bei **bestätigter** Zahl unter dem
+  Schwellwert (`units !== null && units < 3`).
+- Ist die Einheitenzahl unbekannt (`units === null`), wird das Objekt
+  **trotzdem gespeichert**: `units = 3` als konservative Rechen-Untergrenze
+  für `berechneKennzahlen()`, plus Eintrag `"units_unconfirmed"` in
+  `data_gaps`.
+- `data_gaps: text[]` ist bewusst offen für weitere Codes (z.B. künftig
+  `"year_built_missing"`, `"rent_unconfirmed"`) — löst das bisherige
+  Einzelfeld `units_confident` ab, das nur für Einheiten existierte.
+- Telegram-Nachrichten (beide Formatter) bekommen bei nicht-leerem
+  `data_gaps` eine zusätzliche Zeile „⚠️ Fehlende Angaben: …" mit
+  Klartext-Übersetzung der Codes (nicht die rohen Codes selbst).
+
+**Umfang der Änderung:** `scraper/lib/db.ts` (neue Spalte durchreichen),
+`scraper/main.ts` (Skip-Bedingung ändern, `data_gaps` befüllen),
+`scraper/lib/telegram.ts` (Warnzeile ergänzen), `schema.sql`
+(`data_gaps`-Spalte, s.o.) — sowie die zugehörigen bestehenden Tests in
+`main.ts`/`telegram.test.ts`. Wird als eigener früher Task im
+Implementierungsplan behandelt (Voraussetzung für beide Quellen), nicht
+nur als Nebeneffekt der ZVG-Arbeit.
+
 ## Benachrichtigung
 
 Neuer Telegram-Formatter für ZVG-Treffer (Gericht, Termin, Verkehrswert,
-Aktenzeichen statt "online seit"/Kaufpreis-Änderung); gleicher
+Aktenzeichen statt "online seit"/Kaufpreis-Änderung), inkl. der
+`data_gaps`-Warnzeile aus dem Retrofit oben; gleicher
 `notifications`-Log-Mechanismus wie Plan 1 zur Duplikat-Vermeidung.
 
 ## Cron
@@ -167,8 +201,8 @@ folgt aus dem ersten Playwright-Spike).
   Ergebnisse liefert (s.o.), sonst Fallback auf Einzel-Amtsgericht-Loop.
 - Playwright-Spike: Suchformular einmal live ausfüllen, echte Ergebnis-
   und Detailseiten-HTML als Test-Fixtures sichern.
-- Einheiten-Default-Annahme (s.o.) mit Nutzer beim Spec-Review final
-  bestätigen.
+- Klartext-Übersetzungen der `data_gaps`-Codes für die Telegram-Warnzeile
+  festlegen (z.B. `units_unconfirmed` → „Einheiten nicht bestätigt").
 
 ## Bewusst nicht enthalten (YAGNI)
 
@@ -178,3 +212,6 @@ folgt aus dem ersten Playwright-Spike).
   Zugriffs-/Weiterverbreitungs-Beschränkung).
 - Einzel-Amtsgericht-Iteration als Standardweg (nur Fallback, falls die
   Sammel-Option nicht funktioniert).
+- Rückwirkendes Nacherfassen von Immowelt-Objekten, die vor dem
+  `data_gaps`-Retrofit bereits (fälschlich) übersprungen wurden — der
+  Retrofit wirkt nur auf künftige Scans.
