@@ -274,7 +274,8 @@ export async function sendTelegramPhotos(
     form.append("chat_id", config.chatId);
     const media = gruppe.map((foto, i) => {
       const feld = `foto${i}`;
-      form.append(feld, new Blob([foto.bytes as BlobPart], { type: "image/jpeg" }), foto.filename);
+      const typ = foto.filename.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+      form.append(feld, new Blob([foto.bytes as BlobPart], { type: typ }), foto.filename);
       return {
         type: "photo",
         media: `attach://${feld}`,

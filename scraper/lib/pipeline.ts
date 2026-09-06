@@ -3,6 +3,7 @@ import { grunderwerbsteuerSatz, bundeslandFuerPlz } from "./grunderwerbsteuer.js
 import { berechneKennzahlen } from "./metrics.js";
 import { ermittleJahreskaltmiete } from "./rentEstimate.js";
 import { upsertListingAndVersion, logNotification } from "./db.js";
+import { kartePngFuerPlz } from "./karte.js";
 import {
   sendTelegramMessage,
   sendTelegramPhotos,
@@ -99,9 +100,13 @@ async function sendeMedien(
   telegramConfig: TelegramConfig,
   candidate: PipelineCandidate
 ): Promise<void> {
-  const bildUrls = candidate.photoUrls ?? [];
   const fotos: { bytes: Uint8Array; filename: string }[] = [];
-  for (const [i, url] of bildUrls.entries()) {
+
+  // Lagekarte zuerst, damit auf einen Blick sichtbar ist, wo das Objekt liegt.
+  const karte = kartePngFuerPlz(candidate.zipCode);
+  if (karte !== null) fotos.push({ bytes: karte, filename: "lage.png" });
+
+  for (const [i, url] of (candidate.photoUrls ?? []).entries()) {
     const bytes = await ladeDatei(url);
     if (bytes !== null) fotos.push({ bytes, filename: `bild-${i + 1}.jpg` });
   }
