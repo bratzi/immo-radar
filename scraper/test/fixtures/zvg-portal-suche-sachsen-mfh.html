@@ -1,0 +1,284 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de"><head>
+        <title>Justizportal - Verfahren</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+        <meta content="Justizportal des Bundes und der L�nder" name="DC.Description">
+        <meta content="Referat �ffentlichkeitsarbeit" name="DC.Author">
+        <meta content="Justizportal des Bundes und der L�nder" name="DC.Page-topic">
+	
+	<meta content="noindex,nofollow,nosnippet,noarchive,noodp" name="Robots">
+
+        <link href="mailto:redaktion@justiz.de" title="Mail" rel="author">
+        <link href="https://justiz.de/Uebersicht.php" title="Inhaltsverzeichnis" rel="contents">
+        <link href="https://justiz.de/index.php" title="Startseite" rel="start">
+        <link href="https://justiz.de/Impressum.php" title="Impressum" rel="copyright">
+        <link href="https://justiz.de/index.php#suchzeile" title="Suchen" rel="search">
+<link rel="icon" href="images/favicon.ico" type="image/x-icon">
+
+<link title="Basis-Stylesheet" href="images/basis.css" type="text/css" rel="stylesheet">
+
+    <script>
+function blaettern(nseite,nl,nr,norder_by,ndesc)
+{
+
+var seite='';
+var l='';
+var r='';
+var all='';
+var order_by='';
+var desc='';
+
+
+//alert(seite+'-'+l+'-'+r+'-'+order_by+'-'+desc);
+
+//dropdown -> alle
+if(nseite=='all'){
+	var URL='index.php?button=Suchen&all=1';
+	//return location.replace(URL);
+ 	document.form_sucheZvg.action=URL;
+	document.form_sucheZvg.submit();
+return;
+}
+//dorpdown menue
+if(nl==-1 && nr==-1 && norder_by==-1 && ndesc==-1){
+        x=nseite.split("-");
+ 	var URL='index.php?button=Suchen&seite='+x[0]+'&l='+x[1]+'&r='+x[2]+'&order_by='+order_by+'&desc='+desc;
+//	return location.replace(URL);
+ 	document.form_sucheZvg.action=URL;
+        document.form_sucheZvg.submit();
+return;
+}
+//sortieren, nicht blaettern
+if(norder_by!=-1){
+ 	var URL='index.php?button=Suchen&seite='+seite+'&l='+l+'&r='+r+'&all='+all+'&order_by='+norder_by+'&desc='+ndesc+'';
+//return location.replace(URL);
+ 	document.form_sucheZvg.action=URL;
+        document.form_sucheZvg.submit();
+return;
+
+}
+var URL='index.php?button=Suchen&seite='+nseite+'&l='+nl+'&r='+nr+'&all='+all+'&order_by='+norder_by+'&desc='+ndesc;
+//return location.replace(URL);
+ document.form_sucheZvg.action=URL;
+        document.form_sucheZvg.submit();
+
+
+}
+</script></head>
+
+
+
+    <body>
+        <!-- Kopfbereich -->
+        <a name="top"></a>
+        <a href="https://justiz.de/" aria-label="Link zur Startseite"><img src="images/justitia.gif" aria-label="Link zur Startseite" alt="Justitia auf Deutschlandkarte" id="logo" height="132" width="160"></a>
+        <h1 id="kopf">Zwangsversteigerungstermine</h1>
+        <div id="micronavi"><!-- Micronavi -->
+        Sie sind hier:
+            <ul>
+                <li><a href="index.php?button=Termine suchen"><span class="pfeil">&gt;</span>Termine suchen</a></li>            </ul>
+        </div><!-- ende Micronavi -->
+
+
+
+        <!-- Ende Kopfbereich -->
+
+<div id="container"><!-- Container -->
+<div id="navi" class="noprint"> <!-- Navigation linke Seite -->
+            <ul class="hinterlegt"> 
+		<li><a aria-label="Termine suchen" href="index.php?button=Termine suchen">Termine suchen</a></li>
+		
+		 <li><a aria-label="Übersicht" href="index.php?button=Uebersicht">Übersicht</a></li>
+
+		 <li><a aria-label="Hinweise fuer Bieter" href="index.php?button=Hinweise fuer Bieter">Hinweise für Bieter</a></li>
+
+		 <!--li><a aria-label='Bieter Handbuch' href='index.php?button=handbuch&sess_clean=1' target=_blanc
+                                         >Bieter Handbuch</a></li-->
+
+		 <li><a aria-label="Bieter Handbuch" href="index.php?button=Bieter Handbuch">Bieter Handbuch</a></li>
+            </ul>
+            <ul class="binnennavi">
+                <li><a aria-label="Startseite" href="index.php?button=Startseite" title="Startseite">Startseite</a></li>
+                <li><a aria-label="Impressum" href="index.php?button=Impressum">Impressum</a></li>
+                <li><a aria-label="Rechtliche Hinweise" href="https://justiz.de/datenschutz/index.php" target="_blank">Rechtliche Hinweise</a></li>
+    		<li><a aria-label="Kontakt" href="index.php?button=Kontakt">Kontakt</a></li>
+            </ul>
+                <div id="zusatznavi">
+
+</div>
+
+            <form action="https://justiz.de/suchergebnis/index.php" method="get"><label class="small" for="query">Suche</label><br>
+                <input name="q" id="suchzeile" type="text"><input src="images/lupe.gif" aria-label="Suche" type="image">
+            </form>
+        </div> <!-- Ende Navigation -->
+
+        <div id="inhalt"><!-- Inhalt main -->
+                
+<nobr><h2>Alle Termine, Insgesamt 16</h2>
+
+<!--&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->
+
+
+<button aria-label="Suche ändern" style="float: inline-end;" onclick="document.form_sucheZvg.action='index.php?button=Termine suchen';document.form_sucheZvg.submit();">Suche ändern</button></nobr>
+<form name="form_sucheZvg" method="post">
+<input type="hidden" name="ger_name" value="-- Alle Amtsgerichte --">
+<input type="hidden" name="order_by" value="2">
+<input type="hidden" name="land_abk" value="sn">
+<input type="hidden" name="ger_id" value="0">
+<input type="hidden" name="az1" value="">
+<input type="hidden" name="az2" value="">
+<input type="hidden" name="az3" value="">
+<input type="hidden" name="az4" value="">
+<input type="hidden" name="art" value="">
+<input type="hidden" name="obj" value="">
+<input type="hidden" name="obj_arr[]" value="4">
+<input type="hidden" name="obj_liste" value="4">
+<input type="hidden" name="str" value="">
+<input type="hidden" name="hnr" value="">
+<input type="hidden" name="plz" value="">
+<input type="hidden" name="ort" value="">
+<input type="hidden" name="ortsteil" value="">
+<input type="hidden" name="vtermin" value="">
+<input type="hidden" name="btermin" value="">
+<!--Seiten zum Blaettern-->
+		<table border="1"><tbody><tr><td><select size="1" onchange="blaettern(this.options[this.selectedIndex].value,'-1','-1','-1','-1')"><option value="1-1-11" selected="">1-2</option><option value="all">alle</option></select></td><td><button class="seiten_nr" onmouseover="this.className='seiten_nr_hover'" onmouseout="this.className='seiten_nr'" onclick="blaettern('1','1','3','-1','-1')" aria-label="Sitennummer 1">[1]</button><button class="seiten_nr" onmouseover="this.className='seiten_nr_hover'" onmouseout="this.className='seiten_nr'" onclick="blaettern('2','1','3','-1','-1')" aria-label="blättern zur Sitennummer 2">&nbsp;2&nbsp;</button></td></tr></tbody></table>
+		<!--Seiten zum Blaettern Ende--><table border="0">   <!--Aktenzeichen--->
+		<tbody><tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=40908&amp;land_abk=sn">
+		<nobr>0467 K 0076/2022&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 08-06-2026 16:10)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Leipzig in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> Hugo-Haase-Straße  29, 04442 Zwenkau</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>271.000,00</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Mittwoch, 09. September 2026, 10:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109158&amp;zvg_id=40908 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">195.38 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr>    <!--Aktenzeichen--->
+                <tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong><font size="2px">
+                <nobr>0485 K 0213/2024</nobr></font></strong><font size="2px">&nbsp;</font></td>
+                <td valign="top" align="right"><nobr>(letzte Aktualisierung 01-09-2026 16:02)</nobr></td></tr>
+ <!--Amtsgericht--->
+                <tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Leipzig in Sachsen</strong></td></tr>
+
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">
+		<font color="#C00000"><strong>Der Termin Donnerstag, 10. September 2026, 11:00 Uhr wurde aufgehoben.</strong></font></td></tr><tr><td colspan="3"><hr></td></tr>   <!--Aktenzeichen--->
+		<tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=40961&amp;land_abk=sn">
+		<nobr>0004 K 0065/2023&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 07-07-2026 12:55)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Zwickau in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> Louis-Müller-Straße  15, 08223 Falkenstein</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>95.000,00</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Mittwoch, 16. September 2026, 09:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109289&amp;zvg_id=40961 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">176.35 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr>   <!--Aktenzeichen--->
+		<tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=41029&amp;land_abk=sn">
+		<nobr>0015 K 0188/2023&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 22-07-2026 14:13)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Chemnitz in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> In der Gasse  7, 09496 Marienberg, OT Rübenau</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>121.000,00 €</p>
+<p>&nbsp;</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Donnerstag, 17. September 2026, 13:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109434&amp;zvg_id=41029 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">192.28 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr>   <!--Aktenzeichen--->
+		<tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=41033&amp;land_abk=sn">
+		<nobr>0002 K 0058/2024&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 27-07-2026 08:18)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Zwickau in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> Südstraße  10, 08527 Plauen</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>103.700,00</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Dienstag, 22. September 2026, 09:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109443&amp;zvg_id=41033 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">174.64 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr>   <!--Aktenzeichen--->
+		<tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=41086&amp;land_abk=sn">
+		<nobr>0004 K 0109/2025&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 21-08-2026 08:34)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Görlitz in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> Leipziger Straße 14, 02826 Görlitz</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>70.000,00</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Dienstag, 06. Oktober 2026, 11:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109580&amp;zvg_id=41086 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">231.49 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr>   <!--Aktenzeichen--->
+		<tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=41062&amp;land_abk=sn">
+		<nobr>0520 K 0028/2024&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 12-08-2026 10:21)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Dresden in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> Dr.-Külz-Straße  8, 01589 Riesa</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>122.000,00</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Montag, 12. Oktober 2026, 13:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109517&amp;zvg_id=41062 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">265.92 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr>   <!--Aktenzeichen--->
+		<tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=41066&amp;land_abk=sn">
+		<nobr>0023 K 0036/2024&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 12-08-2026 14:40)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Chemnitz in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> Meinersdorfer Straße  8, 09387 Jahnsdorf/Erzgeb.</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>137.300,00</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Dienstag, 13. Oktober 2026, 11:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109522&amp;zvg_id=41066 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">186.44 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr>   <!--Aktenzeichen--->
+		<tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=41001&amp;land_abk=sn">
+		<nobr>0003 K 0096/2022&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 14-07-2026 09:50)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Zwickau in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> Am Ullersberg 32, 09212 Limbach-Oberfrohna, Uhlsdorf</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>32.100,00</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Mittwoch, 14. Oktober 2026, 09:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109375&amp;zvg_id=41001 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">180.93 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr>   <!--Aktenzeichen--->
+		<tr><td valign="top" align="left"><nobr>Aktenzeichen&nbsp;&nbsp;</nobr></td><td valign="center" align="left"><strong>
+		<a aria-label="Zwangsversteigerung Detailansicht" target="blank_" href="index.php?button=showZvg&amp;zvg_id=41068&amp;land_abk=sn">
+		<nobr>0023 K 0232/2022&nbsp;(Detailansicht)</nobr></a></strong>&nbsp;</td>
+		<td valign="top" align="right"><nobr>(letzte Aktualisierung 13-08-2026 08:24)</nobr></td></tr>
+		<!--Amtsgericht--->
+		<tr><td valign="top" align="left">Amtsgericht</td><td valign="center" align="left" colspan="2"><strong>Chemnitz in Sachsen</strong></td></tr>
+		<tr><td valign="top" align="left">Objekt/Lage</td><td valign="center" align="left" colspan="2"><strong>Mehrfamilienhaus<!--Lage--->:</strong> Hauptstraße  138, 09221 Neukirchen</td></tr>
+  		<tr><td valign="top" align="left"><nobr>Verkehrswert in €&nbsp;</nobr></td><td valign="center" align="left" colspan="2"><strong><p>246.000,00</p></strong></td></tr>
+		<tr><td valign="top" align="left">Termin</td><td valign="center" align="left" colspan="2">Dienstag, 20. Oktober 2026, 10:00 Uhr</td></tr><tr><td></td><td align="left" colspan="2"><a aria-label="Amtliche Bekanntmachung" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109528&amp;zvg_id=41068 ">Amtliche Bekanntmachung</a><img src="images/pdf.gif" class="icon" alt="PDF-Dokument, öffnet neues Browserfenster" height="18" width="18">
+<span class="kleinereSchrift">186.79 kB</span>
+</td></tr><tr><td colspan="3"><hr></td></tr></tbody></table>
+<!--Zwangsversteigerungen Ende-->
+<nobr><h3>Alle Termine, Insgesamt 16</h3><!--
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->
+<button aria-label="Suche ändern" style="float: inline-end;" onclick="document.form_sucheZvg.action='index.php?button=Termine suchen';document.form_sucheZvg.submit();">Suche ändern</button></nobr>
+<!--Seiten zum Blaettern-->
+		<table border="1"><tbody><tr><td><select size="1" onchange="blaettern(this.options[this.selectedIndex].value,'-1','-1','-1','-1')"><option value="1-1-11" selected="">1-2</option><option value="all">alle</option></select></td><td><button class="seiten_nr" onmouseover="this.className='seiten_nr_hover'" onmouseout="this.className='seiten_nr'" onclick="blaettern('1','1','3','-1','-1')" aria-label="Sitennummer 1">[1]</button><button class="seiten_nr" onmouseover="this.className='seiten_nr_hover'" onmouseout="this.className='seiten_nr'" onclick="blaettern('2','1','3','-1','-1')" aria-label="blättern zur Sitennummer 2">&nbsp;2&nbsp;</button></td></tr></tbody></table>
+		<!--Seiten zum Blaettern Ende--></form>        </div><!-- ende Inhalt main -->
+
+         <div id="addinfo"><!-- ende Addinfo -->
+            <h3>Weitere Infos</h3>
+            <ul>
+                <li class="publication"><a aria-label="Justizportal des Bundes und der Länder" target="_blank" href="https://justiz.de">Justizportal des Bundes und der Länder</a></li>
+                <li class="publication"><a aria-label="Gemeinsames Registerportal der Länder" target="_blank" href="http://www.handelsregister.de">Gemeinsames Registerportal der Länder</a></li>
+                <!-- li class="publication"><a target=_blank  href="Zustaendigkeitsliste.pdf">Liste der zust&auml;ndigen Registrierungsbeh&ouml;rden</a></li -->
+                <!-- li class="publication"><a  href="index.php?button=Antragsformulare&sess_clean=1">Antragsformulare</a></li-->
+            </ul>
+        </div><!-- ende Addinfo -->
+
+<div class="screen" id="footer"><!-- Footer -->
+             <p><nobr><a href="javascript:window.print()" aria-label="Seite drucken">Seite drucken</a>&nbsp;.&nbsp;<a href="#inhalt" aria-label="zum Anfang">zum Anfang</a></nobr></p>
+        </div><!-- Ende Footer -->
+
+ </div><!-- ende Container -->
+
+    
+
+
+</body></html>

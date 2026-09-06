@@ -64,25 +64,47 @@ müssten.
    wählt direkt die passende(n) Option(en) in `obj_liste` und ruft
    `insertObj()` (oder simuliert den Doppelklick) — kein Bedarf, wie bei
    Immowelt alles zu holen und client-seitig zu filtern.
-3. **Bundesland/Amtsgericht:** Das eingebettete statische
-   `BundeslandArray`/`BundeslandArrayId`-JavaScript liefert alle 16
-   Bundesland-Kürzel mit ihren Amtsgerichten + Gerichts-IDs sowie je
-   Bundesland eine Sammel-Option „-- Alle Amtsgerichte --". Playwright
-   wählt je Bundesland diese Sammel-Option statt einzelner Amtsgerichte
-   (ein Request/Bundesland place gegenüber ~180 Amtsgerichts-Requests).
-   **Zu verifizieren als erster Implementierungs-Task:** ob die
-   Sammel-Option serverseitig tatsächlich alle Amtsgerichte des Landes
-   kombiniert zurückgibt. Falls nicht, Fallback auf Einzel-Amtsgericht-
-   Iteration (Daten dafür liegen schon vor). Hamburg (`hh`) und
-   Mecklenburg-Vorpommern (`mv`) haben laut Array keine teilnehmenden
-   Amtsgerichte — vermutlich strukturell 0 Treffer, kein Bug.
+3. **Bundesland/Amtsgericht:** Das echte Select-Feld heißt `land_abk`
+   (16 Kürzel + Default), das dazugehörige Amtsgerichts-Feld `ger_id` wird
+   per JS bei Auswahl von `land_abk` nachbestückt und bekommt dabei immer
+   eine Sammel-Option „-- Alle Amtsgerichte --" (`value="0"`). **Per
+   Playwright-Spike verifiziert (2026-09-06):** diese Sammel-Option liefert
+   serverseitig tatsächlich die kombinierten Treffer aller Amtsgerichte des
+   Landes (Test: Sachsen + Mehrfamilienhaus → 16 Treffer aus vier
+   verschiedenen Amtsgerichten in einer Antwort) — ein Request/Bundesland
+   genügt, keine Einzel-Amtsgericht-Iteration nötig.
 4. **Formular absenden:** POST auf `index.php?button=Suchen`, von
    Playwright wie ein Mensch ausgefüllt (kein Reverse-Engineering des
    POST-Bodies nötig — genau der Vorteil von Playwright hier).
-5. **Ergebnisse + Detail:** Ergebnisliste liefert Basisdaten je Termin;
-   `detail.ts` liest je Fundstelle die volle Bekanntmachung (Aktenzeichen,
-   Gericht, Verkehrswert, Termin-Datum/-Ort, Objektbeschreibung, Volltext).
-6. **Crawl-Etikette wie Plan 1:** gedrosselte Anfragen, keine parallelen
+5. **Zugriffsschutz ist Referer-basiert, nicht sitzungsbasiert (Spike-Fund):**
+   Es werden **keine Cookies gesetzt**. Die Detail- (`showZvg`) und
+   Anhang-Endpunkte (`showAnhang`) liefern bei direktem Aufruf ohne
+   `Referer`-Header nur den Text `error` (HTTP 200) — mit einem
+   `Referer`-Header, der auf die vorherige Ergebnisseite zeigt, funktionieren
+   sie normal. Playwright muss also durchgehend in derselben Seiten-Navigation
+   bleiben (`page.goto(detailUrl, { referer: resultsPageUrl })` bzw. echte
+   Link-Klicks) statt separate `fetch()`-Aufrufe zu nutzen.
+6. **Ergebnisse + Detail:** Die Ergebnisliste (eine flache `<table>` ohne
+   Datensatz-Wrapper, Datensätze durch `<tr><td colspan="3"><hr></td></tr>`
+   getrennt) liefert je Termin: Aktenzeichen + Link
+   (`a[aria-label="Zwangsversteigerung Detailansicht"]`, `href` enthält
+   `zvg_id`+`land_abk`), Amtsgericht, Objekt/Lage (Typ+Adresse),
+   Verkehrswert, Termin (oder bei abgesagten Terminen ein Rot-Text „wurde
+   aufgehoben" ohne Objekt/Verkehrswert-Zeilen — diese Fälle werden
+   übersprungen, keine valide Kaufgelegenheit). `detail.ts` folgt dem
+   `showZvg`-Link und liest aus der Label/Wert-Tabelle `#anzeige` (`tr` mit
+   je zwei `td`: Label, Wert) Aktenzeichen, Art der Versteigerung, Grundbuch,
+   Objekt/Lage, Beschreibung (Freitext inkl. Baujahr/Wohnfläche/Grundstück,
+   falls genannt), Verkehrswert, Termin, Ort der Versteigerung.
+7. **Kein PDF-Parsing (Korrektur ggü. erstem Entwurf):** Die verlinkte
+   „amtliche Bekanntmachung" ist ein PDF-Anhang (bestätigt: `showAnhang`
+   liefert beim echten Download eine `.pdf`-Datei). Die `showZvg`-Detailseite
+   enthält aber bereits alle relevanten Felder inkl. der vollen
+   `Beschreibung` als durchsuchbaren HTML-Text — **das reicht als
+   `raw_notice_text`** (Konkatenation der Label/Wert-Paare aus `#anzeige`).
+   Das PDF wird nicht heruntergeladen/geparst, nur seine URL als optionaler
+   Verweis mitgeführt (spart eine PDF-Text-Extraktions-Abhängigkeit, YAGNI).
+8. **Crawl-Etikette wie Plan 1:** gedrosselte Anfragen, keine parallelen
    Massenzugriffe, kein Login/Account-Bezug.
 
 ## Datenmodell (Delta zu `schema.sql`)
@@ -192,20 +214,26 @@ ZVG-Terminen, zugunsten weniger Infrastruktur.
 ## Testing
 
 Wie Plan 1: `list.test.ts`/`detail.test.ts` gegen lokal gespeicherte
-HTML-Fixtures (Suchseite bereits vorhanden, Ergebnis-/Detailseiten-Fixture
-folgt aus dem ersten Playwright-Spike).
+HTML-Fixtures. **Bereits per Playwright-Spike gesichert (2026-09-06, echte
+Live-Antworten):**
+- `scraper/test/fixtures/zvg-portal-suche-sachsen-mfh.html` — Ergebnisliste
+  Sachsen + Mehrfamilienhaus (16 Treffer, inkl. einem abgesagten Termin ohne
+  Objekt/Verkehrswert-Zeilen, guter Edge-Case).
+- `scraper/test/fixtures/zvg-portal-detail-40908.html` — eine volle
+  `showZvg`-Detailseite (Aktenzeichen 0467 K 0076/2022, Zwenkau).
 
 ## Offene technische Setup-/Validierungs-Schritte (Teil des Implementierungsplans)
 
-- Verifizieren, ob "-- Alle Amtsgerichte --" serverseitig kombinierte
-  Ergebnisse liefert (s.o.), sonst Fallback auf Einzel-Amtsgericht-Loop.
-- Playwright-Spike: Suchformular einmal live ausfüllen, echte Ergebnis-
-  und Detailseiten-HTML als Test-Fixtures sichern.
 - Klartext-Übersetzungen der `data_gaps`-Codes für die Telegram-Warnzeile
   festlegen (z.B. `units_unconfirmed` → „Einheiten nicht bestätigt").
+- `playwright`-Paket ist bereits als Dependency installiert + Chromium
+  lokal heruntergeladen (Spike); GitHub-Actions-Workflow braucht
+  zusätzlich `npx playwright install --with-deps chromium` als CI-Schritt.
 
 ## Bewusst nicht enthalten (YAGNI)
 
+- PDF-Text-Extraktion der „amtlichen Bekanntmachung" — die HTML-Detailseite
+  liefert dieselben Kerninhalte bereits als durchsuchbaren Text (s.o.).
 - Gebots-Schätzformel (Verkehrswert × Annahmefaktor) für die Kennzahlen.
 - Eigener Cron-Zeitplan für ZVG-Portal.
 - Aktive Schwärzung/Filterung von Personendaten im Volltext (nur
