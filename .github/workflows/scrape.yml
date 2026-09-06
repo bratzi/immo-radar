@@ -6,9 +6,12 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  scrape-immowelt:
+  scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 16 Bundeslaender x bis zu 30 Ergebnisseiten x Detailabrufe, jeweils mit
+    # 1 s Drosselung -- 15 min reichten dafuer nicht. Der Scraper selbst bricht
+    # nach MAX_LAUFZEIT_MS (35 min) geordnet ab, dieses Limit ist der Notnagel.
+    timeout-minutes: 40
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -23,5 +26,7 @@ jobs:
           cache-dependency-path: scraper/package-lock.json
       - run: npm ci
         working-directory: scraper
-      - run: npm run scrape:immowelt
+      - run: npx playwright install --with-deps chromium
+        working-directory: scraper
+      - run: npm run scrape
         working-directory: scraper

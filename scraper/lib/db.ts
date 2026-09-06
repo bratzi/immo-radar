@@ -47,6 +47,11 @@ export interface ListingVersionData {
   bundesland: string | null;
   title: string;
   kennzahlen: Kennzahlen;
+  auctionAt?: string | null;
+  court?: string | null;
+  caseNumber?: string | null;
+  rawNoticeText?: string | null;
+  dataGaps?: string[];
 }
 
 export interface UpsertResult extends VersionDiffResult {
@@ -112,6 +117,11 @@ export async function upsertListingAndVersion(
     changed: diff.changed,
     price_dropped: diff.priceDropped,
     metrics: data.kennzahlen,
+    auction_at: data.auctionAt ?? null,
+    court: data.court ?? null,
+    case_number: data.caseNumber ?? null,
+    raw_notice_text: data.rawNoticeText ?? null,
+    data_gaps: data.dataGaps ?? [],
   });
   if (versionError) throw versionError;
 
