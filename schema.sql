@@ -29,7 +29,12 @@ create table listing_versions (
   title text,
   changed boolean not null default false,
   price_dropped boolean not null default false,
-  metrics jsonb not null
+  metrics jsonb not null,
+  auction_at timestamptz,
+  court text,
+  case_number text,
+  raw_notice_text text,
+  data_gaps text[] not null default '{}'
 );
 
 create index listing_versions_listing_id_idx on listing_versions (listing_id, scanned_at desc);
