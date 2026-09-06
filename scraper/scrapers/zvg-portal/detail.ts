@@ -15,6 +15,8 @@ export interface ZvgDetailData {
   livingAreaM2: number | null;
   yearBuilt: number | null;
   rawNoticeText: string;
+  /** Beim Parsen festgestellte Luecken, z. B. "location_unconfirmed". */
+  dataGaps: string[];
 }
 
 interface ZvgDetailKontext {
@@ -24,7 +26,16 @@ interface ZvgDetailKontext {
   caseNumber: string;
 }
 
+/**
+ * Ab dieser Einheitenzahl gilt eine aus dem Beschreibungstext abgeleitete Zahl
+ * als bestaetigt. Spiegelt MIN_EINHEITEN aus lib/pipeline.ts -- bewusst lokal
+ * dupliziert, damit der reine Parser nicht von der Pipeline abhaengt.
+ */
+const MIN_EINHEITEN_FUER_BESTAETIGUNG = 3;
+
 const OBJEKT_LAGE_PATTERN = /^(.+?):\s*(.+),\s*(\d{5})\s+(.+)$/;
+/** Auffanglinie fuer mehrzeilige Objekt/Lage-Zellen: PLZ + Ort irgendwo im Text. */
+const PLZ_ORT_FALLBACK_PATTERN = /(\d{5})\s+([^\n,]+)/;
 const UNIT_COUNT_PATTERN = /(\d+)\s*(?:Wohneinheiten|WE\b|Parteien|Wohnungen)/i;
 const UNIT_WORD_PATTERN = /(?<![A-Za-zÄÖÜäöüß])(ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn)familien(?:wohn)?haus/i;
 const UNIT_WORDS: Record<string, number> = {
@@ -39,8 +50,19 @@ const UNIT_WORDS: Record<string, number> = {
   neun: 9,
   zehn: 10,
 };
-const WOHNFLAECHE_PATTERN = /(\d+(?:[.,]\d+)?)\s*qm\s*Wohnfl(?:ä|ae)che/i;
-const BAUJAHR_PATTERN = /Bj\.?\s*(\d{4})/i;
+// Wohnflaeche: beide Wortstellungen (Wert-vor-Label und Label-vor-Wert),
+// Einheiten qm/m²/m2, Label Wohnfl. / Wohnfläche / Wohnflaeche.
+// Der Treffer-Helfer liefert immer Gruppe 1 als Zahl.
+const WOHNFLAECHE_PATTERNS = [
+  /(\d+(?:[.,]\d+)?)\s*(?:qm|m²|m2)\s*(?:gr(?:o|ö)(?:ss|ß)e\s*)?Wohnfl(?:\.|(?:ä|ae)che)/i,
+  /Wohnfl(?:\.|(?:ä|ae)che)\s*:?\s*(?:von\s*)?(?:ca\.?\s*|rund\s*|etwa\s*)?(\d+(?:[.,]\d+)?)\s*(?:qm|m²|m2)/i,
+];
+// Baujahr: "Bj. 1937", "Bj 1937", "Baujahr 1937", "Baujahr: 1937",
+// "erbaut 1937", "erbaut um 1937", "erbaut im Jahre 1937".
+const BAUJAHR_PATTERNS = [
+  /(?:Baujahr|Bj)\.?\s*:?\s*(\d{4})/i,
+  /erbaut\s+(?:um\s+|ca\.?\s+|im\s+Jahr(?:e)?\s+)?(\d{4})/i,
+];
 const TERMIN_PATTERN = /(\d{1,2})\.\s*([A-Za-zÄÖÜäöü]+)\s+(\d{4}),\s*(\d{1,2}):(\d{2})\s*Uhr/;
 const GERMAN_MONTHS: Record<string, number> = {
   Januar: 1,
@@ -71,6 +93,15 @@ function zellenText($: cheerio.CheerioAPI, zelle: cheerio.Cheerio<any>): string 
       .join("\n");
   }
   return normalizeWhitespace(zelle.text());
+}
+
+/** Probiert die Muster der Reihe nach und liefert Gruppe 1 des ersten Treffers. */
+function ersteTrefferGruppe(text: string, muster: RegExp[]): string | null {
+  for (const regex of muster) {
+    const treffer = text.match(regex);
+    if (treffer) return treffer[1];
+  }
+  return null;
 }
 
 function parseGermanNumber(text: string): number {
@@ -147,17 +178,35 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
     if (label === "Beschreibung") beschreibungText = wert;
   }
 
-  const objektMatch = objektLageText.match(OBJEKT_LAGE_PATTERN);
-  const zipCode = objektMatch ? objektMatch[3] : "";
-  const city = objektMatch ? objektMatch[4] : "";
+  const dataGaps: string[] = [];
 
-  const { units, unitsConfident } = parseUnits(beschreibungText);
-  const wohnflaecheMatch = beschreibungText.match(WOHNFLAECHE_PATTERN);
-  const baujahrMatch = beschreibungText.match(BAUJAHR_PATTERN);
+  // Objekt/Lage kann ueber mehrere Absaetze gehen -- dann greift das
+  // ^...$-Muster nicht und wir suchen PLZ + Ort im gesamten Zellentext.
+  const objektMatch = objektLageText.match(OBJEKT_LAGE_PATTERN);
+  const fallbackMatch = objektMatch ? null : objektLageText.match(PLZ_ORT_FALLBACK_PATTERN);
+  const zipCode = objektMatch ? objektMatch[3] : fallbackMatch ? fallbackMatch[1] : "";
+  const city = (objektMatch ? objektMatch[4] : fallbackMatch ? fallbackMatch[2] : "").trim();
+  if (!zipCode || !city) {
+    dataGaps.push("location_unconfirmed");
+  }
+
+  // ZVG-Beschreibungen sind juristische Wertermittlungsprosa und nennen oft
+  // Teilbereiche des Objekts ("1 Wohnung im EG und 2 Wohnungen im OG").
+  // Die Portalsuche filtert bereits auf Mehrfamilienhaus (obj_arr[]=4), also
+  // ist eine Textzahl unterhalb der Mindestgrenze kein belastbarer
+  // Ausschlussgrund -- sie wird zu "unbestaetigt" herabgestuft, die Zahl
+  // selbst bleibt fuer Kennzahlen und Anzeige erhalten.
+  const roheEinheiten = parseUnits(beschreibungText);
+  const units = roheEinheiten.units;
+  const unitsConfident =
+    roheEinheiten.unitsConfident && units !== null && units >= MIN_EINHEITEN_FUER_BESTAETIGUNG;
+
+  const wohnflaecheText = ersteTrefferGruppe(beschreibungText, WOHNFLAECHE_PATTERNS);
+  const baujahrText = ersteTrefferGruppe(beschreibungText, BAUJAHR_PATTERNS);
 
   const priceCents = Math.round(parseGermanNumber(verkehrswertText) * 100);
-  if (!Number.isFinite(priceCents)) {
-    throw new Error(`Ungültiger Verkehrswert (nicht numerisch): "${verkehrswertText}"`);
+  if (!Number.isFinite(priceCents) || priceCents <= 0) {
+    throw new Error(`Ungültiger Verkehrswert (nicht numerisch oder nicht positiv): "${verkehrswertText}"`);
   }
 
   const anhangHref = $('a[aria-label="Anhang"]').attr("href");
@@ -180,8 +229,9 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
     city,
     units,
     unitsConfident,
-    livingAreaM2: wohnflaecheMatch ? parseGermanNumber(wohnflaecheMatch[1]) : null,
-    yearBuilt: baujahrMatch ? parseInt(baujahrMatch[1], 10) : null,
+    livingAreaM2: wohnflaecheText === null ? null : parseGermanNumber(wohnflaecheText),
+    yearBuilt: baujahrText === null ? null : parseInt(baujahrText, 10),
     rawNoticeText: rawNoticeTextZeilen.join("\n"),
+    dataGaps,
   };
 }
