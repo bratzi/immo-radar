@@ -26,7 +26,7 @@ interface ZvgDetailKontext {
 
 const OBJEKT_LAGE_PATTERN = /^(.+?):\s*(.+),\s*(\d{5})\s+(.+)$/;
 const UNIT_COUNT_PATTERN = /(\d+)\s*(?:Wohneinheiten|WE\b|Parteien|Wohnungen)/i;
-const UNIT_WORD_PATTERN = /(ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn)familien(?:wohn)?haus/i;
+const UNIT_WORD_PATTERN = /(?<![A-Za-zÄÖÜäöüß])(ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn)familien(?:wohn)?haus/i;
 const UNIT_WORDS: Record<string, number> = {
   ein: 1,
   zwei: 2,

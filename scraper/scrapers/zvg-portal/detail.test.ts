@@ -82,4 +82,14 @@ describe("parseZvgDetailPage — kein Einheiten-Hinweis im Text", () => {
     expect(daten.units).toBeNull();
     expect(daten.unitsConfident).toBe(false);
   });
+
+  it("faelschte nicht 'zehn'-Substring in Zahliworten 13-19 als Einheitenzahl", () => {
+    const html = fixtureHtml.replace(
+      "Dreifamilienwohnhaus, zweigeschossig, unterkellert, ausgebautes Dachgeschoss, ca. 203 qm Wohnfläche, freistehend.",
+      "Vierzehnfamilienhaus, zweigeschossig, unterkellert, ausgebautes Dachgeschoss, ca. 203 qm Wohnfläche, freistehend."
+    );
+    const daten = parseZvgDetailPage(html, KONTEXT);
+    expect(daten.units).toBeNull();
+    expect(daten.unitsConfident).toBe(false);
+  });
 });
