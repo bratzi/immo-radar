@@ -27,6 +27,7 @@ export interface KennzahlenSummary {
 
 const DATA_GAP_LABELS: Record<string, string> = {
   units_unconfirmed: "Einheiten nicht bestätigt",
+  location_unconfirmed: "Lage (PLZ/Ort) nicht bestätigt",
 };
 
 function formatEuro(cents: number): string {
@@ -92,14 +93,42 @@ export function formatPreisaenderungMessage(
     .join("\n");
 }
 
+/** Zusaetzliche Versuche nach einem Rate-Limit (HTTP 429). */
+const MAX_RATE_LIMIT_WIEDERHOLUNGEN = 2;
+/** Wartezeit, wenn Telegram keinen Retry-After-Header mitschickt. */
+const RATE_LIMIT_STANDARD_WARTEZEIT_MS = 2000;
+/** Obergrenze, damit ein absurder Retry-After den Lauf nicht blockiert. */
+const RATE_LIMIT_MAX_WARTEZEIT_MS = 30_000;
+
+function schlafe(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function wartezeitAusHeader(header: string | null, versuch: number): number {
+  const sekunden = header === null ? NaN : Number.parseInt(header, 10);
+  const roh = Number.isFinite(sekunden) && sekunden > 0
+    ? sekunden * 1000
+    : RATE_LIMIT_STANDARD_WARTEZEIT_MS * versuch;
+  return Math.min(roh, RATE_LIMIT_MAX_WARTEZEIT_MS);
+}
+
 export async function sendTelegramMessage(config: TelegramConfig, text: string): Promise<void> {
   const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: config.chatId, text }),
-  });
-  if (!res.ok) {
-    throw new Error(`Telegram-Versand fehlgeschlagen: HTTP ${res.status} ${await res.text()}`);
+  for (let versuch = 1; ; versuch += 1) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: config.chatId, text }),
+    });
+    if (res.ok) return;
+
+    const koerper = await res.text();
+    if (res.status === 429 && versuch <= MAX_RATE_LIMIT_WIEDERHOLUNGEN) {
+      const wartezeit = wartezeitAusHeader(res.headers.get("retry-after"), versuch);
+      console.warn(`Telegram-Rate-Limit (429), erneuter Versuch in ${wartezeit} ms (Versuch ${versuch}).`);
+      await schlafe(wartezeit);
+      continue;
+    }
+    throw new Error(`Telegram-Versand fehlgeschlagen: HTTP ${res.status} ${koerper}`);
   }
 }

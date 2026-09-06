@@ -13,6 +13,13 @@ import {
 } from "./telegram.js";
 
 const MIN_EINHEITEN = 3;
+/** Mindestabstand zwischen zwei Telegram-Sendungen, damit der erste Lauf
+ *  (alles ist "changed") nicht in ein Rate-Limit laeuft. */
+const TELEGRAM_SENDEABSTAND_MS = 500;
+
+function schlafe(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export interface EinheitenAuswertung {
   ausschliessen: boolean;
@@ -48,6 +55,9 @@ export interface PipelineCandidate {
   court: string | null;
   caseNumber: string | null;
   rawNoticeText: string | null;
+  /** Luecken, die bereits die Quelle beim Parsen festgestellt hat (z. B.
+   *  "location_unconfirmed"). Wird mit den Einheiten-Luecken zusammengefuehrt. */
+  sourceDataGaps?: string[];
 }
 
 export async function processCandidate(
@@ -62,6 +72,8 @@ export async function processCandidate(
     );
     return;
   }
+
+  const dataGaps = Array.from(new Set([...(candidate.sourceDataGaps ?? []), ...einheiten.dataGaps]));
 
   const miete = ermittleJahreskaltmiete(candidate.rentColdMonthly, candidate.livingAreaM2 ?? 0);
   const satz = grunderwerbsteuerSatz(candidate.zipCode);
@@ -98,7 +110,7 @@ export async function processCandidate(
     court: candidate.court,
     caseNumber: candidate.caseNumber,
     rawNoticeText: candidate.rawNoticeText,
-    dataGaps: einheiten.dataGaps,
+    dataGaps,
   });
 
   const listingSummary: ListingSummary = {
@@ -108,7 +120,7 @@ export async function processCandidate(
     zipCode: candidate.zipCode,
     priceCents: candidate.priceCents,
     units: candidate.units,
-    dataGaps: einheiten.dataGaps,
+    dataGaps,
   };
 
   try {
@@ -130,6 +142,7 @@ export async function processCandidate(
               kennzahlenSummary
             )
           : formatTopTrefferMessage(listingSummary, kennzahlenSummary);
+      await schlafe(TELEGRAM_SENDEABSTAND_MS);
       await sendTelegramMessage(telegramConfig, text);
       await logNotification(supabase, diff.listingId, "top_treffer", {
         ...kennzahlenSummary,
@@ -138,6 +151,7 @@ export async function processCandidate(
     }
 
     if (diff.priceDropped && diff.previousPriceCents !== null) {
+      await schlafe(TELEGRAM_SENDEABSTAND_MS);
       await sendTelegramMessage(
         telegramConfig,
         formatPreisaenderungMessage(listingSummary, diff.previousPriceCents, candidate.priceCents)

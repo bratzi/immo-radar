@@ -1,7 +1,27 @@
 import { scrapeImmowelt } from "./scrapers/immowelt/index.js";
 import { scrapeZvgPortal } from "./scrapers/zvg-portal/index.js";
 import { processCandidate, type PipelineCandidate } from "./lib/pipeline.js";
+import type { TelegramConfig } from "./lib/telegram.js";
 import { sb } from "./lib/supabase.js";
+
+/**
+ * Verarbeitet einen Kandidaten und faengt Fehler ab, damit ein einzelner
+ * Ausreisser (DB-Constraint, transienter 5xx) nicht den gesamten Lauf
+ * abbricht und alle noch nicht gespeicherten Kandidaten verwirft.
+ */
+async function verarbeiteKandidatIsoliert(
+  telegramConfig: TelegramConfig,
+  candidate: PipelineCandidate
+): Promise<void> {
+  try {
+    await processCandidate(sb, telegramConfig, candidate);
+  } catch (err) {
+    console.error(
+      `Kandidat fehlgeschlagen, uebersprungen [${candidate.source} · ${candidate.externalId} · ${candidate.url}]:`,
+      err
+    );
+  }
+}
 
 async function main() {
   const REQUIRED_ENV_VARS = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"];
@@ -39,7 +59,7 @@ async function main() {
       caseNumber: null,
       rawNoticeText: null,
     };
-    await processCandidate(sb, telegramConfig, candidate);
+    await verarbeiteKandidatIsoliert(telegramConfig, candidate);
   }
 
   console.log("ZVG-Portal: Scraping gestartet...");
@@ -64,8 +84,9 @@ async function main() {
       court: termin.court,
       caseNumber: termin.caseNumber,
       rawNoticeText: termin.rawNoticeText,
+      sourceDataGaps: termin.dataGaps,
     };
-    await processCandidate(sb, telegramConfig, candidate);
+    await verarbeiteKandidatIsoliert(telegramConfig, candidate);
   }
 
   console.log("Lauf abgeschlossen.");
