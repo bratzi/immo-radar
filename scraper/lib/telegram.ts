@@ -32,14 +32,46 @@ const DATA_GAP_LABELS: Record<string, string> = {
   location_unconfirmed: "Lage (PLZ/Ort) nicht bestätigt",
 };
 
+const MIET_QUELLE_LABELS: Record<string, string> = {
+  angegeben: "angegeben",
+  geschaetzt_bundesweit: "geschätzt (Bundesschnitt)",
+};
+
+/** Telegram bricht bei rohen <, > oder & im HTML-Modus -- Fremdtext maskieren. */
+function esc(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function formatEuro(cents: number): string {
   return (cents / 100).toLocaleString("de-DE");
+}
+
+/** Deutsche Zahl mit Komma statt Punkt als Dezimaltrenner. */
+function formatZahl(wert: number, nachkommastellen: number): string {
+  return wert.toLocaleString("de-DE", {
+    minimumFractionDigits: nachkommastellen,
+    maximumFractionDigits: nachkommastellen,
+  });
 }
 
 function formatDataGapsLine(dataGaps: string[] | undefined): string | null {
   if (!dataGaps || dataGaps.length === 0) return null;
   const texte = dataGaps.map((code) => DATA_GAP_LABELS[code] ?? code);
-  return `⚠️ Fehlende Angaben: ${texte.join(", ")}`;
+  return `⚠️ <i>Fehlende Angaben: ${esc(texte.join(", "))}</i>`;
+}
+
+/** Kennzahlen-Block: Preis, Faktor, DSCR, Einheiten, Mietgrundlage. */
+function formatKennzahlenBlock(
+  listing: ListingSummary,
+  k: KennzahlenSummary,
+  preisLabel: string
+): string {
+  const mietQuelle = MIET_QUELLE_LABELS[k.mietQuelle] ?? k.mietQuelle;
+  return [
+    `💰 <b>${preisLabel} ${formatEuro(listing.priceCents)} €</b>`,
+    `📊 Faktor ${formatZahl(k.kaufpreisfaktor, 1)} · DSCR ${formatZahl(k.geschaetzterDscr, 2)}`,
+    `🔑 ${listing.units === null ? "Einheiten unbekannt" : `${listing.units} Einheiten`} · Miete ${esc(mietQuelle)}`,
+  ].join("\n");
 }
 
 function formatBerlinDatumzeit(isoDatum: string): string {
@@ -63,63 +95,91 @@ function formatBerlinDatumzeit(isoDatum: string): string {
  */
 const ZVG_SUCHE_URL = "https://www.zvg-portal.de/index.php?button=Termine%20suchen";
 
-/** Zeilen der amtlichen Bekanntmachung, die in der Nachricht schon oben stehen. */
-const NOTICE_REDUNDANTE_ZEILEN = /^(Verkehrswert in €|Termin|GeoServer|Exposee|Amtliche Bekanntmachung \(PDF\)):/;
+/**
+ * Zeilen der amtlichen Bekanntmachung, die schon oben in der Nachricht
+ * stehen (Preis, Termin) oder als Anhang mitgeschickt werden.
+ */
+const NOTICE_REDUNDANTE_ZEILEN =
+  /^(Verkehrswert in €|Termin|GeoServer|Exposee|Objekt\/Lage|Anhang \(PDF\)|Amtliche Bekanntmachung \(PDF\)):/;
+
+/** Feld-Label der Bekanntmachung -> Symbol fuer die Nachricht. */
+const NOTICE_SYMBOLE: Record<string, string> = {
+  "Art der Versteigerung": "⚖️",
+  Grundbuch: "📕",
+  Beschreibung: "🏗",
+  "Ort der Versteigerung": "📍",
+};
 
 /**
  * Gibt die amtliche Bekanntmachung als Nachrichten-Block zurueck: alles, was
- * der Nutzer sonst auf der (nicht verlinkbaren) Detailseite lesen wuerde --
- * Grundbuch, Objekt/Lage, Beschreibung, Ort der Versteigerung.
+ * der Nutzer sonst auf der (nicht verlinkbaren) Detailseite lesen wuerde.
+ * Bereits weiter oben gezeigte Felder werden ausgelassen.
  */
 function formatNoticeBlock(rawNoticeText: string | null | undefined): string | null {
   if (!rawNoticeText) return null;
   const zeilen = rawNoticeText
     .split("\n")
     .map((z) => z.trim())
-    .filter((z) => z.length > 0 && !NOTICE_REDUNDANTE_ZEILEN.test(z));
+    .filter((z) => z.length > 0 && !NOTICE_REDUNDANTE_ZEILEN.test(z))
+    .map((zeile) => {
+      const treffer = zeile.match(/^([^:]+):\s*(.*)$/);
+      if (!treffer) return esc(zeile);
+      const [, label, wert] = treffer;
+      const symbol = NOTICE_SYMBOLE[label] ?? "•";
+      return `${symbol} <b>${esc(label)}</b>\n${esc(wert)}`;
+    });
   if (zeilen.length === 0) return null;
-  return `📄 Aus der amtlichen Bekanntmachung:\n${zeilen.join("\n")}`;
+  return zeilen.join("\n\n");
 }
 
 /** Karten-Link zur Adresse -- funktioniert im Gegensatz zum zvg-portal-Direktlink. */
-function formatKartenLink(listing: ListingSummary): string {
+function kartenLink(listing: ListingSummary): string {
   const adresse = `${listing.zipCode} ${listing.city}`.trim();
-  return `🗺️ Karte: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`;
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`;
+  return `<a href="${url}">🗺 Karte</a>`;
 }
 
-function formatListingLink(url: string): string {
-  if (url.includes("zvg-portal.de")) {
-    return `🔎 Original-Bekanntmachung: auf ${ZVG_SUCHE_URL} nach dem Aktenzeichen suchen (die Seite sperrt Direktlinks von aussen).`;
+/** Fusszeile mit den anklickbaren Links. */
+function formatLinkZeile(listing: ListingSummary): string {
+  const links = [kartenLink(listing)];
+  if (listing.url.includes("zvg-portal.de")) {
+    links.push(`<a href="${ZVG_SUCHE_URL}">🔎 ZVG-Suche</a>`);
+  } else {
+    links.push(`<a href="${esc(listing.url)}">🔗 Zum Inserat</a>`);
   }
-  return url;
+  return links.join("  ·  ");
+}
+
+/** Fuegt Bloecke mit Leerzeilen zusammen, leere Bloecke fallen weg. */
+function baueNachricht(bloecke: (string | null)[]): string {
+  return bloecke.filter((b): b is string => b !== null && b.length > 0).join("\n\n");
 }
 
 export function formatTopTrefferMessage(listing: ListingSummary, k: KennzahlenSummary): string {
-  return [
-    `🎯 Top-Treffer: ${listing.title}`,
-    `${listing.zipCode} ${listing.city} · ${listing.units ?? "?"} Einheiten · ${formatEuro(listing.priceCents)} €`,
-    `Kaufpreisfaktor ${k.kaufpreisfaktor.toFixed(1)} · geschätzter DSCR ${k.geschaetzterDscr.toFixed(2)} · Miete: ${k.mietQuelle}`,
+  return baueNachricht([
+    `🎯 <b>TOP-TREFFER</b>
+🏠 ${esc(listing.title)}
+📍 ${esc(`${listing.zipCode} ${listing.city}`)}`,
+    formatKennzahlenBlock(listing, k, "Kaufpreis"),
     formatDataGapsLine(listing.dataGaps),
-    formatListingLink(listing.url),
-  ]
-    .filter((zeile): zeile is string => zeile !== null)
-    .join("\n");
+    formatLinkZeile(listing),
+  ]);
 }
 
 export function formatZvgTopTrefferMessage(listing: ZvgListingSummary, k: KennzahlenSummary): string {
-  return [
-    `🎯 Top-Treffer (Zwangsversteigerung): ${listing.title}`,
-    `${listing.zipCode} ${listing.city} · ${listing.units ?? "?"} Einheiten · Verkehrswert ${formatEuro(listing.priceCents)} €`,
-    `Amtsgericht ${listing.court} · Az. ${listing.caseNumber}`,
-    `Termin: ${formatBerlinDatumzeit(listing.auctionAt)} Uhr`,
-    `Kaufpreisfaktor ${k.kaufpreisfaktor.toFixed(1)} · geschätzter DSCR ${k.geschaetzterDscr.toFixed(2)} · Miete: ${k.mietQuelle}`,
+  return baueNachricht([
+    `🎯 <b>TOP-TREFFER · Zwangsversteigerung</b>
+🏠 ${esc(listing.title)}`,
+    formatKennzahlenBlock(listing, k, "Verkehrswert"),
+    [
+      `📅 <b>Termin</b> ${formatBerlinDatumzeit(listing.auctionAt)} Uhr`,
+      `⚖️ Amtsgericht ${esc(listing.court)}`,
+      `📋 Az. ${esc(listing.caseNumber)}`,
+    ].join("\n"),
     formatDataGapsLine(listing.dataGaps),
     formatNoticeBlock(listing.rawNoticeText),
-    formatKartenLink(listing),
-    formatListingLink(listing.url),
-  ]
-    .filter((zeile): zeile is string => zeile !== null)
-    .join("\n");
+    formatLinkZeile(listing),
+  ]);
 }
 
 export function formatPreisaenderungMessage(
@@ -127,15 +187,14 @@ export function formatPreisaenderungMessage(
   altPreisCents: number,
   neuPreisCents: number
 ): string {
-  return [
-    `💶 Preisänderung: ${listing.title}`,
-    `${listing.zipCode} ${listing.city}`,
-    `${formatEuro(altPreisCents)} € → ${formatEuro(neuPreisCents)} €`,
+  return baueNachricht([
+    `💶 <b>PREISÄNDERUNG</b>
+🏠 ${esc(listing.title)}
+📍 ${esc(`${listing.zipCode} ${listing.city}`)}`,
+    `<s>${formatEuro(altPreisCents)} €</s>  →  <b>${formatEuro(neuPreisCents)} €</b>`,
     formatDataGapsLine(listing.dataGaps),
-    formatListingLink(listing.url),
-  ]
-    .filter((zeile): zeile is string => zeile !== null)
-    .join("\n");
+    formatLinkZeile(listing),
+  ]);
 }
 
 /** Zusaetzliche Versuche nach einem Rate-Limit (HTTP 429). */
@@ -247,7 +306,12 @@ export async function sendTelegramMessage(config: TelegramConfig, text: string):
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: config.chatId, text }),
+      body: JSON.stringify({
+        chat_id: config.chatId,
+        text,
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+      }),
     });
     if (res.ok) return;
 

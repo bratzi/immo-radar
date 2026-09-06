@@ -21,8 +21,8 @@ describe("formatTopTrefferMessage", () => {
     expect(text).toContain("04109");
     expect(text).toContain("3 Einheiten");
     expect(text).toContain("480.000");
-    expect(text).toContain("12.5");
-    expect(text).toContain("1.45");
+    expect(text).toContain("12,5");
+    expect(text).toContain("1,45");
     expect(text).toContain("https://www.immowelt.de/expose/abc-123");
   });
 });
@@ -33,7 +33,7 @@ describe("formatTopTrefferMessage mit data_gaps", () => {
       { ...listing, dataGaps: ["units_unconfirmed"] },
       { kaufpreisfaktor: 12.5, geschaetzterDscr: 1.45, mietQuelle: "angegeben" }
     );
-    expect(text).toContain("⚠️ Fehlende Angaben: Einheiten nicht bestätigt");
+    expect(text).toContain("Fehlende Angaben: Einheiten nicht bestätigt");
   });
 
   it("hängt KEINE Warnzeile an, wenn keine Angaben fehlen", () => {
@@ -128,7 +128,7 @@ describe("formatZvgTopTrefferMessage", () => {
       { ...zvgListing, dataGaps: ["units_unconfirmed"] },
       { kaufpreisfaktor: 8.5, geschaetzterDscr: 1.6, mietQuelle: "geschaetzt_bundesweit" }
     );
-    expect(text).toContain("⚠️ Fehlende Angaben: Einheiten nicht bestätigt");
+    expect(text).toContain("Fehlende Angaben: Einheiten nicht bestätigt");
   });
 });
 
@@ -170,5 +170,72 @@ describe("teileInMediengruppen", () => {
     const urls = Array.from({ length: 90 }, (_, i) => `https://mms.immowelt.de/${i}.jpg`);
     const gesamt = teileInMediengruppen(urls).flat().length;
     expect(gesamt).toBeLessThanOrEqual(30);
+  });
+});
+
+describe("Nachrichten-Aufbereitung", () => {
+  const zvg = {
+    title: "Mehrfamilienhaus: Clara-Zetkin-Straße 27, 16562 Hohen Neuendorf, Bergfelde",
+    url: "https://www.zvg-portal.de/index.php?button=showZvg&zvg_id=7285&land_abk=br",
+    city: "Hohen Neuendorf, Bergfelde",
+    zipCode: "16562",
+    priceCents: 686_000_00,
+    units: null,
+    dataGaps: ["units_unconfirmed"],
+    court: "Neuruppin in Brandenburg",
+    auctionAt: "2026-09-30T07:00:00.000Z",
+    caseNumber: "0007 K 0131/2025",
+    rawNoticeText: [
+      "Art der Versteigerung: Zwangsversteigerung zum Zwecke der Aufhebung der Gemeinschaft",
+      "Grundbuch: Bergfelde Blatt 2420",
+      "Objekt/Lage: Mehrfamilienhaus: Clara-Zetkin-Straße 27, 16562 Hohen Neuendorf, Bergfelde",
+      "Beschreibung: Grundstück, bebaut mit einem Mehrfamilienhaus (Baujahr um 1904, Wohnfläche 252,34 m²)",
+      "Ort der Versteigerung: Amtsgericht Neuruppin, Karl-Marx-Straße 18a, 16816 Neuruppin, 2. OG, Saal 325",
+    ].join("\n"),
+  };
+  const kennzahlen = { kaufpreisfaktor: 24.5, geschaetzterDscr: 0.49, mietQuelle: "geschaetzt_bundesweit" };
+
+  it("schreibt Zahlen deutsch mit Komma statt Punkt", () => {
+    const text = formatZvgTopTrefferMessage(zvg, kennzahlen);
+    expect(text).toContain("24,5");
+    expect(text).toContain("0,49");
+    expect(text).not.toContain("24.5");
+  });
+
+  it("uebersetzt den Mietquellen-Code in Klartext", () => {
+    const text = formatZvgTopTrefferMessage(zvg, kennzahlen);
+    expect(text).not.toContain("geschaetzt_bundesweit");
+    expect(text).toContain("geschätzt");
+  });
+
+  it("wiederholt die Adresse nicht doppelt in Titel und Textblock", () => {
+    const text = formatZvgTopTrefferMessage(zvg, kennzahlen);
+    const treffer = text.split("Clara-Zetkin-Straße 27").length - 1;
+    expect(treffer).toBe(1);
+  });
+
+  it("versteckt lange URLs hinter benannten Links (HTML-Modus)", () => {
+    const text = formatZvgTopTrefferMessage(zvg, kennzahlen);
+    expect(text).toContain('<a href="');
+    expect(text).toContain("</a>");
+  });
+
+  it("maskiert HTML-Sonderzeichen aus Fremdtext, damit Telegram nicht bricht", () => {
+    const text = formatZvgTopTrefferMessage(
+      { ...zvg, title: "Haus <Test> & Co" },
+      kennzahlen
+    );
+    expect(text).toContain("&lt;Test&gt;");
+    expect(text).toContain("&amp;");
+  });
+
+  it("gliedert die Nachricht in Bloecke mit Leerzeilen", () => {
+    const text = formatZvgTopTrefferMessage(zvg, kennzahlen);
+    expect(text).toContain("\n\n");
+  });
+
+  it("zeigt den Versteigerungsort weiterhin an", () => {
+    const text = formatZvgTopTrefferMessage(zvg, kennzahlen);
+    expect(text).toContain("Saal 325");
   });
 });
