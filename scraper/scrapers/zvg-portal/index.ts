@@ -7,6 +7,9 @@ const MEHRFAMILIENHAUS_OBJ_TYP = "4";
 const ALLE_AMTSGERICHTE = "0";
 const VERZOEGERUNG_MS = 1000;
 const MAX_SEITEN_PRO_BUNDESLAND = 30;
+/** Wanduhr-Budget: knapp unter dem timeout-minutes des Workflows, damit der Lauf
+ *  geordnet mit Teilergebnis endet statt per SIGKILL alles zu verlieren. */
+const MAX_LAUFZEIT_MS = 35 * 60 * 1000;
 
 const BUNDESLAND_CODES = [
   "bw", "by", "be", "br", "hb", "hh", "he", "mv",
@@ -15,6 +18,17 @@ const BUNDESLAND_CODES = [
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Rotiert die Bundesland-Reihenfolge je Lauf, damit ein Laufzeit-Abbruch nicht
+ * immer dieselben Codes am Listenende aushungert. Der Versatz kommt aus der
+ * Uhrzeit -- kein persistenter Zustand, keine neue Abhaengigkeit.
+ */
+export function bundeslaenderInLaufReihenfolge(codes: string[], versatz: number): string[] {
+  if (codes.length === 0) return [];
+  const start = ((versatz % codes.length) + codes.length) % codes.length;
+  return codes.map((_, i) => codes[(start + i) % codes.length]);
 }
 
 async function sucheFuerBundesland(page: Page, landAbk: string): Promise<void> {
@@ -67,11 +81,25 @@ async function detailsErfassen(page: Page, zusammenfassungen: ZvgListSummary[]):
 }
 
 export async function scrapeZvgPortal(): Promise<ZvgDetailData[]> {
+  const startZeit = Date.now();
+  // Stunden seit Epoche statt Stunde-des-Tages: der 3-Stunden-Cron traefe sonst
+  // nur 8 der 16 moeglichen Startpunkte, so wandert der Versatz durch alle.
+  const stundenSeitEpoche = Math.floor(startZeit / 3_600_000);
+  const reihenfolge = bundeslaenderInLaufReihenfolge(BUNDESLAND_CODES, stundenSeitEpoche);
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
     const alleTermine: ZvgDetailData[] = [];
-    for (const landAbk of BUNDESLAND_CODES) {
+    for (const landAbk of reihenfolge) {
+      const verstrichen = Date.now() - startZeit;
+      if (verstrichen >= MAX_LAUFZEIT_MS) {
+        console.warn(
+          `ZVG-Portal: Laufzeitbudget von ${Math.round(MAX_LAUFZEIT_MS / 60000)} min erschoepft ` +
+            `(${Math.round(verstrichen / 60000)} min). Abbruch vor Bundesland ${landAbk}; ` +
+            `${alleTermine.length} Termine werden gespeichert.`
+        );
+        break;
+      }
       await sleep(VERZOEGERUNG_MS);
       try {
         await sucheFuerBundesland(page, landAbk);
