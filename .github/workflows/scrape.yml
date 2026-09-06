@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  scrape-immowelt:
+  scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -23,5 +23,7 @@ jobs:
           cache-dependency-path: scraper/package-lock.json
       - run: npm ci
         working-directory: scraper
-      - run: npm run scrape:immowelt
+      - run: npx playwright install --with-deps chromium
+        working-directory: scraper
+      - run: npm run scrape
         working-directory: scraper
