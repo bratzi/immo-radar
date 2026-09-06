@@ -5,6 +5,8 @@ import { ermittleJahreskaltmiete } from "./rentEstimate.js";
 import { upsertListingAndVersion, logNotification } from "./db.js";
 import {
   sendTelegramMessage,
+  sendTelegramPhotos,
+  sendTelegramDocument,
   formatTopTrefferMessage,
   formatZvgTopTrefferMessage,
   formatPreisaenderungMessage,
@@ -58,6 +60,65 @@ export interface PipelineCandidate {
   /** Luecken, die bereits die Quelle beim Parsen festgestellt hat (z. B.
    *  "location_unconfirmed"). Wird mit den Einheiten-Luecken zusammengefuehrt. */
   sourceDataGaps?: string[];
+  /** Oeffentlich abrufbare Objektfotos (Immowelt-CDN) fuer den Bildversand. */
+  photoUrls?: string[];
+  /** PDF-Anhaenge (ZVG); nur mit Referer auf die Detailseite abrufbar. */
+  attachments?: { url: string; filename: string }[];
+}
+
+const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36";
+
+/**
+ * Laedt eine Mediendatei herunter. `referer` ist fuer zvg-portal.de noetig:
+ * ohne passenden Referer liefert die Seite HTTP 200 mit dem Body "error"
+ * statt der Datei.
+ */
+async function ladeDatei(url: string, referer?: string): Promise<Uint8Array | null> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": BROWSER_USER_AGENT,
+        ...(referer ? { Referer: referer } : {}),
+      },
+    });
+    if (!res.ok) return null;
+    return new Uint8Array(await res.arrayBuffer());
+  } catch (err) {
+    console.warn(`Download fehlgeschlagen: ${url}`, err);
+    return null;
+  }
+}
+
+function istPdf(bytes: Uint8Array): boolean {
+  return bytes.length > 4 && String.fromCharCode(...bytes.slice(0, 5)) === "%PDF-";
+}
+
+/** Verschickt Fotos und PDF-Anhaenge zu einem gemeldeten Objekt. */
+async function sendeMedien(
+  telegramConfig: TelegramConfig,
+  candidate: PipelineCandidate
+): Promise<void> {
+  const bildUrls = candidate.photoUrls ?? [];
+  const fotos: { bytes: Uint8Array; filename: string }[] = [];
+  for (const [i, url] of bildUrls.entries()) {
+    const bytes = await ladeDatei(url);
+    if (bytes !== null) fotos.push({ bytes, filename: `bild-${i + 1}.jpg` });
+  }
+  if (fotos.length > 0) {
+    await schlafe(TELEGRAM_SENDEABSTAND_MS);
+    await sendTelegramPhotos(telegramConfig, fotos, candidate.title);
+  }
+
+  for (const anhang of candidate.attachments ?? []) {
+    const datei = await ladeDatei(anhang.url, candidate.url);
+    if (datei === null || !istPdf(datei)) {
+      console.warn(`Anhang ${anhang.url}: keine PDF-Antwort, uebersprungen.`);
+      continue;
+    }
+    await schlafe(TELEGRAM_SENDEABSTAND_MS);
+    await sendTelegramDocument(telegramConfig, datei, anhang.filename, anhang.filename);
+  }
 }
 
 export async function processCandidate(
@@ -145,6 +206,7 @@ export async function processCandidate(
           : formatTopTrefferMessage(listingSummary, kennzahlenSummary);
       await schlafe(TELEGRAM_SENDEABSTAND_MS);
       await sendTelegramMessage(telegramConfig, text);
+      await sendeMedien(telegramConfig, candidate);
       await logNotification(supabase, diff.listingId, "top_treffer", {
         ...kennzahlenSummary,
         priceCents: candidate.priceCents,

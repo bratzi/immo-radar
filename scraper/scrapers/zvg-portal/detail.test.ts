@@ -232,3 +232,44 @@ describe("parseZvgDetailPage — Einheitenzahl aus Wertermittlungsprosa", () => 
     expect(daten.unitsConfident).toBe(true);
   });
 });
+
+describe("parseZvgDetailPage — Anhaenge", () => {
+  const daten = parseZvgDetailPage(fixtureHtml, KONTEXT);
+
+  it("erfasst den Anhang der Fixture mit URL und Dateiname", () => {
+    expect(daten.attachments).toEqual([
+      {
+        url: "https://www.zvg-portal.de/index.php?button=showAnhang&land_abk=sn&file_id=109158&zvg_id=40908",
+        filename: "amtliche_Bekanntmachung1.pdf",
+      },
+    ]);
+  });
+
+  it("erfasst ALLE Anhaenge, nicht nur den ersten (Seiten mit Expose haben zwei)", () => {
+    const html = fixtureHtml.replace(
+      /(<a aria-label="Anhang"[^>]*>amtliche_Bekanntmachung1\.pdf<\/a>)/,
+      '$1 <a aria-label="Anhang" target="_blank" href="?button=showAnhang&amp;land_abk=sn&amp;file_id=109159&amp;zvg_id=40908 ">Exposee1.pdf</a>'
+    );
+    const zwei = parseZvgDetailPage(html, KONTEXT);
+    expect(zwei.attachments).toHaveLength(2);
+    expect(zwei.attachments[1].filename).toBe("Exposee1.pdf");
+    expect(zwei.attachments[1].url).toContain("file_id=109159");
+  });
+
+  it("liefert je Anhang absolute URL und Dateiname", () => {
+    for (const anhang of daten.attachments) {
+      expect(anhang.url).toMatch(/^https:\/\/www\.zvg-portal\.de\/.*showAnhang/);
+      expect(anhang.filename).toMatch(/\.pdf$/i);
+    }
+  });
+
+  it("nennt die Anhaenge auch im Bekanntmachungstext mit Dateinamen", () => {
+    expect(daten.rawNoticeText).toContain("amtliche_Bekanntmachung1.pdf");
+    expect(daten.rawNoticeText).toContain("file_id=109158");
+  });
+
+  it("liefert eine leere Liste, wenn die Seite keinen Anhang hat", () => {
+    const html = fixtureHtml.replace(/<a aria-label="Anhang"[\s\S]*?<\/a>/g, "");
+    expect(parseZvgDetailPage(html, KONTEXT).attachments).toEqual([]);
+  });
+});

@@ -157,6 +157,90 @@ function wartezeitAusHeader(header: string | null, versuch: number): number {
   return Math.min(roh, RATE_LIMIT_MAX_WARTEZEIT_MS);
 }
 
+/** Telegram nimmt hoechstens 10 Medien je sendMediaGroup-Aufruf an. */
+const MEDIEN_PRO_GRUPPE = 10;
+/** Obergrenze je Objekt, damit ein Expose mit 40 Fotos den Chat nicht flutet. */
+const MAX_BILDER_JE_OBJEKT = 30;
+
+/** Zerlegt Medien in versandfertige Gruppen (gedeckelt, siehe Konstanten). */
+export function teileInMediengruppen<T>(medien: T[]): T[][] {
+  const gruppen: T[][] = [];
+  for (let i = 0; i < Math.min(medien.length, MAX_BILDER_JE_OBJEKT); i += MEDIEN_PRO_GRUPPE) {
+    gruppen.push(medien.slice(i, i + MEDIEN_PRO_GRUPPE));
+  }
+  return gruppen;
+}
+
+async function telegramAufruf(
+  config: TelegramConfig,
+  methode: string,
+  body: BodyInit,
+  headers?: HeadersInit
+): Promise<void> {
+  const url = `https://api.telegram.org/bot${config.botToken}/${methode}`;
+  for (let versuch = 1; ; versuch += 1) {
+    const res = await fetch(url, { method: "POST", body, headers });
+    if (res.ok) return;
+
+    const koerper = await res.text();
+    if (res.status === 429 && versuch <= MAX_RATE_LIMIT_WIEDERHOLUNGEN) {
+      const wartezeit = wartezeitAusHeader(res.headers.get("retry-after"), versuch);
+      console.warn(`Telegram-Rate-Limit (429) bei ${methode}, erneut in ${wartezeit} ms (Versuch ${versuch}).`);
+      await schlafe(wartezeit);
+      continue;
+    }
+    throw new Error(`Telegram-${methode} fehlgeschlagen: HTTP ${res.status} ${koerper}`);
+  }
+}
+
+export interface TelegramFoto {
+  bytes: Uint8Array;
+  filename: string;
+}
+
+/**
+ * Verschickt Objektfotos als Alben. Die Bilddaten werden bewusst selbst
+ * hochgeladen statt Telegram die URL abrufen zu lassen: Telegrams Abrufer
+ * scheitert am Immowelt-CDN mit WEBPAGE_CURL_FAILED (live verifiziert),
+ * waehrend derselbe Abruf mit Browser-User-Agent problemlos funktioniert.
+ */
+export async function sendTelegramPhotos(
+  config: TelegramConfig,
+  fotos: TelegramFoto[],
+  caption?: string
+): Promise<void> {
+  const gruppen = teileInMediengruppen(fotos);
+  for (const [index, gruppe] of gruppen.entries()) {
+    const form = new FormData();
+    form.append("chat_id", config.chatId);
+    const media = gruppe.map((foto, i) => {
+      const feld = `foto${i}`;
+      form.append(feld, new Blob([foto.bytes as BlobPart], { type: "image/jpeg" }), foto.filename);
+      return {
+        type: "photo",
+        media: `attach://${feld}`,
+        ...(index === 0 && i === 0 && caption ? { caption } : {}),
+      };
+    });
+    form.append("media", JSON.stringify(media));
+    await telegramAufruf(config, "sendMediaGroup", form);
+  }
+}
+
+/** Verschickt eine bereits heruntergeladene Datei (z. B. ein ZVG-PDF) als Dokument. */
+export async function sendTelegramDocument(
+  config: TelegramConfig,
+  datei: Uint8Array,
+  dateiname: string,
+  caption?: string
+): Promise<void> {
+  const form = new FormData();
+  form.append("chat_id", config.chatId);
+  if (caption) form.append("caption", caption);
+  form.append("document", new Blob([datei as BlobPart], { type: "application/pdf" }), dateiname);
+  await telegramAufruf(config, "sendDocument", form);
+}
+
 export async function sendTelegramMessage(config: TelegramConfig, text: string): Promise<void> {
   const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
   for (let versuch = 1; ; versuch += 1) {

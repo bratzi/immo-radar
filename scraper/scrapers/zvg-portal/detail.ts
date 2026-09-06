@@ -17,6 +17,13 @@ export interface ZvgDetailData {
   rawNoticeText: string;
   /** Beim Parsen festgestellte Luecken, z. B. "location_unconfirmed". */
   dataGaps: string[];
+  /** PDF-Anhaenge (amtliche Bekanntmachung, Expose). Nur MIT Referer abrufbar. */
+  attachments: ZvgAttachment[];
+}
+
+export interface ZvgAttachment {
+  url: string;
+  filename: string;
 }
 
 interface ZvgDetailKontext {
@@ -209,12 +216,19 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
     throw new Error(`Ungültiger Verkehrswert (nicht numerisch oder nicht positiv): "${verkehrswertText}"`);
   }
 
-  const anhangHref = $('a[aria-label="Anhang"]').attr("href");
+  const attachments: ZvgAttachment[] = $('a[aria-label="Anhang"]')
+    .toArray()
+    .map((el) => {
+      const href = $(el).attr("href");
+      if (!href) return null;
+      const filename = normalizeWhitespace($(el).text()) || "anhang.pdf";
+      return { url: new URL(href.trim(), kontext.url).toString(), filename };
+    })
+    .filter((a): a is ZvgAttachment => a !== null);
+
   const rawNoticeTextZeilen = felder.map((f) => `${f.label}: ${f.wert}`);
-  if (anhangHref) {
-    rawNoticeTextZeilen.push(
-      `Amtliche Bekanntmachung (PDF): ${new URL(anhangHref.trim(), kontext.url).toString()}`
-    );
+  for (const anhang of attachments) {
+    rawNoticeTextZeilen.push(`Anhang (PDF): ${anhang.filename} — ${anhang.url}`);
   }
 
   return {
@@ -233,5 +247,6 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
     yearBuilt: baujahrText === null ? null : parseInt(baujahrText, 10),
     rawNoticeText: rawNoticeTextZeilen.join("\n"),
     dataGaps,
+    attachments,
   };
 }

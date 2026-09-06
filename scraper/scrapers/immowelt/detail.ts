@@ -13,6 +13,8 @@ export interface ImmoweltDetailData {
   unitsConfident: boolean;
   rentColdMonthly: number | null;
   descriptionText: string;
+  /** Objektfotos und Grundrisse in grosser Aufloesung, Reihenfolge wie im Expose. */
+  photoUrls: string[];
 }
 
 interface ImmoweltFact {
@@ -37,6 +39,29 @@ const ANNUAL_RENT_PATTERN =
 function parseGermanNumber(text: string): number {
   const cleaned = text.replace(/[^\d,]/g, "").replace(",", ".");
   return parseFloat(cleaned);
+}
+
+/**
+ * Breite, mit der die Bilder beim Immowelt-CDN angefordert werden. Das CDN
+ * skaliert beliebig hoch (auch ueber die native Aufloesung hinaus), 2560 ist
+ * der Punkt mit guter Qualitaet bei noch handlicher Dateigroesse und liegt
+ * sicher unter Telegrams Grenze (Breite+Hoehe <= 10000).
+ */
+const BILD_BREITE = 2560;
+const MEDIEN_CDN_PRAEFIX = "https://mms.immowelt.de/";
+
+function grossesBild(url: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}width=${BILD_BREITE}`;
+}
+
+/** Objektfotos + Grundrisse; Makler-/Agenturlogos liegen ausserhalb von `medias`. */
+function extractPhotoUrls(classified: any): string[] {
+  const medias = classified.domains?.medias ?? {};
+  const roh: unknown[] = [...(medias.images ?? []), ...(medias.floorplans ?? [])];
+  return roh
+    .map((m) => (m as { url?: unknown }).url)
+    .filter((u): u is string => typeof u === "string" && u.startsWith(MEDIEN_CDN_PRAEFIX))
+    .map(grossesBild);
 }
 
 function extractClassified(html: string): any {
@@ -101,5 +126,6 @@ export function parseImmoweltDetailPage(
     unitsConfident: unitMatch !== null,
     rentColdMonthly,
     descriptionText: description,
+    photoUrls: extractPhotoUrls(classified),
   };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage } from "./telegram.js";
+import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen } from "./telegram.js";
 
 const listing = {
   title: "Mehrfamilienhaus zum Kauf",
@@ -145,5 +145,30 @@ describe("formatPreisaenderungMessage", () => {
     const text = formatPreisaenderungMessage(zvgListing, 300_000_00, 280_000_00);
     expect(text).not.toContain(zvgListing.url);
     expect(text).toContain("https://www.zvg-portal.de/index.php?button=Termine%20suchen");
+  });
+});
+
+describe("teileInMediengruppen", () => {
+  it("fasst bis zu 10 Bilder in eine Gruppe (Telegram-Grenze)", () => {
+    const urls = Array.from({ length: 10 }, (_, i) => `https://mms.immowelt.de/${i}.jpg`);
+    expect(teileInMediengruppen(urls)).toHaveLength(1);
+  });
+
+  it("teilt mehr als 10 Bilder in mehrere Gruppen auf", () => {
+    const urls = Array.from({ length: 27 }, (_, i) => `https://mms.immowelt.de/${i}.jpg`);
+    const gruppen = teileInMediengruppen(urls);
+    expect(gruppen).toHaveLength(3);
+    expect(gruppen[0]).toHaveLength(10);
+    expect(gruppen[2]).toHaveLength(7);
+  });
+
+  it("liefert keine Gruppe bei leerer Liste", () => {
+    expect(teileInMediengruppen([])).toEqual([]);
+  });
+
+  it("deckelt die Gesamtzahl, damit ein Objekt den Chat nicht flutet", () => {
+    const urls = Array.from({ length: 90 }, (_, i) => `https://mms.immowelt.de/${i}.jpg`);
+    const gesamt = teileInMediengruppen(urls).flat().length;
+    expect(gesamt).toBeLessThanOrEqual(30);
   });
 });

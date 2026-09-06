@@ -116,3 +116,29 @@ describe("parseImmoweltDetailPage — Einheiten-Erkennung mit synthetischem Text
     expect(() => parseImmoweltDetailPage(html, KONTEXT)).toThrow(/Ungültiger Preis/);
   });
 });
+
+describe("parseImmoweltDetailPage — Bilder", () => {
+  const daten = parseImmoweltDetailPage(fixtureHtml, KONTEXT);
+
+  it("liest alle Objektfotos und Grundrisse aus der Medien-Sektion", () => {
+    expect(daten.photoUrls.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("fordert die Bilder in grosser Aufloesung an", () => {
+    for (const url of daten.photoUrls) {
+      expect(url).toContain("width=2560");
+    }
+  });
+
+  it("liefert nur echte Bild-URLs des Medien-CDN, keine Makler-Logos", () => {
+    for (const url of daten.photoUrls) {
+      expect(url).toMatch(/^https:\/\/mms\.immowelt\.de\//);
+    }
+  });
+
+  it("liefert eine leere Liste statt zu werfen, wenn keine Medien vorhanden sind", () => {
+    const html = fixtureHtml.replace(/\\"medias\\":\{/, '\\"medias\\":{\\"__leer\\":1,');
+    const ohne = parseImmoweltDetailPage(html, KONTEXT);
+    expect(Array.isArray(ohne.photoUrls)).toBe(true);
+  });
+});

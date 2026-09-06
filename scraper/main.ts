@@ -58,6 +58,7 @@ async function main() {
       court: null,
       caseNumber: null,
       rawNoticeText: null,
+      photoUrls: objekt.photoUrls,
     };
     await verarbeiteKandidatIsoliert(telegramConfig, candidate);
   }
@@ -85,6 +86,7 @@ async function main() {
       caseNumber: termin.caseNumber,
       rawNoticeText: termin.rawNoticeText,
       sourceDataGaps: termin.dataGaps,
+      attachments: termin.attachments,
     };
     await verarbeiteKandidatIsoliert(telegramConfig, candidate);
   }
