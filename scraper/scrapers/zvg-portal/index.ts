@@ -35,6 +35,7 @@ async function alleSeitenErfassen(page: Page): Promise<ZvgListSummary[]> {
     const naechstesSeitenLabel = `blättern zur Sitennummer ${seite + 1}`;
     const gibtNaechsteSeite = (await page.locator(`button[aria-label="${naechstesSeitenLabel}"]`).count()) > 0;
     if (!gibtNaechsteSeite) break;
+    await sleep(VERZOEGERUNG_MS);
     await page.click(`button[aria-label="${naechstesSeitenLabel}"]`);
     await page.waitForLoadState("domcontentloaded");
     seite += 1;
