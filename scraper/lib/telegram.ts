@@ -51,13 +51,30 @@ function formatBerlinDatumzeit(isoDatum: string): string {
   }).format(new Date(isoDatum));
 }
 
+/**
+ * zvg-portal.de prueft den Referer serverseitig: jede Detail-/Anhang-Seite
+ * liefert HTTP 200 mit dem woertlichen Body "error", wenn die Anfrage nicht
+ * von der eigenen Suchseite kommt (verifiziert per direktem Fetch, mit und
+ * ohne Referer). Es gibt keinen Permalink/Share-Mechanismus auf der Seite --
+ * ein an den Nutzer verschickter Direktlink kann daher NIE funktionieren,
+ * unabhaengig vom Code hier. Einzig die Sucheinstiegsseite laedt kalt.
+ */
+const ZVG_SUCHE_URL = "https://www.zvg-portal.de/index.php?button=Termine%20suchen";
+
+function formatListingLink(url: string): string {
+  if (url.includes("zvg-portal.de")) {
+    return `Direktlink oeffnet sich nicht (Seite verlangt eigene Sitzung) -- bitte auf ${ZVG_SUCHE_URL} nach dem Aktenzeichen suchen.`;
+  }
+  return url;
+}
+
 export function formatTopTrefferMessage(listing: ListingSummary, k: KennzahlenSummary): string {
   return [
     `🎯 Top-Treffer: ${listing.title}`,
     `${listing.zipCode} ${listing.city} · ${listing.units ?? "?"} Einheiten · ${formatEuro(listing.priceCents)} €`,
     `Kaufpreisfaktor ${k.kaufpreisfaktor.toFixed(1)} · geschätzter DSCR ${k.geschaetzterDscr.toFixed(2)} · Miete: ${k.mietQuelle}`,
     formatDataGapsLine(listing.dataGaps),
-    listing.url,
+    formatListingLink(listing.url),
   ]
     .filter((zeile): zeile is string => zeile !== null)
     .join("\n");
@@ -71,7 +88,7 @@ export function formatZvgTopTrefferMessage(listing: ZvgListingSummary, k: Kennza
     `Termin: ${formatBerlinDatumzeit(listing.auctionAt)} Uhr`,
     `Kaufpreisfaktor ${k.kaufpreisfaktor.toFixed(1)} · geschätzter DSCR ${k.geschaetzterDscr.toFixed(2)} · Miete: ${k.mietQuelle}`,
     formatDataGapsLine(listing.dataGaps),
-    listing.url,
+    formatListingLink(listing.url),
   ]
     .filter((zeile): zeile is string => zeile !== null)
     .join("\n");
@@ -87,7 +104,7 @@ export function formatPreisaenderungMessage(
     `${listing.zipCode} ${listing.city}`,
     `${formatEuro(altPreisCents)} € → ${formatEuro(neuPreisCents)} €`,
     formatDataGapsLine(listing.dataGaps),
-    listing.url,
+    formatListingLink(listing.url),
   ]
     .filter((zeile): zeile is string => zeile !== null)
     .join("\n");

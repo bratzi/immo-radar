@@ -68,7 +68,7 @@ describe("formatZvgTopTrefferMessage", () => {
     caseNumber: "0467 K 0076/2022",
   };
 
-  it("enthält Gericht, Termin (Berlin-Zeit), Aktenzeichen, Verkehrswert und Link", () => {
+  it("enthält Gericht, Termin (Berlin-Zeit), Aktenzeichen und Verkehrswert", () => {
     const text = formatZvgTopTrefferMessage(zvgListing, {
       kaufpreisfaktor: 8.5,
       geschaetzterDscr: 1.6,
@@ -79,7 +79,17 @@ describe("formatZvgTopTrefferMessage", () => {
     expect(text).toContain("271.000");
     expect(text).toContain("09.09.2026");
     expect(text).toContain("10:00");
-    expect(text).toContain(zvgListing.url);
+  });
+
+  it("verlinkt NICHT direkt auf die zvg-portal.de-Detailseite, da diese ohne eigene Sitzung nur 'error' liefert", () => {
+    const text = formatZvgTopTrefferMessage(zvgListing, {
+      kaufpreisfaktor: 8.5,
+      geschaetzterDscr: 1.6,
+      mietQuelle: "geschaetzt_bundesweit",
+    });
+    expect(text).not.toContain(zvgListing.url);
+    expect(text).toContain("https://www.zvg-portal.de/index.php?button=Termine%20suchen");
+    expect(text).toContain("0467 K 0076/2022");
   });
 
   it("hängt bei fehlenden Angaben ebenfalls die Warnzeile an", () => {
@@ -97,5 +107,12 @@ describe("formatPreisaenderungMessage", () => {
     expect(text).toContain("500.000");
     expect(text).toContain("480.000");
     expect(text).toContain("https://www.immowelt.de/expose/abc-123");
+  });
+
+  it("ersetzt eine zvg-portal.de-URL durch den Sucheinstieg statt einen toten Direktlink", () => {
+    const zvgListing = { ...listing, url: "https://www.zvg-portal.de/index.php?button=showZvg&zvg_id=40908&land_abk=sn" };
+    const text = formatPreisaenderungMessage(zvgListing, 300_000_00, 280_000_00);
+    expect(text).not.toContain(zvgListing.url);
+    expect(text).toContain("https://www.zvg-portal.de/index.php?button=Termine%20suchen");
   });
 });
