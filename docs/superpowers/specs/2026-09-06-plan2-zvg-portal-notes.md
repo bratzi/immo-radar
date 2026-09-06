@@ -70,13 +70,22 @@ Disallow: /index.php?button=showZvg*
 - Formular: `<FORM name=globe method=post action="index.php?button=Suchen"
   onsubmit="return checkFormular();">` — **POST**, nicht GET.
 - Objekt-Feld: `<input name=obj>` (freie Objektbeschreibung) PLUS
-  `<select name="obj_arr[]" multiple>` (Mehrfachauswahl vordefinierter
-  Objekttypen) — das `<select>` ist im rohen HTML **leer**, wird per
-  JavaScript über `insertObj()`/`deleteObj()` befüllt. Die Quelle der
-  auswählbaren Objekttyp-Strings (z.B. ob "Mehrfamilienhaus" als exakte
-  Kategorie existiert) wurde **noch nicht gefunden** — nächster
-  Recherche-Schritt, falls man serverseitig nach Objekttyp filtern will,
-  statt alles zu holen und client-seitig zu filtern (wie bei Immowelt).
+  `<select name="obj_arr[]" multiple>` (das per POST gesendete Feld) —
+  im rohen HTML **leer**, wird per JavaScript über `insertObj()`/
+  `deleteObj()` befüllt.
+- **Objekttyp-Quelle GEFUNDEN (verifiziert 2026-09-06 per curl):** eine
+  zweite, sichtbare `<select id=obj_liste name=obj_liste multiple>`
+  enthält die auswählbaren Kategorien als statische `<option
+  value=N>Text</option>`-Liste, u.a. `value=4` **Mehrfamilienhaus** und
+  `value=13` Wohn-/Geschäftshaus (Randfall, gemischt genutzt — evtl.
+  mit einschließen). `insertObj()` kopiert das markierte `<option>`
+  1:1 (gleicher `value`, gleicher Text) in `obj_arr[]`. **Serverseitige
+  Filterung ist damit möglich**: POST einfach direkt mit
+  `obj_arr[]=4` (ggf. zusätzlich `obj_arr[]=13`) senden, ohne
+  `insertObj()` nachzubauen oder alles zu holen und client-seitig zu
+  filtern (anders als bei Immowelt). Volle Objekttyp-Liste (15
+  Kategorien, Werte 1–15 und 19) steht ab Zeile 352 in der geholten
+  HTML — bei Bedarf erneut per curl ziehen.
 - Datumsbereich-Felder vermutlich ebenfalls im Formular vorhanden (noch
   nicht im Detail durchgesehen).
 
@@ -131,10 +140,9 @@ anderswo.
 
 Diese Fragen wurden noch NICHT gestellt/beantwortet:
 
-1. **Objekttyp-Filterung:** Gibt es eine serverseitige "Mehrfamilienhaus"-
-   Kategorie in `obj_arr[]`, oder muss (wie bei Immowelt) alles geholt und
-   client-seitig gefiltert werden? Braucht weitere Recherche (Playwright
-   oder Suche nach der JS-Quelle der Options-Liste).
+1. ~~Objekttyp-Filterung~~ — **erledigt, s.o.:** `obj_arr[]=4`
+   (Mehrfamilienhaus) serverseitig, kein Playwright/Reverse-Engineering
+   dafür nötig.
 2. **Datenmodell-Unterschiede zu Immowelt:** ZVG-Termine haben andere
    Kernfelder als Verkaufsinserate — kein Angebotspreis, sondern
    **Verkehrswert** (gerichtlich festgestellter Wert) und ein
