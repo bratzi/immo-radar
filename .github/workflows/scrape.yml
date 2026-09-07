@@ -33,5 +33,12 @@ jobs:
         working-directory: scraper
       - run: npx playwright install --with-deps chromium
         working-directory: scraper
-      - run: npm run scrape
+      # xvfb explizit nachziehen: `playwright install --with-deps` bringt die
+      # Chromium-Bibliotheken mit, aber nicht zwingend Xvfb selbst.
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      # Der Scraper faehrt Chromium bewusst headfull (headless: false), weil
+      # Immowelts DataDome-Schutz Headless-Chromium mit HTTP 403 abweist.
+      # Der GitHub-Runner hat keinen Bildschirm -- `xvfb-run` stellt ein
+      # virtuelles Display bereit, sonst kann kein Fenstermodus starten.
+      - run: xvfb-run --auto-servernum npm run scrape
         working-directory: scraper

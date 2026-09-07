@@ -128,7 +128,18 @@ export async function sweepImmowelt(): Promise<{
   sweep: SweepErgebnis;
   zusammenfassungen: Map<string, ImmoweltListSummary>;
 }> {
-  const browser = await chromium.launch();
+  // headless: false ist zwingend, kein Versehen. Immowelt sitzt hinter DataDome.
+  // Direktvergleich (gleicher Code, gleiche URL, nur dieses Flag, 2026-09-07):
+  // headless -> HTTP 403 mit DataDome-CAPTCHA auf jeder Detailseite und ab
+  // Seite 2 der Ergebnisliste (~1,5 kB Body: "Please enable JS and disable any
+  // ad blocker"); headfull -> HTTP 200, ~617 kB, vollstaendiges Datenmodell,
+  // Bremen blaettert 5 Seiten und sammelt 206 von 209 Objekten.
+  // Kein Spoofing, kein Stealth-Plugin, kein navigator.webdriver-Patch, kein
+  // CAPTCHA-Loeser -- Chromium laeuft schlicht im normalen Fenstermodus statt
+  // im Headless-Modus, dessen JS-Umgebung DataDomes Pruefung nicht besteht.
+  // CI hat keinen Bildschirm und startet den Lauf daher unter `xvfb-run`
+  // (siehe .github/workflows/scrape.yml). NICHT auf headless "optimieren".
+  const browser = await chromium.launch({ headless: false });
   const zusammenfassungen = new Map<string, ImmoweltListSummary>();
   let alleLiefen = true;
   let gemeldeteSumme = 0;
@@ -198,7 +209,8 @@ export async function erfasseImmoweltDetails(
 ): Promise<ImmoweltDetailData[]> {
   if (externalIds.length === 0) return [];
 
-  const browser: Browser = await chromium.launch();
+  // headless: false zwingend -- Begruendung siehe sweepImmowelt oben.
+  const browser: Browser = await chromium.launch({ headless: false });
   const ergebnisse: ImmoweltDetailData[] = [];
   try {
     const page: Page = await browser.newPage();

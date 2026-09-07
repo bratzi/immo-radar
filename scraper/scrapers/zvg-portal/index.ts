@@ -61,7 +61,9 @@ export async function sweepZvgPortal(): Promise<{
   sweep: SweepErgebnis;
   zusammenfassungen: Map<string, ZvgListSummary>;
 }> {
-  const browser = await chromium.launch();
+  // headless: false fuer gleiches Browserverhalten wie beim Immowelt-Scraper
+  // (dort zwingend wegen DataDome, Begruendung in scrapers/immowelt/index.ts).
+  const browser = await chromium.launch({ headless: false });
   const zusammenfassungen = new Map<string, ZvgListSummary>();
   const geltungsbereich: string[] = [];
   let alleLiefen = true;
@@ -135,7 +137,8 @@ export async function erfasseZvgDetails(
 ): Promise<ZvgDetailData[]> {
   if (externalIds.length === 0) return [];
 
-  const browser: Browser = await chromium.launch();
+  // headless: false -- siehe sweepZvgPortal / scrapers/immowelt/index.ts.
+  const browser: Browser = await chromium.launch({ headless: false });
   const ergebnisse: ZvgDetailData[] = [];
   try {
     const page = await browser.newPage();
