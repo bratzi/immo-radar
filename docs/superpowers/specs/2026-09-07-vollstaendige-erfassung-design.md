@@ -124,6 +124,37 @@ Vergangenheit liegt, ist auch dann nicht meldewürdig, wenn es noch gelistet
 ist und deshalb regulär durch die Pipeline läuft. Ohne diese Vorprüfung
 würde Schritt 3 des Datenflusses melden, bevor Schritt 5 markiert.
 
+#### Mengenplausibilität als Vorbedingung des Löschens
+
+Das Abdeckungsprotokoll erkennt einen Sweep, der *mit Fehler* abbricht. Es
+erkennt nicht den gefährlicheren Fall: einen Sweep, der technisch sauber
+durchläuft und trotzdem zu wenig liefert — weil sich ein Selektor geändert
+hat, ein Filter anders greift oder das Portal stillschweigend weniger
+ausliefert. Ein solcher Lauf würde ohne weitere Prüfung einen großen Teil des
+Bestands löschen.
+
+Vor jedem Löschvorgang gelten deshalb zwei zusätzliche Prüfungen:
+
+1. **Selbstkonsistenz im Lauf.** Weist das Portal eine Trefferzahl aus
+   („X Ergebnisse"), wird sie mit der Zahl der tatsächlich eingesammelten
+   Objekte verglichen. Klaffen sie auseinander, gilt der Sweep als
+   unvollständig. Liefert ein Portal keine solche Zahl, entfällt diese
+   Prüfung für diese Quelle.
+2. **Historienvergleich.** Die Menge dieses Laufs wird gegen den **Median der
+   letzten zehn erfolgreichen Läufe** derselben Quelle gehalten — Median statt
+   letzter Lauf, damit ein einzelner Ausreißer die Referenz nicht mitreißt.
+   Weicht sie um mehr als **25 %** ab, wird **nicht gelöscht**; stattdessen
+   geht eine Warnmeldung nach Telegram.
+
+Die Historienprüfung greift erst, wenn für die Quelle **mindestens drei**
+erfolgreiche Referenzläufe vorliegen. Bis dahin findet überhaupt keine
+Löschung statt. Der Umbau startet damit bewusst vorsichtig: Die ersten Läufe
+bauen nur Referenz auf.
+
+**Hinzufügen ist von alldem nicht betroffen.** Neue Inserate werden immer
+aufgenommen. Gebremst wird ausschließlich das Löschen, weil nur dort ein
+Fehler Daten vernichtet.
+
 ### 4. Meldeklassen
 
 `metrics.ts` bleibt reine Rechenlogik und weiß nichts von Mietquellen oder
@@ -183,6 +214,12 @@ ist ein Ereignis, keine Klasse, und nimmt an der Rangfolge nicht teil.
 
 Ein Objekt, das nie eine Meldung wert war, verschwindet still.
 
+Dazu kommt die **Sweep-Warnung** (⚠️) mit erwarteter und tatsächlicher Menge
+und dem Hinweis, dass die Löschung ausgesetzt ist. Sie hängt an keinem
+Objekt und wird deshalb **nicht** in `notifications` protokolliert — dort ist
+`listing_id` `not null`. Ihr dauerhafter Niederschlag ist die Zeile in
+`sweep_runs` mit `vollstaendig = false`; Telegram bekommt sie nur zugestellt.
+
 ## Schema-Änderungen
 
 ```sql
@@ -194,6 +231,23 @@ alter table listings add column disappeared_at timestamptz;
 create index notifications_listing_id_idx on notifications (listing_id);
 create index listings_disappeared_at_idx on listings (disappeared_at)
   where disappeared_at is not null;
+
+-- Referenz fuer die Mengenplausibilitaet. Ohne Historie keine Loeschung.
+create table sweep_runs (
+  id uuid primary key default gen_random_uuid(),
+  source text not null,
+  started_at timestamptz not null default now(),
+  -- Was das Portal als Trefferzahl ausweist; null, wenn es keine nennt.
+  gemeldete_treffer integer,
+  -- Was der Sweep tatsaechlich eingesammelt hat.
+  gesehene_objekte integer not null,
+  vollstaendig boolean not null,
+  geltungsbereich text[] not null default '{}'
+);
+
+create index sweep_runs_source_idx on sweep_runs (source, started_at desc);
+
+alter table sweep_runs enable row level security;
 ```
 
 `notifications.kind` ist `text` und nimmt die neuen Werte `pruefkandidat` und
@@ -201,17 +255,24 @@ create index listings_disappeared_at_idx on listings (disappeared_at)
 
 ## Datenfluss eines Laufs
 
-1. Sweep je Quelle → `SweepErgebnis` (vollständig? Geltungsbereich? gesehene IDs)
+1. Sweep je Quelle → `SweepErgebnis` (vollständig? Geltungsbereich? gesehene
+   IDs? ausgewiesene Trefferzahl?), anschließend als Zeile in `sweep_runs`
+   festgehalten
 2. Detailerfassung für neue und veraltete IDs
 3. Je Kandidat: Kennzahlen → Upsert (`disappeared_at = null`) → Meldeklasse
    (bei vergangenem `auction_at` zwingend `keine`) → ggf. senden → bei Erfolg
    `logNotification`
-4. Abgleich: im Geltungsbereich fehlende Objekte bekommen `disappeared_at`;
+4. **Plausibilitätstor je Quelle:** Selbstkonsistenz und Historienvergleich
+   (Median der letzten zehn Läufe, ±25 %, erst ab drei Referenzläufen).
+   Fällt eine Quelle durch, entfallen für sie die Schritte 5–7 und es geht
+   eine Warnmeldung nach Telegram.
+5. Abgleich: im Geltungsbereich fehlende Objekte bekommen `disappeared_at`;
    zuvor gemeldete lösen die Abgangsmeldung aus
-5. ZVG-Objekte mit vergangenem `auction_at` bekommen `disappeared_at`
-6. Objekte mit `disappeared_at` älter als 2 Tage werden gelöscht
+6. ZVG-Objekte mit vergangenem `auction_at` bekommen `disappeared_at`
+7. Objekte mit `disappeared_at` älter als 2 Tage werden gelöscht
 
-Schritte 4–6 laufen am Ende, nachdem beide Quellen verarbeitet sind.
+Schritte 4–7 laufen am Ende, nachdem beide Quellen verarbeitet sind. Schritt 3
+ist davon unabhängig — neue Objekte werden immer aufgenommen.
 
 ## Fehlerbehandlung
 
@@ -237,6 +298,12 @@ Unit-testbar (reine Funktionen, wie im Projekt üblich):
 - `istKarenzAbgelaufen(disappearedAt, jetzt)`
 - Partitionszuordnung aus `externalId` (`sn-40908` → `sn`)
 - Formatierung der Abgangsmeldung
+- `istMengePlausibel(gesehene, historie, gemeldeteTreffer)` — Median über die
+  Referenzläufe, 25-%-Grenze, und die Regel „unter drei Referenzläufen nie
+  löschen". Das ist die Funktion, an der die Löschung hängt, und sie wird
+  entsprechend dicht getestet: zu wenig Historie, Abweichung knapp innerhalb
+  und knapp außerhalb der Grenze, Portal ohne ausgewiesene Trefferzahl,
+  Selbstkonsistenz verletzt.
 
 Gegen echte Dienste verifiziert (keine sinnvollen Unit-Tests): die
 Playwright-Orchestrierung beider Quellen und die Löschung.
