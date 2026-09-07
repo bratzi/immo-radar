@@ -30,9 +30,21 @@ import type { Locator, Page } from "playwright";
  *    blockte. Deshalb wird auf `state: "attached"` gewartet -- der Host ist
  *    angehaengt und blockend, lange bevor er je "sichtbar" waere. NICHT auf
  *    `visible` "zurueckfixen".
- *  - Das Banner laedt verzoegert nach. Eine einmalige Pruefung direkt nach
- *    `domcontentloaded` sieht nichts, Sekundenbruchteile spaeter ist es da und
- *    blockt. Deshalb wird auf sein Anhaengen GEWARTET, nicht einmalig getestet.
+ *  - Das Banner laedt verzoegert nach -- UND SEIN INHALT NOCHMALS VERZOEGERT.
+ *    Der Host-Div `#usercentrics-root` haengt praktisch sofort an, doch
+ *    Usercentrics rendert den Dialog-Inhalt (inklusive Akzeptieren-Knopf) erst
+ *    einen Moment spaeter in den Shadow Root. Wer nur auf den Host wartet und
+ *    dann SOFORT die Knopf-Selektoren abfragt, findet nichts -- `count()` auf
+ *    `[data-testid="uc-accept-all-button"]` liefert 0 --, waehrend das Overlay
+ *    schon jeden Klick abfaengt. Genau diese Sequenz im Bremen-Live-Lauf
+ *    beobachtet: erster Aufruf direkt nach `goto` -> "KEIN Akzeptieren-Selektor
+ *    hat funktioniert", nur Seite 1; beim Retry nach dem abgefangenen
+ *    "naechste Seite"-Klick war derselbe Selektor
+ *    `[data-testid="uc-accept-all-button"]` da und griff (Seite 2). Gefunden
+ *    also erst auf dem Retry, nicht beim ersten Versuch. Konsequenz: es wird
+ *    NICHT auf den Host gewartet und dann geprobt, sondern pro Kandidat auf den
+ *    Akzeptieren-Knopf SELBST in `state: "attached"` gewartet -- mit einem
+ *    ueber die Kandidaten aufgeteilten Zeitbudget aus `timeoutMs`.
  *  - Usercentrics baut das Overlay bei JEDEM Seitenwechsel neu auf
  *    (`data-created-at` unterscheidet sich zwischen zwei Beobachtungen). Eine
  *    Bestaetigung pro Browser-Context haelt daher ueber einen mehrseitigen
@@ -90,6 +102,14 @@ const AKZEPTIEREN_TEXTE = [
  * Host `#usercentrics-root` wird nie sichtbar, blockt aber Pointer-Events,
  * sobald er angehaengt ist (Begruendung ausfuehrlich im Dateikopf).
  *
+ * Das Warten auf den Host dient nur noch als Klassifikator "Banner da oder
+ * nicht" (kein Overlay -> stiller Regulaerausgang, u. a. fuer das ZVG-Portal).
+ * Auf den Akzeptieren-Knopf wird danach PRO KANDIDAT einzeln gewartet
+ * (`state: "attached"`), weil der Shadow-Inhalt spaeter als der Host rendert.
+ * Das Zeitbudget `timeoutMs` wird dabei ueber die Kandidaten aufgeteilt, statt
+ * pro Kandidat voll bezahlt zu werden -- ein `timeoutMs`-Schnellcheck von
+ * 2000 ms bleibt so bei rund 2000 ms und nicht 2000 ms pro Selektor.
+ *
  * @param page       Die Playwright-Seite.
  * @param timeoutMs  Wie lange auf das (verzoegert nachladende) Banner gewartet
  *                    wird, bevor "kein Banner" angenommen und regulaer
@@ -102,10 +122,21 @@ export async function bestaetigeConsentBanner(
   timeoutMs: number = ERSCHEINEN_TIMEOUT_MS
 ): Promise<void> {
   try {
+    // Ein Zeitbudget fuer den GESAMTEN Versuch. Der Host-Wait unten verbraucht
+    // davon fast nichts, solange ein Banner da ist (er haengt praktisch sofort
+    // an); ist keins da, laeuft er als einziger Posten voll aus und wir kehren
+    // still zurueck. Danach teilt sich der Rest auf die Kandidaten auf.
+    const gesamtDeadline = Date.now() + timeoutMs;
     const overlay = page.locator(OVERLAY_SELEKTOR);
 
     try {
-      await overlay.waitFor({ state: "attached", timeout: timeoutMs });
+      // Nur noch Klassifikator "Banner da oder nicht" -- der eigentliche Klick
+      // wartet gleich pro Kandidat auf den Knopf selbst.
+      await overlay.waitFor({
+        state: "attached",
+        // >= 1: Playwright deutet timeout 0 als "unbegrenzt" -- hier nie gewollt.
+        timeout: Math.max(1, gesamtDeadline - Date.now()),
+      });
     } catch {
       // Kein Banner aufgetaucht. Regulaerer Fall: das ZVG-Portal hat (noch)
       // keins, oder der Consent-Zustand ist im Context bereits gesetzt.
@@ -128,12 +159,35 @@ export async function bestaetigeConsentBanner(
       })),
     ];
 
+    // Restbudget nach dem Host-Wait gleichmaessig auf die Kandidaten verteilen.
+    // Untergrenze pro Kandidat, damit ein winziges `timeoutMs` nicht in
+    // 0-ms-Waits ausartet; die Deadline-Klammer unten deckelt die Summe.
+    const restNachHost = Math.max(0, gesamtDeadline - Date.now());
+    const proKandidatMs = Math.max(250, Math.ceil(restNachHost / kandidaten.length));
+
     for (const kandidat of kandidaten) {
+      const restBudget = gesamtDeadline - Date.now();
+      if (restBudget <= 0) break;
+
       try {
         const ziel = kandidat.locator.first();
-        if ((await ziel.count()) === 0) continue;
 
-        await ziel.click({ timeout: KLICK_TIMEOUT_MS });
+        try {
+          // Auf den Akzeptieren-Knopf SELBST warten, nicht auf den Host: der
+          // Shadow-Inhalt rendert spaeter (Dateikopf). `attached` genuegt --
+          // sichtbar wird er im leeren Light-DOM-Host ohnehin nie sauber.
+          await ziel.waitFor({
+            state: "attached",
+            timeout: Math.min(proKandidatMs, restBudget),
+          });
+        } catch {
+          // Dieser Kandidat ist (noch) nicht im DOM -- naechsten probieren.
+          continue;
+        }
+
+        await ziel.click({
+          timeout: Math.min(KLICK_TIMEOUT_MS, Math.max(500, gesamtDeadline - Date.now())),
+        });
 
         try {
           // NICHT auf das Verschwinden von `#usercentrics-root` pruefen: der
@@ -158,10 +212,14 @@ export async function bestaetigeConsentBanner(
     }
 
     console.warn(
-      `Consent-Banner angehaengt (${OVERLAY_SELEKTOR}), aber KEIN Akzeptieren-Selektor hat ` +
-        `funktioniert -- das Banner-Markup hat sich vermutlich geaendert. Folge: jeder ` +
-        `Pagination-Klick laeuft ab jetzt in einen 30-s-Timeout und der Sweep sieht nur ` +
-        `Seite 1 pro Region. Kandidatenliste in scrapers/consent.ts pruefen/erweitern.`
+      `Consent-Banner-Host ${OVERLAY_SELEKTOR} ist da, aber binnen ${timeoutMs} ms hat KEIN ` +
+        `Akzeptieren-Selektor gegriffen. Das heisst meist NICHT, dass sich das Markup ` +
+        `geaendert hat -- im Bremen-Live-Lauf war der Shadow-Inhalt beim ersten Versuch ` +
+        `schlicht noch nicht gerendert und derselbe Selektor griff beim naechsten Retry. ` +
+        `Folge fuer DIESEN Versuch: der Pagination-Klick laeuft in einen 30-s-Timeout und ` +
+        `der Sweep sieht nur Seite 1 dieser Region; der Retry nach dem abgefangenen Klick ` +
+        `holt es in der Regel nach. Erst wenn die Warnung dauerhaft und auch nach Retries ` +
+        `kommt, Kandidatenliste in scrapers/consent.ts pruefen/erweitern.`
     );
   } catch (err) {
     // Letzte Sicherung: diese Hilfsfunktion darf einen Sweep NIE abbrechen.
