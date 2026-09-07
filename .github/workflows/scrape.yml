@@ -1,22 +1,38 @@
 name: scrape
 
 on:
-  # PAUSIERT ab 2026-09-07 fuer den Umbau "vollstaendige Erfassung &
-  # Bestandsfuehrung". Die Schema-Migration entfernt listings.is_active und
-  # fuegt disappeared_at/sweep_runs hinzu -- der Code auf main kennt das neue
-  # Schema noch nicht und wuerde bei jedem Lauf scheitern.
-  # WIEDER AKTIVIEREN, sobald der Umbau gemerged ist.
-  # schedule:
-  #   - cron: "0 */3 * * *"
+  # Wieder aktiv seit dem Merge des Umbaus "vollstaendige Erfassung &
+  # Bestandsfuehrung" (2026-09-07). Waehrend des Umbaus war der Zeitplan
+  # pausiert, weil die Schema-Migration listings.is_active entfernt hatte und
+  # der damalige Code auf main das neue Schema noch nicht kannte.
+  schedule:
+    - cron: "0 */3 * * *"
   workflow_dispatch: {}
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # 16 Bundeslaender x bis zu 30 Ergebnisseiten x Detailabrufe, jeweils mit
-    # 1 s Drosselung -- 15 min reichten dafuer nicht. Der Scraper selbst bricht
-    # nach MAX_LAUFZEIT_MS (35 min) geordnet ab, dieses Limit ist der Notnagel.
-    timeout-minutes: 40
+    # Was einen Lauf an HEAD begrenzt (Immowelt 5 s je Fetch, ZVG 1 s):
+    #  * Immowelt-SWEEP: durch SWEEP_BUDGET_MS gedeckelt (12 min,
+    #    scraper/scrapers/immowelt/index.ts), NICHT unbegrenzt. Eine zum
+    #    Budget-Ende begonnene Region wird immer zu Ende geblaettert --
+    #    Nordrhein-Westfalen allein ~188 Seiten x 5 s ~16 min. Also <= ~28 min.
+    #  * Immowelt-DETAILS: DETAIL_BUDGET_MS / IMMOWELT_VERZOEGERUNG_MS
+    #    = 720 s / 5 s = 144 Seiten -> <= ~12 min. (Aus main.ts, per Import der
+    #    Drossel abgeleitet -- Budget und Drossel koennen nicht mehr driften.)
+    #  * ZVG-SWEEP: alle 16 Bundeslaender pro Lauf komplett, ~60 Seiten x 1 s
+    #    -> ~2 min.
+    #  * ZVG-DETAILS: DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS
+    #    = 720 s / 1 s = 720 Seiten -> <= ~12 min.
+    # Worst case ~28 + 12 + 2 + 12 = ~54 min, dazu Setup (npm ci, Playwright,
+    # xvfb ~5 min), Bestandsabgleich und Telegram-Meldungen. Ein in-process
+    # Wanduhr-Limit gibt es nicht (MAX_LAUFZEIT_MS ist mit dem Umbau entfallen);
+    # dieses Limit ist der einzige Notnagel. Es beendet den Job per SIGKILL, und
+    # der Kill trifft VOR dem Abgleichsblock am Ende von main() -- ein zu knappes
+    # Limit hiesse: Markieren, Entmarkieren und Karenz-Loeschung liefen stumm
+    # bei jedem Lauf nie. 75 min lassen auf die ~60 min Worst case rund 15 min
+    # Reserve.
+    timeout-minutes: 75
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -33,5 +49,12 @@ jobs:
         working-directory: scraper
       - run: npx playwright install --with-deps chromium
         working-directory: scraper
-      - run: npm run scrape
+      # xvfb explizit nachziehen: `playwright install --with-deps` bringt die
+      # Chromium-Bibliotheken mit, aber nicht zwingend Xvfb selbst.
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      # Der Scraper faehrt Chromium bewusst headfull (headless: false), weil
+      # Immowelts DataDome-Schutz Headless-Chromium mit HTTP 403 abweist.
+      # Der GitHub-Runner hat keinen Bildschirm -- `xvfb-run` stellt ein
+      # virtuelles Display bereit, sonst kann kein Fenstermodus starten.
+      - run: xvfb-run --auto-servernum npm run scrape
         working-directory: scraper

@@ -7,7 +7,11 @@ create table listings (
   url text not null,
   first_seen timestamptz not null default now(),
   last_seen timestamptz not null default now(),
-  is_active boolean not null default true,
+  -- Zeitpunkt, ab dem das Objekt im vollstaendigen Sweep fehlte. Nach Ablauf
+  -- der Karenz wird die Zeile hart geloescht. null = regulaer im Angebot.
+  disappeared_at timestamptz,
+  -- Letzte Detailerfassung. Steuert, wann die Detailseite neu geholt wird.
+  last_detail_at timestamptz,
   unique (source, external_id)
 );
 
@@ -39,6 +43,25 @@ create table listing_versions (
 
 create index listing_versions_listing_id_idx on listing_versions (listing_id, scanned_at desc);
 
+create index listings_disappeared_at_idx on listings (disappeared_at)
+  where disappeared_at is not null;
+
+-- Referenz fuer die Mengenplausibilitaet. Ohne Historie keine Loeschung.
+create table sweep_runs (
+  id uuid primary key default gen_random_uuid(),
+  source text not null,
+  started_at timestamptz not null default now(),
+  -- Was das Portal als Trefferzahl ausweist; null, wenn es keine nennt
+  -- (zvg-portal.de nennt keine).
+  gemeldete_treffer integer,
+  -- Was der Sweep tatsaechlich eingesammelt hat.
+  gesehene_objekte integer not null,
+  vollstaendig boolean not null,
+  geltungsbereich text[] not null default '{}'
+);
+
+create index sweep_runs_source_idx on sweep_runs (source, started_at desc);
+
 create table rent_estimates (
   zip_code text primary key,
   avg_rent_per_m2_cents integer not null,
@@ -54,6 +77,10 @@ create table notifications (
   detail jsonb
 );
 
+-- Postgres legt fuer Fremdschluessel keinen Index an; hoechsteGemeldeteKlasse
+-- fragt notifications einmal je Kandidat ab.
+create index notifications_listing_id_idx on notifications (listing_id);
+
 -- RLS auf allen Tabellen aktivieren, bewusst OHNE Policies: dieser Plan hat
 -- kein Dashboard/Anon-Zugriff, daher soll fuer anon/authenticated grundsaetzlich
 -- nichts sichtbar/schreibbar sein. Nur der service_role-Key (ausschliesslich
@@ -64,3 +91,4 @@ alter table listings enable row level security;
 alter table listing_versions enable row level security;
 alter table rent_estimates enable row level security;
 alter table notifications enable row level security;
+alter table sweep_runs enable row level security;

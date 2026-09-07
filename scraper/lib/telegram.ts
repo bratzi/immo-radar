@@ -1,3 +1,5 @@
+import type { Meldeklasse } from "./meldung.js";
+
 export interface TelegramConfig {
   botToken: string;
   chatId: string;
@@ -37,6 +39,17 @@ const MIET_QUELLE_LABELS: Record<string, string> = {
   angegeben: "angegeben",
   geschaetzt_regional: "geschätzt (Region)",
   geschaetzt_bundesweit: "geschätzt (Bundesschnitt)",
+};
+
+/** Ueberschrift und Zusatzhinweis je Meldeklasse. */
+const KLASSEN_KOPF: Record<Exclude<Meldeklasse, "keine">, { titel: string; hinweis: string | null }> = {
+  top_treffer: { titel: "🎯 <b>TOP-TREFFER</b>", hinweis: null },
+  pruefkandidat: {
+    titel: "🔍 <b>PRÜFKANDIDAT</b>",
+    hinweis:
+      "<i>Faktor und DSCR beruhen auf einer geschätzten Miete — vor einer " +
+      "Entscheidung selbst prüfen.</i>",
+  },
 };
 
 /** Telegram bricht bei rohen <, > oder & im HTML-Modus -- Fremdtext maskieren. */
@@ -157,20 +170,31 @@ function baueNachricht(bloecke: (string | null)[]): string {
   return bloecke.filter((b): b is string => b !== null && b.length > 0).join("\n\n");
 }
 
-export function formatTopTrefferMessage(listing: ListingSummary, k: KennzahlenSummary): string {
+export function formatTopTrefferMessage(
+  listing: ListingSummary,
+  k: KennzahlenSummary,
+  klasse: Exclude<Meldeklasse, "keine"> = "top_treffer"
+): string {
+  const kopf = KLASSEN_KOPF[klasse];
   return baueNachricht([
-    `🎯 <b>TOP-TREFFER</b>
+    `${kopf.titel}
 🏠 ${esc(listing.title)}
 📍 ${esc(`${listing.zipCode} ${listing.city}`)}`,
     formatKennzahlenBlock(listing, k, "Kaufpreis"),
+    kopf.hinweis,
     formatDataGapsLine(listing.dataGaps),
     formatLinkZeile(listing),
   ]);
 }
 
-export function formatZvgTopTrefferMessage(listing: ZvgListingSummary, k: KennzahlenSummary): string {
+export function formatZvgTopTrefferMessage(
+  listing: ZvgListingSummary,
+  k: KennzahlenSummary,
+  klasse: Exclude<Meldeklasse, "keine"> = "top_treffer"
+): string {
+  const kopf = KLASSEN_KOPF[klasse];
   return baueNachricht([
-    `🎯 <b>TOP-TREFFER · Zwangsversteigerung</b>
+    `${kopf.titel} · Zwangsversteigerung
 🏠 ${esc(listing.title)}`,
     formatKennzahlenBlock(listing, k, "Verkehrswert"),
     [
@@ -178,6 +202,7 @@ export function formatZvgTopTrefferMessage(listing: ZvgListingSummary, k: Kennza
       `⚖️ Amtsgericht ${esc(listing.court)}`,
       `📋 Az. ${esc(listing.caseNumber)}`,
     ].join("\n"),
+    kopf.hinweis,
     formatDataGapsLine(listing.dataGaps),
     formatNoticeBlock(listing.rawNoticeText),
     formatLinkZeile(listing),
@@ -196,6 +221,46 @@ export function formatPreisaenderungMessage(
     `<s>${formatEuro(altPreisCents)} €</s>  →  <b>${formatEuro(neuPreisCents)} €</b>`,
     formatDataGapsLine(listing.dataGaps),
     formatLinkZeile(listing),
+  ]);
+}
+
+/**
+ * Abgangsmeldung. Geht ausschliesslich an Objekte, die frueher als
+ * Top-Treffer oder Pruefkandidat gemeldet wurden -- bei mehreren hundert
+ * Objekten je Lauf waere alles andere Dauerfeuer.
+ */
+export function formatAbgangMessage(listing: ListingSummary): string {
+  return baueNachricht([
+    `❌ <b>NICHT MEHR VERFÜGBAR</b>
+🏠 ${esc(listing.title)}
+📍 ${esc(`${listing.zipCode} ${listing.city}`)}`,
+    `<i>Das Objekt ist aus dem Angebot verschwunden — vermutlich verkauft, ` +
+      `versteigert oder zurückgezogen. Es wird nach 2 Tagen aus dem Bestand ` +
+      `entfernt.</i>`,
+  ]);
+}
+
+/**
+ * Warnung, wenn eine Quelle durch das Plausibilitaetstor faellt. Haengt an
+ * keinem Objekt und wird deshalb NICHT in notifications protokolliert --
+ * dort ist listing_id `not null`. Ihr dauerhafter Niederschlag ist die
+ * sweep_runs-Zeile.
+ */
+export function formatSweepWarnungMessage(
+  source: string,
+  gesehene: number,
+  erwartet: number | null,
+  grund: string
+): string {
+  const mengenZeile =
+    erwartet === null
+      ? `Eingesammelt: <b>${gesehene}</b> Objekte.`
+      : `Eingesammelt: <b>${gesehene}</b> Objekte, erwartet wären ~<b>${erwartet}</b>.`;
+  return baueNachricht([
+    `⚠️ <b>SWEEP UNPLAUSIBEL · ${esc(source)}</b>`,
+    mengenZeile,
+    esc(grund),
+    `<i>Löschung ausgesetzt — der Bestand bleibt unangetastet.</i>`,
   ]);
 }
 

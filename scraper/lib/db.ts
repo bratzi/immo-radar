@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Kennzahlen } from "./metrics.js";
 import type { MietQuelle } from "./rentEstimate.js";
+import { hoechsteKlasse, type Meldeklasse } from "./meldung.js";
 
 export interface VersionFields {
   priceCents: number;
@@ -59,14 +60,57 @@ export interface UpsertResult extends VersionDiffResult {
   previousPriceCents: number | null;
 }
 
+/**
+ * Baut die Zeile fuer listing_versions. Ausgelagert, damit die Abbildung der
+ * optionalen Felder ohne Datenbank testbar ist.
+ */
+export function versionInsertZeile(
+  listingId: string,
+  data: ListingVersionData,
+  diff: VersionDiffResult
+): Record<string, unknown> {
+  return {
+    listing_id: listingId,
+    price_cents: data.priceCents,
+    rent_cold_monthly_cents: data.rentColdMonthlyCents,
+    rent_source: data.rentSource,
+    living_area_m2: data.livingAreaM2,
+    plot_area_m2: data.plotAreaM2,
+    units: data.units,
+    units_confident: data.unitsConfident,
+    year_built: data.yearBuilt,
+    zip_code: data.zipCode,
+    city: data.city,
+    bundesland: data.bundesland,
+    title: data.title,
+    changed: diff.changed,
+    price_dropped: diff.priceDropped,
+    metrics: data.kennzahlen,
+    auction_at: data.auctionAt ?? null,
+    court: data.court ?? null,
+    case_number: data.caseNumber ?? null,
+    raw_notice_text: data.rawNoticeText ?? null,
+    data_gaps: data.dataGaps ?? [],
+  };
+}
+
 export async function upsertListingAndVersion(
   supabase: SupabaseClient,
   data: ListingVersionData
 ): Promise<UpsertResult> {
+  const jetzt = new Date().toISOString();
   const { data: listing, error: listingError } = await supabase
     .from("listings")
     .upsert(
-      { source: data.source, external_id: data.externalId, url: data.url, last_seen: new Date().toISOString() },
+      {
+        source: data.source,
+        external_id: data.externalId,
+        url: data.url,
+        last_seen: jetzt,
+        // Das Objekt wurde gerade im Detail erfasst, ist also wieder da.
+        disappeared_at: null,
+        last_detail_at: jetzt,
+      },
       { onConflict: "source,external_id" }
     )
     .select()
@@ -100,29 +144,9 @@ export async function upsertListingAndVersion(
     },
   });
 
-  const { error: versionError } = await supabase.from("listing_versions").insert({
-    listing_id: listing.id,
-    price_cents: data.priceCents,
-    rent_cold_monthly_cents: data.rentColdMonthlyCents,
-    rent_source: data.rentSource,
-    living_area_m2: data.livingAreaM2,
-    plot_area_m2: data.plotAreaM2,
-    units: data.units,
-    units_confident: data.unitsConfident,
-    year_built: data.yearBuilt,
-    zip_code: data.zipCode,
-    city: data.city,
-    bundesland: data.bundesland,
-    title: data.title,
-    changed: diff.changed,
-    price_dropped: diff.priceDropped,
-    metrics: data.kennzahlen,
-    auction_at: data.auctionAt ?? null,
-    court: data.court ?? null,
-    case_number: data.caseNumber ?? null,
-    raw_notice_text: data.rawNoticeText ?? null,
-    data_gaps: data.dataGaps ?? [],
-  });
+  const { error: versionError } = await supabase
+    .from("listing_versions")
+    .insert(versionInsertZeile(listing.id, data, diff));
   if (versionError) throw versionError;
 
   return {
@@ -135,7 +159,7 @@ export async function upsertListingAndVersion(
 export async function logNotification(
   supabase: SupabaseClient,
   listingId: string,
-  kind: "top_treffer" | "preisaenderung",
+  kind: "top_treffer" | "pruefkandidat" | "preisaenderung" | "verschwunden",
   detail: Record<string, unknown>
 ): Promise<void> {
   const { error } = await supabase.from("notifications").insert({
@@ -144,4 +168,23 @@ export async function logNotification(
     detail,
   });
   if (error) throw error;
+}
+
+/**
+ * Hoechste Meldeklasse, die fuer dieses Listing je BESTAETIGT verschickt
+ * wurde. Grundlage der Entscheidung, ob eine erneute Nachricht faellig ist.
+ * Weil die Zeile erst nach erfolgreichem Versand entsteht, wirkt ein
+ * fehlgeschlagener Versand automatisch als "noch nie gemeldet" -- der
+ * naechste Lauf holt ihn nach.
+ */
+export async function hoechsteGemeldeteKlasse(
+  supabase: SupabaseClient,
+  listingId: string
+): Promise<Meldeklasse> {
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("kind")
+    .eq("listing_id", listingId);
+  if (error) throw error;
+  return hoechsteKlasse((data ?? []).map((zeile) => zeile.kind as string));
 }

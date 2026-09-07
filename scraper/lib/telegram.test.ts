@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen } from "./telegram.js";
+import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen, formatAbgangMessage, formatSweepWarnungMessage } from "./telegram.js";
 
 const listing = {
   title: "Mehrfamilienhaus zum Kauf",
@@ -237,5 +237,93 @@ describe("Nachrichten-Aufbereitung", () => {
   it("zeigt den Versteigerungsort weiterhin an", () => {
     const text = formatZvgTopTrefferMessage(zvg, kennzahlen);
     expect(text).toContain("Saal 325");
+  });
+});
+
+const abgangListing = {
+  title: "Mehrfamilienhaus zum Kauf",
+  url: "https://www.immowelt.de/expose/abc-123",
+  city: "Leipzig",
+  zipCode: "04109",
+  priceCents: 480_000_00,
+  units: 3,
+};
+
+describe("Meldeklasse in der Ueberschrift", () => {
+  it("beschriftet einen top_treffer als TOP-TREFFER", () => {
+    const text = formatTopTrefferMessage(
+      abgangListing,
+      { kaufpreisfaktor: 12.5, geschaetzterDscr: 1.45, mietQuelle: "angegeben" },
+      "top_treffer"
+    );
+    expect(text).toContain("TOP-TREFFER");
+    expect(text).not.toContain("PRÜFKANDIDAT");
+  });
+
+  it("beschriftet einen pruefkandidat als PRUEFKANDIDAT und nennt den Grund", () => {
+    const text = formatTopTrefferMessage(
+      abgangListing,
+      { kaufpreisfaktor: 12.5, geschaetzterDscr: 1.45, mietQuelle: "geschaetzt_regional" },
+      "pruefkandidat"
+    );
+    expect(text).toContain("PRÜFKANDIDAT");
+    expect(text).toContain("geschätzten Miete");
+  });
+
+  it("beschriftet auch die ZVG-Variante nach Klasse", () => {
+    const text = formatZvgTopTrefferMessage(
+      {
+        ...abgangListing,
+        url: "https://www.zvg-portal.de/index.php?button=showZvg&zvg_id=40908&land_abk=sn",
+        court: "Leipzig in Sachsen",
+        auctionAt: "2026-09-09T08:00:00.000Z",
+        caseNumber: "0467 K 0076/2022",
+      },
+      { kaufpreisfaktor: 8.5, geschaetzterDscr: 1.6, mietQuelle: "geschaetzt_bundesweit" },
+      "pruefkandidat"
+    );
+    expect(text).toContain("PRÜFKANDIDAT");
+    expect(text).toContain("Zwangsversteigerung");
+  });
+});
+
+describe("formatAbgangMessage", () => {
+  it("nennt Titel, Ort und den Grund des Abgangs", () => {
+    const text = formatAbgangMessage(abgangListing);
+    expect(text).toContain("NICHT MEHR VERFÜGBAR");
+    expect(text).toContain("Mehrfamilienhaus zum Kauf");
+    expect(text).toContain("04109 Leipzig");
+  });
+
+  it("maskiert HTML-Sonderzeichen im Titel", () => {
+    const text = formatAbgangMessage({ ...abgangListing, title: "Haus <Sonder> & Co" });
+    expect(text).toContain("&lt;Sonder&gt;");
+    expect(text).toContain("&amp;");
+  });
+});
+
+describe("formatSweepWarnungMessage", () => {
+  it("nennt Quelle, gesehene und erwartete Menge sowie den Grund", () => {
+    const text = formatSweepWarnungMessage(
+      "zvg-portal",
+      370,
+      500,
+      "Menge weicht um 26 % vom Median 500 der letzten Läufe ab."
+    );
+    expect(text).toContain("zvg-portal");
+    expect(text).toContain("370");
+    expect(text).toContain("500");
+    expect(text).toContain("Löschung ausgesetzt");
+  });
+
+  it("kommt ohne Erwartungswert aus, wenn noch keine Historie vorliegt", () => {
+    const text = formatSweepWarnungMessage(
+      "immowelt",
+      12,
+      null,
+      "Erst 1 von 3 nötigen Referenzläufen vorhanden."
+    );
+    expect(text).toContain("Referenzläufen");
+    expect(text).not.toContain("null");
   });
 });

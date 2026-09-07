@@ -142,3 +142,27 @@ describe("bewerteMietschaetzung", () => {
     expect(bewerteMietschaetzung("angegeben", 200)).toEqual([]);
   });
 });
+
+import { sollGesendetWerden } from "./pipeline.js";
+
+describe("sollGesendetWerden", () => {
+  it("sendet, wenn ein noch nie gemeldetes Objekt qualifiziert", () => {
+    expect(sollGesendetWerden("top_treffer", "keine")).toBe(true);
+  });
+
+  it("sendet beim Aufstieg von pruefkandidat auf top_treffer", () => {
+    expect(sollGesendetWerden("top_treffer", "pruefkandidat")).toBe(true);
+  });
+
+  it("sendet NICHT, wenn die Klasse gleich bleibt", () => {
+    expect(sollGesendetWerden("top_treffer", "top_treffer")).toBe(false);
+  });
+
+  it("sendet NICHT, wenn das Objekt gar nicht qualifiziert", () => {
+    expect(sollGesendetWerden("keine", "keine")).toBe(false);
+  });
+
+  it("sendet NICHT beim Abstieg -- eine Rueckstufung ist keine Nachricht wert", () => {
+    expect(sollGesendetWerden("pruefkandidat", "top_treffer")).toBe(false);
+  });
+});

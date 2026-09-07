@@ -87,16 +87,49 @@ interface SweepErgebnis {
 }
 ```
 
-### 2. Abdeckungsprotokoll: Löschen nur im gesehenen Geltungsbereich
+### 2. Abdeckungsprotokoll: alles oder nichts, je Quelle
 
 Gelöscht wird ausschließlich, was der Lauf wirklich hätte sehen müssen.
 
-- **ZVG** ist nach Bundesland partitioniert, und das Kürzel steckt bereits im
-  `externalId` (`sn-40908`). Bricht der Sweep für `sn` ab, bleiben alle
-  `sn-*`-Objekte unangetastet; die übrigen Länder werden normal abgeglichen.
-- **Immowelt** kennt keine Partitionierung: Entweder der Sweep war
-  vollständig — dann wird abgeglichen — oder er war es nicht, dann findet für
-  diese Quelle in diesem Lauf keine Abgangserkennung statt.
+**Für beide Quellen gilt alles oder nichts.** Stolpert auch nur ein
+Bundesland — Fehler, Seitendeckel, oder eine Region, die lautlos null Objekte
+liefert —, ist `vollstaendig` für die ganze Quelle `false` und es findet in
+diesem Lauf keine Abgangserkennung statt. Beim 3-Stunden-Takt ist das
+folgenlos, und der Fehlermodus bleibt sicher.
+
+- **Immowelt** kennt keine Partitionierung (UUID-`externalId` ohne
+  Bundesland) und liefert einen leeren `geltungsbereich`.
+- **ZVG** ist zwar nach Bundesland partitioniert (`sn-40908`) und füllt
+  `geltungsbereich` mit den sauber durchgelaufenen Ländern, setzt aber bei
+  jedem stolpernden Land ebenfalls `vollstaendig = false`.
+
+**Nachtrag 2026-09-07 (aktueller Stand): Immowelt meldet immer
+`vollstaendig = false`.** Ein Live-Lauf hat gezeigt, dass der Fenstermodus die
+DataDome-CAPTCHA nur bei mäßiger Anfragerate umgeht: Nach vielen Seitenabrufen
+kehrt sie zurück. Immowelt ist deshalb auf 5 s je Seitenabruf gedrosselt, und
+jeder Lauf grast nur so viele Bundesländer ab, wie in ein Wanduhr-Budget
+(`SWEEP_BUDGET_MS`, 12 min) passen — rotierend über die Stundenzahl seit Epoche;
+die Zahl schwankt mit den Ländern, die gerade an der Reihe sind. Ein solcher
+Teil-Sweep ist per Definition nie vollständig — `vollstaendig`
+ist für Immowelt fest `false`, ohne Ausnahme. Immowelt trägt weiter Kandidaten
+bei, **autorisiert aber keine Löschung**; volle Abdeckung sammelt sich über den
+Tag an. Einzige löschende Quelle ist damit das ZVG-Portal. Die Löschhoheit für
+Immowelt zurückzuholen setzt eine Fundort-Spalte pro Listing voraus — ein
+eigenes Arbeitspaket.
+
+**Warum keine regionsgenaue Verengung.** Eine frühere Fassung dieser Spec sah
+vor, bei ZVG nur die abgebrochenen Länder auszusparen und die übrigen normal
+abzugleichen. Das komponiert nicht mit der quellenweiten Median-Prüfung
+(Abschnitt „Mengenplausibilität"): Nimmt man ein Bundesland heraus, fällt die
+eingesammelte Gesamtmenge um dessen Anteil, und die Median-Prüfung schlägt
+ohnehin an und verbietet die Löschung. Die Verengung liefe damit nie —
+`ermittleAbgaenge` bricht bereits an `!vollstaendig` ab, bevor
+`geltungsbereich` überhaupt befragt wird. Alles oder nichts ist einfacher und
+sicherer.
+
+`geltungsbereich` wird trotzdem weiter befüllt und in `sweep_runs`
+protokolliert: als **Beleg**, welche Regionen sauber liefen — nützlich für die
+Fehlersuche —, nicht als Löschfilter.
 
 ### 3. Bestandsführung: markieren, Karenz, löschen
 
@@ -105,10 +138,10 @@ Gelöscht wird ausschließlich, was der Lauf wirklich hätte sehen müssen.
 
 | Ereignis | Wirkung |
 |---|---|
-| Objekt fehlt im vollständigen Sweep seines Geltungsbereichs | `disappeared_at = now()` (nur wenn noch nicht gesetzt) |
+| Objekt fehlt im vollständigen Sweep seiner Quelle | `disappeared_at = now()` (nur wenn noch nicht gesetzt) |
 | ZVG-Objekt, dessen `auction_at` in der Vergangenheit liegt | `disappeared_at = now()`, unabhängig davon ob noch gelistet |
 | Objekt taucht wieder auf | `disappeared_at = null` |
-| `disappeared_at` älter als 2 Tage | harte Löschung aus `listings`; `listing_versions` und `notifications` folgen per `on delete cascade` |
+| `disappeared_at` **und** `last_seen` älter als 2 Tage | harte Löschung aus `listings`; `listing_versions` und `notifications` folgen per `on delete cascade` |
 
 Während der Karenz bleibt das Objekt mit gesetztem `disappeared_at` sichtbar —
 das ist die „ausgegraut"-Markierung auf Datenebene. Sichtbar gemacht wird sie
@@ -150,6 +183,19 @@ Die Historienprüfung greift erst, wenn für die Quelle **mindestens drei**
 erfolgreiche Referenzläufe vorliegen. Bis dahin findet überhaupt keine
 Löschung statt. Der Umbau startet damit bewusst vorsichtig: Die ersten Läufe
 bauen nur Referenz auf.
+
+3. **Nullmengen gelten als „nicht beurteilbar", nicht als bestanden.** Ein
+   Lauf, der 0 Objekte eingesammelt hat, löscht nie — ein leergefegtes Portal
+   gibt es nicht, 0 ist immer ein Ausfall. Und ist der **Median der
+   Referenzläufe 0**, gibt es keinen Maßstab; auch dann wird nicht gelöscht.
+   Beide Fälle sind genau die *Symptome* des Ausfalls, gegen den geschützt
+   wird: Ein Soft-Block (DataDome) antwortet mit HTTP 200 und leerer Hülle,
+   `page.goto` wirft darauf nicht und der Listen-Parser liefert `[]`. Ohne
+   diese Regel wären drei aufeinanderfolgende Nullläufe genau das, was die
+   Löschung des gesamten Bestands *freigibt*.
+
+Leitregel über alle drei Prüfungen: **Wer nicht urteilen kann, löscht nicht.**
+Jede Wache fällt im Zweifel restriktiv aus, nie permissiv.
 
 **Hinzufügen ist von alldem nicht betroffen.** Neue Inserate werden immer
 aufgenommen. Gebremst wird ausschließlich das Löschen, weil nur dort ein
@@ -266,10 +312,11 @@ alter table sweep_runs enable row level security;
    (Median der letzten zehn Läufe, ±25 %, erst ab drei Referenzläufen).
    Fällt eine Quelle durch, entfallen für sie die Schritte 5–7 und es geht
    eine Warnmeldung nach Telegram.
-5. Abgleich: im Geltungsbereich fehlende Objekte bekommen `disappeared_at`;
+5. Abgleich: im vollständigen Sweep fehlende Objekte bekommen `disappeared_at`;
    zuvor gemeldete lösen die Abgangsmeldung aus
 6. ZVG-Objekte mit vergangenem `auction_at` bekommen `disappeared_at`
-7. Objekte mit `disappeared_at` älter als 2 Tage werden gelöscht
+7. Objekte, deren `disappeared_at` **und** `last_seen` älter als 2 Tage sind,
+   werden gelöscht
 
 Schritte 4–7 laufen am Ende, nachdem beide Quellen verarbeitet sind. Schritt 3
 ist davon unabhängig — neue Objekte werden immer aufgenommen.
@@ -279,9 +326,9 @@ ist davon unabhängig — neue Objekte werden immer aufgenommen.
 Die bestehende Isolation je Kandidat (`verarbeiteKandidatIsoliert` in
 `main.ts`) bleibt. Ergänzend gilt:
 
-- Scheitert ein Sweep teilweise, wird `vollstaendig`/`geltungsbereich`
-  entsprechend gesetzt — der Lauf bricht nicht ab, es wird nur weniger
-  gelöscht.
+- Scheitert ein Sweep teilweise, wird `vollstaendig` auf `false` gesetzt und
+  `geltungsbereich` auf die sauberen Regionen beschränkt — der Lauf bricht
+  nicht ab, es wird für diese Quelle nur nichts gelöscht.
 - Scheitert ein Sweep vollständig, findet für diese Quelle keine
   Abgangserkennung statt. Bereits gesetzte `disappeared_at`-Werte bleiben
   stehen, die Karenz läuft weiter.
@@ -319,10 +366,12 @@ deaktiviert.
 `/classified-search*`, `/liste/getlistitems` und `/classifiedList/`. Genau
 diese Pfade lädt Immowelt clientseitig nach, um Seite 2+ und Filter zu
 liefern; ein echter Browser ruft sie zwangsläufig auf. Die Vorgabe wird
-bewusst gestrichen, um für Immowelt überhaupt eine vollständige Menge zu
-bekommen — ohne die darf dort nichts gelöscht werden. Eingegangenes Risiko:
-Sperrung durch Immowelt. Gegenmaßnahme bleibt die bestehende Drosselung von
-1 s zwischen Anfragen.
+bewusst gestrichen, um für Immowelt überhaupt eine belastbare Menge zu
+bekommen. Eingegangenes Risiko: Sperrung durch Immowelt. Gegenmaßnahme ist die
+Drosselung zwischen Anfragen — für Immowelt inzwischen auf 5 s hochgesetzt und
+mit einem zeitbudgetierten Teil-Sweep je Lauf kombiniert, dessen Länderzahl mit
+der Rotation schwankt (siehe „Anfragelast").
+Immowelt löscht ohnehin nicht mehr; nur ZVG tut das.
 
 **Menge der Immowelt-Ergebnisse.** Eine vollständige Paginierung über *alle*
 bundesweiten Haus-Angebote wäre nicht vertretbar. Der Sweep muss daher in der
@@ -379,9 +428,16 @@ gesucht wird. Die Links dazu stehen auf der bundesweiten MFH-Seite selbst:
 
 Summe **35.398** gegen 35.415 bundesweit — die 16 Länder zerlegen den
 Gesamtbestand lückenlos. **Kein Land erreicht den Deckel**; der größte
-(Nordrhein-Westfalen) liegt bei 188 von 250 Seiten. Damit ist Immowelt
-vollständig erfassbar. Aufwand: ~885 Seitenabrufe, bei 1 s Drosselung rund
-15 Minuten.
+(Nordrhein-Westfalen) liegt bei 188 von 250 Seiten. Der Bestand ist damit über
+die Länder-Pfade grundsätzlich erreichbar. Aufwand: ~885 Seitenabrufe.
+
+**Nachtrag 2026-09-07 (aktueller Stand):** In einem Lauf ist das nicht
+erfassbar. Der Fenstermodus umgeht die DataDome-CAPTCHA nur bei mäßiger
+Anfragerate; bei 1 s Abstand kam sie mitten im Lauf zurück. Drosselung daher
+auf 5 s je Seitenabruf, und jeder Lauf grast nur so viele Länder ab, wie in ein
+Wanduhr-Budget (`SWEEP_BUDGET_MS`, 12 min) passen — rotierend über die
+Stundenzahl seit Epoche, mit der Rotation schwankender Länderzahl. Grob ~140
+Seiten je Lauf; volle Abdeckung sammelt sich über den Tag an (~6 Läufe).
 
 Die Geo-Ids im Pfad (`.../nordrhein-westfalen/ad04de5`) sind zwingend —
 geratene Pfade ohne sie liefern HTTP 410. Sie werden fest hinterlegt. Ändert
@@ -390,18 +446,28 @@ gewarnt und **nicht** gelöscht. Ein sicherer Fehlermodus.
 
 **Geltungsbereich bei Immowelt:** Anders als bei ZVG steckt das Bundesland
 nicht in der `externalId` (Immowelt vergibt UUIDs). Eine partitionsgenaue
-Zuordnung wäre also nur über eine zusätzliche Spalte zu haben. Stattdessen
-gilt für Immowelt **alles oder nichts**: Scheitert auch nur ein Bundesland,
-ist `vollstaendig` für die ganze Quelle `false` und es wird in diesem Lauf
-nicht gelöscht. Beim 3-Stunden-Takt ist das folgenlos, und der Fehlermodus
-bleibt sicher.
+Zuordnung wäre also nur über eine zusätzliche Spalte zu haben. Da jeder Lauf
+ohnehin nur einen rotierenden Ausschnitt der Länder abgrast (siehe Nachtrag
+oben), meldet Immowelt **immer `vollstaendig = false`** — ein Teil-Sweep kann
+per Definition nicht vollständig sein. Immowelt trägt weiter Kandidaten bei,
+autorisiert aber keine Löschung; einzige löschende Quelle ist das ZVG-Portal.
+Die Löschhoheit zurückzuholen setzt die genannte Fundort-Spalte voraus und ist
+ein eigenes Arbeitspaket.
 
-**Anfragelast.** ~885 Abrufe je Lauf, alle drei Stunden, sind rund 7.000
-Anfragen täglich an Immowelt — deutlich mehr als bisher und damit ein
-realeres Sperr-Risiko. Die 1-s-Drosselung bleibt. Sollte Immowelt sperren,
-äußert sich das als eingebrochene Menge, also als Warnung ohne Löschung; die
-naheliegende Gegenmaßnahme wäre dann, den Immowelt-Sweep nur noch einmal
-täglich statt in jedem Lauf zu fahren.
+**Fenstermodus zwingend:** Immowelt sitzt hinter DataDome. Headless-Chromium
+wird ab Seite 2 der Ergebnisliste und auf jeder Detailseite mit HTTP 403 und
+CAPTCHA abgewiesen; im Fenstermodus (`headless: false`) liefert dieselbe URL
+HTTP 200 mit vollständigem Datenmodell. Der CI-Runner hat kein Display und
+startet den Lauf deshalb unter `xvfb-run`.
+
+**Anfragelast (aktueller Stand).** Der ursprüngliche Plan — voller Bundes-Sweep
+je Lauf bei 1 s Drosselung — hat die DataDome-CAPTCHA mitten im Live-Lauf
+zurückgeholt. Umgesetzt ist stattdessen: 5 s je Seitenabruf und pro Lauf nur so
+viele Bundesländer, wie in ein Wanduhr-Budget (`SWEEP_BUDGET_MS`, 12 min)
+passen, rotierend — die Länderzahl schwankt mit der Rotation, und der volle
+Kreis verteilt sich über den Tag. Das hält die Rate niedrig genug, um unauffällig zu bleiben. Preis
+dafür ist, dass Immowelt nie einen vollständigen Sweep meldet und damit keine
+Löschung mehr autorisiert.
 
 **Erster Lauf nach dem Umbau feuert nach.** Weil der Meldezustand künftig aus
 `notifications` kommt und dort für qualifizierte Objekte nichts steht, gelten
