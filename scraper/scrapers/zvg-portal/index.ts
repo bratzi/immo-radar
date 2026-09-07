@@ -2,6 +2,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { parseZvgResultsPage, type ZvgListSummary } from "./list.js";
 import { parseZvgDetailPage, type ZvgDetailData } from "./detail.js";
 import type { SweepErgebnis } from "../../lib/bestand.js";
+import { bestaetigeConsentBanner } from "../consent.js";
 
 const SEARCH_URL = "https://www.zvg-portal.de/index.php?button=Termine%20suchen";
 const MEHRFAMILIENHAUS_OBJ_TYP = "4";
@@ -75,10 +76,20 @@ export async function sweepZvgPortal(): Promise<{
 
   try {
     const page = await browser.newPage();
+    // Einmal pro Browser-Context, nach der ersten Navigation: ein etwaiges
+    // Consent-Overlay wegklicken. Das ZVG-Portal hat vermutlich keins -- dann
+    // kehrt der Helfer nach einer begrenzten Wartezeit still zurueck. Der
+    // Aufruf kostet diese eine Wartezeit und schuetzt, falls das Portal spaeter
+    // eins nachruestet (siehe scrapers/consent.ts).
+    let consentErledigt = false;
     for (const landAbk of BUNDESLAND_CODES) {
       await sleep(ZVG_VERZOEGERUNG_MS);
       try {
         await sucheFuerBundesland(page, landAbk);
+        if (!consentErledigt) {
+          await bestaetigeConsentBanner(page);
+          consentErledigt = true;
+        }
         const { treffer, abgeschnitten } = await alleSeitenErfassen(page);
         for (const t of treffer) zusammenfassungen.set(t.externalId, t);
         if (abgeschnitten) {
@@ -167,6 +178,9 @@ export async function erfasseZvgDetails(
   try {
     const page = await browser.newPage();
     await page.goto(SEARCH_URL, { waitUntil: "domcontentloaded" });
+    // Einmal pro Browser-Context nach der ersten Navigation (siehe
+    // scrapers/consent.ts). Kehrt still zurueck, falls kein Overlay da ist.
+    await bestaetigeConsentBanner(page);
     const referer = page.url();
 
     for (const externalId of externalIds) {

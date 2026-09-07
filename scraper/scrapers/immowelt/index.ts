@@ -6,6 +6,7 @@ import {
 } from "./list.js";
 import { parseImmoweltDetailPage, type ImmoweltDetailData } from "./detail.js";
 import { rotiereAuswahl, type SweepErgebnis } from "../../lib/bestand.js";
+import { bestaetigeConsentBanner } from "../consent.js";
 
 const BASIS = "https://www.immowelt.de/suche/kaufen/haus/mehrfamilienhaus/guenstig/";
 /**
@@ -125,9 +126,15 @@ export function istRegionVollstaendig(gesammelt: number, gemeldet: number | null
 async function regionErfassen(
   page: Page,
   region: { code: string; pfad: string },
-  ziel: Map<string, ImmoweltListSummary>
+  ziel: Map<string, ImmoweltListSummary>,
+  consentBereitsBestaetigt: boolean
 ): Promise<{ gemeldet: number | null; abgeschnitten: boolean; gesammelt: number }> {
   await page.goto(`${BASIS}${region.pfad}`, { waitUntil: "domcontentloaded" });
+  // Einmal pro Browser-Context, direkt nach der ersten Navigation: das
+  // Usercentrics-Overlay wegklicken. Ohne das laeuft jeder "naechste
+  // Seite"-Klick unten in einen 30-s-Timeout und der Sweep sammelt still nur
+  // Seite 1 pro Region ein (siehe scrapers/consent.ts).
+  if (!consentBereitsBestaetigt) await bestaetigeConsentBanner(page);
   const gemeldet = trefferzahlAusTitel(await page.title());
 
   // Nur die IDs DIESER Region -- `ziel` wird ueber alle Laender geteilt und
@@ -207,6 +214,9 @@ export async function sweepImmowelt(): Promise<{
 
   try {
     const page = await browser.newPage();
+    // Consent-Zustand lebt im Browser-Context: einmal weggeklickt, bleibt er
+    // weg. Wird nach der ersten erfolgreichen `regionErfassen` gesetzt.
+    let consentErledigt = false;
     for (const region of regionen) {
       // Budget-Wache VOR dem Start einer Region. Eine einmal begonnene Region
       // wird in `regionErfassen` immer zu Ende geblaettert -- ein halb
@@ -219,8 +229,10 @@ export async function sweepImmowelt(): Promise<{
         const { gemeldet, abgeschnitten, gesammelt } = await regionErfassen(
           page,
           region,
-          zusammenfassungen
+          zusammenfassungen,
+          consentErledigt
         );
+        consentErledigt = true;
         if (abgeschnitten) {
           console.warn(`Immowelt-Sweep ${region.code}: Seitendeckel erreicht, Menge abgeschnitten.`);
         }
@@ -296,12 +308,18 @@ export async function erfasseImmoweltDetails(
   const ergebnisse: ImmoweltDetailData[] = [];
   try {
     const page: Page = await browser.newPage();
+    // Einmal pro Browser-Context weggeklickt, nach der ersten Navigation.
+    let consentErledigt = false;
     for (const externalId of externalIds) {
       const zusammenfassung = zusammenfassungen.get(externalId);
       if (zusammenfassung === undefined) continue;
       await sleep(IMMOWELT_VERZOEGERUNG_MS);
       try {
         await page.goto(zusammenfassung.url, { waitUntil: "domcontentloaded" });
+        if (!consentErledigt) {
+          await bestaetigeConsentBanner(page);
+          consentErledigt = true;
+        }
         ergebnisse.push(
           parseImmoweltDetailPage(await page.content(), {
             externalId: zusammenfassung.externalId,
