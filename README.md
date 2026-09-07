@@ -44,6 +44,16 @@ npx playwright install chromium
 npm run scrape
 ```
 
+Der Scraper startet Chromium bewusst im Fenstermodus (`headless: false`, siehe
+[Immowelt: alles oder nichts](#immowelt-alles-oder-nichts)) und braucht daher
+ein Display. Auf einem headless Linux-Rechner — und in CI — muss der Lauf
+deshalb unter `xvfb-run` erfolgen:
+
+```bash
+sudo apt-get install -y xvfb
+xvfb-run --auto-servernum npm run scrape
+```
+
 Benötigte Umgebungsvariablen (lokal in `scraper/.env`, in CI als Repo-Secrets):
 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
 
@@ -67,24 +77,46 @@ Tests: `cd scraper && npm test`
 Ein Lauf darf nur dann auf Abwesenheit hin löschen, wenn er das ganze Angebot
 gesehen hat. Drei Sicherungen:
 
-- **Abdeckungsprotokoll:** Bricht der Sweep für ein Bundesland ab, bleiben
-  dessen Objekte unangetastet.
+- **Abdeckungsprotokoll:** Stolpert der Sweep für auch nur ein Bundesland,
+  löscht die ganze Quelle in diesem Lauf nicht (alles oder nichts, beide
+  Quellen). Als „gestolpert" zählt auch ein Bundesland, das lautlos null
+  Objekte liefert — technisch nicht von einem stillen Ausfall zu unterscheiden.
 - **Selbstkonsistenz:** Weist das Portal eine Trefferzahl aus, muss sie zur
   eingesammelten Menge passen. (ZVG nennt keine — dort entfällt die Prüfung.)
 - **Historienvergleich:** Die Menge muss innerhalb von 25 % des Medians der
   letzten zehn **erfolgreichen** Läufe liegen, und es müssen mindestens drei Referenzläufe
   vorliegen. Sonst: keine Löschung, stattdessen eine Warnung per Telegram.
+- **Nullmengen sind nie ein Freibrief:** Ein Lauf mit 0 eingesammelten
+  Objekten und ein Median von 0 gelten ausdrücklich als „nicht beurteilbar",
+  nicht als bestandene Prüfung. Genau diese Werte sind das *Symptom* eines
+  Ausfalls (ein Soft-Block antwortet mit HTTP 200 und leerer Hülle).
+- **Zweite Bedingung vor der harten Löschung:** Gelöscht wird nur, wenn neben
+  `disappeared_at` auch `last_seen` älter als die Karenz ist. Was dieser Lauf
+  gesehen hat, kann damit nicht gelöscht werden.
 
+Leitregel: **Wer nicht urteilen kann, löscht nicht.**
 Hinzugefügt wird dagegen immer — gebremst wird nur das Löschen.
 
-### Immowelt-Sonderfall: unvollständige Erfassung
+### Immowelt: alles oder nichts
 
-Immowelt nutzt Server-seitiges Rendering für die Ergebnislisten. Beim Klick auf
-„nächste Seite" wird diese Seite verlassen und eine leere SPA-Hülle geladen —
-Pagination funktioniert derzeit nicht. Dadurch werden pro Bundesland nur die
-ersten ~40 Objekte der Ergebnisliste erfasst, statt mehrerer hundert. Die
-Selbstkonsistenz-Prüfung erkennt diese Untererfassung und setzt `vollstaendig=false`.
-Immowelt trägt daher zu Neufunden bei, autorisiert aber keine Löschung.
+Immowelt wird pro Bundesland über alle Ergebnisseiten hinweg vollständig
+erfasst (~885 Seitenabrufe je Lauf) und **nimmt an der Löschung teil**.
+
+Voraussetzung dafür ist der Fenstermodus: Immowelt sitzt hinter DataDome, und
+Headless-Chromium wird ab Seite 2 der Ergebnisliste mit HTTP 403 abgewiesen.
+Der Scraper startet Chromium deshalb bewusst mit `headless: false` — kein
+Spoofing, kein Stealth-Plugin, siehe die Begründung in
+`scraper/scrapers/immowelt/index.ts`. **Nicht auf headless „optimieren".**
+
+Die `externalId` ist bei Immowelt eine UUID ohne Bundesland, eine
+partitionsgenaue Löschung wäre daraus nicht ableitbar. Für diese Quelle gilt
+deshalb **alles oder nichts**: Stolpert auch nur eines der 16 Bundesländer —
+Fehler, Seitendeckel, oder eine Region, die weder Trefferzahl noch eine
+einzige Karte liefert (Signatur eines Soft-Blocks) — ist `vollstaendig=false`
+und Immowelt löscht in diesem Lauf gar nichts. Beim 3-Stunden-Takt ist das
+folgenlos. Für das ZVG-Portal gilt dasselbe Prinzip; `geltungsbereich` wird
+dort weiter protokolliert, aber als Beleg über saubere Regionen, nicht als
+Löschfilter.
 
 ## Meldeklassen
 

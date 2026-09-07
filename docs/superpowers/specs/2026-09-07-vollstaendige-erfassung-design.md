@@ -87,16 +87,35 @@ interface SweepErgebnis {
 }
 ```
 
-### 2. Abdeckungsprotokoll: Löschen nur im gesehenen Geltungsbereich
+### 2. Abdeckungsprotokoll: alles oder nichts, je Quelle
 
 Gelöscht wird ausschließlich, was der Lauf wirklich hätte sehen müssen.
 
-- **ZVG** ist nach Bundesland partitioniert, und das Kürzel steckt bereits im
-  `externalId` (`sn-40908`). Bricht der Sweep für `sn` ab, bleiben alle
-  `sn-*`-Objekte unangetastet; die übrigen Länder werden normal abgeglichen.
-- **Immowelt** kennt keine Partitionierung: Entweder der Sweep war
-  vollständig — dann wird abgeglichen — oder er war es nicht, dann findet für
-  diese Quelle in diesem Lauf keine Abgangserkennung statt.
+**Für beide Quellen gilt alles oder nichts.** Stolpert auch nur ein
+Bundesland — Fehler, Seitendeckel, oder eine Region, die lautlos null Objekte
+liefert —, ist `vollstaendig` für die ganze Quelle `false` und es findet in
+diesem Lauf keine Abgangserkennung statt. Beim 3-Stunden-Takt ist das
+folgenlos, und der Fehlermodus bleibt sicher.
+
+- **Immowelt** kennt keine Partitionierung (UUID-`externalId` ohne
+  Bundesland) und liefert einen leeren `geltungsbereich`.
+- **ZVG** ist zwar nach Bundesland partitioniert (`sn-40908`) und füllt
+  `geltungsbereich` mit den sauber durchgelaufenen Ländern, setzt aber bei
+  jedem stolpernden Land ebenfalls `vollstaendig = false`.
+
+**Warum keine regionsgenaue Verengung.** Eine frühere Fassung dieser Spec sah
+vor, bei ZVG nur die abgebrochenen Länder auszusparen und die übrigen normal
+abzugleichen. Das komponiert nicht mit der quellenweiten Median-Prüfung
+(Abschnitt „Mengenplausibilität"): Nimmt man ein Bundesland heraus, fällt die
+eingesammelte Gesamtmenge um dessen Anteil, und die Median-Prüfung schlägt
+ohnehin an und verbietet die Löschung. Die Verengung liefe damit nie —
+`ermittleAbgaenge` bricht bereits an `!vollstaendig` ab, bevor
+`geltungsbereich` überhaupt befragt wird. Alles oder nichts ist einfacher und
+sicherer.
+
+`geltungsbereich` wird trotzdem weiter befüllt und in `sweep_runs`
+protokolliert: als **Beleg**, welche Regionen sauber liefen — nützlich für die
+Fehlersuche —, nicht als Löschfilter.
 
 ### 3. Bestandsführung: markieren, Karenz, löschen
 
@@ -105,10 +124,10 @@ Gelöscht wird ausschließlich, was der Lauf wirklich hätte sehen müssen.
 
 | Ereignis | Wirkung |
 |---|---|
-| Objekt fehlt im vollständigen Sweep seines Geltungsbereichs | `disappeared_at = now()` (nur wenn noch nicht gesetzt) |
+| Objekt fehlt im vollständigen Sweep seiner Quelle | `disappeared_at = now()` (nur wenn noch nicht gesetzt) |
 | ZVG-Objekt, dessen `auction_at` in der Vergangenheit liegt | `disappeared_at = now()`, unabhängig davon ob noch gelistet |
 | Objekt taucht wieder auf | `disappeared_at = null` |
-| `disappeared_at` älter als 2 Tage | harte Löschung aus `listings`; `listing_versions` und `notifications` folgen per `on delete cascade` |
+| `disappeared_at` **und** `last_seen` älter als 2 Tage | harte Löschung aus `listings`; `listing_versions` und `notifications` folgen per `on delete cascade` |
 
 Während der Karenz bleibt das Objekt mit gesetztem `disappeared_at` sichtbar —
 das ist die „ausgegraut"-Markierung auf Datenebene. Sichtbar gemacht wird sie
@@ -150,6 +169,19 @@ Die Historienprüfung greift erst, wenn für die Quelle **mindestens drei**
 erfolgreiche Referenzläufe vorliegen. Bis dahin findet überhaupt keine
 Löschung statt. Der Umbau startet damit bewusst vorsichtig: Die ersten Läufe
 bauen nur Referenz auf.
+
+3. **Nullmengen gelten als „nicht beurteilbar", nicht als bestanden.** Ein
+   Lauf, der 0 Objekte eingesammelt hat, löscht nie — ein leergefegtes Portal
+   gibt es nicht, 0 ist immer ein Ausfall. Und ist der **Median der
+   Referenzläufe 0**, gibt es keinen Maßstab; auch dann wird nicht gelöscht.
+   Beide Fälle sind genau die *Symptome* des Ausfalls, gegen den geschützt
+   wird: Ein Soft-Block (DataDome) antwortet mit HTTP 200 und leerer Hülle,
+   `page.goto` wirft darauf nicht und der Listen-Parser liefert `[]`. Ohne
+   diese Regel wären drei aufeinanderfolgende Nullläufe genau das, was die
+   Löschung des gesamten Bestands *freigibt*.
+
+Leitregel über alle drei Prüfungen: **Wer nicht urteilen kann, löscht nicht.**
+Jede Wache fällt im Zweifel restriktiv aus, nie permissiv.
 
 **Hinzufügen ist von alldem nicht betroffen.** Neue Inserate werden immer
 aufgenommen. Gebremst wird ausschließlich das Löschen, weil nur dort ein
@@ -266,10 +298,11 @@ alter table sweep_runs enable row level security;
    (Median der letzten zehn Läufe, ±25 %, erst ab drei Referenzläufen).
    Fällt eine Quelle durch, entfallen für sie die Schritte 5–7 und es geht
    eine Warnmeldung nach Telegram.
-5. Abgleich: im Geltungsbereich fehlende Objekte bekommen `disappeared_at`;
+5. Abgleich: im vollständigen Sweep fehlende Objekte bekommen `disappeared_at`;
    zuvor gemeldete lösen die Abgangsmeldung aus
 6. ZVG-Objekte mit vergangenem `auction_at` bekommen `disappeared_at`
-7. Objekte mit `disappeared_at` älter als 2 Tage werden gelöscht
+7. Objekte, deren `disappeared_at` **und** `last_seen` älter als 2 Tage sind,
+   werden gelöscht
 
 Schritte 4–7 laufen am Ende, nachdem beide Quellen verarbeitet sind. Schritt 3
 ist davon unabhängig — neue Objekte werden immer aufgenommen.
@@ -279,9 +312,9 @@ ist davon unabhängig — neue Objekte werden immer aufgenommen.
 Die bestehende Isolation je Kandidat (`verarbeiteKandidatIsoliert` in
 `main.ts`) bleibt. Ergänzend gilt:
 
-- Scheitert ein Sweep teilweise, wird `vollstaendig`/`geltungsbereich`
-  entsprechend gesetzt — der Lauf bricht nicht ab, es wird nur weniger
-  gelöscht.
+- Scheitert ein Sweep teilweise, wird `vollstaendig` auf `false` gesetzt und
+  `geltungsbereich` auf die sauberen Regionen beschränkt — der Lauf bricht
+  nicht ab, es wird für diese Quelle nur nichts gelöscht.
 - Scheitert ein Sweep vollständig, findet für diese Quelle keine
   Abgangserkennung statt. Bereits gesetzte `disappeared_at`-Werte bleiben
   stehen, die Karenz läuft weiter.
@@ -394,7 +427,13 @@ Zuordnung wäre also nur über eine zusätzliche Spalte zu haben. Stattdessen
 gilt für Immowelt **alles oder nichts**: Scheitert auch nur ein Bundesland,
 ist `vollstaendig` für die ganze Quelle `false` und es wird in diesem Lauf
 nicht gelöscht. Beim 3-Stunden-Takt ist das folgenlos, und der Fehlermodus
-bleibt sicher.
+bleibt sicher. (Für ZVG gilt dasselbe — siehe Abschnitt 2.)
+
+**Fenstermodus zwingend:** Immowelt sitzt hinter DataDome. Headless-Chromium
+wird ab Seite 2 der Ergebnisliste und auf jeder Detailseite mit HTTP 403 und
+CAPTCHA abgewiesen; im Fenstermodus (`headless: false`) liefert dieselbe URL
+HTTP 200 mit vollständigem Datenmodell. Der CI-Runner hat kein Display und
+startet den Lauf deshalb unter `xvfb-run`.
 
 **Anfragelast.** ~885 Abrufe je Lauf, alle drei Stunden, sind rund 7.000
 Anfragen täglich an Immowelt — deutlich mehr als bisher und damit ein

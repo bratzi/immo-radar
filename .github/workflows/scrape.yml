@@ -13,10 +13,21 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # 16 Bundeslaender x bis zu 30 Ergebnisseiten x Detailabrufe, jeweils mit
-    # 1 s Drosselung -- 15 min reichten dafuer nicht. Der Scraper selbst bricht
-    # nach MAX_LAUFZEIT_MS (35 min) geordnet ab, dieses Limit ist der Notnagel.
-    timeout-minutes: 40
+    # Was einen Lauf begrenzt:
+    #  * Die beiden SWEEPS sind unbegrenzt -- sie MUESSEN vollstaendig sein,
+    #    sonst faellt die Abgangserkennung ohnehin aus. Immowelt: rund 885
+    #    Ergebnisseiten ueber 16 Bundeslaender, ZVG: rund 60. Bei 1 s
+    #    Drosselung je Seite sind das ~15 min + ~1 min, plus Ladezeiten.
+    #  * Die DETAILERFASSUNG ist je Quelle auf DETAIL_BUDGET_MS (12 min,
+    #    scraper/main.ts) gedeckelt; der Rueckstand wandert in spaetere Laeufe.
+    #    Also hoechstens 2 x 12 min = 24 min.
+    # Summe: ~16 min Sweeps + 24 min Details + Abgleich/Meldungen. Ein
+    # in-process Wanduhr-Limit gibt es nicht mehr (MAX_LAUFZEIT_MS ist mit dem
+    # Umbau entfallen). Dieses Limit ist daher der einzige Notnagel -- und es
+    # muss reichlich Luft lassen, denn es beendet den Job per SIGKILL: ein zu
+    # knappes Limit wuerde den Abgleich am Laufende (Markieren, Karenz,
+    # Loeschen) nie zur Ausfuehrung kommen lassen.
+    timeout-minutes: 90
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
