@@ -2,23 +2,68 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { istKarenzAbgelaufen, type BekanntesListing, type SweepErgebnis } from "./bestand.js";
 import { HISTORIE_LAENGE } from "./plausibilitaet.js";
 
-/** Supabase deckelt Ergebnismengen; explizit hochsetzen statt still zu kuerzen. */
-const MAX_ZEILEN = 10_000;
+/**
+ * Supabase schneidet Ergebnisse stillschweigend ab, also unsichtbare Reihen
+ * wuerden jeden Lauf neu abgerufen. Blattert stattdessen durch, bis eine
+ * Seite kuerzer als die Seitengroesse ist. Absolute Decke 200_000 Reihen --
+ * bei Ueberschuss wird deutlich geworfen, nie nur ein Teilergebnis zurueck.
+ */
+async function ladeSeitenweise<T>(
+  fetchSeite: (von: number, bis: number) => Promise<{ data: T[] | null; error: any }>,
+  tableName: string
+): Promise<T[]> {
+  const alle: T[] = [];
+  const seitenGroesse = 1000;
+  const absoluteDecke = 200_000;
+  let seiteIndex = 0;
+
+  while (true) {
+    const von = seiteIndex * seitenGroesse;
+    const bis = von + seitenGroesse - 1;
+
+    if (von >= absoluteDecke) {
+      throw new Error(
+        `Tabelle '${tableName}' uebersteigt Decke von ${absoluteDecke} Reihen`
+      );
+    }
+
+    const { data, error } = await fetchSeite(von, bis);
+    if (error) throw error;
+
+    const seite = data ?? [];
+    alle.push(...seite);
+
+    if (seite.length < seitenGroesse) {
+      break;
+    }
+
+    seiteIndex++;
+  }
+
+  return alle;
+}
 
 export async function ladeBekannteListings(
   supabase: SupabaseClient,
   source: string
 ): Promise<BekanntesListing[]> {
-  const { data, error } = await supabase
-    .from("listings")
-    .select("id, external_id, disappeared_at")
-    .eq("source", source)
-    .limit(MAX_ZEILEN);
-  if (error) throw error;
-  return (data ?? []).map((zeile) => ({
-    id: zeile.id as string,
-    externalId: zeile.external_id as string,
-    disappearedAt: (zeile.disappeared_at as string | null) ?? null,
+  const zeilen = await ladeSeitenweise<{
+    id: string;
+    external_id: string;
+    disappeared_at: string | null;
+  }>(
+    async (von, bis) =>
+      supabase
+        .from("listings")
+        .select("id, external_id, disappeared_at")
+        .eq("source", source)
+        .range(von, bis),
+    "listings"
+  );
+  return zeilen.map((zeile) => ({
+    id: zeile.id,
+    externalId: zeile.external_id,
+    disappearedAt: zeile.disappeared_at,
   }));
 }
 
@@ -33,14 +78,17 @@ export async function ladeVeralteteExternalIds(
   source: string,
   grenze: Date
 ): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("listings")
-    .select("external_id")
-    .eq("source", source)
-    .or(`last_detail_at.is.null,last_detail_at.lt.${grenze.toISOString()}`)
-    .limit(MAX_ZEILEN);
-  if (error) throw error;
-  return (data ?? []).map((zeile) => zeile.external_id as string);
+  const zeilen = await ladeSeitenweise<{ external_id: string }>(
+    async (von, bis) =>
+      supabase
+        .from("listings")
+        .select("external_id")
+        .eq("source", source)
+        .or(`last_detail_at.is.null,last_detail_at.lt.${grenze.toISOString()}`)
+        .range(von, bis),
+    "listings"
+  );
+  return zeilen.map((zeile) => zeile.external_id);
 }
 
 export async function markiereVerschwunden(
@@ -90,16 +138,19 @@ export async function loescheAbgelaufene(
   supabase: SupabaseClient,
   jetzt: Date
 ): Promise<number> {
-  const { data, error } = await supabase
-    .from("listings")
-    .select("id, disappeared_at")
-    .not("disappeared_at", "is", null)
-    .limit(MAX_ZEILEN);
-  if (error) throw error;
+  const zeilen = await ladeSeitenweise<{ id: string; disappeared_at: string }>(
+    async (von, bis) =>
+      supabase
+        .from("listings")
+        .select("id, disappeared_at")
+        .not("disappeared_at", "is", null)
+        .range(von, bis),
+    "listings"
+  );
 
-  const faellig = (data ?? [])
-    .filter((zeile) => istKarenzAbgelaufen(zeile.disappeared_at as string, jetzt))
-    .map((zeile) => zeile.id as string);
+  const faellig = zeilen
+    .filter((zeile) => istKarenzAbgelaufen(zeile.disappeared_at, jetzt))
+    .map((zeile) => zeile.id);
   if (faellig.length === 0) return 0;
 
   const { error: loeschFehler } = await supabase.from("listings").delete().in("id", faellig);
