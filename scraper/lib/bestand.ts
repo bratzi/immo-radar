@@ -100,3 +100,23 @@ export function waehleDetailKandidaten(
 ): string[] {
   return gesehene.filter((id) => !bekannte.has(id) || veraltete.has(id));
 }
+
+/**
+ * Schneidet aus `kandidaten` ein Fenster von hoechstens `budget` Eintraegen
+ * heraus, dessen Startpunkt mit `versatz` wandert. Passt die ganze Liste ins
+ * Budget, kommt sie unveraendert zurueck.
+ *
+ * Warum der wandernde Start: ohne ihn griffe jeder Lauf immer denselben
+ * Listenkopf und liesse das Ende auf ewig unbearbeitet. `versatz` wird aus der
+ * Uhr abgeleitet (Stunden seit Epoche) -- kein persistenter Zustand, keine
+ * neue Abhaengigkeit, gleiche Mechanik wie frueher die Bundesland-Rotation.
+ */
+export function rotiereAuswahl(kandidaten: string[], budget: number, versatz: number): string[] {
+  if (kandidaten.length <= budget) return kandidaten;
+  const start = ((versatz % kandidaten.length) + kandidaten.length) % kandidaten.length;
+  const fenster: string[] = [];
+  for (let i = 0; i < budget; i += 1) {
+    fenster.push(kandidaten[(start + i) % kandidaten.length]);
+  }
+  return fenster;
+}

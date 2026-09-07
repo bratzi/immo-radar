@@ -5,6 +5,7 @@ import {
   ermittleAbgaenge,
   ermittleRueckkehrer,
   waehleDetailKandidaten,
+  rotiereAuswahl,
   type SweepErgebnis,
 } from "./lib/bestand.js";
 import { pruefeMengenplausibilitaet } from "./lib/plausibilitaet.js";
@@ -29,7 +30,53 @@ import { sb } from "./lib/supabase.js";
 
 /** Detailseiten aelter als das werden neu geholt. */
 const DETAIL_MAX_ALTER_TAGE = 7;
+
+/**
+ * Wanduhr-Budget der Detailerfassung -- pro Quelle, nicht global.
+ *
+ * Seit die Immowelt-Blaetterung funktioniert, erreicht der Sweep ~35.000
+ * Objekte statt ~640. Jede Detailseite kostet mindestens VERZOEGERUNG_MS
+ * (1000 ms Drossel), ~35.000 * 1 s waeren also rund 10 Stunden. Der
+ * GitHub-Actions-Workflow erlaubt 40 Minuten. Darum bekommt jede Quelle pro
+ * Lauf nur eine begrenzte Scheibe von DETAIL_BUDGET_MS / 1000 Kandidaten; der
+ * Rueckstand wird ueber aufeinanderfolgende Laeufe abgetragen.
+ *
+ * Das schwaecht die Loeschung NICHT. Vollstaendig sein muss der SWEEP, nicht
+ * die Detailerfassung -- und der Sweep bleibt vollstaendig. Ein im Sweep
+ * gesehenes, aber noch nicht detailliert erfasstes Objekt steht schlicht noch
+ * nicht in `listings`; `ermittleAbgaenge` vergleicht nur bekannte Listings
+ * gegen das vom Sweep Gesehene, ein nie gespeichertes Objekt kann daher nicht
+ * faelschlich als Abgang markiert werden.
+ */
+const DETAIL_BUDGET_MS = 12 * 60 * 1000;
+
+/** Mindestkosten einer Detailseite (VERZOEGERUNG_MS der Scraper). */
+const DETAIL_KOSTEN_MS = 1000;
+
+/** Wie viele Detailkandidaten das Budget je Quelle zulaesst. */
+const DETAIL_MAX_KANDIDATEN = Math.floor(DETAIL_BUDGET_MS / DETAIL_KOSTEN_MS);
+
 const TELEGRAM_SENDEABSTAND_MS = 500;
+
+/**
+ * Waehlt aus den Detailkandidaten einer Quelle die Scheibe fuer diesen Lauf und
+ * protokolliert, wie viele auf spaetere Laeufe zurueckgestellt werden -- so ist
+ * der Rueckstand im Run-Log Lauf fuer Lauf sichtbar (und sollte schrumpfen).
+ */
+function budgetiereDetailKandidaten(
+  quelle: string,
+  kandidaten: string[],
+  versatz: number
+): string[] {
+  const auswahl = rotiereAuswahl(kandidaten, DETAIL_MAX_KANDIDATEN, versatz);
+  const zurueckgestellt = kandidaten.length - auswahl.length;
+  console.log(
+    `${quelle}: ${auswahl.length} Detailseiten in diesem Lauf, ` +
+      `RUECKSTAND ${zurueckgestellt} auf spaetere Laeufe zurueckgestellt ` +
+      `(von ${kandidaten.length} offenen Kandidaten).`
+  );
+  return auswahl;
+}
 
 function schlafe(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -159,6 +206,11 @@ async function main() {
 
   const detailGrenze = new Date(Date.now() - DETAIL_MAX_ALTER_TAGE * 24 * 60 * 60 * 1000);
 
+  // Versatz fuer die Kandidaten-Rotation: Stunden seit Epoche. Kein
+  // persistenter Zustand, und der Startpunkt wandert Lauf fuer Lauf durch die
+  // Liste, statt immer denselben Kopf zu greifen und den Rest auszuhungern.
+  const detailVersatz = Math.floor(Date.now() / 3_600_000);
+
   // --- Immowelt ---------------------------------------------------------
   console.log("Immowelt: Sweep gestartet...");
   const immowelt = await sweepImmowelt();
@@ -168,12 +220,16 @@ async function main() {
     (await ladeBekannteListings(sb, "immowelt")).map((l) => l.externalId)
   );
   const immoweltVeraltet = new Set(await ladeVeralteteExternalIds(sb, "immowelt", detailGrenze));
-  const immoweltAuswahl = waehleDetailKandidaten(
+  const immoweltKandidaten = waehleDetailKandidaten(
     [...immowelt.sweep.gesehene],
     immoweltBekannt,
     immoweltVeraltet
   );
-  console.log(`Immowelt: ${immoweltAuswahl.length} Detailseiten zu holen.`);
+  const immoweltAuswahl = budgetiereDetailKandidaten(
+    "Immowelt",
+    immoweltKandidaten,
+    detailVersatz
+  );
 
   for (const objekt of await erfasseImmoweltDetails(immowelt.zusammenfassungen, immoweltAuswahl)) {
     await verarbeiteKandidatIsoliert(telegramConfig, {
@@ -207,8 +263,8 @@ async function main() {
     (await ladeBekannteListings(sb, "zvg-portal")).map((l) => l.externalId)
   );
   const zvgVeraltet = new Set(await ladeVeralteteExternalIds(sb, "zvg-portal", detailGrenze));
-  const zvgAuswahl = waehleDetailKandidaten([...zvg.sweep.gesehene], zvgBekannt, zvgVeraltet);
-  console.log(`ZVG-Portal: ${zvgAuswahl.length} Detailseiten zu holen.`);
+  const zvgKandidaten = waehleDetailKandidaten([...zvg.sweep.gesehene], zvgBekannt, zvgVeraltet);
+  const zvgAuswahl = budgetiereDetailKandidaten("ZVG-Portal", zvgKandidaten, detailVersatz);
 
   for (const termin of await erfasseZvgDetails(zvg.zusammenfassungen, zvgAuswahl)) {
     await verarbeiteKandidatIsoliert(telegramConfig, {

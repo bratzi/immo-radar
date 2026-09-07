@@ -5,6 +5,7 @@ import {
   ermittleRueckkehrer,
   istKarenzAbgelaufen,
   waehleDetailKandidaten,
+  rotiereAuswahl,
   type SweepErgebnis,
   type BekanntesListing,
 } from "./bestand.js";
@@ -140,5 +141,29 @@ describe("waehleDetailKandidaten", () => {
 
   it("liefert nichts, wenn alles bekannt und frisch ist", () => {
     expect(waehleDetailKandidaten(gesehen, new Set(gesehen), new Set())).toEqual([]);
+  });
+});
+
+describe("rotiereAuswahl", () => {
+  const liste = ["a", "b", "c", "d", "e"];
+
+  it("liefert alles, wenn die Liste kuerzer als das Budget ist", () => {
+    expect(rotiereAuswahl(liste, 10, 0)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("liefert genau Budget-viele Eintraege, wenn die Liste laenger ist", () => {
+    expect(rotiereAuswahl(liste, 2, 0)).toEqual(["a", "b"]);
+  });
+
+  it("liefert bei anderem Versatz ein anderes Fenster", () => {
+    expect(rotiereAuswahl(liste, 2, 2)).toEqual(["c", "d"]);
+  });
+
+  it("laesst das Fenster ueber das Listenende hinweg umlaufen", () => {
+    expect(rotiereAuswahl(liste, 3, 4)).toEqual(["e", "a", "b"]);
+  });
+
+  it("liefert bei leerer Liste eine leere Liste", () => {
+    expect(rotiereAuswahl([], 3, 7)).toEqual([]);
   });
 });
