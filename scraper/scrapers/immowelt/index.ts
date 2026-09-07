@@ -55,19 +55,55 @@ export function trefferzahlAusTitel(titel: string): number | null {
   return Number.isFinite(zahl) ? zahl : null;
 }
 
+/**
+ * Anteil, um den die eingesammelte Menge einer Region hinter der vom Portal
+ * gemeldeten Trefferzahl zurueckbleiben darf, bevor die Region als
+ * unvollstaendig gilt. Gleiche Zahl wie `TOLERANZ_ANTEIL` in
+ * `lib/plausibilitaet.ts` -- dieselbe Mengen-Plausibilitaet, nur eine Ebene
+ * frueher (pro Bundesland statt fuer die ganze Quelle).
+ */
+const REGION_FEHLBETRAG_TOLERANZ = 0.25;
+
+/**
+ * Hat eine Region genug Objekte geliefert, um ihrer Vollstaendigkeit zu
+ * trauen? Nennt das Portal keine Trefferzahl (`null`) oder null Treffer, laesst
+ * sich daraus nichts ableiten -- dann `true`, und die Vollstaendigkeit haengt
+ * allein an der bestehenden Seitendeckel-Pruefung (`abgeschnitten`).
+ *
+ * Warum es diese Wache gibt: der Klick auf "naechste seite" verlaesst die
+ * servergerenderte Liste und landet auf einer leeren SPA-Huelle (Smoke-Test
+ * 2026-09-07). Damit ist derzeit pro Region nur Seite 1 einsammelbar -- rund
+ * 40 statt mehrerer hundert Objekte. Ohne diese Pruefung liefe der Sweep
+ * technisch sauber durch, meldete `vollstaendig=true` und autorisierte damit
+ * eine Massenloeschung. Die Pruefung setzt stattdessen `vollstaendig=false`,
+ * solange die Blaetterung ungeloest ist, faengt kuenftige Selektor-Brueche
+ * gleich mit ab und hebt sich von selbst auf, sobald wieder alle Seiten
+ * erreichbar sind.
+ */
+export function istRegionVollstaendig(gesammelt: number, gemeldet: number | null): boolean {
+  if (gemeldet === null || gemeldet === 0) return true;
+  return gesammelt >= gemeldet * (1 - REGION_FEHLBETRAG_TOLERANZ);
+}
+
 /** Sammelt eine Region ueber alle Ergebnisseiten ein. */
 async function regionErfassen(
   page: Page,
   region: { code: string; pfad: string },
   ziel: Map<string, ImmoweltListSummary>
-): Promise<{ gemeldet: number | null; abgeschnitten: boolean }> {
+): Promise<{ gemeldet: number | null; abgeschnitten: boolean; gesammelt: number }> {
   await page.goto(`${BASIS}${region.pfad}`, { waitUntil: "domcontentloaded" });
   const gemeldet = trefferzahlAusTitel(await page.title());
 
+  // Nur die IDs DIESER Region -- `ziel` wird ueber alle Laender geteilt und
+  // taugt daher nicht zum Zaehlen, was ein einzelnes Land geliefert hat.
+  const regionIds = new Set<string>();
   let seite = 1;
   for (; seite <= SEITEN_DECKEL; seite += 1) {
     for (const karte of parseImmoweltListPage(await page.content())) {
-      if (istMehrfamilienhausKandidat(karte.titleLine)) ziel.set(karte.externalId, karte);
+      if (istMehrfamilienhausKandidat(karte.titleLine)) {
+        ziel.set(karte.externalId, karte);
+        regionIds.add(karte.externalId);
+      }
     }
     const weiter = page.locator('button[aria-label="nächste seite"]');
     if ((await weiter.count()) === 0) break;
@@ -76,8 +112,10 @@ async function regionErfassen(
     await page.waitForLoadState("domcontentloaded");
   }
 
-  console.log(`Immowelt-Sweep ${region.code}: ${seite} Seiten, gemeldet ${gemeldet ?? "?"}.`);
-  return { gemeldet, abgeschnitten: seite > SEITEN_DECKEL };
+  console.log(
+    `Immowelt-Sweep ${region.code}: ${seite} Seiten, ${regionIds.size} Karten, gemeldet ${gemeldet ?? "?"}.`
+  );
+  return { gemeldet, abgeschnitten: seite > SEITEN_DECKEL, gesammelt: regionIds.size };
 }
 
 /**
@@ -101,10 +139,24 @@ export async function sweepImmowelt(): Promise<{
     for (const region of IMMOWELT_REGIONEN) {
       await sleep(VERZOEGERUNG_MS);
       try {
-        const { gemeldet, abgeschnitten } = await regionErfassen(page, region, zusammenfassungen);
+        const { gemeldet, abgeschnitten, gesammelt } = await regionErfassen(
+          page,
+          region,
+          zusammenfassungen
+        );
         if (abgeschnitten) {
           alleLiefen = false;
           console.warn(`Immowelt-Sweep ${region.code}: Seitendeckel erreicht, Menge abgeschnitten.`);
+        }
+        // Die gesehenen Objekte sind echt und bleiben in `zusammenfassungen` --
+        // nur der Anspruch auf Vollstaendigkeit ist hin, wenn eine Region weit
+        // hinter ihrer gemeldeten Trefferzahl zurueckbleibt.
+        if (!istRegionVollstaendig(gesammelt, gemeldet)) {
+          alleLiefen = false;
+          console.warn(
+            `Immowelt-Sweep ${region.code}: nur ${gesammelt} von gemeldet ${gemeldet} Objekten ` +
+              `eingesammelt -- Region unvollstaendig, Immowelt loescht in diesem Lauf nicht.`
+          );
         }
         if (gemeldet === null) gemeldeteVollstaendig = false;
         else gemeldeteSumme += gemeldet;
@@ -127,7 +179,10 @@ export async function sweepImmowelt(): Promise<{
       vollstaendig: alleLiefen,
       // Bewusst leer: die Immowelt-externalId ist eine UUID ohne Bundesland,
       // eine partitionsgenaue Loeschung waere daraus nicht ableitbar. Fuer
-      // diese Quelle gilt deshalb alles oder nichts.
+      // diese Quelle gilt deshalb alles oder nichts -- und solange die
+      // Blaetterung ungeloest ist (siehe istRegionVollstaendig), ist dieses
+      // "alles oder nichts" praktisch immer "nichts": `vollstaendig` bleibt
+      // false, es wird nie geloescht.
       geltungsbereich: [],
       gesehene: new Set(zusammenfassungen.keys()),
       gemeldeteTreffer: gemeldeteVollstaendig ? gemeldeteSumme : null,

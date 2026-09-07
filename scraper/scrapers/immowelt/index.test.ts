@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { trefferzahlAusTitel, IMMOWELT_REGIONEN } from "./index.js";
+import { trefferzahlAusTitel, istRegionVollstaendig, IMMOWELT_REGIONEN } from "./index.js";
 
 describe("trefferzahlAusTitel", () => {
   it("liest die Zahl aus einem echten Bundesland-Titel", () => {
@@ -14,6 +14,30 @@ describe("trefferzahlAusTitel", () => {
 
   it("liefert null, wenn der Titel keine Trefferzahl nennt", () => {
     expect(trefferzahlAusTitel("Mehrfamilienhaus als Kapitalanlage kaufen | immowelt")).toBeNull();
+  });
+});
+
+describe("istRegionVollstaendig", () => {
+  it("kann nicht urteilen, wenn das Portal keine Trefferzahl nennt", () => {
+    expect(istRegionVollstaendig(0, null)).toBe(true);
+  });
+
+  it("kann nicht urteilen, wenn das Portal null Treffer meldet", () => {
+    expect(istRegionVollstaendig(0, 0)).toBe(true);
+  });
+
+  it("ist unvollstaendig, wenn die Menge weit unter der gemeldeten Zahl liegt", () => {
+    // Bremen im Smoke-Test: 41 von 209 eingesammelt (nur Seite 1).
+    expect(istRegionVollstaendig(41, 209)).toBe(false);
+  });
+
+  it("ist vollstaendig, wenn die Menge innerhalb der 25-%-Toleranz bleibt", () => {
+    // 160 von 209 -> Fehlbetrag 23 %, noch im Rahmen.
+    expect(istRegionVollstaendig(160, 209)).toBe(true);
+  });
+
+  it("ist vollstaendig, wenn mehr eingesammelt als gemeldet wurde", () => {
+    expect(istRegionVollstaendig(250, 209)).toBe(true);
   });
 });
 
