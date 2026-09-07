@@ -332,6 +332,77 @@ einen Spike zu klären. Ergibt der Spike keine handhabbare Menge, wird
 Immowelt aus der Abgangserkennung herausgenommen (nur ZVG löscht), und die
 Entscheidung zur robots.txt ist neu zu bewerten.
 
+### Spike-Ergebnis 2026-09-07
+
+Playwright gegen immowelt.de, headless, Browser-User-Agent. Befunde:
+
+| Einstieg | Angebote laut Seite | Max. Seite | Erreichbar (40/Seite) |
+|---|---|---|---|
+| Haus bundesweit (bisheriger Einstieg) | 223.143 | 250 | 10.000 |
+| `.../haus/mehrfamilienhaus/guenstig/deutschland/ad02de1` | 35.415 | 250 | 10.000 |
+| `.../haus/mehrfamilienhaus/kapitalanlage/deutschland/ad02de1` | 4.414 | 104 | ~4.160 |
+
+Drei Dinge daraus:
+
+1. **Der Objekttyp-Filter ist direkt per URL ansteuerbar**, kein Klicken in
+   der Oberfläche nötig. Die Karten der gefilterten Seiten sind durchgehend
+   „Mehrfamilienhaus zum Kauf".
+2. **Immowelt deckelt die Paginierung bei 250 Seiten.** Der vollständige
+   Mehrfamilienhaus-Bestand (35.415) ist damit zu rund 28 % erreichbar — eine
+   vollständige Erfassung dieses Universums ist ausgeschlossen.
+3. **Das Segment „Mehrfamilienhaus als Kapitalanlage" liegt mit 104 Seiten
+   unter dem Deckel** und ist damit als einziges vollständig erfassbar. Bei
+   1 s Drosselung dauert der Sweep rund zwei Minuten.
+
+Die ausgewiesene Zahl (4.414) und die erreichbare (~4.160) klaffen um knapp
+6 % — deutlich innerhalb der 25-%-Toleranz der Selbstkonsistenz-Prüfung.
+
+Query-Parameter (`?estateTypes=`, `?haustyp=`) bleiben wirkungslos, die
+Pfadvarianten `/suche/kaufen/mehrfamilienhaus/...` liefern HTTP 410. Nur die
+oben genannten Pfade funktionieren.
+
+#### Auflösung: Aufteilung nach Bundesland
+
+Der 250-Seiten-Deckel lässt sich umgehen, indem — wie bei ZVG — je Bundesland
+gesucht wird. Die Links dazu stehen auf der bundesweiten MFH-Seite selbst:
+
+| Land | Inserate | Seiten | Land | Inserate | Seiten |
+|---|---|---|---|---|---|
+| Nordrhein-Westfalen | 7.505 | 188 | Sachsen-Anhalt | 1.005 | 26 |
+| Bayern | 5.074 | 127 | Thüringen | 930 | 24 |
+| Baden-Württemberg | 5.033 | 126 | Saarland | 787 | 20 |
+| Niedersachsen | 3.284 | 83 | Mecklenburg-Vorp. | 683 | 18 |
+| Rheinland-Pfalz | 2.797 | 70 | Berlin | 432 | 11 |
+| Hessen | 2.719 | 68 | Hamburg | 425 | 11 |
+| Sachsen | 2.035 | 51 | Bremen | 209 | 6 |
+| Schleswig-Holstein | 1.351 | 34 | Brandenburg | 1.129 | 29 |
+
+Summe **35.398** gegen 35.415 bundesweit — die 16 Länder zerlegen den
+Gesamtbestand lückenlos. **Kein Land erreicht den Deckel**; der größte
+(Nordrhein-Westfalen) liegt bei 188 von 250 Seiten. Damit ist Immowelt
+vollständig erfassbar. Aufwand: ~885 Seitenabrufe, bei 1 s Drosselung rund
+15 Minuten.
+
+Die Geo-Ids im Pfad (`.../nordrhein-westfalen/ad04de5`) sind zwingend —
+geratene Pfade ohne sie liefern HTTP 410. Sie werden fest hinterlegt. Ändert
+Immowelt sie, bricht der Sweep ein und die Mengenprüfung schlägt an: Es wird
+gewarnt und **nicht** gelöscht. Ein sicherer Fehlermodus.
+
+**Geltungsbereich bei Immowelt:** Anders als bei ZVG steckt das Bundesland
+nicht in der `externalId` (Immowelt vergibt UUIDs). Eine partitionsgenaue
+Zuordnung wäre also nur über eine zusätzliche Spalte zu haben. Stattdessen
+gilt für Immowelt **alles oder nichts**: Scheitert auch nur ein Bundesland,
+ist `vollstaendig` für die ganze Quelle `false` und es wird in diesem Lauf
+nicht gelöscht. Beim 3-Stunden-Takt ist das folgenlos, und der Fehlermodus
+bleibt sicher.
+
+**Anfragelast.** ~885 Abrufe je Lauf, alle drei Stunden, sind rund 7.000
+Anfragen täglich an Immowelt — deutlich mehr als bisher und damit ein
+realeres Sperr-Risiko. Die 1-s-Drosselung bleibt. Sollte Immowelt sperren,
+äußert sich das als eingebrochene Menge, also als Warnung ohne Löschung; die
+naheliegende Gegenmaßnahme wäre dann, den Immowelt-Sweep nur noch einmal
+täglich statt in jedem Lauf zu fahren.
+
 **Erster Lauf nach dem Umbau feuert nach.** Weil der Meldezustand künftig aus
 `notifications` kommt und dort für qualifizierte Objekte nichts steht, gelten
 sie als „noch nie gemeldet". Ein Schub von einigen Dutzend Nachrichten ist zu

@@ -28,6 +28,20 @@
 
 ### Task 1: Spike — Immowelt-Objekttypfilter und Mengengerüst
 
+> **ERLEDIGT am 2026-09-07.** Ergebnis in der Spec unter „Spike-Ergebnis 2026-09-07".
+>
+> Kurzfassung: Der Objekttyp-Filter ist per URL ansteuerbar. Bundesweit ist der
+> Mehrfamilienhaus-Bestand (35.415) wegen eines **250-Seiten-Deckels** nur zu
+> 28 % erreichbar — **aufgeteilt nach Bundesland** liegt dagegen jedes einzelne
+> Land unter dem Deckel (größtes: NRW mit 7.505 Inseraten auf 188 Seiten), und
+> die 16 Länder summieren sich auf 35.398, also praktisch den Gesamtbestand.
+>
+> **Damit gilt für Task 10: Variante A, aufgeteilt nach Bundesland.** Die
+> ursprüngliche Entscheidungsregel („≤ 5000 → Variante A") war zu grob — sie
+> hätte auf Variante B erkannt und die Aufteilung übersehen. Variante B bleibt
+> nur als Rückfalloption dokumentiert, falls Immowelt den Deckel oder die
+> Geo-Ids ändert.
+
 **Wegwerf-Untersuchung.** Ihr Ergebnis entscheidet über Task 10. Der hier geschriebene Code wird **nicht** behalten.
 
 Hintergrund: Die bundesweite Haus-Suche weist im Seitentitel „220.480 Angebote" aus (im Fixture `scraper/test/fixtures/immowelt-suche-haus.html` nachlesbar). Ein vollständiger Sweep darüber ist ausgeschlossen. Nur wenn sich in der Oberfläche auf Mehrfamilienhäuser filtern lässt und die Restmenge handhabbar ist, kann Immowelt an der Abgangserkennung teilnehmen.
@@ -38,7 +52,7 @@ Hintergrund: Die bundesweite Haus-Suche weist im Seitentitel „220.480 Angebote
 **Interfaces:**
 - Produces: keinen Code für spätere Tasks — nur eine Entscheidung, die in Task 10 einfließt.
 
-- [ ] **Step 1: Spike-Skript schreiben**
+- [x] **Step 1: Spike-Skript schreiben**
 
 `scraper/scripts/spike-immowelt.mts`:
 
@@ -95,7 +109,7 @@ async function main() {
 main();
 ```
 
-- [ ] **Step 2: Spike ausführen**
+- [x] **Step 2: Spike ausführen**
 
 Run: `cd C:\immo-radar\scraper && npx tsx scripts/spike-immowelt.mts`
 
@@ -106,7 +120,7 @@ Im geöffneten Browser den Filter auf „Mehrfamilienhaus" setzen. Danach aus de
 3. Wie viele Angebote weist die gefilterte Seite aus?
 4. Wie funktioniert das Blättern (Button-Selektor, URL-Parameter)?
 
-- [ ] **Step 3: Entscheidung festhalten**
+- [x] **Step 3: Entscheidung festhalten**
 
 **Entscheidungsregel:**
 
@@ -115,7 +129,7 @@ Im geöffneten Browser den Filter auf „Mehrfamilienhaus" setzen. Danach aus de
 
 Das Ergebnis samt Zahlen in die Spec eintragen, ans Ende des Abschnitts „Abgewogene Risiken" unter der Überschrift `### Spike-Ergebnis 2026-09-07`.
 
-- [ ] **Step 4: Spike-Skript löschen und Ergebnis committen**
+- [x] **Step 4: Spike-Skript löschen und Ergebnis committen**
 
 ```bash
 cd C:\immo-radar
@@ -1805,49 +1819,122 @@ git commit -m "feat(scraper): ZVG-Sweep ueber alle Bundeslaender getrennt von de
 
 ---
 
-### Task 10: Immowelt auf Playwright
+### Task 10: Immowelt auf Playwright, aufgeteilt nach Bundesland
 
 **Files:**
 - Modify: `scraper/scrapers/immowelt/index.ts`
+- Test: `scraper/scrapers/immowelt/index.test.ts`
 
 **Interfaces:**
-- Consumes: `parseImmoweltListPage`, `istMehrfamilienhausKandidat` (aus `./list.js`), `parseImmoweltDetailPage`, `ImmoweltDetailData` (aus `./detail.js`), `SweepErgebnis` (aus `../../lib/bestand.js`).
-- Produces: `sweepImmowelt(): Promise<{ sweep: SweepErgebnis; zusammenfassungen: Map<string, ImmoweltListSummary> }>`, `erfasseImmoweltDetails(zusammenfassungen, externalIds): Promise<ImmoweltDetailData[]>`. Ersetzt `scrapeImmowelt`. Wird von Task 12 konsumiert.
+- Consumes: `parseImmoweltListPage`, `istMehrfamilienhausKandidat`, `ImmoweltListSummary` (aus `./list.js`), `parseImmoweltDetailPage`, `ImmoweltDetailData` (aus `./detail.js`), `SweepErgebnis` (aus `../../lib/bestand.js`).
+- Produces: `IMMOWELT_REGIONEN`, `trefferzahlAusTitel(titel: string): number | null`, `sweepImmowelt(): Promise<{ sweep: SweepErgebnis; zusammenfassungen: Map<string, ImmoweltListSummary> }>`, `erfasseImmoweltDetails(zusammenfassungen, externalIds): Promise<ImmoweltDetailData[]>`. Ersetzt `scrapeImmowelt`. Wird von Task 12 konsumiert.
 
-**WICHTIG — welche Variante gilt, entscheidet Task 1.** Beide Varianten liefern dieselbe Schnittstelle; sie unterscheiden sich nur darin, ob `vollstaendig` je `true` werden kann.
+**Grundlage: das Spike-Ergebnis aus Task 1.** Immowelt deckelt jede Ergebnisliste bei 250 Seiten à 40 Treffern. Bundesweit sind das nur 10.000 von 35.415 Mehrfamilienhäusern. Aufgeteilt nach Bundesland liegt jedoch **jedes einzelne Land unter dem Deckel** — das größte, Nordrhein-Westfalen, bei 188 von 250 Seiten. Die 16 Länder summieren sich auf 35.398 und zerlegen den Bestand damit lückenlos.
 
-- [ ] **Step 1: Variante nach Spike-Ergebnis wählen**
+**Geltungsbereich bleibt leer — bewusst.** Anders als bei ZVG steckt bei Immowelt kein Bundesland in der `externalId` (Immowelt vergibt UUIDs). Eine partitionsgenaue Löschung wäre nur über eine zusätzliche Spalte zu haben. Stattdessen gilt hier **alles oder nichts**: Scheitert auch nur eine Region, ist `vollstaendig` für die ganze Quelle `false` und in diesem Lauf wird für Immowelt nicht gelöscht. Beim 3-Stunden-Takt ist das folgenlos, und der Fehlermodus bleibt sicher.
 
-Im Spike-Ergebnis in der Spec (`### Spike-Ergebnis 2026-09-07`) nachlesen:
+**Geo-Ids sind zwingend.** Pfade ohne sie (`/suche/kaufen/haus/mehrfamilienhaus/bayern`) liefern HTTP 410. Ändert Immowelt die Ids, bricht die Menge ein — die Plausibilitätsprüfung aus Task 5 schlägt dann an, warnt und löscht nicht.
 
-- Objekttyp-Filter vorhanden **und** gefilterte Menge ≤ 5000 → **Variante A**
-- sonst → **Variante B**
+- [ ] **Step 1: Test für die reinen Hilfsfunktionen schreiben**
 
-Die gewählte Variante hier notieren, damit Task 14 weiß, was zu erwarten ist.
+`scraper/scrapers/immowelt/index.test.ts`:
 
-- [ ] **Step 2: `index.ts` ersetzen — Variante A (vollständiger Sweep)**
+```ts
+import { describe, it, expect } from "vitest";
+import { trefferzahlAusTitel, IMMOWELT_REGIONEN } from "./index.js";
 
-Nur ausführen, wenn Step 1 Variante A ergab. `SUCHE_URL` durch die im Spike ermittelte gefilterte URL ersetzen, `WEITER_SELEKTOR` durch den dort ermittelten Blätter-Selektor.
+describe("trefferzahlAusTitel", () => {
+  it("liest die Zahl aus einem echten Bundesland-Titel", () => {
+    expect(
+      trefferzahlAusTitel("Mehrfamilienhaus kaufen in Nordrhein-Westfalen - 7.505 Angebote | immowelt")
+    ).toBe(7505);
+  });
+
+  it("liest auch eine Zahl ohne Tausenderpunkt", () => {
+    expect(trefferzahlAusTitel("Mehrfamilienhaus kaufen in Bremen - 209 Angebote | immowelt")).toBe(209);
+  });
+
+  it("liefert null, wenn der Titel keine Trefferzahl nennt", () => {
+    expect(trefferzahlAusTitel("Mehrfamilienhaus als Kapitalanlage kaufen | immowelt")).toBeNull();
+  });
+});
+
+describe("IMMOWELT_REGIONEN", () => {
+  it("deckt alle 16 Bundeslaender ab", () => {
+    expect(IMMOWELT_REGIONEN).toHaveLength(16);
+  });
+
+  it("hat eindeutige Codes", () => {
+    const codes = IMMOWELT_REGIONEN.map((r) => r.code);
+    expect(new Set(codes).size).toBe(16);
+  });
+
+  it("traegt bei jedem Eintrag eine Geo-Id im Pfad -- ohne sie liefert Immowelt HTTP 410", () => {
+    for (const region of IMMOWELT_REGIONEN) {
+      expect(region.pfad).toMatch(/\/ad\d{2}de\d+$/);
+    }
+  });
+});
+```
+
+- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+
+Run: `cd C:\immo-radar\scraper && npx vitest run scrapers/immowelt/index.test.ts`
+Expected: FAIL — `trefferzahlAusTitel is not a function`.
+
+- [ ] **Step 3: `index.ts` vollständig ersetzen**
 
 ```ts
 import { chromium, type Browser, type Page } from "playwright";
-import { parseImmoweltListPage, istMehrfamilienhausKandidat, type ImmoweltListSummary } from "./list.js";
+import {
+  parseImmoweltListPage,
+  istMehrfamilienhausKandidat,
+  type ImmoweltListSummary,
+} from "./list.js";
 import { parseImmoweltDetailPage, type ImmoweltDetailData } from "./detail.js";
 import type { SweepErgebnis } from "../../lib/bestand.js";
 
-/** Aus dem Spike: Suchseite MIT gesetztem Objekttyp-Filter Mehrfamilienhaus. */
-const SUCHE_URL = "<<im Spike ermittelte gefilterte URL einsetzen>>";
-/** Aus dem Spike: Selektor des Weiter-Buttons. */
-const WEITER_SELEKTOR = "<<im Spike ermittelten Selektor einsetzen>>";
+const BASIS = "https://www.immowelt.de/suche/kaufen/haus/mehrfamilienhaus/guenstig/";
 const VERZOEGERUNG_MS = 1000;
-/** Notbremse, falls die Blaetter-Erkennung in eine Schleife laeuft. */
-const MAX_SEITEN = 200;
+/**
+ * Immowelt deckelt jede Ergebnisliste bei 250 Seiten. Erreicht eine Region
+ * diesen Wert, ist ihre Menge abgeschnitten und der Sweep gilt als
+ * unvollstaendig -- laut Spike liegt aktuell keine Region auch nur nahe
+ * daran (Maximum: Nordrhein-Westfalen mit 188 Seiten).
+ */
+const SEITEN_DECKEL = 250;
+
+/**
+ * Die 16 Bundeslaender mit ihren Immowelt-Geo-Ids. Die Ids sind zwingend --
+ * Pfade ohne sie liefern HTTP 410. Berlin, Hamburg und Bremen sind
+ * Stadtstaaten und daher ueber ihren Stadt-Pfad angebunden.
+ * Ermittelt aus den Regions-Links der bundesweiten Mehrfamilienhaus-Seite
+ * (Spike 2026-09-07, siehe Spec).
+ */
+export const IMMOWELT_REGIONEN: { code: string; pfad: string }[] = [
+  { code: "nw", pfad: "nordrhein-westfalen/ad04de5" },
+  { code: "by", pfad: "bayern/ad04de9" },
+  { code: "bw", pfad: "baden-wurttemberg/ad04de8" },
+  { code: "ni", pfad: "niedersachsen/ad04de3" },
+  { code: "rp", pfad: "rheinland-pfalz/ad04de7" },
+  { code: "he", pfad: "hessen/ad04de6" },
+  { code: "sn", pfad: "sachsen/ad04de14" },
+  { code: "sh", pfad: "schleswig-holstein/ad04de1" },
+  { code: "br", pfad: "brandenburg/ad04de12" },
+  { code: "st", pfad: "sachsen-anhalt/ad04de15" },
+  { code: "th", pfad: "thuringen/ad04de16" },
+  { code: "sl", pfad: "saarland/ad04de10" },
+  { code: "mv", pfad: "mecklenburg-vorpommern/ad04de13" },
+  { code: "be", pfad: "berlin/berlin-10115/ad08de8634" },
+  { code: "hh", pfad: "hamburg/hamburg-20095/ad08de1113" },
+  { code: "hb", pfad: "bremen/bremen-28219/ad08de2110" },
+];
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Trefferzahl aus dem Seitentitel, z. B. "... - 1.234 Angebote ab ...". */
+/** Trefferzahl aus dem Seitentitel, z. B. "... - 7.505 Angebote | immowelt". */
 export function trefferzahlAusTitel(titel: string): number | null {
   const treffer = titel.match(/([\d.]+)\s+Angebote/);
   if (treffer === null) return null;
@@ -1855,40 +1942,67 @@ export function trefferzahlAusTitel(titel: string): number | null {
   return Number.isFinite(zahl) ? zahl : null;
 }
 
+/** Sammelt eine Region ueber alle Ergebnisseiten ein. */
+async function regionErfassen(
+  page: Page,
+  region: { code: string; pfad: string },
+  ziel: Map<string, ImmoweltListSummary>
+): Promise<{ gemeldet: number | null; abgeschnitten: boolean }> {
+  await page.goto(`${BASIS}${region.pfad}`, { waitUntil: "domcontentloaded" });
+  const gemeldet = trefferzahlAusTitel(await page.title());
+
+  let seite = 1;
+  for (; seite <= SEITEN_DECKEL; seite += 1) {
+    for (const karte of parseImmoweltListPage(await page.content())) {
+      if (istMehrfamilienhausKandidat(karte.titleLine)) ziel.set(karte.externalId, karte);
+    }
+    const weiter = page.locator('button[aria-label="nächste seite"]');
+    if ((await weiter.count()) === 0) break;
+    await sleep(VERZOEGERUNG_MS);
+    await weiter.first().click();
+    await page.waitForLoadState("domcontentloaded");
+  }
+
+  console.log(`Immowelt-Sweep ${region.code}: ${seite} Seiten, gemeldet ${gemeldet ?? "?"}.`);
+  return { gemeldet, abgeschnitten: seite > SEITEN_DECKEL };
+}
+
+/**
+ * Phase A: vollstaendige Bestandsaufnahme ueber alle 16 Bundeslaender, nur
+ * Ergebnislisten. Der Umweg ueber die Laender ist noetig, weil Immowelt
+ * bundesweit bei 250 Seiten deckelt und so nur 10.000 der 35.415
+ * Mehrfamilienhaeuser erreichbar waeren.
+ */
 export async function sweepImmowelt(): Promise<{
   sweep: SweepErgebnis;
   zusammenfassungen: Map<string, ImmoweltListSummary>;
 }> {
   const browser = await chromium.launch();
   const zusammenfassungen = new Map<string, ImmoweltListSummary>();
-  let vollstaendig = true;
-  let gemeldeteTreffer: number | null = null;
+  let alleLiefen = true;
+  let gemeldeteSumme = 0;
+  let gemeldeteVollstaendig = true;
 
   try {
     const page = await browser.newPage();
-    await page.goto(SUCHE_URL, { waitUntil: "domcontentloaded" });
-    gemeldeteTreffer = trefferzahlAusTitel(await page.title());
-
-    for (let seite = 1; seite <= MAX_SEITEN; seite += 1) {
-      const treffer = parseImmoweltListPage(await page.content()).filter((k) =>
-        istMehrfamilienhausKandidat(k.titleLine)
-      );
-      for (const t of treffer) zusammenfassungen.set(t.externalId, t);
-
-      const gibtWeiter = (await page.locator(WEITER_SELEKTOR).count()) > 0;
-      if (!gibtWeiter) break;
-      if (seite === MAX_SEITEN) {
-        vollstaendig = false;
-        console.warn(`Immowelt-Sweep: Seitengrenze ${MAX_SEITEN} erreicht, Menge unvollständig.`);
-        break;
-      }
+    for (const region of IMMOWELT_REGIONEN) {
       await sleep(VERZOEGERUNG_MS);
-      await page.click(WEITER_SELEKTOR);
-      await page.waitForLoadState("domcontentloaded");
+      try {
+        const { gemeldet, abgeschnitten } = await regionErfassen(page, region, zusammenfassungen);
+        if (abgeschnitten) {
+          alleLiefen = false;
+          console.warn(`Immowelt-Sweep ${region.code}: Seitendeckel erreicht, Menge abgeschnitten.`);
+        }
+        if (gemeldet === null) gemeldeteVollstaendig = false;
+        else gemeldeteSumme += gemeldet;
+      } catch (err) {
+        alleLiefen = false;
+        console.warn(`Immowelt-Sweep ${region.code}: Fehler`, err);
+      }
     }
   } catch (err) {
-    vollstaendig = false;
-    console.warn("Immowelt-Sweep abgebrochen, Abgleich wird ausgesetzt", err);
+    alleLiefen = false;
+    console.warn("Immowelt-Sweep abgebrochen", err);
   } finally {
     await browser.close();
   }
@@ -1897,15 +2011,19 @@ export async function sweepImmowelt(): Promise<{
   return {
     sweep: {
       source: "immowelt",
-      vollstaendig,
+      vollstaendig: alleLiefen,
+      // Bewusst leer: die Immowelt-externalId ist eine UUID ohne Bundesland,
+      // eine partitionsgenaue Loeschung waere daraus nicht ableitbar. Fuer
+      // diese Quelle gilt deshalb alles oder nichts.
       geltungsbereich: [],
       gesehene: new Set(zusammenfassungen.keys()),
-      gemeldeteTreffer,
+      gemeldeteTreffer: gemeldeteVollstaendig ? gemeldeteSumme : null,
     },
     zusammenfassungen,
   };
 }
 
+/** Phase B: Detailseiten nur fuer die uebergebenen externalIds. */
 export async function erfasseImmoweltDetails(
   zusammenfassungen: Map<string, ImmoweltListSummary>,
   externalIds: string[]
@@ -1939,65 +2057,38 @@ export async function erfasseImmoweltDetails(
 }
 ```
 
-- [ ] **Step 3: `index.ts` ersetzen — Variante B (kein vollständiger Sweep möglich)**
+- [ ] **Step 4: Test laufen lassen, Erfolg bestätigen**
 
-Nur ausführen, wenn Step 1 Variante B ergab. Identisch zu Variante A, mit zwei Unterschieden: `SUCHE_URL` bleibt die ungefilterte Seite-1-URL, und `vollstaendig` ist **fest `false`**. Immowelt liefert damit weiterhin Kandidaten, nimmt aber an keiner Löschung teil.
+Run: `cd C:\immo-radar\scraper && npx vitest run scrapers/immowelt/index.test.ts`
+Expected: PASS, alle 6 Tests grün.
 
-Statt des Sweep-Blocks aus Variante A:
+- [ ] **Step 5: Sweep einer kleinen Region gegen die echte Seite prüfen**
 
-```ts
-const SUCHE_URL = "https://www.immowelt.de/suche/kaufen/haus/deutschland/ad02de1";
+Bevor der volle Sweep in Task 14 läuft, einmal die kleinste Region isoliert prüfen — Bremen, laut Spike 209 Inserate auf 6 Seiten:
 
-export async function sweepImmowelt(): Promise<{
-  sweep: SweepErgebnis;
-  zusammenfassungen: Map<string, ImmoweltListSummary>;
-}> {
-  const browser = await chromium.launch();
-  const zusammenfassungen = new Map<string, ImmoweltListSummary>();
-
-  try {
-    const page = await browser.newPage();
-    await page.goto(SUCHE_URL, { waitUntil: "domcontentloaded" });
-    const treffer = parseImmoweltListPage(await page.content()).filter((k) =>
-      istMehrfamilienhausKandidat(k.titleLine)
-    );
-    for (const t of treffer) zusammenfassungen.set(t.externalId, t);
-  } catch (err) {
-    console.warn("Immowelt-Sweep fehlgeschlagen", err);
-  } finally {
-    await browser.close();
-  }
-
-  console.log(`Immowelt-Sweep: ${zusammenfassungen.size} Kandidaten (nur Seite 1).`);
-  return {
-    sweep: {
-      source: "immowelt",
-      // BEWUSST fest false: Seite 1 ist prinzipiell keine vollstaendige
-      // Menge. Immowelt-Objekte duerfen deshalb nie auf Abwesenheit hin
-      // geloescht werden. Siehe Spike-Ergebnis in der Spec.
-      vollstaendig: false,
-      geltungsbereich: [],
-      gesehene: new Set(zusammenfassungen.keys()),
-      gemeldeteTreffer: null,
-    },
-    zusammenfassungen,
-  };
-}
+```bash
+cd C:\immo-radar\scraper
+npx tsx -e "import('./scrapers/immowelt/index.js').then(async (m) => { const r = await m.sweepImmowelt(); console.log(r.sweep.gesehene.size, r.sweep.gemeldeteTreffer, r.sweep.vollstaendig); })"
 ```
 
-`erfasseImmoweltDetails` ist in beiden Varianten identisch — den Block aus Step 2 übernehmen.
+Das dauert rund 15 Minuten (alle 16 Länder). Erwartet: `gesehene` liegt in der Größenordnung von 35.000, `gemeldeteTreffer` nahe 35.400, `vollstaendig` ist `true`. Weicht `gesehene` stark von `gemeldeteTreffer` ab, stimmt die Blätter-Erkennung nicht — dann den Selektor `button[aria-label="nächste seite"]` gegen die echte Seite nachprüfen, bevor es weitergeht.
 
-- [ ] **Step 4: TypeScript-Check**
+- [ ] **Step 6: TypeScript-Check**
 
 Run: `cd C:\immo-radar\scraper && npx tsc --noEmit`
 Expected: **Fehler in `main.ts`** — `scrapeImmowelt` und `scrapeZvgPortal` existieren nicht mehr. Das ist erwartet und wird in Task 12 behoben. Alle anderen Dateien müssen fehlerfrei sein.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 cd C:\immo-radar
-git add scraper/scrapers/immowelt/index.ts
-git commit -m "feat(scraper): Immowelt ueber Playwright, Sweep getrennt von der Detailerfassung"
+git add scraper/scrapers/immowelt/index.ts scraper/scrapers/immowelt/index.test.ts
+git commit -m "feat(scraper): Immowelt ueber Playwright, nach Bundesland aufgeteilt
+
+Immowelt deckelt jede Ergebnisliste bei 250 Seiten -- bundesweit waeren so
+nur 10.000 der 35.415 Mehrfamilienhaeuser erreichbar. Aufgeteilt nach
+Bundesland bleibt jedes Land unter dem Deckel (Maximum: NRW mit 188 Seiten),
+und die 16 Laender summieren sich auf 35.398."
 ```
 
 ---
