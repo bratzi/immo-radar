@@ -30,10 +30,9 @@ docs/superpowers/      Specs und Implementierungspläne
 
 ## Betrieb
 
-Ein Lauf alle 3 Stunden über GitHub Actions (`.github/workflows/scrape.yml`) — derzeit
-**pausiert** für den Umbau „vollständige Erfassung & Bestandsführung". Die `schedule`-Direktive
-in `.github/workflows/scrape.yml` ist deaktiviert; nur `workflow_dispatch` ist aktiv. Das `schedule`-
-Feld **muss nach dem Merge wieder aktiviert werden**.
+Ein Lauf alle 3 Stunden über GitHub Actions (`.github/workflows/scrape.yml`), **aktiv**.
+Während des Umbaus „vollständige Erfassung & Bestandsführung" war der Zeitplan pausiert;
+seit dessen Merge am 2026-09-07 läuft er wieder.
 
 Lokal:
 

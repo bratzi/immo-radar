@@ -7,6 +7,7 @@ import {
 import { parseImmoweltDetailPage, type ImmoweltDetailData } from "./detail.js";
 import { rotiereAuswahl, type SweepErgebnis } from "../../lib/bestand.js";
 import { bestaetigeConsentBanner } from "../consent.js";
+import { schliesseStoerendeUeberlagerung } from "../overlays.js";
 
 const BASIS = "https://www.immowelt.de/suche/kaufen/haus/mehrfamilienhaus/guenstig/";
 /**
@@ -130,8 +131,98 @@ export function istRegionVollstaendig(gesammelt: number, gemeldet: number | null
   return gesammelt >= gemeldet * (1 - REGION_FEHLBETRAG_TOLERANZ);
 }
 
-/** Sammelt eine Region ueber alle Ergebnisseiten ein. */
-async function regionErfassen(
+/**
+ * Wie oft ein abgefangener "naechste Seite"-Klick wiederholt wird, und wie viel
+ * Zeit das Consent-Banner beim jeweiligen Versuch bekommt.
+ *
+ * Die Zahlen stammen aus einem Live-Lauf gegen Bremen (2026-09-07): Der
+ * Akzeptieren-Knopf rendert unvorhersehbar spaet in den Shadow Root. Ein
+ * Versuch mit 10 s fand ihn NICHT, der naechste mit 2 s fand ihn, der
+ * uebernaechste mit 2 s wieder nicht. Es ist also kein fester Schwellenwert,
+ * ab dem es klappt -- es ist ein Rennen. Die Antwort darauf ist mehrmals
+ * versuchen und dabei laenger warten, nicht einmal laenger warten.
+ *
+ * Mit nur einem Retry (Stand 137ba2d) brach Bremen nach 2 von 5 Seiten ab und
+ * lieferte 80 statt 209 Objekten.
+ */
+const CONSENT_RETRY_BUDGETS_MS = [3_000, 6_000, 12_000];
+
+/** Ausgang einer einzelnen Region -- erfasst (mit oder ohne Trefferzahl) oder
+ *  mit einem Fehler abgebrochen. */
+export type RegionAusgang =
+  | { art: "erfasst"; gemeldet: number | null }
+  | { art: "fehler" };
+
+/**
+ * Die vom Portal ausgewiesene Gesamttrefferzahl ueber alle Regionen eines
+ * Laufs -- oder null, wenn sie nicht beurteilbar ist.
+ *
+ * FAIL-CLOSED, und das ist der ganze Zweck: Diese Zahl geht in die
+ * Mengenplausibilitaet ein, die Loeschungen autorisiert. Eine Summe, die
+ * einzelne fehlende Beitraege verschweigt, ist gefaehrlicher als gar keine
+ * Zahl. Null Regionen ergeben deshalb null und nicht 0.
+ *
+ * Live-Befund 2026-09-07: In `sweep_runs` stand `gemeldete_treffer = 0` neben
+ * 562 eingesammelten Objekten. Abgebrochene Regionen trugen 0 zur Summe bei,
+ * ohne sie als unbrauchbar zu markieren -- dieselbe Fail-open-Bauart, die das
+ * Review schon einmal als teuersten Fehler des Plans gefunden hat.
+ */
+export function gemeldeteTrefferSumme(ausgaenge: RegionAusgang[]): number | null {
+  if (ausgaenge.length === 0) return null;
+  let summe = 0;
+  for (const a of ausgaenge) {
+    if (a.art === "fehler") return null;
+    if (a.gemeldet === null) return null;
+    summe += a.gemeldet;
+  }
+  return summe;
+}
+
+/**
+ * Versucht, eine Seite weiterzublaettern, und raeumt dabei so oft wie noetig
+ * das Consent-Overlay weg.
+ *
+ * Warum das mehr als ein Retry braucht, steht bei CONSENT_RETRY_BUDGETS_MS.
+ * Die beiden Aktionen kommen als Funktionen herein, damit diese Logik ohne
+ * Browser testbar ist.
+ *
+ * @returns true, wenn ein Klick durchging; false, wenn alle Versuche scheiterten.
+ */
+export async function blaettereWeiter(
+  klicke: () => Promise<void>,
+  raeumeAuf: (budgetMs: number) => Promise<void>,
+  budgets: number[] = CONSENT_RETRY_BUDGETS_MS
+): Promise<boolean> {
+  try {
+    await klicke();
+    return true;
+  } catch {
+    // Klick abgefangen -- praktisch immer das frisch aufgebaute Overlay.
+  }
+
+  for (const budget of budgets) {
+    await raeumeAuf(budget);
+    try {
+      await klicke();
+      return true;
+    } catch {
+      continue;
+    }
+  }
+  return false;
+}
+
+/**
+ * Sammelt eine Region ueber alle Ergebnisseiten ein.
+ *
+ * Exportiert ausschliesslich fuer `scripts/pruefe-region.mts` -- das
+ * Pruefwerkzeug muss GENAU diesen Codepfad beobachten koennen, sonst prueft es
+ * eine Nachbildung statt der Produktion. Ausserdem ist es die einzige
+ * Moeglichkeit, lokal EINE Region zu fahren: `sweepImmowelt` laeuft immer ueber
+ * die rotierende Laenderliste, und ein bundesweiter Lauf ueber einen privaten
+ * Anschluss ist ausdruecklich unerwuenscht (siehe README/UEBERGABE).
+ */
+export async function regionErfassen(
   page: Page,
   region: { code: string; pfad: string },
   ziel: Map<string, ImmoweltListSummary>,
@@ -162,25 +253,24 @@ async function regionErfassen(
     // NUR bei einem fehlgeschlagenen Klick, nie bei fehlendem Knopf.
     if ((await weiter.count()) === 0) break;
     await sleep(IMMOWELT_VERZOEGERUNG_MS);
-    try {
-      await weiter.first().click();
-    } catch {
-      // Klick fehlgeschlagen, obwohl der Knopf da ist -- praktisch immer faengt
-      // das frisch aufgebaute Usercentrics-Overlay den Klick ab. Usercentrics
-      // baut das Overlay bei JEDEM Seitenwechsel neu auf (`data-created-at`
-      // aendert sich pro Seite), eine einmalige Bestaetigung pro Browser-
-      // Context haelt daher ueber einen mehrseitigen Sweep nicht. Belegt im
-      // Live-Lauf: Seite 1 und 2 liefen nach einer Bestaetigung, Seite 3 wurde
-      // erneut abgefangen. Also einmal kurz wegklicken und den Klick GENAU
-      // einmal wiederholen; schlaegt auch der zweite Versuch fehl, gilt die
-      // Region wie bisher als zu Ende (kein Endlos-Retry).
-      await bestaetigeConsentBanner(page, 2000);
-      try {
-        await weiter.first().click();
-      } catch {
-        break;
+    // Klick faengt praktisch immer das frisch aufgebaute Usercentrics-Overlay
+    // ab. Usercentrics baut es bei JEDEM Seitenwechsel neu auf, eine einmalige
+    // Bestaetigung haelt ueber einen mehrseitigen Sweep also nicht. Wie oft und
+    // wie lange nachgefasst wird, steht bei CONSENT_RETRY_BUDGETS_MS -- ein
+    // einzelner Retry mit fester Frist reichte nachweislich nicht.
+    const weitergeblaettert = await blaettereWeiter(
+      () => weiter.first().click(),
+      async (budgetMs) => {
+        // Reihenfolge zaehlt: Der Suchauftrag-Dialog ist der haeufigere
+        // Blockierer (er kommt verlaesslich beim Wechsel auf Seite 2), das
+        // Cookie-Banner nur beim ersten Aufschlag.
+        await schliesseStoerendeUeberlagerung(page, budgetMs);
+        await bestaetigeConsentBanner(page, budgetMs);
       }
-    }
+    );
+    // Kein Endlos-Retry: geht der Klick auch nach allen Versuchen nicht durch,
+    // gilt die Region als zu Ende.
+    if (!weitergeblaettert) break;
     await page.waitForLoadState("domcontentloaded");
   }
 
@@ -219,8 +309,11 @@ export async function sweepImmowelt(): Promise<{
   // (siehe .github/workflows/scrape.yml). NICHT auf headless "optimieren".
   const browser = await chromium.launch({ headless: false });
   const zusammenfassungen = new Map<string, ImmoweltListSummary>();
-  let gemeldeteSumme = 0;
-  let gemeldeteVollstaendig = true;
+  // Ausgang JEDER angefassten Region -- auch der abgebrochenen. Aus dieser
+  // Liste entsteht am Ende die gemeldete Trefferzahl (fail-closed, siehe
+  // gemeldeteTrefferSumme). Frueher waren das zwei lose Variablen, und eine
+  // abgestuerzte Region beruehrte keine von beiden.
+  const ausgaenge: RegionAusgang[] = [];
 
   // Die volle Regionsliste in Rotationsreihenfolge. `rotiereAuswahl` (aus
   // lib/bestand.js, unit-getestet) liefert bei Budget == Listenlaenge die
@@ -278,9 +371,11 @@ export async function sweepImmowelt(): Promise<{
                   `eingesammelt -- Region unvollstaendig.`
           );
         }
-        if (gemeldet === null) gemeldeteVollstaendig = false;
-        else gemeldeteSumme += gemeldet;
+        ausgaenge.push({ art: "erfasst", gemeldet });
       } catch (err) {
+        // Eine abgebrochene Region ist NICHT "null gemeldete Treffer". Sie ist
+        // nicht beurteilbar, und das muss bis in die Trefferzahl durchschlagen.
+        ausgaenge.push({ art: "fehler" });
         console.warn(`Immowelt-Sweep ${region.code}: Fehler`, err);
       }
     }
@@ -319,7 +414,7 @@ export async function sweepImmowelt(): Promise<{
       // eine partitionsgenaue Loeschung waere daraus nicht ableitbar.
       geltungsbereich: [],
       gesehene: new Set(zusammenfassungen.keys()),
-      gemeldeteTreffer: gemeldeteVollstaendig ? gemeldeteSumme : null,
+      gemeldeteTreffer: gemeldeteTrefferSumme(ausgaenge),
     },
     zusammenfassungen,
   };
