@@ -117,6 +117,81 @@ async function obenLinks(kandidaten: Locator[]): Promise<Locator | null> {
 }
 
 /**
+ * Attribut, mit dem ein gefundener Schliessen-Knopf kurz markiert wird, damit
+ * Playwright ihn anklicken kann. Notwendig, weil die Ueberlagerungen keinen
+ * stabilen Selektor haben: ihre Klassennamen werden bei jedem Rendern neu
+ * erzeugt, und eine Dialog-Rolle tragen sie nicht (gemessen 2026-09-08:
+ * `<div class="css-1lcifqp"> role=- aria-modal=- data-testid=-`).
+ *
+ * Markiert wird nur; das Overlay wird NICHT aus dem DOM entfernt und kein
+ * Zustand der Seite veraendert. Geklickt wird danach ganz normal.
+ */
+const MARKER = "data-immoradar-schliessen";
+
+/**
+ * Sucht das Schliesskreuz einer bildschirmfuellenden Ueberlagerung und
+ * markiert es. Ein Kreuz zaehlt nur, wenn es in einem Vorfahren steckt, der
+ * fest positioniert ist UND mindestens ein Viertel des Sichtfensters
+ * ueberdeckt -- sonst wuerde ein "x" aus dem normalen Seiteninhalt (etwa ein
+ * Filter-Chip) getroffen und der Sweep raeumte der Seite die Suche weg.
+ *
+ * Bei mehreren Treffern gewinnt der am weitesten oben links liegende; dort
+ * sitzt das Schliesskreuz (vom Nutzer so beobachtet).
+ *
+ * ACHTUNG: keine verschachtelten Funktionen im `evaluate`-Rumpf -- `tsx`
+ * spritzt dafuer einen `__name`-Helfer ein, den es im Browser nicht gibt.
+ */
+async function markiereSchliessKreuz(page: Page): Promise<boolean> {
+  try {
+    return await page.evaluate((marker) => {
+      const kreuz = /^[×✕✖✗❌ xX]$/;
+      const alt = document.querySelectorAll("[" + marker + "]");
+      for (let i = 0; i < alt.length; i += 1) alt[i].removeAttribute(marker);
+
+      let bester: Element | null = null;
+      let bestesMass = Number.POSITIVE_INFINITY;
+      const alle = document.querySelectorAll('button,[role="button"]');
+      for (let i = 0; i < alle.length; i += 1) {
+        const el = alle[i];
+        const text = (el.textContent ?? "").trim();
+        const label = el.getAttribute("aria-label") ?? "";
+        if (!kreuz.test(text) && !/schlie|close/i.test(label)) continue;
+
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+
+        let vorfahr: Element | null = el;
+        let inUeberlagerung = false;
+        for (let tiefe = 0; tiefe < 10 && vorfahr !== null; tiefe += 1) {
+          const st = getComputedStyle(vorfahr);
+          if (st.position === "fixed" || st.position === "absolute") {
+            const vr = vorfahr.getBoundingClientRect();
+            if (vr.width * vr.height >= window.innerWidth * window.innerHeight * 0.25) {
+              inUeberlagerung = true;
+              break;
+            }
+          }
+          vorfahr = vorfahr.parentElement;
+        }
+        if (!inUeberlagerung) continue;
+
+        const mass = r.x + r.y;
+        if (mass < bestesMass) {
+          bestesMass = mass;
+          bester = el;
+        }
+      }
+
+      if (bester === null) return false;
+      bester.setAttribute(marker, "1");
+      return true;
+    }, MARKER);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Schliesst stoerende Ueberlagerungen, solange welche da sind.
  *
  * @param page       Die Playwright-Seite.
@@ -133,21 +208,28 @@ export async function schliesseStoerendeUeberlagerung(
     for (let runde = 0; runde < MAX_RUNDEN; runde += 1) {
       const kandidaten = schliessKandidaten(page);
       const frist = runde === 0 ? timeoutMs : FOLGERUNDE_TIMEOUT_MS;
+      let knopf: Locator | null = null;
 
-      // Einmal auf ALLE Kandidaten gleichzeitig warten, mit dem ganzen Budget
-      // -- nicht der Reihe nach je einen Bruchteil. (Dieselbe Falle wie in
-      // scrapers/consent.ts; dort ist sie ausfuehrlich begruendet.)
-      try {
-        await kandidaten
-          .reduce((a, b) => a.or(b))
-          .first()
-          .waitFor({ state: "visible", timeout: Math.max(1, frist) });
-      } catch {
-        break; // nichts (mehr) da -- regulaeres Ende
+      // Zuerst der Weg ueber die Geometrie: er kostet nichts und erwischt auch
+      // die Bauart OHNE Dialog-Rolle, an der die Selektoren unten scheitern.
+      if (await markiereSchliessKreuz(page)) {
+        knopf = page.locator(`[${MARKER}]`).first();
+      } else {
+        // Sonst auf ALLE Selektor-Kandidaten gleichzeitig warten, mit dem
+        // ganzen Budget -- nicht der Reihe nach je einen Bruchteil. (Dieselbe
+        // Falle wie in scrapers/consent.ts, dort ausfuehrlich begruendet.)
+        try {
+          await kandidaten
+            .reduce((a, b) => a.or(b))
+            .first()
+            .waitFor({ state: "visible", timeout: Math.max(1, frist) });
+          knopf = await obenLinks(kandidaten);
+        } catch {
+          knopf = null;
+        }
       }
 
-      const knopf = await obenLinks(kandidaten);
-      if (knopf === null) break;
+      if (knopf === null) break; // nichts (mehr) da -- regulaeres Ende
 
       try {
         await knopf.click({ timeout: 3_000 });

@@ -107,3 +107,52 @@ describe("schliesseStoerendeUeberlagerung -- zweite Bauart", () => {
     await page.close();
   }, 30_000);
 });
+
+/**
+ * Die dritte und bisher uebersehene Bauart: eine bildschirmfuellende
+ * Ueberlagerung OHNE `role="dialog"` und ohne `aria-modal`. Genau so sah der
+ * gemessene Blockierer aus:
+ *
+ *   ELEMENT <div class="css-1lcifqp">   role=-  aria-modal=-  data-testid=-
+ *
+ * Ein Kreuz-Selektor, der nur in Dialogen sucht, findet ihn nie.
+ */
+const OHNE_ROLLE = `
+  <button id="weiter">nächste seite</button>
+  <div id="modal3"
+       style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#ddd">
+    <button id="zu3" style="position:absolute;top:6px;left:6px"
+            onclick="document.getElementById('modal3').remove()">✕</button>
+    <button id="cta3" style="position:absolute;top:300px;left:400px"
+            onclick="window.__cta3=true">Suchauftrag speichern</button>
+  </div>`;
+
+describe("schliesseStoerendeUeberlagerung -- ohne Dialog-Rolle", () => {
+  it("schliesst eine bildschirmfuellende Ueberlagerung ohne role=dialog", async () => {
+    const page = await seiteMitDialog(OHNE_ROLLE);
+    expect(await schliesseStoerendeUeberlagerung(page, 3000)).toBe(true);
+    expect(await page.locator("#modal3").count()).toBe(0);
+    await page.close();
+  }, 30_000);
+
+  it("fasst auch dort keinen anderen Knopf an", async () => {
+    const page = await seiteMitDialog(OHNE_ROLLE);
+    await schliesseStoerendeUeberlagerung(page, 3000);
+    expect(await page.evaluate(() => (window as unknown as { __cta3?: boolean }).__cta3)).toBeUndefined();
+    await page.close();
+  }, 30_000);
+
+  it("laesst ein x an, das zu keiner Ueberlagerung gehoert", async () => {
+    // Ein Schliesskreuz irgendwo im normalen Seiteninhalt darf NICHT geklickt
+    // werden -- sonst raeumt der Sweep der Seite die Filter weg.
+    const page = await seiteMitDialog(`
+      <button id="weiter">nächste seite</button>
+      <div style="position:static">
+        <button id="filterweg" onclick="window.__filterWeg=true">×</button>
+      </div>`);
+    expect(await schliesseStoerendeUeberlagerung(page, 800)).toBe(false);
+    expect(await page.evaluate(() => (window as unknown as { __filterWeg?: boolean }).__filterWeg))
+      .toBeUndefined();
+    await page.close();
+  }, 30_000);
+});
