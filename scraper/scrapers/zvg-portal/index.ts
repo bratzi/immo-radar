@@ -1,15 +1,13 @@
-import { chromium, type Page } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import { parseZvgResultsPage, type ZvgListSummary } from "./list.js";
 import { parseZvgDetailPage, type ZvgDetailData } from "./detail.js";
+import type { SweepErgebnis } from "../../lib/bestand.js";
 
 const SEARCH_URL = "https://www.zvg-portal.de/index.php?button=Termine%20suchen";
 const MEHRFAMILIENHAUS_OBJ_TYP = "4";
 const ALLE_AMTSGERICHTE = "0";
 const VERZOEGERUNG_MS = 1000;
 const MAX_SEITEN_PRO_BUNDESLAND = 30;
-/** Wanduhr-Budget: knapp unter dem timeout-minutes des Workflows, damit der Lauf
- *  geordnet mit Teilergebnis endet statt per SIGKILL alles zu verlieren. */
-const MAX_LAUFZEIT_MS = 35 * 60 * 1000;
 
 const BUNDESLAND_CODES = [
   "bw", "by", "be", "br", "hb", "hh", "he", "mv",
@@ -18,17 +16,6 @@ const BUNDESLAND_CODES = [
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Rotiert die Bundesland-Reihenfolge je Lauf, damit ein Laufzeit-Abbruch nicht
- * immer dieselben Codes am Listenende aushungert. Der Versatz kommt aus der
- * Uhrzeit -- kein persistenter Zustand, keine neue Abhaengigkeit.
- */
-export function bundeslaenderInLaufReihenfolge(codes: string[], versatz: number): string[] {
-  if (codes.length === 0) return [];
-  const start = ((versatz % codes.length) + codes.length) % codes.length;
-  return codes.map((_, i) => codes[(start + i) % codes.length]);
 }
 
 async function sucheFuerBundesland(page: Page, landAbk: string): Promise<void> {
@@ -47,7 +34,8 @@ async function alleSeitenErfassen(page: Page): Promise<ZvgListSummary[]> {
   while (seite <= MAX_SEITEN_PRO_BUNDESLAND) {
     ergebnisse.push(...parseZvgResultsPage(await page.content()));
     const naechstesSeitenLabel = `blättern zur Sitennummer ${seite + 1}`;
-    const gibtNaechsteSeite = (await page.locator(`button[aria-label="${naechstesSeitenLabel}"]`).count()) > 0;
+    const gibtNaechsteSeite =
+      (await page.locator(`button[aria-label="${naechstesSeitenLabel}"]`).count()) > 0;
     if (!gibtNaechsteSeite) break;
     await sleep(VERZOEGERUNG_MS);
     await page.click(`button[aria-label="${naechstesSeitenLabel}"]`);
@@ -57,62 +45,97 @@ async function alleSeitenErfassen(page: Page): Promise<ZvgListSummary[]> {
   return ergebnisse;
 }
 
-async function detailsErfassen(page: Page, zusammenfassungen: ZvgListSummary[]): Promise<ZvgDetailData[]> {
-  const ergebnisse: ZvgDetailData[] = [];
-  const referer = page.url();
-  for (const zusammenfassung of zusammenfassungen) {
-    await sleep(VERZOEGERUNG_MS);
-    try {
-      await page.goto(zusammenfassung.url, { waitUntil: "domcontentloaded", referer });
-      const html = await page.content();
-      ergebnisse.push(
-        parseZvgDetailPage(html, {
-          externalId: zusammenfassung.externalId,
-          url: zusammenfassung.url,
-          court: zusammenfassung.court,
-          caseNumber: zusammenfassung.caseNumber,
-        })
-      );
-    } catch (err) {
-      console.warn(`ZVG-Detailseite ${zusammenfassung.url}: Fehler, übersprungen`, err);
-    }
-  }
-  return ergebnisse;
-}
-
-export async function scrapeZvgPortal(): Promise<ZvgDetailData[]> {
-  const startZeit = Date.now();
-  // Stunden seit Epoche statt Stunde-des-Tages: der 3-Stunden-Cron traefe sonst
-  // nur 8 der 16 moeglichen Startpunkte, so wandert der Versatz durch alle.
-  const stundenSeitEpoche = Math.floor(startZeit / 3_600_000);
-  const reihenfolge = bundeslaenderInLaufReihenfolge(BUNDESLAND_CODES, stundenSeitEpoche);
+/**
+ * Phase A: vollstaendige Bestandsaufnahme ueber alle 16 Bundeslaender, nur
+ * Ergebnislisten. zvg-portal.de weist keine Gesamttrefferzahl aus, daher
+ * bleibt gemeldeteTreffer null.
+ */
+export async function sweepZvgPortal(): Promise<{
+  sweep: SweepErgebnis;
+  zusammenfassungen: Map<string, ZvgListSummary>;
+}> {
   const browser = await chromium.launch();
+  const zusammenfassungen = new Map<string, ZvgListSummary>();
+  const geltungsbereich: string[] = [];
+  let alleLiefen = true;
+
   try {
     const page = await browser.newPage();
-    const alleTermine: ZvgDetailData[] = [];
-    for (const landAbk of reihenfolge) {
-      const verstrichen = Date.now() - startZeit;
-      if (verstrichen >= MAX_LAUFZEIT_MS) {
-        console.warn(
-          `ZVG-Portal: Laufzeitbudget von ${Math.round(MAX_LAUFZEIT_MS / 60000)} min erschoepft ` +
-            `(${Math.round(verstrichen / 60000)} min). Abbruch vor Bundesland ${landAbk}; ` +
-            `${alleTermine.length} Termine werden gespeichert.`
-        );
-        break;
-      }
+    for (const landAbk of BUNDESLAND_CODES) {
       await sleep(VERZOEGERUNG_MS);
       try {
         await sucheFuerBundesland(page, landAbk);
-        const zusammenfassungen = await alleSeitenErfassen(page);
-        console.log(`ZVG-Portal ${landAbk}: ${zusammenfassungen.length} Mehrfamilienhaus-Termine gefunden.`);
-        const details = await detailsErfassen(page, zusammenfassungen);
-        alleTermine.push(...details);
+        const treffer = await alleSeitenErfassen(page);
+        for (const t of treffer) zusammenfassungen.set(t.externalId, t);
+        geltungsbereich.push(landAbk);
+        console.log(`ZVG-Sweep ${landAbk}: ${treffer.length} Termine.`);
       } catch (err) {
-        console.warn(`ZVG-Portal Bundesland ${landAbk}: Fehler, uebersprungen`, err);
+        alleLiefen = false;
+        console.warn(`ZVG-Sweep ${landAbk}: Fehler, Bundesland bleibt vom Abgleich ausgenommen`, err);
       }
     }
-    return alleTermine;
   } finally {
     await browser.close();
   }
+
+  return {
+    sweep: {
+      source: "zvg-portal",
+      vollstaendig: alleLiefen,
+      geltungsbereich,
+      gesehene: new Set(zusammenfassungen.keys()),
+      gemeldeteTreffer: null,
+    },
+    zusammenfassungen,
+  };
+}
+
+async function detailSeiteHolen(
+  page: Page,
+  zusammenfassung: ZvgListSummary,
+  referer: string
+): Promise<ZvgDetailData | null> {
+  try {
+    await page.goto(zusammenfassung.url, { waitUntil: "domcontentloaded", referer });
+    return parseZvgDetailPage(await page.content(), {
+      externalId: zusammenfassung.externalId,
+      url: zusammenfassung.url,
+      court: zusammenfassung.court,
+      caseNumber: zusammenfassung.caseNumber,
+    });
+  } catch (err) {
+    console.warn(`ZVG-Detailseite ${zusammenfassung.url}: Fehler, übersprungen`, err);
+    return null;
+  }
+}
+
+/**
+ * Phase B: Detailseiten nur fuer die uebergebenen externalIds.
+ * Der Referer muss auf die Sucheinstiegsseite zeigen -- zvg-portal.de
+ * liefert sonst HTTP 200 mit dem woertlichen Body "error".
+ */
+export async function erfasseZvgDetails(
+  zusammenfassungen: Map<string, ZvgListSummary>,
+  externalIds: string[]
+): Promise<ZvgDetailData[]> {
+  if (externalIds.length === 0) return [];
+
+  const browser: Browser = await chromium.launch();
+  const ergebnisse: ZvgDetailData[] = [];
+  try {
+    const page = await browser.newPage();
+    await page.goto(SEARCH_URL, { waitUntil: "domcontentloaded" });
+    const referer = page.url();
+
+    for (const externalId of externalIds) {
+      const zusammenfassung = zusammenfassungen.get(externalId);
+      if (zusammenfassung === undefined) continue;
+      await sleep(VERZOEGERUNG_MS);
+      const daten = await detailSeiteHolen(page, zusammenfassung, referer);
+      if (daten !== null) ergebnisse.push(daten);
+    }
+  } finally {
+    await browser.close();
+  }
+  return ergebnisse;
 }
