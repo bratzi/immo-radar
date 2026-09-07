@@ -46,10 +46,6 @@ create index listing_versions_listing_id_idx on listing_versions (listing_id, sc
 create index listings_disappeared_at_idx on listings (disappeared_at)
   where disappeared_at is not null;
 
--- Postgres legt fuer Fremdschluessel keinen Index an; hoechsteGemeldeteKlasse
--- fragt notifications einmal je Kandidat ab.
-create index notifications_listing_id_idx on notifications (listing_id);
-
 -- Referenz fuer die Mengenplausibilitaet. Ohne Historie keine Loeschung.
 create table sweep_runs (
   id uuid primary key default gen_random_uuid(),
@@ -80,6 +76,10 @@ create table notifications (
   sent_at timestamptz not null default now(),
   detail jsonb
 );
+
+-- Postgres legt fuer Fremdschluessel keinen Index an; hoechsteGemeldeteKlasse
+-- fragt notifications einmal je Kandidat ab.
+create index notifications_listing_id_idx on notifications (listing_id);
 
 -- RLS auf allen Tabellen aktivieren, bewusst OHNE Policies: dieser Plan hat
 -- kein Dashboard/Anon-Zugriff, daher soll fuer anon/authenticated grundsaetzlich
