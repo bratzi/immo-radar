@@ -2,7 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { grunderwerbsteuerSatz, bundeslandFuerPlz } from "./grunderwerbsteuer.js";
 import { berechneKennzahlen } from "./metrics.js";
 import { ermittleJahreskaltmiete } from "./rentEstimate.js";
-import { upsertListingAndVersion, logNotification } from "./db.js";
+import { bestimmeMeldeklasse, istHoeher, type Meldeklasse } from "./meldung.js";
+import { upsertListingAndVersion, logNotification, hoechsteGemeldeteKlasse } from "./db.js";
 import { kartePngFuerPlz } from "./karte.js";
 import {
   sendTelegramMessage,
@@ -58,6 +59,15 @@ export function bewerteMietschaetzung(mietQuelle: string, bruttomietrendite: num
   if (mietQuelle === "angegeben") return [];
   if (bruttomietrendite <= MAX_PLAUSIBLE_BRUTTORENDITE) return [];
   return ["rent_estimate_unreliable"];
+}
+
+/**
+ * Gesendet wird nur bei einem echten AUFSTIEG. Damit ist ein Objekt genau
+ * einmal je Klasse eine Nachricht wert, und eine Verbesserung
+ * (pruefkandidat -> top_treffer) meldet sich erneut.
+ */
+export function sollGesendetWerden(aktuell: Meldeklasse, bereitsGemeldet: Meldeklasse): boolean {
+  return aktuell !== "keine" && istHoeher(aktuell, bereitsGemeldet);
 }
 
 export interface PipelineCandidate {
@@ -213,8 +223,16 @@ export async function processCandidate(
     dataGaps: [...dataGaps],
   };
 
-  try {
-    if (diff.changed && kennzahlen.topTreffer) {
+  const klasse = bestimmeMeldeklasse({
+    erfuelltSchwellen: kennzahlen.topTreffer,
+    mietQuelle: miete.quelle,
+    auctionAt: candidate.auctionAt,
+    jetzt: new Date(),
+  });
+
+  if (klasse !== "keine") {
+    const bereitsGemeldet = await hoechsteGemeldeteKlasse(supabase, diff.listingId);
+    if (sollGesendetWerden(klasse, bereitsGemeldet)) {
       const kennzahlenSummary = {
         kaufpreisfaktor: kennzahlen.kaufpreisfaktor,
         geschaetzterDscr: kennzahlen.geschaetzterDscr,
@@ -230,30 +248,34 @@ export async function processCandidate(
                 caseNumber: candidate.caseNumber,
                 rawNoticeText: candidate.rawNoticeText,
               },
-              kennzahlenSummary
+              kennzahlenSummary,
+              klasse
             )
-          : formatTopTrefferMessage(listingSummary, kennzahlenSummary);
+          : formatTopTrefferMessage(listingSummary, kennzahlenSummary, klasse);
+
+      // Reihenfolge ist wesentlich: erst senden, dann protokollieren. Wirft
+      // der Versand, entsteht KEINE Zeile -- und der naechste Lauf sieht das
+      // Objekt weiterhin als "noch nie gemeldet" und holt es nach. Genau das
+      // war der Fehler der alten changed-Logik.
       await schlafe(TELEGRAM_SENDEABSTAND_MS);
       await sendTelegramMessage(telegramConfig, text);
       await sendeMedien(telegramConfig, candidate);
-      await logNotification(supabase, diff.listingId, "top_treffer", {
+      await logNotification(supabase, diff.listingId, klasse, {
         ...kennzahlenSummary,
         priceCents: candidate.priceCents,
       });
     }
+  }
 
-    if (diff.priceDropped && diff.previousPriceCents !== null) {
-      await schlafe(TELEGRAM_SENDEABSTAND_MS);
-      await sendTelegramMessage(
-        telegramConfig,
-        formatPreisaenderungMessage(listingSummary, diff.previousPriceCents, candidate.priceCents)
-      );
-      await logNotification(supabase, diff.listingId, "preisaenderung", {
-        altPreisCents: diff.previousPriceCents,
-        neuPreisCents: candidate.priceCents,
-      });
-    }
-  } catch (err) {
-    console.error(`Benachrichtigung fehlgeschlagen fuer "${candidate.title}" (${candidate.url}):`, err);
+  if (diff.priceDropped && diff.previousPriceCents !== null) {
+    await schlafe(TELEGRAM_SENDEABSTAND_MS);
+    await sendTelegramMessage(
+      telegramConfig,
+      formatPreisaenderungMessage(listingSummary, diff.previousPriceCents, candidate.priceCents)
+    );
+    await logNotification(supabase, diff.listingId, "preisaenderung", {
+      altPreisCents: diff.previousPriceCents,
+      neuPreisCents: candidate.priceCents,
+    });
   }
 }
