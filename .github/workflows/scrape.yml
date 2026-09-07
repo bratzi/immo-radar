@@ -1,8 +1,13 @@
 name: scrape
 
 on:
-  schedule:
-    - cron: "0 */3 * * *"
+  # PAUSIERT ab 2026-09-07 fuer den Umbau "vollstaendige Erfassung &
+  # Bestandsfuehrung". Die Schema-Migration entfernt listings.is_active und
+  # fuegt disappeared_at/sweep_runs hinzu -- der Code auf main kennt das neue
+  # Schema noch nicht und wuerde bei jedem Lauf scheitern.
+  # WIEDER AKTIVIEREN, sobald der Umbau gemerged ist.
+  # schedule:
+  #   - cron: "0 */3 * * *"
   workflow_dispatch: {}
 
 jobs:
