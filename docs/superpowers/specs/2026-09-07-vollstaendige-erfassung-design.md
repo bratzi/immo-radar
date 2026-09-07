@@ -103,6 +103,18 @@ folgenlos, und der Fehlermodus bleibt sicher.
   `geltungsbereich` mit den sauber durchgelaufenen Ländern, setzt aber bei
   jedem stolpernden Land ebenfalls `vollstaendig = false`.
 
+**Nachtrag 2026-09-07 (aktueller Stand): Immowelt meldet immer
+`vollstaendig = false`.** Ein Live-Lauf hat gezeigt, dass der Fenstermodus die
+DataDome-CAPTCHA nur bei mäßiger Anfragerate umgeht: Nach vielen Seitenabrufen
+kehrt sie zurück. Immowelt ist deshalb auf 5 s je Seitenabruf gedrosselt, und
+jeder Lauf grast nur drei Bundesländer ab (rotierend über die Stundenzahl seit
+Epoche). Ein solcher Teil-Sweep ist per Definition nie vollständig — `vollstaendig`
+ist für Immowelt fest `false`, ohne Ausnahme. Immowelt trägt weiter Kandidaten
+bei, **autorisiert aber keine Löschung**; volle Abdeckung sammelt sich über den
+Tag an. Einzige löschende Quelle ist damit das ZVG-Portal. Die Löschhoheit für
+Immowelt zurückzuholen setzt eine Fundort-Spalte pro Listing voraus — ein
+eigenes Arbeitspaket.
+
 **Warum keine regionsgenaue Verengung.** Eine frühere Fassung dieser Spec sah
 vor, bei ZVG nur die abgebrochenen Länder auszusparen und die übrigen normal
 abzugleichen. Das komponiert nicht mit der quellenweiten Median-Prüfung
@@ -352,10 +364,11 @@ deaktiviert.
 `/classified-search*`, `/liste/getlistitems` und `/classifiedList/`. Genau
 diese Pfade lädt Immowelt clientseitig nach, um Seite 2+ und Filter zu
 liefern; ein echter Browser ruft sie zwangsläufig auf. Die Vorgabe wird
-bewusst gestrichen, um für Immowelt überhaupt eine vollständige Menge zu
-bekommen — ohne die darf dort nichts gelöscht werden. Eingegangenes Risiko:
-Sperrung durch Immowelt. Gegenmaßnahme bleibt die bestehende Drosselung von
-1 s zwischen Anfragen.
+bewusst gestrichen, um für Immowelt überhaupt eine belastbare Menge zu
+bekommen. Eingegangenes Risiko: Sperrung durch Immowelt. Gegenmaßnahme ist die
+Drosselung zwischen Anfragen — für Immowelt inzwischen auf 5 s hochgesetzt und
+mit einem Teil-Sweep von drei Ländern je Lauf kombiniert (siehe „Anfragelast").
+Immowelt löscht ohnehin nicht mehr; nur ZVG tut das.
 
 **Menge der Immowelt-Ergebnisse.** Eine vollständige Paginierung über *alle*
 bundesweiten Haus-Angebote wäre nicht vertretbar. Der Sweep muss daher in der
@@ -412,9 +425,15 @@ gesucht wird. Die Links dazu stehen auf der bundesweiten MFH-Seite selbst:
 
 Summe **35.398** gegen 35.415 bundesweit — die 16 Länder zerlegen den
 Gesamtbestand lückenlos. **Kein Land erreicht den Deckel**; der größte
-(Nordrhein-Westfalen) liegt bei 188 von 250 Seiten. Damit ist Immowelt
-vollständig erfassbar. Aufwand: ~885 Seitenabrufe, bei 1 s Drosselung rund
-15 Minuten.
+(Nordrhein-Westfalen) liegt bei 188 von 250 Seiten. Der Bestand ist damit über
+die Länder-Pfade grundsätzlich erreichbar. Aufwand: ~885 Seitenabrufe.
+
+**Nachtrag 2026-09-07 (aktueller Stand):** In einem Lauf ist das nicht
+erfassbar. Der Fenstermodus umgeht die DataDome-CAPTCHA nur bei mäßiger
+Anfragerate; bei 1 s Abstand kam sie mitten im Lauf zurück. Drosselung daher
+auf 5 s je Seitenabruf, und jeder Lauf grast nur drei Länder ab (rotierend
+über die Stundenzahl seit Epoche). ~110 Seiten je Lauf, nahe zehn Minuten;
+volle Abdeckung sammelt sich über den Tag an (~6 Läufe).
 
 Die Geo-Ids im Pfad (`.../nordrhein-westfalen/ad04de5`) sind zwingend —
 geratene Pfade ohne sie liefern HTTP 410. Sie werden fest hinterlegt. Ändert
@@ -423,11 +442,13 @@ gewarnt und **nicht** gelöscht. Ein sicherer Fehlermodus.
 
 **Geltungsbereich bei Immowelt:** Anders als bei ZVG steckt das Bundesland
 nicht in der `externalId` (Immowelt vergibt UUIDs). Eine partitionsgenaue
-Zuordnung wäre also nur über eine zusätzliche Spalte zu haben. Stattdessen
-gilt für Immowelt **alles oder nichts**: Scheitert auch nur ein Bundesland,
-ist `vollstaendig` für die ganze Quelle `false` und es wird in diesem Lauf
-nicht gelöscht. Beim 3-Stunden-Takt ist das folgenlos, und der Fehlermodus
-bleibt sicher. (Für ZVG gilt dasselbe — siehe Abschnitt 2.)
+Zuordnung wäre also nur über eine zusätzliche Spalte zu haben. Da jeder Lauf
+ohnehin nur einen rotierenden Ausschnitt der Länder abgrast (siehe Nachtrag
+oben), meldet Immowelt **immer `vollstaendig = false`** — ein Teil-Sweep kann
+per Definition nicht vollständig sein. Immowelt trägt weiter Kandidaten bei,
+autorisiert aber keine Löschung; einzige löschende Quelle ist das ZVG-Portal.
+Die Löschhoheit zurückzuholen setzt die genannte Fundort-Spalte voraus und ist
+ein eigenes Arbeitspaket.
 
 **Fenstermodus zwingend:** Immowelt sitzt hinter DataDome. Headless-Chromium
 wird ab Seite 2 der Ergebnisliste und auf jeder Detailseite mit HTTP 403 und
@@ -435,12 +456,13 @@ CAPTCHA abgewiesen; im Fenstermodus (`headless: false`) liefert dieselbe URL
 HTTP 200 mit vollständigem Datenmodell. Der CI-Runner hat kein Display und
 startet den Lauf deshalb unter `xvfb-run`.
 
-**Anfragelast.** ~885 Abrufe je Lauf, alle drei Stunden, sind rund 7.000
-Anfragen täglich an Immowelt — deutlich mehr als bisher und damit ein
-realeres Sperr-Risiko. Die 1-s-Drosselung bleibt. Sollte Immowelt sperren,
-äußert sich das als eingebrochene Menge, also als Warnung ohne Löschung; die
-naheliegende Gegenmaßnahme wäre dann, den Immowelt-Sweep nur noch einmal
-täglich statt in jedem Lauf zu fahren.
+**Anfragelast (aktueller Stand).** Der ursprüngliche Plan — voller Bundes-Sweep
+je Lauf bei 1 s Drosselung — hat die DataDome-CAPTCHA mitten im Live-Lauf
+zurückgeholt. Umgesetzt ist stattdessen: 5 s je Seitenabruf und nur drei
+Bundesländer pro Lauf, rotierend, sodass sich der volle Kreis über den Tag
+verteilt. Das hält die Rate niedrig genug, um unauffällig zu bleiben. Preis
+dafür ist, dass Immowelt nie einen vollständigen Sweep meldet und damit keine
+Löschung mehr autorisiert.
 
 **Erster Lauf nach dem Umbau feuert nach.** Weil der Meldezustand künftig aus
 `notifications` kommt und dort für qualifizierte Objekte nichts steht, gelten

@@ -45,7 +45,7 @@ npm run scrape
 ```
 
 Der Scraper startet Chromium bewusst im Fenstermodus (`headless: false`, siehe
-[Immowelt: alles oder nichts](#immowelt-alles-oder-nichts)) und braucht daher
+[Immowelt: Teil-Sweep pro Lauf](#immowelt-teil-sweep-pro-lauf)) und braucht daher
 ein Display. Auf einem headless Linux-Rechner — und in CI — muss der Lauf
 deshalb unter `xvfb-run` erfolgen:
 
@@ -97,26 +97,27 @@ gesehen hat. Drei Sicherungen:
 Leitregel: **Wer nicht urteilen kann, löscht nicht.**
 Hinzugefügt wird dagegen immer — gebremst wird nur das Löschen.
 
-### Immowelt: alles oder nichts
+### Immowelt: Teil-Sweep pro Lauf
 
-Immowelt wird pro Bundesland über alle Ergebnisseiten hinweg vollständig
-erfasst (~885 Seitenabrufe je Lauf) und **nimmt an der Löschung teil**.
+Immowelt sitzt hinter DataDome. Ein Live-Lauf hat gezeigt: Der Fenstermodus
+(`headless: false`) kommt zwar an der CAPTCHA vorbei, aber nur bei mäßiger
+Anfragerate — nach vielen Seitenabrufen kehrt die CAPTCHA zurück. Deshalb ist
+die Drosselung auf 5 s je Seitenabruf hochgesetzt und jeder Lauf grast nur
+drei Bundesländer ab (rotierend über die Stundenzahl seit Epoche, gleiche
+Mechanik wie die Detail-Rotation). Ein vollständiger Durchlauf über alle 16
+Länder sammelt sich so über den Tag an, nicht in einem Lauf.
 
-Voraussetzung dafür ist der Fenstermodus: Immowelt sitzt hinter DataDome, und
-Headless-Chromium wird ab Seite 2 der Ergebnisliste mit HTTP 403 abgewiesen.
-Der Scraper startet Chromium deshalb bewusst mit `headless: false` — kein
-Spoofing, kein Stealth-Plugin, siehe die Begründung in
-`scraper/scrapers/immowelt/index.ts`. **Nicht auf headless „optimieren".**
+Ein Teil-Sweep über wenige Länder ist per Definition nie vollständig: Immowelt
+meldet daher **immer `vollstaendig=false`**. Es trägt weiter Kandidaten bei
+(Hinzufügen ist nie an `vollstaendig` gebunden), **autorisiert aber keine
+Löschung**. Die Löschhoheit zurückzuholen hieße, pro Fundort zu verengen —
+dazu bräuchte es eine Spalte, die festhält, wo jedes Listing gefunden wurde;
+ein eigenes Arbeitspaket. Bis dahin ist **das ZVG-Portal die einzige Quelle,
+die löscht** (klein, partitioniert nach Bundesland, unauffällig).
 
-Die `externalId` ist bei Immowelt eine UUID ohne Bundesland, eine
-partitionsgenaue Löschung wäre daraus nicht ableitbar. Für diese Quelle gilt
-deshalb **alles oder nichts**: Stolpert auch nur eines der 16 Bundesländer —
-Fehler, Seitendeckel, oder eine Region, die weder Trefferzahl noch eine
-einzige Karte liefert (Signatur eines Soft-Blocks) — ist `vollstaendig=false`
-und Immowelt löscht in diesem Lauf gar nichts. Beim 3-Stunden-Takt ist das
-folgenlos. Für das ZVG-Portal gilt dasselbe Prinzip; `geltungsbereich` wird
-dort weiter protokolliert, aber als Beleg über saubere Regionen, nicht als
-Löschfilter.
+Der Fenstermodus bleibt zwingend — kein Spoofing, kein Stealth-Plugin, siehe
+die Begründung in `scraper/scrapers/immowelt/index.ts`. **Nicht auf headless
+„optimieren".**
 
 ## Meldeklassen
 

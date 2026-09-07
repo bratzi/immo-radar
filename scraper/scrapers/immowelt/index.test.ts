@@ -31,8 +31,15 @@ describe("istRegionVollstaendig", () => {
     expect(istRegionVollstaendig(41, null)).toBe(true);
   });
 
-  it("kann nicht urteilen, wenn das Portal null Treffer meldet", () => {
-    expect(istRegionVollstaendig(0, 0)).toBe(true);
+  it("ist unvollstaendig, wenn nichts eingesammelt wurde -- selbst bei 0 gemeldeten Treffern", () => {
+    // 0/0 ist zwar in sich stimmig, aber null eingesammelte Objekte sind nie
+    // ein Beleg fuer Vollstaendigkeit: eine geblockte Huelle kann einen Titel
+    // tragen, der zu null Treffern parst. Null gesammelt -> immer false.
+    expect(istRegionVollstaendig(0, 0)).toBe(false);
+  });
+
+  it("ist unvollstaendig, wenn nichts eingesammelt wurde, obwohl Treffer gemeldet sind", () => {
+    expect(istRegionVollstaendig(0, 120)).toBe(false);
   });
 
   it("ist unvollstaendig, wenn die Menge weit unter der gemeldeten Zahl liegt", () => {
