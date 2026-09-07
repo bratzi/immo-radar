@@ -90,6 +90,48 @@ function normalizeWhitespace(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Deutscher Geldbetrag, gefolgt von einer Waehrungsangabe -- z. B.
+ * "605.000,00 €", "89.000,00 EUR", "353.000,-€", "25.000,00 Euro".
+ */
+const BETRAG_PATTERN = /(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{2})|,-)?\s*(?:€|EUR|Euro)/gi;
+
+/** Geldbetrag ohne Waehrungsangabe, an den Nachkommastellen erkennbar. */
+const BETRAG_OHNE_WAEHRUNG_PATTERN = /(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})(?!\d)/g;
+
+/**
+ * Liest den Verkehrswert aus dem Feldtext. Das Portal setzt haeufig Text um
+ * den Betrag ("Grundbuch von X Blatt 3713 lfd.Nr. 1: 605.000,00 €",
+ * "543.000,00 € (Kassenzeichen: 040031701069)"). Es wird deshalb gezielt ein
+ * Betrag MIT Waehrungsangabe gesucht statt alle Ziffern einzusammeln -- das
+ * klebte sonst Fremdziffern an den Wert (Blatt-Nummer + Betrag ergaben
+ * 37.131.605.000 statt 605.000).
+ *
+ * Stehen mehrere Betraege da (Aufteilung nach lfd. Nummern), gewinnt der
+ * groesste: das ist der Gesamt-Verkehrswert des Objekts.
+ */
+function parseVerkehrswert(text: string): number {
+  const betraege: number[] = [];
+  for (const treffer of text.matchAll(BETRAG_PATTERN)) {
+    const ganz = treffer[1].replace(/\./g, "");
+    const nachkomma = treffer[2] ?? "0";
+    betraege.push(parseFloat(`${ganz}.${nachkomma}`));
+  }
+  if (betraege.length > 0) return Math.max(...betraege);
+
+  // Ohne Waehrungszeichen (die steht schon im Feldnamen "Verkehrswert in €"):
+  // Betraege an den Nachkommastellen erkennen. Aktenzeichen, Blatt- und
+  // laufende Nummern tragen nie welche -- ein sicheres Unterscheidungsmerkmal.
+  for (const treffer of text.matchAll(BETRAG_OHNE_WAEHRUNG_PATTERN)) {
+    betraege.push(parseFloat(`${treffer[1].replace(/\./g, "")}.${treffer[2]}`));
+  }
+  if (betraege.length > 0) return Math.max(...betraege);
+
+  // Letzter Fall: der gesamte Text ist eine blanke Zahl ohne Nachkommastellen.
+  const blank = text.trim().match(/^(\d{1,3}(?:\.\d{3})*|\d+)$/);
+  return blank ? parseFloat(blank[1].replace(/\./g, "")) : NaN;
+}
+
 function zellenText($: cheerio.CheerioAPI, zelle: cheerio.Cheerio<any>): string {
   const absaetze = zelle.find("p");
   if (absaetze.length > 0) {
@@ -211,7 +253,7 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
   const wohnflaecheText = ersteTrefferGruppe(beschreibungText, WOHNFLAECHE_PATTERNS);
   const baujahrText = ersteTrefferGruppe(beschreibungText, BAUJAHR_PATTERNS);
 
-  const priceCents = Math.round(parseGermanNumber(verkehrswertText) * 100);
+  const priceCents = Math.round(parseVerkehrswert(verkehrswertText) * 100);
   if (!Number.isFinite(priceCents) || priceCents <= 0) {
     throw new Error(`Ungültiger Verkehrswert (nicht numerisch oder nicht positiv): "${verkehrswertText}"`);
   }

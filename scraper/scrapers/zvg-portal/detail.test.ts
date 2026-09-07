@@ -273,3 +273,71 @@ describe("parseZvgDetailPage — Anhaenge", () => {
     expect(parseZvgDetailPage(html, KONTEXT).attachments).toEqual([]);
   });
 });
+
+describe("parseZvgDetailPage — Verkehrswert mit Zusatztext (echte Portal-Faelle)", () => {
+  const mitWert = (wert: string) =>
+    parseMitErsetzung(["<p>271.000,00</p>", `<p>${wert}</p>`]).priceCents;
+
+  it("ignoriert eine vorangestellte Grundbuch-Referenz", () => {
+    expect(mitWert("Grundbuch von Eschersheim Blatt 3713 lfd.Nr. 1: 605.000,00 €")).toBe(605_000_00);
+  });
+
+  it("ignoriert ein vorangestelltes 'zu lfd. Nr.'", () => {
+    expect(mitWert("zu lfd. Nr. 1: 89.000,00 EUR")).toBe(89_000_00);
+  });
+
+  it("ignoriert einen nachgestellten Klammerzusatz", () => {
+    expect(mitWert("240,00 € (lfd. Nr. 2)")).toBe(240_00);
+  });
+
+  it("ignoriert ein nachgestelltes Kassenzeichen mit langer Ziffernfolge", () => {
+    expect(mitWert("543.000,00 € (Kassenzeichen für Sicherheitsleistung: 040031701069)")).toBe(543_000_00);
+  });
+
+  it("versteht die Schreibweise mit Strich statt Nachkommastellen", () => {
+    expect(mitWert("Verkehrswert: 353.000,-€")).toBe(353_000_00);
+  });
+
+  it("versteht 'Euro' ausgeschrieben und fehlende Leerzeichen", () => {
+    expect(mitWert("25.000,00 Euro")).toBe(25_000_00);
+    expect(mitWert("Verkehrswert:268.000,00€")).toBe(268_000_00);
+  });
+
+  it("liest Millionenbetraege korrekt", () => {
+    expect(mitWert("Grundbuch von Frankfurt Bezirk 25 Blatt 3759 lfd.Nr. 1: 2.190.000,00 €")).toBe(2_190_000_00);
+  });
+
+  it("liest einen echten Kleinbetrag als solchen, statt Ziffern zusammenzukleben", () => {
+    expect(mitWert("BVNr. 1: 50,00 €")).toBe(50_00);
+  });
+
+  it("nimmt bei mehreren Betraegen den groessten (Gesamt-Verkehrswert)", () => {
+    expect(mitWert("lfd. Nr. 1: 120.000,00 €, lfd. Nr. 2: 480.000,00 €")).toBe(480_000_00);
+  });
+});
+
+describe("parseZvgDetailPage — Verkehrswert ohne Waehrungszeichen im Feld", () => {
+  const mitWert = (wert: string) =>
+    parseMitErsetzung(["<p>271.000,00</p>", `<p>${wert}</p>`]).priceCents;
+
+  it("nimmt die Gesamtsumme vor der Aufschluesselung", () => {
+    expect(mitWert("70.000,00 (BV Nr. 1: 1.000,00; BV Nr. 2: 69.000,00)")).toBe(70_000_00);
+  });
+
+  it("ignoriert eine vorangestellte laufende Nummer", () => {
+    expect(mitWert("Lfd. Nr. 1: 27.000,00")).toBe(27_000_00);
+  });
+
+  it("vertraegt einen abschliessenden Punkt", () => {
+    expect(mitWert("129.000,00.")).toBe(129_000_00);
+  });
+
+  it("nimmt bei mehreren Objekten den groessten Betrag", () => {
+    expect(mitWert("Objekt 1: 71.300,00 | Objekt 2: ,00")).toBe(71_300_00);
+  });
+
+  it("verwirft ein Feld ganz ohne Betrag", () => {
+    expect(() => mitWert("Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €")).toThrow(/Verkehrswert/);
+    expect(() => mitWert("Lfd. Nr. 1")).toThrow(/Verkehrswert/);
+  });
+});
