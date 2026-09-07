@@ -157,9 +157,30 @@ async function regionErfassen(
       }
     }
     const weiter = page.locator('button[aria-label="nächste seite"]');
+    // Fehlt der "naechste Seite"-Knopf, ist die Region regulaer zu Ende. Das
+    // ist die einzige Abbruchbedingung und bleibt es -- der Retry unten greift
+    // NUR bei einem fehlgeschlagenen Klick, nie bei fehlendem Knopf.
     if ((await weiter.count()) === 0) break;
     await sleep(IMMOWELT_VERZOEGERUNG_MS);
-    await weiter.first().click();
+    try {
+      await weiter.first().click();
+    } catch {
+      // Klick fehlgeschlagen, obwohl der Knopf da ist -- praktisch immer faengt
+      // das frisch aufgebaute Usercentrics-Overlay den Klick ab. Usercentrics
+      // baut das Overlay bei JEDEM Seitenwechsel neu auf (`data-created-at`
+      // aendert sich pro Seite), eine einmalige Bestaetigung pro Browser-
+      // Context haelt daher ueber einen mehrseitigen Sweep nicht. Belegt im
+      // Live-Lauf: Seite 1 und 2 liefen nach einer Bestaetigung, Seite 3 wurde
+      // erneut abgefangen. Also einmal kurz wegklicken und den Klick GENAU
+      // einmal wiederholen; schlaegt auch der zweite Versuch fehl, gilt die
+      // Region wie bisher als zu Ende (kein Endlos-Retry).
+      await bestaetigeConsentBanner(page, 2000);
+      try {
+        await weiter.first().click();
+      } catch {
+        break;
+      }
+    }
     await page.waitForLoadState("domcontentloaded");
   }
 

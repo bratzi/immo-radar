@@ -15,14 +15,29 @@ import type { Locator, Page } from "playwright";
  * dann als Anti-Bot-Block) -- es ist keins von beidem, sondern ein nicht
  * weggeklickter Dialog.
  *
- * Zwei Eigenheiten, die die Umsetzung bestimmen:
+ * Vier Eigenheiten, die die Umsetzung bestimmen:
  *  - `#usercentrics-root` ist im Light-DOM LEER; der eigentliche Dialog steckt
  *    in einem Shadow Root. Playwrights Selektor-Engine durchdringt Shadow DOM,
  *    ein `document.querySelector` in `page.evaluate` nicht. Deshalb hier
  *    ausschliesslich Playwright-Locators, kein `page.evaluate`.
+ *  - Weil der Light-DOM-Host leer ist, hat er keine Ausdehnung und gilt
+ *    Playwright NIE als "visible". Er liegt trotzdem ueber der Seite und frisst
+ *    Pointer-Events -- Playwright meldet es woertlich als
+ *    "<div id=\"usercentrics-root\" ...> intercepts pointer events". Eine
+ *    fruehere Fassung wartete auf `state: "visible"` und lief damit jedes Mal
+ *    in den Timeout ("kein #usercentrics-root binnen 10000 ms -- nichts zu
+ *    tun"), waehrend Sekunden spaeter genau dieses Element den Pagination-Klick
+ *    blockte. Deshalb wird auf `state: "attached"` gewartet -- der Host ist
+ *    angehaengt und blockend, lange bevor er je "sichtbar" waere. NICHT auf
+ *    `visible` "zurueckfixen".
  *  - Das Banner laedt verzoegert nach. Eine einmalige Pruefung direkt nach
  *    `domcontentloaded` sieht nichts, Sekundenbruchteile spaeter ist es da und
- *    blockt. Deshalb wird auf sein Erscheinen GEWARTET, nicht einmalig getestet.
+ *    blockt. Deshalb wird auf sein Anhaengen GEWARTET, nicht einmalig getestet.
+ *  - Usercentrics baut das Overlay bei JEDEM Seitenwechsel neu auf
+ *    (`data-created-at` unterscheidet sich zwischen zwei Beobachtungen). Eine
+ *    Bestaetigung pro Browser-Context haelt daher ueber einen mehrseitigen
+ *    Sweep NICHT -- der Pagination-Code muss bei einem fehlgeschlagenen
+ *    "naechste Seite"-Klick erneut wegklicken (siehe scrapers/immowelt/index.ts).
  *
  * Es wird der "Akzeptieren"-Knopf geklickt -- so, wie es ein Mensch tut. Das
  * Overlay wird NICHT aus dem DOM gerissen; das waere etwas anderes als eine
@@ -40,8 +55,10 @@ const OVERLAY_SELEKTOR = "#usercentrics-root";
  *  nicht auf, ist das ein regulaerer Ausgang -- kein Fehler. */
 const ERSCHEINEN_TIMEOUT_MS = 10_000;
 
-/** Wie lange nach einem Klick auf das Verschwinden des Overlays gewartet wird,
- *  bevor der naechste Kandidat probiert wird. */
+/** Wie lange nach einem Klick darauf gewartet wird, dass der geklickte Knopf
+ *  aus dem DOM verschwindet, bevor der naechste Kandidat probiert wird. Der
+ *  Host-Div `#usercentrics-root` selbst bleibt nach der Einwilligung bestehen
+ *  und taugt daher NICHT als Erfolgssignal. */
 const VERSCHWINDEN_TIMEOUT_MS = 4_000;
 
 /** Klick-Timeout pro Kandidat -- kurz halten, damit ein kaputtes Banner nicht
@@ -63,20 +80,36 @@ const AKZEPTIEREN_TEXTE = [
 ];
 
 /**
- * Klickt das Usercentrics-Consent-Banner weg. Einmal pro Browser-Context
- * aufrufen, direkt nach der ersten Navigation -- der Consent-Zustand lebt im
- * Context, ein weiterer Aufruf pro Region/Seite bringt nichts.
+ * Klickt das Usercentrics-Consent-Banner weg. Direkt nach der ersten Navigation
+ * aufrufen. Der Consent-Zustand lebt zwar im Browser-Context, aber Usercentrics
+ * baut das Overlay bei jedem Seitenwechsel neu auf -- deshalb ruft der
+ * Pagination-Code diese Funktion bei einem fehlgeschlagenen Klick erneut auf,
+ * dann mit kurzem `timeoutMs`.
+ *
+ * Wartet auf `state: "attached"`, NICHT auf `"visible"`: der leere Light-DOM-
+ * Host `#usercentrics-root` wird nie sichtbar, blockt aber Pointer-Events,
+ * sobald er angehaengt ist (Begruendung ausfuehrlich im Dateikopf).
+ *
+ * @param page       Die Playwright-Seite.
+ * @param timeoutMs  Wie lange auf das (verzoegert nachladende) Banner gewartet
+ *                    wird, bevor "kein Banner" angenommen und regulaer
+ *                    zurueckgekehrt wird. Standard: ERSCHEINEN_TIMEOUT_MS. Fuer
+ *                    einen schnellen Nachfass-Check kurz setzen, damit ein
+ *                    tatsaechlich fehlendes Banner den Sweep nicht ausbremst.
  */
-export async function bestaetigeConsentBanner(page: Page): Promise<void> {
+export async function bestaetigeConsentBanner(
+  page: Page,
+  timeoutMs: number = ERSCHEINEN_TIMEOUT_MS
+): Promise<void> {
   try {
     const overlay = page.locator(OVERLAY_SELEKTOR);
 
     try {
-      await overlay.waitFor({ state: "visible", timeout: ERSCHEINEN_TIMEOUT_MS });
+      await overlay.waitFor({ state: "attached", timeout: timeoutMs });
     } catch {
       // Kein Banner aufgetaucht. Regulaerer Fall: das ZVG-Portal hat (noch)
       // keins, oder der Consent-Zustand ist im Context bereits gesetzt.
-      console.log(`Consent-Banner: kein ${OVERLAY_SELEKTOR} binnen ${ERSCHEINEN_TIMEOUT_MS} ms -- nichts zu tun.`);
+      console.log(`Consent-Banner: kein ${OVERLAY_SELEKTOR} binnen ${timeoutMs} ms -- nichts zu tun.`);
       return;
     }
 
@@ -103,10 +136,16 @@ export async function bestaetigeConsentBanner(page: Page): Promise<void> {
         await ziel.click({ timeout: KLICK_TIMEOUT_MS });
 
         try {
-          await overlay.waitFor({ state: "hidden", timeout: VERSCHWINDEN_TIMEOUT_MS });
+          // NICHT auf das Verschwinden von `#usercentrics-root` pruefen: der
+          // Host-Div ueberlebt die Einwilligung (im Live-Lauf nach
+          // erfolgreichem Klick "Overlay noch angehaengt: true"). Verlaesslich
+          // weg ist dagegen der geklickte Knopf selbst -- Usercentrics reisst
+          // den Dialog-Inhalt aus dem Shadow Root, sobald die Einwilligung
+          // sitzt. Haengt der Knopf noch, hat der Klick nichts bewirkt.
+          await ziel.waitFor({ state: "detached", timeout: VERSCHWINDEN_TIMEOUT_MS });
         } catch {
-          // Geklickt, aber das Overlay steht noch -- war nicht der richtige
-          // Knopf. Naechsten Kandidaten probieren.
+          // Geklickt, aber der Knopf haengt noch -- war nicht der richtige.
+          // Naechsten Kandidaten probieren.
           continue;
         }
 
@@ -119,7 +158,7 @@ export async function bestaetigeConsentBanner(page: Page): Promise<void> {
     }
 
     console.warn(
-      `Consent-Banner sichtbar (${OVERLAY_SELEKTOR}), aber KEIN Akzeptieren-Selektor hat ` +
+      `Consent-Banner angehaengt (${OVERLAY_SELEKTOR}), aber KEIN Akzeptieren-Selektor hat ` +
         `funktioniert -- das Banner-Markup hat sich vermutlich geaendert. Folge: jeder ` +
         `Pagination-Klick laeuft ab jetzt in einen 30-s-Timeout und der Sweep sieht nur ` +
         `Seite 1 pro Region. Kandidatenliste in scrapers/consent.ts pruefen/erweitern.`
