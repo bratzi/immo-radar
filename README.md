@@ -30,7 +30,10 @@ docs/superpowers/      Specs und Implementierungspläne
 
 ## Betrieb
 
-Ein Lauf alle 3 Stunden über GitHub Actions (`.github/workflows/scrape.yml`).
+Ein Lauf alle 3 Stunden über GitHub Actions (`.github/workflows/scrape.yml`) — derzeit
+**pausiert** für den Umbau „vollständige Erfassung & Bestandsführung". Die `schedule`-Direktive
+in `.github/workflows/scrape.yml` ist deaktiviert; nur `workflow_dispatch` ist aktiv. Das `schedule`-
+Feld **muss nach dem Merge wieder aktiviert werden**.
 
 Lokal:
 
@@ -69,7 +72,7 @@ gesehen hat. Drei Sicherungen:
 - **Selbstkonsistenz:** Weist das Portal eine Trefferzahl aus, muss sie zur
   eingesammelten Menge passen. (ZVG nennt keine — dort entfällt die Prüfung.)
 - **Historienvergleich:** Die Menge muss innerhalb von 25 % des Medians der
-  letzten zehn Läufe liegen, und es müssen mindestens drei Referenzläufe
+  letzten zehn **erfolgreichen** Läufe liegen, und es müssen mindestens drei Referenzläufe
   vorliegen. Sonst: keine Löschung, stattdessen eine Warnung per Telegram.
 
 Hinzugefügt wird dagegen immer — gebremst wird nur das Löschen.
@@ -81,8 +84,7 @@ Immowelt nutzt Server-seitiges Rendering für die Ergebnislisten. Beim Klick auf
 Pagination funktioniert derzeit nicht. Dadurch werden pro Bundesland nur die
 ersten ~40 Objekte der Ergebnisliste erfasst, statt mehrerer hundert. Die
 Selbstkonsistenz-Prüfung erkennt diese Untererfassung und setzt `vollstaendig=false`.
-Immowelt trägt daher zu Neufunden bei, autorisiert aber solange keine Löschung,
-bis die Paginierung repariert ist.
+Immowelt trägt daher zu Neufunden bei, autorisiert aber keine Löschung.
 
 ## Meldeklassen
 
