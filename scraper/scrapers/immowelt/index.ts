@@ -70,6 +70,14 @@ export const IMMOWELT_REGIONEN: { code: string; pfad: string }[] = [
   { code: "hb", pfad: "bremen/bremen-28219/ad08de2110" },
 ];
 
+/**
+ * Aufwaerm-URL fuer Phase B (Detailseiten). Eine echte Ergebnisliste, aufgebaut
+ * exakt wie in `regionErfassen` aus BASIS + Regionspfad -- hier das erste
+ * Bundesland der Regionsliste. Kein neues URL-Schema, nur die bestehende Form.
+ * Wozu das Aufwaermen dient, steht bei `erfasseImmoweltDetails`.
+ */
+const AUFWAERM_URL = `${BASIS}${IMMOWELT_REGIONEN[0].pfad}`;
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -308,18 +316,39 @@ export async function erfasseImmoweltDetails(
   const ergebnisse: ImmoweltDetailData[] = [];
   try {
     const page: Page = await browser.newPage();
-    // Einmal pro Browser-Context weggeklickt, nach der ersten Navigation.
-    let consentErledigt = false;
+
+    // Session aufwaermen, BEVOR die erste Detailseite geholt wird -- genau der
+    // Schritt, den `erfasseZvgDetails` fuer sein Portal schon macht und der hier
+    // fehlte. Ein frischer Browser, der als allererste Anfrage direkt eine
+    // /expose/-URL oeffnet (kein vorheriger Seitenaufruf, keine Session, kein
+    // Consent), bekommt von Immowelts Schutz eine 403-Huelle statt der Seite.
+    // `parseImmoweltDetailPage` findet darin das Datenmodell
+    // (__UFRN_LIFECYCLE_SERVERREQUEST__) nicht, meldet "Seitenstruktur
+    // geaendert" -- und so geht JEDE Detailseite des Laufs verloren.
+    // Direkt belegt (Live-Lauf 2026-09-07, dieselbe expose-URL): kalt
+    // angesteuert -> HTTP 403 mit Huelle; zuerst eine Suchseite laden, ein paar
+    // Sekunden warten, dann zur expose-URL -> HTTP 200 mit vollstaendigem
+    // Datenmodell. Nicht als redundant entfernen -- ohne diesen Schritt liefert
+    // Phase B fuer Immowelt nichts.
+    await page.goto(AUFWAERM_URL, { waitUntil: "domcontentloaded" });
+    // Consent-Banner JETZT wegklicken, nach dem Aufwaermen: gegen die echte
+    // Suchseite, nicht gegen die 403-Huelle, an der es nichts ausrichten konnte.
+    // Einmal pro Browser-Context (siehe scrapers/consent.ts).
+    await bestaetigeConsentBanner(page);
+    // Referer fuer jede Detailnavigation -- wie in `erfasseZvgDetails`. Eine
+    // expose-Seite wird normalerweise aus einer Ergebnisliste heraus geoeffnet.
+    const referer = page.url();
+
     for (const externalId of externalIds) {
       const zusammenfassung = zusammenfassungen.get(externalId);
       if (zusammenfassung === undefined) continue;
+      // Drossel vor jedem Abruf -- auch vor dem ersten. Das ist zugleich die
+      // kurze Ruhe nach der Suchseite, die die manuelle Probe vor der ersten
+      // erfolgreichen Detailnavigation brauchte. Das Aufwaermen oben ist ein
+      // weiterer Seitenabruf und damit wie die uebrigen gedrosselt.
       await sleep(IMMOWELT_VERZOEGERUNG_MS);
       try {
-        await page.goto(zusammenfassung.url, { waitUntil: "domcontentloaded" });
-        if (!consentErledigt) {
-          await bestaetigeConsentBanner(page);
-          consentErledigt = true;
-        }
+        await page.goto(zusammenfassung.url, { waitUntil: "domcontentloaded", referer });
         ergebnisse.push(
           parseImmoweltDetailPage(await page.content(), {
             externalId: zusammenfassung.externalId,
