@@ -15,6 +15,7 @@ function sweep(overrides: Partial<SweepErgebnis> = {}): SweepErgebnis {
   return {
     source: "zvg-portal",
     vollstaendig: true,
+    strukturellTeilweise: false,
     geltungsbereich: ["sn", "by"],
     gesehene: new Set<string>(),
     gemeldeteTreffer: null,

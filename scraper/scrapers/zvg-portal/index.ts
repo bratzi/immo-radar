@@ -115,6 +115,9 @@ export async function sweepZvgPortal(): Promise<{
     sweep: {
       source: "zvg-portal",
       vollstaendig: alleLiefen,
+      // ZVG wird pro Lauf komplett abgegrast; jede Unvollstaendigkeit hier ist
+      // ein echter Ausfall und soll laut gemeldet werden.
+      strukturellTeilweise: false,
       geltungsbereich,
       gesehene: new Set(zusammenfassungen.keys()),
       gemeldeteTreffer: null,

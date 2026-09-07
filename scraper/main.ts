@@ -141,6 +141,17 @@ async function gleicheBestandAb(
   });
 
   if (!pruefung.loeschenErlaubt) {
+    // Eine strukturell nur teilweise erfasste Quelle (Immowelt: Ratenlimit
+    // erzwingt eine rotierende Scheibe) verfehlt das Plausibilitaetstor JEDEN
+    // Lauf -- das ist so gebaut, keine Anomalie. Eine Telegram-Warnung alle
+    // drei Stunden waere Dauerfeuer und wuerde den Kanal abstumpfen lassen.
+    // Also: eine leise Logzeile, keine Meldung. Geloescht wird ohnehin nicht.
+    if (sweep.strukturellTeilweise) {
+      console.log(
+        `${sweep.source}: Loeschung ausgesetzt (strukturell teilweise, erwartet) — ${pruefung.grund}`
+      );
+      return;
+    }
     console.warn(`${sweep.source}: Loeschung ausgesetzt — ${pruefung.grund}`);
     await schlafe(TELEGRAM_SENDEABSTAND_MS);
     await sendTelegramMessage(

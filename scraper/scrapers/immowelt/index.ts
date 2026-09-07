@@ -20,14 +20,18 @@ const BASIS = "https://www.immowelt.de/suche/kaufen/haus/mehrfamilienhaus/guenst
 const IMMOWELT_VERZOEGERUNG_MS = 5000;
 
 /**
- * Wie viele der 16 Bundeslaender ein einzelner Lauf abgrast. Rechnung: ~885
- * Ergebnisseiten bundesweit, bei IMMOWELT_VERZOEGERUNG_MS = 5 s sind das
- * ~74 min fuer den ganzen Kreis. Damit ein Lauf nahe bei zehn Minuten bleibt,
- * passen ~110 Seiten -> 885 / 16 ~ 55 Seiten pro Land -> rund drei Laender.
- * Der Rest folgt in den Folgelaeufen; ein voller Durchlauf sammelt sich ueber
- * den Tag an (16 / 3 ~ 6 Laeufe).
+ * Wanduhr-Budget eines einzelnen Immowelt-Laufs. Kein Regionen-Zaehler: die
+ * Bundeslaender sind viel zu unterschiedlich gross (Nordrhein-Westfalen allein
+ * ~188 Ergebnisseiten -> ~16 min bei 5 s Drossel; NRW + Bayern +
+ * Baden-Wuerttemberg zusammen ~441 Seiten -> ~37 min), die Lauflaenge wuerde je
+ * nach ausgeloster Scheibe wild schwanken.
+ *
+ * Rechnung: ~885 Ergebnisseiten bundesweit, bei IMMOWELT_VERZOEGERUNG_MS = 5 s
+ * sind das ~74 min fuer einen vollen Kreis. Mit 12 min pro Lauf nimmt jeder
+ * Lauf eine begrenzte Scheibe, und der Kreis schliesst sich ueber mehrere
+ * Laeufe (~74 / 12 ~ 6 Laeufe).
  */
-const REGIONEN_PRO_LAUF = 3;
+const SWEEP_BUDGET_MS = 12 * 60 * 1000;
 /**
  * Immowelt deckelt jede Ergebnisliste bei 250 Seiten. Erreicht eine Region
  * diesen Wert, ist ihre Menge abgeschnitten und der Sweep gilt als
@@ -151,12 +155,12 @@ async function regionErfassen(
  * ist noetig, weil Immowelt bundesweit bei 250 Seiten deckelt und so nur
  * 10.000 der 35.415 Mehrfamilienhaeuser erreichbar waeren.
  *
- * Jeder Lauf grast nur REGIONEN_PRO_LAUF Bundeslaender ab (rotierend, siehe
- * unten) -- der volle Kreis wuerde bei 5 s Drosselung das Zeitbudget sprengen
- * und die DataDome-CAPTCHA zurueckholen. Ein Teil-Sweep ueber wenige Laender
- * ist damit nie eine vollstaendige Erfassung: `vollstaendig` ist fuer Immowelt
- * grundsaetzlich `false` (siehe Rueckgabe). Volle Abdeckung sammelt sich ueber
- * den Tag ueber mehrere Laeufe an.
+ * Jeder Lauf grast nur so viele Bundeslaender ab, wie in SWEEP_BUDGET_MS
+ * Wanduhrzeit passen (rotierend, siehe unten) -- der volle Kreis wuerde bei 5 s
+ * Drosselung das Zeitbudget sprengen und die DataDome-CAPTCHA zurueckholen. Ein
+ * Teil-Sweep ueber wenige Laender ist damit nie eine vollstaendige Erfassung:
+ * `vollstaendig` ist fuer Immowelt grundsaetzlich `false` (siehe Rueckgabe).
+ * Volle Abdeckung sammelt sich ueber mehrere Laeufe an.
  */
 export async function sweepImmowelt(): Promise<{
   sweep: SweepErgebnis;
@@ -178,28 +182,34 @@ export async function sweepImmowelt(): Promise<{
   let gemeldeteSumme = 0;
   let gemeldeteVollstaendig = true;
 
-  // Nur einen Ausschnitt der Bundeslaender pro Lauf, rotierend. `rotiereAuswahl`
-  // (aus lib/bestand.js, unit-getestet) schneidet ein wanderndes Fenster aus
-  // der Codeliste; der Versatz ist -- wie bei der Detail-Rotation in main.ts --
-  // die Stundenzahl seit Epoche, sodass Folgelaeufe durch die Liste wandern und
-  // ein voller Kreis binnen eines Tages zusammenkommt.
+  // Die volle Regionsliste in Rotationsreihenfolge. `rotiereAuswahl` (aus
+  // lib/bestand.js, unit-getestet) liefert bei Budget == Listenlaenge die
+  // ganze Liste, aber am wandernden Startpunkt aufgeschnitten; der Versatz ist
+  // -- wie bei der Detail-Rotation in main.ts -- die Stundenzahl seit Epoche,
+  // sodass Folgelaeufe an spaeteren Regionen beginnen. Wie weit ein Lauf durch
+  // diese Reihenfolge kommt, entscheidet allein SWEEP_BUDGET_MS.
   const versatz = Math.floor(Date.now() / 3_600_000);
-  const ausgewaehlteCodes = new Set(
-    rotiereAuswahl(
-      IMMOWELT_REGIONEN.map((r) => r.code),
-      REGIONEN_PRO_LAUF,
-      versatz
-    )
+  const rotierteCodes = rotiereAuswahl(
+    IMMOWELT_REGIONEN.map((r) => r.code),
+    IMMOWELT_REGIONEN.length,
+    versatz
   );
-  const regionen = IMMOWELT_REGIONEN.filter((r) => ausgewaehlteCodes.has(r.code));
-  console.log(
-    `Immowelt-Sweep: Regionen dieses Laufs -- ${regionen.map((r) => r.code).join(", ")} ` +
-      `(${regionen.length} von ${IMMOWELT_REGIONEN.length}; der Rest folgt in Folgelaeufen).`
+  const regionen = rotierteCodes.map(
+    (code) => IMMOWELT_REGIONEN.find((r) => r.code === code)!
   );
+
+  const startMs = Date.now();
+  let abgearbeitet = 0;
 
   try {
     const page = await browser.newPage();
     for (const region of regionen) {
+      // Budget-Wache VOR dem Start einer Region. Eine einmal begonnene Region
+      // wird in `regionErfassen` immer zu Ende geblaettert -- ein halb
+      // erfasstes Bundesland waere eine Luege ueber die Abdeckung. Die erste
+      // Region laeuft immer, egal wie knapp das Budget schon ist.
+      if (abgearbeitet > 0 && Date.now() - startMs >= SWEEP_BUDGET_MS) break;
+      abgearbeitet += 1;
       await sleep(IMMOWELT_VERZOEGERUNG_MS);
       try {
         const { gemeldet, abgeschnitten, gesammelt } = await regionErfassen(
@@ -235,19 +245,31 @@ export async function sweepImmowelt(): Promise<{
     await browser.close();
   }
 
+  const abgedeckt = regionen.slice(0, abgearbeitet).map((r) => r.code);
+  const zurueckgestellt = regionen.length - abgearbeitet;
+  console.log(
+    `Immowelt-Sweep: Regionen dieses Laufs -- ${abgedeckt.join(", ") || "keine"} ` +
+      `(${abgearbeitet} von ${IMMOWELT_REGIONEN.length} abgearbeitet, ${zurueckgestellt} ` +
+      `wegen Zeitbudget auf Folgelaeufe zurueckgestellt).`
+  );
   console.log(`Immowelt-Sweep: ${zusammenfassungen.size} Mehrfamilienhaus-Kandidaten.`);
   return {
     sweep: {
       source: "immowelt",
-      // Immer false, ohne Ausnahme: ein Teil-Sweep ueber nur REGIONEN_PRO_LAUF
-      // Bundeslaender kann per Definition nicht vollstaendig sein. Bewusst so
-      // gebaut, um unter der Anti-Bot-Ratenschwelle zu bleiben. Immowelt
-      // liefert dadurch weiterhin Kandidaten (das Hinzufuegen ist nie an
-      // `vollstaendig` gebunden), autorisiert aber keine Loeschung. Die
-      // Loeschhoheit zurueckzuholen hiesse, pro Fundort zu verengen -- das
-      // braucht eine Spalte, die festhaelt, WO jedes Listing gefunden wurde,
-      // und ist ein eigenes Arbeitspaket. Bis dahin loescht nur ZVG.
+      // Immer false, ohne Ausnahme: ein Lauf, der nur so viele Bundeslaender
+      // abgrast, wie ins Wanduhr-Budget passen, kann per Definition nicht
+      // vollstaendig sein. Bewusst so gebaut, um unter der Anti-Bot-
+      // Ratenschwelle zu bleiben. Immowelt liefert dadurch weiterhin Kandidaten
+      // (das Hinzufuegen ist nie an `vollstaendig` gebunden), autorisiert aber
+      // keine Loeschung. Die Loeschhoheit zurueckzuholen hiesse, pro Fundort zu
+      // verengen -- das braucht eine Spalte, die festhaelt, WO jedes Listing
+      // gefunden wurde, und ist ein eigenes Arbeitspaket. Bis dahin loescht nur
+      // ZVG.
       vollstaendig: false,
+      // Partiell AUS PRINZIP: die 5-s-Drossel erzwingt die rotierende Scheibe
+      // oben. Diese Unvollstaendigkeit ist erwartet und darf in
+      // `gleicheBestandAb` nicht als Anomalie ueber Telegram gemeldet werden.
+      strukturellTeilweise: true,
       // Bewusst leer: die Immowelt-externalId ist eine UUID ohne Bundesland,
       // eine partitionsgenaue Loeschung waere daraus nicht ableitbar.
       geltungsbereich: [],

@@ -15,6 +15,15 @@ export interface SweepErgebnis {
   /** Lief der Sweep sauber durch? Nur dann darf ueberhaupt geloescht werden. */
   vollstaendig: boolean;
   /**
+   * Diese Quelle ist AUS PRINZIP nur teilweise erfasst: die Ratenbegrenzung
+   * (Anti-Bot-CAPTCHA unter Last) erzwingt eine rotierende Scheibe pro Lauf.
+   * Ihre Unvollstaendigkeit ist damit ERWARTET und darf nicht als Anomalie
+   * gemeldet werden -- eine Warnung, die jeden Lauf feuert, trainiert den
+   * Leser darauf, den Kanal zu ignorieren. Eine Loeschung autorisiert dieser
+   * Wert so oder so nie; das entscheidet allein `vollstaendig`.
+   */
+  strukturellTeilweise: boolean;
+  /**
    * Partitionen, die sauber durchliefen (ZVG: Bundesland-Kuerzel).
    * Leer = die Quelle kennt keine Partitionierung, es gilt der ganze Bestand.
    */
@@ -150,8 +159,11 @@ export function waehleDetailKandidaten(
 
 /**
  * Schneidet aus `kandidaten` ein Fenster von hoechstens `budget` Eintraegen
- * heraus, dessen Startpunkt mit `versatz` wandert. Passt die ganze Liste ins
- * Budget, kommt sie unveraendert zurueck.
+ * heraus, dessen Startpunkt mit `versatz` wandert. Ist die Liste KUERZER als
+ * das Budget, kommt sie unveraendert zurueck. Ist sie genau so lang, kommt sie
+ * vollstaendig zurueck, aber am wandernden Startpunkt aufgeschnitten -- so
+ * laesst sich mit `budget == kandidaten.length` die ganze Liste rotieren,
+ * ohne die Rotationsarithmetik ein zweites Mal auszuschreiben.
  *
  * Warum der wandernde Start: ohne ihn griffe jeder Lauf immer denselben
  * Listenkopf und liesse das Ende auf ewig unbearbeitet. `versatz` wird aus der
@@ -159,7 +171,7 @@ export function waehleDetailKandidaten(
  * neue Abhaengigkeit, gleiche Mechanik wie frueher die Bundesland-Rotation.
  */
 export function rotiereAuswahl(kandidaten: string[], budget: number, versatz: number): string[] {
-  if (kandidaten.length <= budget) return kandidaten;
+  if (kandidaten.length < budget) return kandidaten;
   const start = ((versatz % kandidaten.length) + kandidaten.length) % kandidaten.length;
   const fenster: string[] = [];
   for (let i = 0; i < budget; i += 1) {
