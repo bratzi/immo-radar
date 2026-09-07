@@ -14,10 +14,14 @@ const BASIS = "https://www.immowelt.de/suche/kaufen/haus/mehrfamilienhaus/guenst
  * bei 1 s Abstand kam die DataDome-CAPTCHA mitten im Lauf zurueck (Live-Lauf
  * 2026-09-07, trotz Fenstermodus). 5 s * ~885 = ~74 min faellt zwar aus dem
  * Zeitbudget eines einzelnen Laufs -- deshalb deckt jeder Lauf nur einen
- * Ausschnitt ab (siehe REGIONEN_PRO_LAUF) -- haelt die Anfragerate aber
+ * Ausschnitt ab (siehe SWEEP_BUDGET_MS) -- haelt die Anfragerate aber
  * niedrig genug, um unauffaellig zu bleiben.
+ *
+ * Wird in `main.ts` importiert, um daraus die Zahl der Immowelt-
+ * Detailkandidaten abzuleiten -- so kann das Detailbudget nie von dieser
+ * Drossel abdriften.
  */
-const IMMOWELT_VERZOEGERUNG_MS = 5000;
+export const IMMOWELT_VERZOEGERUNG_MS = 5000;
 
 /**
  * Wanduhr-Budget eines einzelnen Immowelt-Laufs. Kein Regionen-Zaehler: die

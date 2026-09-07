@@ -6,7 +6,12 @@ import type { SweepErgebnis } from "../../lib/bestand.js";
 const SEARCH_URL = "https://www.zvg-portal.de/index.php?button=Termine%20suchen";
 const MEHRFAMILIENHAUS_OBJ_TYP = "4";
 const ALLE_AMTSGERICHTE = "0";
-const VERZOEGERUNG_MS = 1000;
+/**
+ * Drosselung zwischen zwei zvg-portal.de-Seitenabrufen. Wird in `main.ts`
+ * importiert, um daraus die Zahl der ZVG-Detailkandidaten abzuleiten -- so kann
+ * das Detailbudget nie von dieser Drossel abdriften.
+ */
+export const ZVG_VERZOEGERUNG_MS = 1000;
 /** Runaway-loop guard: kein Bundesland sollte diese Grenze erreichen. Wird als
  *  Incompleteness-Signal behandelt, nicht als erwartete Grenze. */
 const MAX_SEITEN_PRO_BUNDESLAND = 200;
@@ -43,7 +48,7 @@ async function alleSeitenErfassen(
     if (!gibtNaechsteSeite) {
       return { treffer, abgeschnitten: false };
     }
-    await sleep(VERZOEGERUNG_MS);
+    await sleep(ZVG_VERZOEGERUNG_MS);
     await page.click(`button[aria-label="${naechstesSeitenLabel}"]`);
     await page.waitForLoadState("domcontentloaded");
     seite += 1;
@@ -71,7 +76,7 @@ export async function sweepZvgPortal(): Promise<{
   try {
     const page = await browser.newPage();
     for (const landAbk of BUNDESLAND_CODES) {
-      await sleep(VERZOEGERUNG_MS);
+      await sleep(ZVG_VERZOEGERUNG_MS);
       try {
         await sucheFuerBundesland(page, landAbk);
         const { treffer, abgeschnitten } = await alleSeitenErfassen(page);
@@ -167,7 +172,7 @@ export async function erfasseZvgDetails(
     for (const externalId of externalIds) {
       const zusammenfassung = zusammenfassungen.get(externalId);
       if (zusammenfassung === undefined) continue;
-      await sleep(VERZOEGERUNG_MS);
+      await sleep(ZVG_VERZOEGERUNG_MS);
       const daten = await detailSeiteHolen(page, zusammenfassung, referer);
       if (daten !== null) ergebnisse.push(daten);
     }

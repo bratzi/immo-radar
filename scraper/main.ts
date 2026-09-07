@@ -1,5 +1,13 @@
-import { sweepImmowelt, erfasseImmoweltDetails } from "./scrapers/immowelt/index.js";
-import { sweepZvgPortal, erfasseZvgDetails } from "./scrapers/zvg-portal/index.js";
+import {
+  sweepImmowelt,
+  erfasseImmoweltDetails,
+  IMMOWELT_VERZOEGERUNG_MS,
+} from "./scrapers/immowelt/index.js";
+import {
+  sweepZvgPortal,
+  erfasseZvgDetails,
+  ZVG_VERZOEGERUNG_MS,
+} from "./scrapers/zvg-portal/index.js";
 import { processCandidate, type PipelineCandidate } from "./lib/pipeline.js";
 import {
   ermittleAbgaenge,
@@ -35,26 +43,46 @@ const DETAIL_MAX_ALTER_TAGE = 7;
  * Wanduhr-Budget der Detailerfassung -- pro Quelle, nicht global.
  *
  * Seit die Immowelt-Blaetterung funktioniert, erreicht der Sweep ~35.000
- * Objekte statt ~640. Jede Detailseite kostet mindestens VERZOEGERUNG_MS
- * (1000 ms Drossel), ~35.000 * 1 s waeren also rund 10 Stunden. Der
- * GitHub-Actions-Workflow erlaubt 40 Minuten. Darum bekommt jede Quelle pro
- * Lauf nur eine begrenzte Scheibe von DETAIL_BUDGET_MS / 1000 Kandidaten; der
- * Rueckstand wird ueber aufeinanderfolgende Laeufe abgetragen.
+ * Objekte statt ~640. Jede Detailseite kostet mindestens die Drossel der
+ * jeweiligen Quelle, ein voller Durchlauf waere also Stunden. Darum bekommt
+ * jede Quelle pro Lauf nur eine begrenzte Scheibe Kandidaten; der Rueckstand
+ * wird ueber aufeinanderfolgende Laeufe abgetragen.
  *
- * Das schwaecht die Loeschung NICHT. Vollstaendig sein muss der SWEEP, nicht
- * die Detailerfassung -- und der Sweep bleibt vollstaendig. Ein im Sweep
- * gesehenes, aber noch nicht detailliert erfasstes Objekt steht schlicht noch
- * nicht in `listings`; `ermittleAbgaenge` vergleicht nur bekannte Listings
- * gegen das vom Sweep Gesehene, ein nie gespeichertes Objekt kann daher nicht
- * faelschlich als Abgang markiert werden.
+ * Die Scheibengroesse ist DETAIL_BUDGET_MS geteilt durch die Drossel der
+ * Quelle -- und die Drosselwerte werden aus den Scraper-Modulen IMPORTIERT,
+ * nie hier von Hand wiederholt. Genau diese Dopplung war der Fehler: als
+ * Immowelt zum Schutz vor der Anti-Bot-Ratenschwelle von 1 s auf 5 s
+ * hochgedrosselt wurde, blieb die Detailkosten-Konstante bei 1000 ms stehen,
+ * und Immowelts Detailphase wurde als 12 min budgetiert, lief aber ~60 min.
+ *   Immowelt: DETAIL_BUDGET_MS / IMMOWELT_VERZOEGERUNG_MS
+ *             = 720_000 / 5_000 = 144 Kandidaten  (~12 min)
+ *   ZVG:      DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS
+ *             = 720_000 / 1_000 = 720 Kandidaten  (~12 min)
+ *
+ * Warum das ernst ist und nicht bloss langsam: Laeuft ein Lauf ueber
+ * `timeout-minutes` des GitHub-Actions-Jobs, wird er per SIGKILL beendet --
+ * und dieser Kill trifft VOR dem Abgleichs- und Loeschblock am Ende von
+ * main(). Markieren, Entmarkieren und harte Loeschung -- der ganze Zweck
+ * dieses Branchs -- liefen dann stumm bei jedem Lauf nie.
+ *
+ * Das schwaecht die Loeschung im Normalfall NICHT. Vollstaendig sein muss der
+ * SWEEP, nicht die Detailerfassung -- und der Sweep bleibt vollstaendig. Ein
+ * im Sweep gesehenes, aber noch nicht detailliert erfasstes Objekt steht
+ * schlicht noch nicht in `listings`; `ermittleAbgaenge` vergleicht nur
+ * bekannte Listings gegen das vom Sweep Gesehene, ein nie gespeichertes
+ * Objekt kann daher nicht faelschlich als Abgang markiert werden.
  */
 const DETAIL_BUDGET_MS = 12 * 60 * 1000;
 
-/** Mindestkosten einer Detailseite (VERZOEGERUNG_MS der Scraper). */
-const DETAIL_KOSTEN_MS = 1000;
-
-/** Wie viele Detailkandidaten das Budget je Quelle zulaesst. */
-const DETAIL_MAX_KANDIDATEN = Math.floor(DETAIL_BUDGET_MS / DETAIL_KOSTEN_MS);
+/**
+ * Wie viele Detailkandidaten das Budget je Quelle zulaesst -- abgeleitet aus
+ * der pro Fetch importierten Drossel der jeweiligen Quelle, damit Budget und
+ * Drossel nie wieder auseinanderlaufen koennen.
+ */
+const DETAIL_MAX_KANDIDATEN: Record<"immowelt" | "zvg-portal", number> = {
+  immowelt: Math.floor(DETAIL_BUDGET_MS / IMMOWELT_VERZOEGERUNG_MS),
+  "zvg-portal": Math.floor(DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS),
+};
 
 const TELEGRAM_SENDEABSTAND_MS = 500;
 
@@ -65,10 +93,11 @@ const TELEGRAM_SENDEABSTAND_MS = 500;
  */
 function budgetiereDetailKandidaten(
   quelle: string,
+  maxKandidaten: number,
   kandidaten: string[],
   versatz: number
 ): string[] {
-  const auswahl = rotiereAuswahl(kandidaten, DETAIL_MAX_KANDIDATEN, versatz);
+  const auswahl = rotiereAuswahl(kandidaten, maxKandidaten, versatz);
   const zurueckgestellt = kandidaten.length - auswahl.length;
   console.log(
     `${quelle}: ${auswahl.length} Detailseiten in diesem Lauf, ` +
@@ -242,6 +271,7 @@ async function main() {
   );
   const immoweltAuswahl = budgetiereDetailKandidaten(
     "Immowelt",
+    DETAIL_MAX_KANDIDATEN.immowelt,
     immoweltKandidaten,
     detailVersatz
   );
@@ -279,7 +309,12 @@ async function main() {
   );
   const zvgVeraltet = new Set(await ladeVeralteteExternalIds(sb, "zvg-portal", detailGrenze));
   const zvgKandidaten = waehleDetailKandidaten([...zvg.sweep.gesehene], zvgBekannt, zvgVeraltet);
-  const zvgAuswahl = budgetiereDetailKandidaten("ZVG-Portal", zvgKandidaten, detailVersatz);
+  const zvgAuswahl = budgetiereDetailKandidaten(
+    "ZVG-Portal",
+    DETAIL_MAX_KANDIDATEN["zvg-portal"],
+    zvgKandidaten,
+    detailVersatz
+  );
 
   for (const termin of await erfasseZvgDetails(zvg.zusammenfassungen, zvgAuswahl)) {
     await verarbeiteKandidatIsoliert(telegramConfig, {

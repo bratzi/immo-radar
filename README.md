@@ -102,10 +102,13 @@ Hinzugefügt wird dagegen immer — gebremst wird nur das Löschen.
 Immowelt sitzt hinter DataDome. Ein Live-Lauf hat gezeigt: Der Fenstermodus
 (`headless: false`) kommt zwar an der CAPTCHA vorbei, aber nur bei mäßiger
 Anfragerate — nach vielen Seitenabrufen kehrt die CAPTCHA zurück. Deshalb ist
-die Drosselung auf 5 s je Seitenabruf hochgesetzt und jeder Lauf grast nur
-drei Bundesländer ab (rotierend über die Stundenzahl seit Epoche, gleiche
-Mechanik wie die Detail-Rotation). Ein vollständiger Durchlauf über alle 16
-Länder sammelt sich so über den Tag an, nicht in einem Lauf.
+die Drosselung auf 5 s je Seitenabruf hochgesetzt, und jeder Lauf grast nur
+so viele Bundesländer ab, wie in ein Wanduhr-Budget (`SWEEP_BUDGET_MS`, 12 min)
+passen — rotierend über die Stundenzahl seit Epoche, gleiche Mechanik wie die
+Detail-Rotation. Wie viele Länder das sind, schwankt mit den Ländern, die in
+der Rotation gerade an der Reihe sind (Nordrhein-Westfalen allein füllt das
+Budget schon fast). Ein vollständiger Durchlauf über alle 16 Länder sammelt
+sich so über den Tag an, nicht in einem Lauf.
 
 Ein Teil-Sweep über wenige Länder ist per Definition nie vollständig: Immowelt
 meldet daher **immer `vollstaendig=false`**. Es trägt weiter Kandidaten bei

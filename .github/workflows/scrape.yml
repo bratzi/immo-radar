@@ -13,21 +13,27 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # Was einen Lauf begrenzt:
-    #  * Die beiden SWEEPS sind unbegrenzt -- sie MUESSEN vollstaendig sein,
-    #    sonst faellt die Abgangserkennung ohnehin aus. Immowelt: rund 885
-    #    Ergebnisseiten ueber 16 Bundeslaender, ZVG: rund 60. Bei 1 s
-    #    Drosselung je Seite sind das ~15 min + ~1 min, plus Ladezeiten.
-    #  * Die DETAILERFASSUNG ist je Quelle auf DETAIL_BUDGET_MS (12 min,
-    #    scraper/main.ts) gedeckelt; der Rueckstand wandert in spaetere Laeufe.
-    #    Also hoechstens 2 x 12 min = 24 min.
-    # Summe: ~16 min Sweeps + 24 min Details + Abgleich/Meldungen. Ein
-    # in-process Wanduhr-Limit gibt es nicht mehr (MAX_LAUFZEIT_MS ist mit dem
-    # Umbau entfallen). Dieses Limit ist daher der einzige Notnagel -- und es
-    # muss reichlich Luft lassen, denn es beendet den Job per SIGKILL: ein zu
-    # knappes Limit wuerde den Abgleich am Laufende (Markieren, Karenz,
-    # Loeschen) nie zur Ausfuehrung kommen lassen.
-    timeout-minutes: 90
+    # Was einen Lauf an HEAD begrenzt (Immowelt 5 s je Fetch, ZVG 1 s):
+    #  * Immowelt-SWEEP: durch SWEEP_BUDGET_MS gedeckelt (12 min,
+    #    scraper/scrapers/immowelt/index.ts), NICHT unbegrenzt. Eine zum
+    #    Budget-Ende begonnene Region wird immer zu Ende geblaettert --
+    #    Nordrhein-Westfalen allein ~188 Seiten x 5 s ~16 min. Also <= ~28 min.
+    #  * Immowelt-DETAILS: DETAIL_BUDGET_MS / IMMOWELT_VERZOEGERUNG_MS
+    #    = 720 s / 5 s = 144 Seiten -> <= ~12 min. (Aus main.ts, per Import der
+    #    Drossel abgeleitet -- Budget und Drossel koennen nicht mehr driften.)
+    #  * ZVG-SWEEP: alle 16 Bundeslaender pro Lauf komplett, ~60 Seiten x 1 s
+    #    -> ~2 min.
+    #  * ZVG-DETAILS: DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS
+    #    = 720 s / 1 s = 720 Seiten -> <= ~12 min.
+    # Worst case ~28 + 12 + 2 + 12 = ~54 min, dazu Setup (npm ci, Playwright,
+    # xvfb ~5 min), Bestandsabgleich und Telegram-Meldungen. Ein in-process
+    # Wanduhr-Limit gibt es nicht (MAX_LAUFZEIT_MS ist mit dem Umbau entfallen);
+    # dieses Limit ist der einzige Notnagel. Es beendet den Job per SIGKILL, und
+    # der Kill trifft VOR dem Abgleichsblock am Ende von main() -- ein zu knappes
+    # Limit hiesse: Markieren, Entmarkieren und Karenz-Loeschung liefen stumm
+    # bei jedem Lauf nie. 75 min lassen auf die ~60 min Worst case rund 15 min
+    # Reserve.
+    timeout-minutes: 75
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

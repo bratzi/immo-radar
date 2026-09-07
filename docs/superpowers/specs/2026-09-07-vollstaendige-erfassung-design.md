@@ -107,8 +107,10 @@ folgenlos, und der Fehlermodus bleibt sicher.
 `vollstaendig = false`.** Ein Live-Lauf hat gezeigt, dass der Fenstermodus die
 DataDome-CAPTCHA nur bei mäßiger Anfragerate umgeht: Nach vielen Seitenabrufen
 kehrt sie zurück. Immowelt ist deshalb auf 5 s je Seitenabruf gedrosselt, und
-jeder Lauf grast nur drei Bundesländer ab (rotierend über die Stundenzahl seit
-Epoche). Ein solcher Teil-Sweep ist per Definition nie vollständig — `vollstaendig`
+jeder Lauf grast nur so viele Bundesländer ab, wie in ein Wanduhr-Budget
+(`SWEEP_BUDGET_MS`, 12 min) passen — rotierend über die Stundenzahl seit Epoche;
+die Zahl schwankt mit den Ländern, die gerade an der Reihe sind. Ein solcher
+Teil-Sweep ist per Definition nie vollständig — `vollstaendig`
 ist für Immowelt fest `false`, ohne Ausnahme. Immowelt trägt weiter Kandidaten
 bei, **autorisiert aber keine Löschung**; volle Abdeckung sammelt sich über den
 Tag an. Einzige löschende Quelle ist damit das ZVG-Portal. Die Löschhoheit für
@@ -367,7 +369,8 @@ liefern; ein echter Browser ruft sie zwangsläufig auf. Die Vorgabe wird
 bewusst gestrichen, um für Immowelt überhaupt eine belastbare Menge zu
 bekommen. Eingegangenes Risiko: Sperrung durch Immowelt. Gegenmaßnahme ist die
 Drosselung zwischen Anfragen — für Immowelt inzwischen auf 5 s hochgesetzt und
-mit einem Teil-Sweep von drei Ländern je Lauf kombiniert (siehe „Anfragelast").
+mit einem zeitbudgetierten Teil-Sweep je Lauf kombiniert, dessen Länderzahl mit
+der Rotation schwankt (siehe „Anfragelast").
 Immowelt löscht ohnehin nicht mehr; nur ZVG tut das.
 
 **Menge der Immowelt-Ergebnisse.** Eine vollständige Paginierung über *alle*
@@ -431,9 +434,10 @@ die Länder-Pfade grundsätzlich erreichbar. Aufwand: ~885 Seitenabrufe.
 **Nachtrag 2026-09-07 (aktueller Stand):** In einem Lauf ist das nicht
 erfassbar. Der Fenstermodus umgeht die DataDome-CAPTCHA nur bei mäßiger
 Anfragerate; bei 1 s Abstand kam sie mitten im Lauf zurück. Drosselung daher
-auf 5 s je Seitenabruf, und jeder Lauf grast nur drei Länder ab (rotierend
-über die Stundenzahl seit Epoche). ~110 Seiten je Lauf, nahe zehn Minuten;
-volle Abdeckung sammelt sich über den Tag an (~6 Läufe).
+auf 5 s je Seitenabruf, und jeder Lauf grast nur so viele Länder ab, wie in ein
+Wanduhr-Budget (`SWEEP_BUDGET_MS`, 12 min) passen — rotierend über die
+Stundenzahl seit Epoche, mit der Rotation schwankender Länderzahl. Grob ~140
+Seiten je Lauf; volle Abdeckung sammelt sich über den Tag an (~6 Läufe).
 
 Die Geo-Ids im Pfad (`.../nordrhein-westfalen/ad04de5`) sind zwingend —
 geratene Pfade ohne sie liefern HTTP 410. Sie werden fest hinterlegt. Ändert
@@ -458,9 +462,10 @@ startet den Lauf deshalb unter `xvfb-run`.
 
 **Anfragelast (aktueller Stand).** Der ursprüngliche Plan — voller Bundes-Sweep
 je Lauf bei 1 s Drosselung — hat die DataDome-CAPTCHA mitten im Live-Lauf
-zurückgeholt. Umgesetzt ist stattdessen: 5 s je Seitenabruf und nur drei
-Bundesländer pro Lauf, rotierend, sodass sich der volle Kreis über den Tag
-verteilt. Das hält die Rate niedrig genug, um unauffällig zu bleiben. Preis
+zurückgeholt. Umgesetzt ist stattdessen: 5 s je Seitenabruf und pro Lauf nur so
+viele Bundesländer, wie in ein Wanduhr-Budget (`SWEEP_BUDGET_MS`, 12 min)
+passen, rotierend — die Länderzahl schwankt mit der Rotation, und der volle
+Kreis verteilt sich über den Tag. Das hält die Rate niedrig genug, um unauffällig zu bleiben. Preis
 dafür ist, dass Immowelt nie einen vollständigen Sweep meldet und damit keine
 Löschung mehr autorisiert.
 
