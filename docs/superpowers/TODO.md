@@ -131,10 +131,34 @@ Rolle `dialog` und `aria-label="Schließen"`.
   alle Kandidaten gleichzeitig gewartet (`Locator.or`), mit dem ganzen Budget.
   Seither gelingt die Zustimmung im ersten Anlauf.
 
-**Was trotzdem nicht funktioniert:** Bremen liefert weiterhin **80 von 209**
-Objekten. Die Schleife zählt „5 Seiten", sammelt aber nur zwei verschiedene
-ein — ab Seite 2 wird dieselbe Seite wieder und wieder gelesen, und die
-Duplikate fallen über die `externalId` zusammen.
+**Nachtrag 2026-09-08, zweite Bauart.** Der Nutzer hat beobachtet, dass neben
+dem Suchauftrag-Dialog noch eine **zweite** Überlagerung liegt, die sich nur
+über ein **„x" oben links** schließen lässt — ohne `aria-label`. Von Hand
+weggeklickt ließ sich blättern. `schliesseStoerendeUeberlagerung` räumt
+deshalb jetzt in mehreren Runden auf, bis nichts mehr da ist, und erkennt
+beide Bauarten; bei mehreren Treffern wird der am weitesten oben links
+liegende genommen. Ein Test hält fest, dass **kein anderer** Knopf der
+Überlagerung angefasst wird — deren Absenden-Knöpfe legen einen Suchauftrag
+an bzw. melden an.
+
+**Dazu der dritte Defekt, behoben:** `blaettereWeiter` wertete „der Klick hat
+keine Ausnahme geworfen" als Erfolg. Live widerlegt: fünf Klicks gingen durch,
+während die Liste ab Seite 2 stehenblieb — 80 statt 209 Objekte, weil dieselbe
+Seite wieder und wieder gelesen und über die `externalId` wegdedupliziert
+wurde. Erfolg ist jetzt, dass die erste Ergebniskarte danach eine **andere**
+ist (`wartetAufNeueListe`).
+
+**Noch offen: die Live-Bestätigung.** Die drei Korrekturen sind durch Tests
+gedeckt (247 grün), aber **nicht** gegen die echte Seite gelaufen — der
+Anschluss war während des Laufs nicht belastbar (Chromium erreichte auch
+`example.com` nicht). Der Lauf dafür ist ein Befehl:
+
+```bash
+cd scraper && npx tsx scripts/pruefe-region.mts hb
+```
+
+Erwartung: deutlich mehr als 80 Objekte, Sollwert 209. Bleibt es bei ~80,
+greift die Architekturfrage in To-do 2.
 
 ### 2. Die offene Architekturfrage — erst beantworten, dann weiterbauen
 
