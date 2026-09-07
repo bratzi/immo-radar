@@ -112,21 +112,25 @@ async function gleicheBestandAb(
   const bekannte = await ladeBekannteListings(sb, sweep.source);
   const jetzt = new Date();
 
-  // Rueckkehrer zuerst: das ist ungefaehrlich und darf auch ohne offenes
-  // Plausibilitaetstor passieren.
-  const rueckkehrer = ermittleRueckkehrer(sweep, bekannte);
-  await hebeVerschwundenAuf(sb, rueckkehrer.map((l) => l.id));
-  if (rueckkehrer.length > 0) {
-    console.log(`${sweep.source}: ${rueckkehrer.length} Objekte sind zurueck.`);
-  }
-
-  // last_seen fuer alles, was der Sweep gesehen hat -- auch fuer Objekte
-  // ohne neue Detailerfassung.
+  // last_seen ZUERST, fuer alles was der Sweep gesehen hat -- auch fuer
+  // Objekte ohne neue Detailerfassung. Die Reihenfolge ist Absicht: `last_seen`
+  // ist die zweite, unabhaengige Bedingung der harten Loeschung (siehe
+  // istHartLoeschbar). Steht sie am Anfang, kann kein Fehler weiter unten in
+  // dieser Funktion dazu fuehren, dass ein in DIESEM Lauf gesehenes Objekt
+  // spaeter geloescht wird.
   await aktualisiereLastSeen(
     sb,
     bekannte.filter((l) => sweep.gesehene.has(l.externalId)).map((l) => l.id),
     jetzt
   );
+
+  // Rueckkehrer als naechstes: das ist ungefaehrlich und darf auch ohne
+  // offenes Plausibilitaetstor passieren.
+  const rueckkehrer = ermittleRueckkehrer(sweep, bekannte);
+  await hebeVerschwundenAuf(sb, rueckkehrer.map((l) => l.id));
+  if (rueckkehrer.length > 0) {
+    console.log(`${sweep.source}: ${rueckkehrer.length} Objekte sind zurueck.`);
+  }
 
   const historie = await ladeSweepHistorie(sb, sweep.source);
   const pruefung = pruefeMengenplausibilitaet({

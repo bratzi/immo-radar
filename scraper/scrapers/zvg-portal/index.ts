@@ -82,6 +82,22 @@ export async function sweepZvgPortal(): Promise<{
             `ZVG-Sweep ${landAbk}: Seitenlimit (${MAX_SEITEN_PRO_BUNDESLAND}) erreicht, ` +
               `Bundesland bleibt vom Abgleich ausgenommen. ${treffer.length} Termine gespeichert.`
           );
+        } else if (treffer.length === 0) {
+          // Ein Bundesland ohne einen einzigen Treffer ist technisch nicht von
+          // einem stillen Ausfall zu unterscheiden -- geaenderter Selektor,
+          // Formularumbau, Fehlerseite mit HTTP 200. zvg-portal.de weist keine
+          // Gesamttrefferzahl aus, deshalb gibt es fuer diese Quelle KEINE
+          // Selbstkonsistenz-Pruefung, die das nachtraeglich auffangen wuerde.
+          // Dass ein Bundesland wirklich einmal null Zwangsversteigerungen von
+          // Mehrfamilienhaeusern hat, ist moeglich, aber selten -- der Preis
+          // dafuer ist ein Lauf ohne ZVG-Loeschung, der Preis fuer die andere
+          // Richtung waere ein geloeschter Bestand. Also: im Zweifel nicht
+          // loeschen.
+          alleLiefen = false;
+          console.warn(
+            `ZVG-Sweep ${landAbk}: null Treffer -- nicht von einem stillen Ausfall ` +
+              `unterscheidbar, ZVG loescht in diesem Lauf nicht.`
+          );
         } else {
           geltungsbereich.push(landAbk);
           console.log(`ZVG-Sweep ${landAbk}: ${treffer.length} Termine.`);

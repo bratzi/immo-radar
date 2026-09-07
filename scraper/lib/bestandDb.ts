@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { istKarenzAbgelaufen, type BekanntesListing, type SweepErgebnis } from "./bestand.js";
+import { istHartLoeschbar, type BekanntesListing, type SweepErgebnis } from "./bestand.js";
 import { HISTORIE_LAENGE } from "./plausibilitaet.js";
 
 /**
@@ -133,23 +133,32 @@ export async function aktualisiereLastSeen(
  * Loescht Objekte, deren Karenz abgelaufen ist. listing_versions und
  * notifications folgen per `on delete cascade`. Kommt ein Objekt spaeter
  * zurueck, legt der naechste Lauf es schlicht neu an.
+ *
+ * Zwei unabhaengige Bedingungen muessen zutreffen (siehe `istHartLoeschbar`):
+ * altes `disappeared_at` UND altes `last_seen`. Was dieser Lauf gesehen hat,
+ * kann damit nicht geloescht werden -- unabhaengig davon, was weiter oben in
+ * der Kette schiefging.
  */
 export async function loescheAbgelaufene(
   supabase: SupabaseClient,
   jetzt: Date
 ): Promise<number> {
-  const zeilen = await ladeSeitenweise<{ id: string; disappeared_at: string }>(
+  const zeilen = await ladeSeitenweise<{
+    id: string;
+    disappeared_at: string;
+    last_seen: string | null;
+  }>(
     async (von, bis) =>
       supabase
         .from("listings")
-        .select("id, disappeared_at")
+        .select("id, disappeared_at, last_seen")
         .not("disappeared_at", "is", null)
         .range(von, bis),
     "listings"
   );
 
   const faellig = zeilen
-    .filter((zeile) => istKarenzAbgelaufen(zeile.disappeared_at, jetzt))
+    .filter((zeile) => istHartLoeschbar(zeile.disappeared_at, zeile.last_seen, jetzt))
     .map((zeile) => zeile.id);
   if (faellig.length === 0) return 0;
 

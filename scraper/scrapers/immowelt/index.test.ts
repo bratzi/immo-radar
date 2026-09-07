@@ -18,8 +18,17 @@ describe("trefferzahlAusTitel", () => {
 });
 
 describe("istRegionVollstaendig", () => {
-  it("kann nicht urteilen, wenn das Portal keine Trefferzahl nennt", () => {
-    expect(istRegionVollstaendig(0, null)).toBe(true);
+  it("gilt als unvollstaendig, wenn WEDER Trefferzahl NOCH Objekte ankamen", () => {
+    // Signatur eines DataDome-Soft-Blocks: HTTP 200, aber leere Huelle --
+    // kein parsebarer Titel, keine Karte. Ein echtes Bundesland hat weder
+    // null Mehrfamilienhaeuser noch einen unlesbaren Titel.
+    expect(istRegionVollstaendig(0, null)).toBe(false);
+  });
+
+  it("gilt als vollstaendig, wenn nur der Titel nicht parste, aber Objekte ankamen", () => {
+    // Echte Seite, bloss ein geaenderter Titel -- daraus laesst sich nichts
+    // gegen die Region ableiten, es bleibt bei der Seitendeckel-Pruefung.
+    expect(istRegionVollstaendig(41, null)).toBe(true);
   });
 
   it("kann nicht urteilen, wenn das Portal null Treffer meldet", () => {

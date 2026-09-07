@@ -122,4 +122,57 @@ describe("pruefeMengenplausibilitaet", () => {
     });
     expect(e.loeschenErlaubt).toBe(true);
   });
+
+  // --- Nullmengen: die Symptome eines Soft-Blocks, nicht ein leeres Portal ---
+
+  it("verbietet das Loeschen, wenn der Lauf ueberhaupt nichts eingesammelt hat", () => {
+    // Genau der DataDome-Fall: HTTP 200, leere Huelle, 0 Karten, keine
+    // Trefferzahl. Ohne diese Wache waere das ein 100-%-Abgang.
+    const e = pruefeMengenplausibilitaet({
+      gesehene: 0,
+      gemeldeteTreffer: null,
+      historie: historieOk,
+      vollstaendig: true,
+    });
+    expect(e.loeschenErlaubt).toBe(false);
+    expect(e.grund).toContain("nichts eingesammelt");
+  });
+
+  it("verbietet das Loeschen auch bei 0 gesehenen und gemeldeten 0 Treffern", () => {
+    const e = pruefeMengenplausibilitaet({
+      gesehene: 0,
+      gemeldeteTreffer: 0,
+      historie: historieOk,
+      vollstaendig: true,
+    });
+    expect(e.loeschenErlaubt).toBe(false);
+    expect(e.grund).toContain("nichts eingesammelt");
+  });
+
+  it("verbietet das Loeschen, wenn der Median der Referenzlaeufe null ist", () => {
+    // Drei Nulllaeufe hintereinander machten den Median 0 -- die alte
+    // Fassung uebersprang die Medianpruefung dann und gab das Loeschen frei.
+    const e = pruefeMengenplausibilitaet({
+      gesehene: 5,
+      gemeldeteTreffer: null,
+      historie: [0, 0, 0],
+      vollstaendig: true,
+    });
+    expect(e.loeschenErlaubt).toBe(false);
+    expect(e.grund).toContain("Median");
+    expect(e.grund).not.toContain("nichts eingesammelt");
+  });
+
+  it("erlaubt das Loeschen bei einzelnen Nulllaeufen in der Historie, solange der Median positiv ist", () => {
+    // Median von [0, 500, 510] ist 500 -- ein Ausreisser reisst die Referenz
+    // nicht mit, genau dafuer ist der Median da.
+    const e = pruefeMengenplausibilitaet({
+      gesehene: 500,
+      gemeldeteTreffer: null,
+      historie: [0, 500, 510],
+      vollstaendig: true,
+    });
+    expect(e.loeschenErlaubt).toBe(true);
+    expect(e.grund).toBeNull();
+  });
 });

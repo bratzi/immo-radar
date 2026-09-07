@@ -4,6 +4,7 @@ import {
   ermittleAbgaenge,
   ermittleRueckkehrer,
   istKarenzAbgelaufen,
+  istHartLoeschbar,
   waehleDetailKandidaten,
   rotiereAuswahl,
   type SweepErgebnis,
@@ -79,6 +80,44 @@ describe("ermittleAbgaenge", () => {
       [listing("a"), listing("b")]
     );
     expect(abgaenge.map((l) => l.externalId)).toEqual(["b"]);
+  });
+
+  it("laesst ein ZVG-Objekt mit unlesbarer Partition unangetastet", () => {
+    // "40908" ohne Bundesland-Praefix ergibt keine Partition. Unbekannte
+    // Partition heisst: nicht beurteilbar -- und damit nie ein Abgang.
+    const abgaenge = ermittleAbgaenge(sweep({ gesehene: new Set(["sn-1"]) }), [
+      listing("sn-1"),
+      listing("40908"),
+    ]);
+    expect(abgaenge).toEqual([]);
+  });
+});
+
+describe("istHartLoeschbar", () => {
+  const jetzt = new Date("2026-09-07T12:00:00.000Z");
+
+  it("loescht, wenn Karenz UND last_seen alt genug sind", () => {
+    expect(istHartLoeschbar("2026-09-05T11:00:00.000Z", "2026-09-05T11:00:00.000Z", jetzt)).toBe(
+      true
+    );
+  });
+
+  it("loescht NICHT, wenn das Objekt in diesem Lauf noch gesehen wurde", () => {
+    // disappeared_at ist alt, aber last_seen frisch -- irgendwo weiter oben
+    // ist etwas schiefgelaufen. Im Zweifel nicht loeschen.
+    expect(istHartLoeschbar("2026-09-05T11:00:00.000Z", "2026-09-07T11:59:00.000Z", jetzt)).toBe(
+      false
+    );
+  });
+
+  it("loescht NICHT, solange die Karenz laeuft", () => {
+    expect(istHartLoeschbar("2026-09-06T12:00:00.000Z", "2026-09-01T00:00:00.000Z", jetzt)).toBe(
+      false
+    );
+  });
+
+  it("loescht NICHT, wenn last_seen fehlt -- fehlende Angabe ist kein Freibrief", () => {
+    expect(istHartLoeschbar("2026-09-05T11:00:00.000Z", null, jetzt)).toBe(false);
   });
 });
 

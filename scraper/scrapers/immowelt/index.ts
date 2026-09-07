@@ -12,8 +12,7 @@ const VERZOEGERUNG_MS = 1000;
 /**
  * Immowelt deckelt jede Ergebnisliste bei 250 Seiten. Erreicht eine Region
  * diesen Wert, ist ihre Menge abgeschnitten und der Sweep gilt als
- * unvollstaendig -- laut Spike liegt aktuell keine Region auch nur nahe
- * daran (Maximum: Nordrhein-Westfalen mit 188 Seiten).
+ * unvollstaendig.
  */
 const SEITEN_DECKEL = 250;
 
@@ -66,22 +65,33 @@ const REGION_FEHLBETRAG_TOLERANZ = 0.25;
 
 /**
  * Hat eine Region genug Objekte geliefert, um ihrer Vollstaendigkeit zu
- * trauen? Nennt das Portal keine Trefferzahl (`null`) oder null Treffer, laesst
- * sich daraus nichts ableiten -- dann `true`, und die Vollstaendigkeit haengt
- * allein an der bestehenden Seitendeckel-Pruefung (`abgeschnitten`).
+ * trauen? Diese Funktion faengt den Fall ab, den `page.goto` NICHT bemerkt:
+ * Immowelt sitzt hinter DataDome, und ein Soft-Block kommt als HTTP 200 mit
+ * einer leeren Huelle zurueck. `parseImmoweltListPage` wirft darauf nicht, es
+ * liefert schlicht `[]`. Ohne diese Wache liefe der Sweep technisch sauber
+ * durch, meldete `vollstaendig=true` und autorisierte eine Massenloeschung.
  *
- * Warum es diese Wache gibt: der Klick auf "naechste seite" verlaesst die
- * servergerenderte Liste und landet auf einer leeren SPA-Huelle (Smoke-Test
- * 2026-09-07). Damit ist derzeit pro Region nur Seite 1 einsammelbar -- rund
- * 40 statt mehrerer hundert Objekte. Ohne diese Pruefung liefe der Sweep
- * technisch sauber durch, meldete `vollstaendig=true` und autorisierte damit
- * eine Massenloeschung. Die Pruefung setzt stattdessen `vollstaendig=false`,
- * solange die Blaetterung ungeloest ist, faengt kuenftige Selektor-Brueche
- * gleich mit ab und hebt sich von selbst auf, sobald wieder alle Seiten
- * erreichbar sind.
+ * Wie sie in den drei Zweigen ausfaellt und warum:
+ *
+ * - `gemeldet > 0`: normale Mengenpruefung. Bleibt die eingesammelte Menge um
+ *   mehr als REGION_FEHLBETRAG_TOLERANZ zurueck -> `false`.
+ * - `gemeldet === null` **und** `gesammelt === 0`: `false`. Genau die Signatur
+ *   eines Soft-Blocks -- kein parsebarer Titel UND keine einzige Karte. Ein
+ *   echtes Bundesland hat weder null Mehrfamilienhaus-Angebote noch einen
+ *   Titel ohne Trefferzahl; beides zusammen heisst, dass die Seite nicht die
+ *   war, fuer die wir sie halten.
+ * - `gemeldet === null`, aber `gesammelt > 0`: `true`. Eine echte Seite, deren
+ *   Titel nur nicht parste (Formatwechsel). Daraus laesst sich nichts gegen
+ *   die Region ableiten; es bleibt bei der Seitendeckel-Pruefung
+ *   (`abgeschnitten`) und der quellenweiten Mengenpruefung in
+ *   `lib/plausibilitaet.ts`.
+ *
+ * `gemeldet === 0` (Portal weist ausdruecklich null Angebote aus) ist mit
+ * `gesammelt === 0` in sich stimmig und bleibt `true`.
  */
 export function istRegionVollstaendig(gesammelt: number, gemeldet: number | null): boolean {
-  if (gemeldet === null || gemeldet === 0) return true;
+  if (gemeldet === null) return gesammelt > 0;
+  if (gemeldet === 0) return true;
   return gesammelt >= gemeldet * (1 - REGION_FEHLBETRAG_TOLERANZ);
 }
 
@@ -165,8 +175,11 @@ export async function sweepImmowelt(): Promise<{
         if (!istRegionVollstaendig(gesammelt, gemeldet)) {
           alleLiefen = false;
           console.warn(
-            `Immowelt-Sweep ${region.code}: nur ${gesammelt} von gemeldet ${gemeldet} Objekten ` +
-              `eingesammelt -- Region unvollstaendig, Immowelt loescht in diesem Lauf nicht.`
+            gemeldet === null
+              ? `Immowelt-Sweep ${region.code}: weder Trefferzahl im Titel noch eine einzige ` +
+                  `Karte -- sieht nach Soft-Block aus. Immowelt loescht in diesem Lauf nicht.`
+              : `Immowelt-Sweep ${region.code}: nur ${gesammelt} von gemeldet ${gemeldet} Objekten ` +
+                  `eingesammelt -- Region unvollstaendig, Immowelt loescht in diesem Lauf nicht.`
           );
         }
         if (gemeldet === null) gemeldeteVollstaendig = false;
@@ -190,10 +203,12 @@ export async function sweepImmowelt(): Promise<{
       vollstaendig: alleLiefen,
       // Bewusst leer: die Immowelt-externalId ist eine UUID ohne Bundesland,
       // eine partitionsgenaue Loeschung waere daraus nicht ableitbar. Fuer
-      // diese Quelle gilt deshalb alles oder nichts -- und solange die
-      // Blaetterung ungeloest ist (siehe istRegionVollstaendig), ist dieses
-      // "alles oder nichts" praktisch immer "nichts": `vollstaendig` bleibt
-      // false, es wird nie geloescht.
+      // diese Quelle gilt deshalb alles oder nichts: Stolpert auch nur ein
+      // Bundesland (Fehler, Seitendeckel, Soft-Block), ist `vollstaendig`
+      // false und Immowelt loescht in diesem Lauf gar nichts. Laufen alle 16
+      // sauber durch, nimmt Immowelt sehr wohl an der Abgangserkennung teil --
+      // seit die Blaetterung im Fenstermodus funktioniert, ist das der
+      // Normalfall.
       geltungsbereich: [],
       gesehene: new Set(zusammenfassungen.keys()),
       gemeldeteTreffer: gemeldeteVollstaendig ? gemeldeteSumme : null,

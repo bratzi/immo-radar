@@ -43,11 +43,20 @@ export function partitionAusExternalId(source: string, externalId: string): stri
   return treffer === null ? null : treffer[1];
 }
 
-/** Liegt das Objekt in dem, was dieser Lauf tatsaechlich gesehen hat? */
+/**
+ * Liegt das Objekt in dem, was dieser Lauf tatsaechlich gesehen hat?
+ *
+ * Eine unlesbare Partition (ZVG-externalId ohne Bundesland-Praefix) heisst
+ * "nicht zuzuordnen" und damit NIE ein Abgang. Frueher galt sie als
+ * unpartitioniert und war damit loeschbar -- ein Fail-open in
+ * Loeschrichtung. Der leere Geltungsbereich weiter oben bleibt davon
+ * unberuehrt: er bedeutet "Quelle ohne Partitionierung" (Immowelt) und wird
+ * ohnehin nur erreicht, wenn `vollstaendig` bereits true ist.
+ */
 function imGeltungsbereich(sweep: SweepErgebnis, listing: BekanntesListing): boolean {
   if (sweep.geltungsbereich.length === 0) return true;
   const partition = partitionAusExternalId(sweep.source, listing.externalId);
-  if (partition === null) return true;
+  if (partition === null) return false;
   return sweep.geltungsbereich.includes(partition);
 }
 
@@ -59,6 +68,19 @@ export function ermittleAbgaenge(
   sweep: SweepErgebnis,
   bekannte: BekanntesListing[]
 ): BekanntesListing[] {
+  // Beide Quellen fahren alles oder nichts: Immowelt liefert einen leeren
+  // `geltungsbereich`, und ZVG setzt bei jedem stolpernden Bundesland
+  // `vollstaendig` auf false. Diese Wache beendet die Abgangserkennung
+  // deshalb bereits hier, bevor `geltungsbereich` ueberhaupt befragt wird --
+  // die regionsgenaue Verengung laeuft in der Praxis nie.
+  //
+  // Das ist Absicht, nicht Versehen: Die Verengung passt nicht zur
+  // quellenweiten Median-Pruefung in `plausibilitaet.ts`. Nimmt man ein
+  // Bundesland heraus, faellt die eingesammelte Gesamtmenge um dessen Anteil
+  // und die Medianpruefung schlaegt ohnehin an. Alles oder nichts ist
+  // einfacher und sicherer. `geltungsbereich` wird trotzdem weiter befuellt
+  // und in `sweep_runs` protokolliert -- als Beleg darueber, WELCHE Regionen
+  // sauber liefen, nicht als Loeschfilter.
   if (!sweep.vollstaendig) return [];
   return bekannte.filter(
     (listing) =>
@@ -85,6 +107,31 @@ export function ermittleRueckkehrer(
 /** true, wenn die Karenz abgelaufen ist und hart geloescht werden darf. */
 export function istKarenzAbgelaufen(disappearedAt: string, jetzt: Date): boolean {
   return jetzt.getTime() - new Date(disappearedAt).getTime() > KARENZ_MS;
+}
+
+/**
+ * Zweite, unabhaengige Bedingung fuer die harte Loeschung: `last_seen` muss
+ * ebenfalls aelter als die Karenz sein.
+ *
+ * Sowohl der Upsert (`db.ts`) als auch `aktualisiereLastSeen` (`main.ts`)
+ * frischen `last_seen` fuer alles auf, was der Sweep gesehen hat. Ein in
+ * diesem Lauf gesehenes Objekt kann damit nicht geloescht werden, egal was
+ * weiter oben schiefging -- ein veraltetes `disappeared_at`, ein Fehler beim
+ * Zuruecknehmen der Markierung, ein Bug in der Abgangslogik. Guertel und
+ * Hosentraeger vor der zerstoerendsten Operation im Projekt.
+ *
+ * Fehlt `last_seen`, wird NICHT geloescht: keine Angabe ist kein Freibrief.
+ */
+export function istHartLoeschbar(
+  disappearedAt: string,
+  lastSeen: string | null,
+  jetzt: Date
+): boolean {
+  if (!istKarenzAbgelaufen(disappearedAt, jetzt)) return false;
+  if (lastSeen === null) return false;
+  const lastSeenMs = new Date(lastSeen).getTime();
+  if (!Number.isFinite(lastSeenMs)) return false;
+  return jetzt.getTime() - lastSeenMs > KARENZ_MS;
 }
 
 /**

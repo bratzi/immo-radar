@@ -259,7 +259,23 @@ export async function processCandidate(
       // war der Fehler der alten changed-Logik.
       await schlafe(TELEGRAM_SENDEABSTAND_MS);
       await sendTelegramMessage(telegramConfig, text);
-      await sendeMedien(telegramConfig, candidate);
+      // Medien sind Beiwerk, die notifications-Zeile ist das Hauptbuch.
+      // Deshalb faengt dieses try/catch AUSSCHLIESSLICH sendeMedien ab und
+      // laesst sendTelegramMessage und logNotification unangetastet: Ein
+      // dauerhaft fehlschlagender Anhang (Foto ueber Telegrams Groessenlimit,
+      // nicht unterstuetztes Format) darf nicht verhindern, dass der bereits
+      // bestaetigte Versand protokolliert wird -- sonst gilt das Objekt auf
+      // ewig als "nie gemeldet" und die volle Nachricht geht alle drei
+      // Stunden erneut raus.
+      try {
+        await sendeMedien(telegramConfig, candidate);
+      } catch (err) {
+        console.warn(
+          `Medienversand fehlgeschlagen [${candidate.source} · ${candidate.externalId}], ` +
+            `Meldung bleibt gueltig:`,
+          err
+        );
+      }
       await logNotification(supabase, diff.listingId, klasse, {
         ...kennzahlenSummary,
         priceCents: candidate.priceCents,
