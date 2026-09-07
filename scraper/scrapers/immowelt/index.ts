@@ -191,23 +191,69 @@ export function gemeldeteTrefferSumme(ausgaenge: RegionAusgang[]): number | null
 export async function blaettereWeiter(
   klicke: () => Promise<void>,
   raeumeAuf: (budgetMs: number) => Promise<void>,
+  hatGeblaettert: () => Promise<boolean>,
   budgets: number[] = CONSENT_RETRY_BUDGETS_MS
 ): Promise<boolean> {
+  // Ein Versuch gilt NUR dann als gelungen, wenn sich die Ergebnisliste
+  // danach tatsaechlich geaendert hat.
+  //
+  // WARUM DAS NICHT AM KLICK HAENGT: Live gemessen (Bremen, 2026-09-08) gingen
+  // fuenf Klicks nacheinander ohne Ausnahme durch, waehrend die Liste ab
+  // Seite 2 stehenblieb -- eingesammelt wurden 80 statt 209 Objekte, weil
+  // dieselbe Seite immer wieder gelesen und ueber die externalId
+  // wegdedupliziert wurde. Ein Overlay kann einen Klick schlucken, ohne dass
+  // Playwright etwas meldet. "Hat nicht geworfen" ist deshalb kein Beleg.
   try {
     await klicke();
-    return true;
+    if (await hatGeblaettert()) return true;
   } catch {
-    // Klick abgefangen -- praktisch immer das frisch aufgebaute Overlay.
+    // Klick abgefangen -- gleich aufraeumen und erneut versuchen.
   }
 
   for (const budget of budgets) {
     await raeumeAuf(budget);
     try {
       await klicke();
-      return true;
+      if (await hatGeblaettert()) return true;
     } catch {
       continue;
     }
+  }
+  return false;
+}
+
+/** Wie lange nach einem Klick auf eine tatsaechlich neue Liste gewartet wird. */
+const NEUE_LISTE_TIMEOUT_MS = 8_000;
+
+/**
+ * Kennung der ersten Ergebniskarte. Aendert sie sich, wurde wirklich
+ * geblaettert. Bewusst ueber einen Locator statt `page.evaluate`: `tsx`
+ * spritzt in verschachtelte Funktionen einen `__name`-Helfer ein, den es im
+ * Browser nicht gibt.
+ */
+async function ersteKartenKennung(page: Page): Promise<string | null> {
+  try {
+    return await page.locator('a[href*="/expose/"]').first().getAttribute("href", { timeout: 2_000 });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Wartet darauf, dass die Ergebnisliste eine ANDERE erste Karte zeigt als
+ * `vorher`. Das ist der einzige verlaessliche Beleg fuer einen Seitenwechsel:
+ * Ein Klick, der keine Ausnahme wirft, sagt darueber nichts (siehe
+ * `blaettereWeiter`).
+ */
+async function wartetAufNeueListe(
+  page: Page,
+  vorher: string | null,
+  timeoutMs: number = NEUE_LISTE_TIMEOUT_MS
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if ((await ersteKartenKennung(page)) !== vorher) return true;
+    await sleep(250);
   }
   return false;
 }
@@ -252,6 +298,9 @@ export async function regionErfassen(
     // ist die einzige Abbruchbedingung und bleibt es -- der Retry unten greift
     // NUR bei einem fehlgeschlagenen Klick, nie bei fehlendem Knopf.
     if ((await weiter.count()) === 0) break;
+    // Merken, was gerade oben steht -- daran wird gleich gemessen, ob wirklich
+    // geblaettert wurde.
+    const vorherigeKennung = await ersteKartenKennung(page);
     await sleep(IMMOWELT_VERZOEGERUNG_MS);
     // Klick faengt praktisch immer das frisch aufgebaute Usercentrics-Overlay
     // ab. Usercentrics baut es bei JEDEM Seitenwechsel neu auf, eine einmalige
@@ -266,7 +315,8 @@ export async function regionErfassen(
         // Cookie-Banner nur beim ersten Aufschlag.
         await schliesseStoerendeUeberlagerung(page, budgetMs);
         await bestaetigeConsentBanner(page, budgetMs);
-      }
+      },
+      () => wartetAufNeueListe(page, vorherigeKennung)
     );
     // Kein Endlos-Retry: geht der Klick auch nach allen Versuchen nicht durch,
     // gilt die Region als zu Ende.

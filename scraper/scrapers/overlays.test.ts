@@ -63,3 +63,47 @@ describe("schliesseStoerendeUeberlagerung", () => {
     await page.close();
   }, 30_000);
 });
+
+/**
+ * Der ZWEITE Blockierer, vom Nutzer beschrieben (2026-09-08): noch eine
+ * Ueberlagerung, die sich ueber ein "x" OBEN LINKS in der Ecke schliessen
+ * laesst -- ohne `aria-label="Schließen"`. Sie liegt zusaetzlich zum
+ * Suchauftrag-Dialog auf der Seite.
+ */
+const ZWEITER = `
+  <button id="weiter">nächste seite</button>
+  <div role="dialog" id="modal2"
+       style="position:fixed;inset:0;width:100vw;height:100vh;background:#eee">
+    <button id="zu"
+            style="position:absolute;top:8px;left:8px"
+            onclick="document.getElementById('modal2').remove()">×</button>
+    <button id="cta" style="position:absolute;top:300px;left:400px"
+            onclick="window.__ctaGeklickt=true">Jetzt registrieren</button>
+  </div>`;
+
+describe("schliesseStoerendeUeberlagerung -- zweite Bauart", () => {
+  it("schliesst eine Ueberlagerung ueber das x oben links, auch ohne aria-label", async () => {
+    const page = await seiteMitDialog(ZWEITER);
+    expect(await schliesseStoerendeUeberlagerung(page, 3000)).toBe(true);
+    expect(await page.locator("#modal2").count()).toBe(0);
+    await page.close();
+  }, 30_000);
+
+  it("fasst dabei keinen anderen Knopf der Ueberlagerung an", async () => {
+    const page = await seiteMitDialog(ZWEITER);
+    await schliesseStoerendeUeberlagerung(page, 3000);
+    expect(await page.evaluate(() => (window as unknown as { __ctaGeklickt?: boolean }).__ctaGeklickt))
+      .toBeUndefined();
+    await page.close();
+  }, 30_000);
+
+  it("raeumt BEIDE gestapelten Ueberlagerungen in einem Aufruf weg", async () => {
+    // Genau der berichtete Zustand: erst der Suchauftrag-Dialog, darunter noch
+    // einer. Ein Aufruf muss die Seite freiraeumen, sonst blockt der naechste.
+    const page = await seiteMitDialog(DIALOG + ZWEITER);
+    expect(await schliesseStoerendeUeberlagerung(page, 5000)).toBe(true);
+    expect(await page.locator("#modal").count()).toBe(0);
+    expect(await page.locator("#modal2").count()).toBe(0);
+    await page.close();
+  }, 30_000);
+});

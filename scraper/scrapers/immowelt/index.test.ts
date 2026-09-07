@@ -138,7 +138,8 @@ describe("blaettereWeiter", () => {
       async () => {},
       async () => {
         consentVersuche += 1;
-      }
+      },
+      async () => true
     );
     expect(ok).toBe(true);
     expect(consentVersuche).toBe(0);
@@ -155,24 +156,55 @@ describe("blaettereWeiter", () => {
       async () => {
         consentVersuche += 1;
         if (consentVersuche >= 2) zugestimmt = true;
-      }
+      },
+      async () => zugestimmt
     );
     expect(ok).toBe(true);
     expect(consentVersuche).toBe(2);
   });
 
   it("gibt auf, wenn auch nach allen Versuchen kein Klick durchgeht", async () => {
-    const ok = await blaettereWeiter(nie, async () => {});
+    const ok = await blaettereWeiter(nie, async () => {}, async () => true);
     expect(ok).toBe(false);
+  });
+
+  it("meldet Fehlschlag, wenn der Klick durchgeht, die Liste sich aber nicht aendert", async () => {
+    // Live belegt (Bremen, 2026-09-08): fuenf "erfolgreiche" Klicks, aber nur
+    // zwei tatsaechlich verschiedene Seiten. Ein Klick, der keine Ausnahme
+    // wirft, ist KEIN Beleg fuer einen Seitenwechsel -- ein Overlay kann ihn
+    // schlucken, ohne dass Playwright etwas merkt.
+    const ok = await blaettereWeiter(
+      async () => {},
+      async () => {},
+      async () => false
+    );
+    expect(ok).toBe(false);
+  });
+
+  it("versucht es weiter, bis sich die Liste wirklich geaendert hat", async () => {
+    let klicks = 0;
+    const ok = await blaettereWeiter(
+      async () => {
+        klicks += 1;
+      },
+      async () => {},
+      async () => klicks >= 2
+    );
+    expect(ok).toBe(true);
+    expect(klicks).toBe(2);
   });
 
   it("gibt dem Banner bei jedem weiteren Versuch mehr Zeit", async () => {
     // 2 s waren nachweislich zu knapp. Ein spaeterer Versuch darf nicht
     // dieselbe zu kurze Frist bekommen wie der erste.
     const budgets: number[] = [];
-    await blaettereWeiter(nie, async (ms) => {
-      budgets.push(ms);
-    });
+    await blaettereWeiter(
+      nie,
+      async (ms) => {
+        budgets.push(ms);
+      },
+      async () => true
+    );
     expect(budgets.length).toBeGreaterThanOrEqual(3);
     expect(budgets[1]).toBeGreaterThan(budgets[0]);
     expect(budgets[2]).toBeGreaterThan(budgets[1]);
