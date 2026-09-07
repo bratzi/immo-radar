@@ -7,7 +7,9 @@ const SEARCH_URL = "https://www.zvg-portal.de/index.php?button=Termine%20suchen"
 const MEHRFAMILIENHAUS_OBJ_TYP = "4";
 const ALLE_AMTSGERICHTE = "0";
 const VERZOEGERUNG_MS = 1000;
-const MAX_SEITEN_PRO_BUNDESLAND = 30;
+/** Runaway-loop guard: kein Bundesland sollte diese Grenze erreichen. Wird als
+ *  Incompleteness-Signal behandelt, nicht als erwartete Grenze. */
+const MAX_SEITEN_PRO_BUNDESLAND = 200;
 
 const BUNDESLAND_CODES = [
   "bw", "by", "be", "br", "hb", "hh", "he", "mv",
@@ -28,21 +30,26 @@ async function sucheFuerBundesland(page: Page, landAbk: string): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
 }
 
-async function alleSeitenErfassen(page: Page): Promise<ZvgListSummary[]> {
-  const ergebnisse: ZvgListSummary[] = [];
+async function alleSeitenErfassen(
+  page: Page
+): Promise<{ treffer: ZvgListSummary[]; abgeschnitten: boolean }> {
+  const treffer: ZvgListSummary[] = [];
   let seite = 1;
   while (seite <= MAX_SEITEN_PRO_BUNDESLAND) {
-    ergebnisse.push(...parseZvgResultsPage(await page.content()));
+    treffer.push(...parseZvgResultsPage(await page.content()));
     const naechstesSeitenLabel = `blättern zur Sitennummer ${seite + 1}`;
     const gibtNaechsteSeite =
       (await page.locator(`button[aria-label="${naechstesSeitenLabel}"]`).count()) > 0;
-    if (!gibtNaechsteSeite) break;
+    if (!gibtNaechsteSeite) {
+      return { treffer, abgeschnitten: false };
+    }
     await sleep(VERZOEGERUNG_MS);
     await page.click(`button[aria-label="${naechstesSeitenLabel}"]`);
     await page.waitForLoadState("domcontentloaded");
     seite += 1;
   }
-  return ergebnisse;
+  // Schleife endet nur bei Erreichen der Grenze, mit noch existierender naechster Seite.
+  return { treffer, abgeschnitten: true };
 }
 
 /**
@@ -65,10 +72,18 @@ export async function sweepZvgPortal(): Promise<{
       await sleep(VERZOEGERUNG_MS);
       try {
         await sucheFuerBundesland(page, landAbk);
-        const treffer = await alleSeitenErfassen(page);
+        const { treffer, abgeschnitten } = await alleSeitenErfassen(page);
         for (const t of treffer) zusammenfassungen.set(t.externalId, t);
-        geltungsbereich.push(landAbk);
-        console.log(`ZVG-Sweep ${landAbk}: ${treffer.length} Termine.`);
+        if (abgeschnitten) {
+          alleLiefen = false;
+          console.warn(
+            `ZVG-Sweep ${landAbk}: Seitenlimit (${MAX_SEITEN_PRO_BUNDESLAND}) erreicht, ` +
+              `Bundesland bleibt vom Abgleich ausgenommen. ${treffer.length} Termine gespeichert.`
+          );
+        } else {
+          geltungsbereich.push(landAbk);
+          console.log(`ZVG-Sweep ${landAbk}: ${treffer.length} Termine.`);
+        }
       } catch (err) {
         alleLiefen = false;
         console.warn(`ZVG-Sweep ${landAbk}: Fehler, Bundesland bleibt vom Abgleich ausgenommen`, err);
