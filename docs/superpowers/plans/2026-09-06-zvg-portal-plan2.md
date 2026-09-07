@@ -10,6 +10,29 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-06-plan2-zvg-portal-design.md` (siehe auch `2026-09-06-plan2-zvg-portal-notes.md` für die volle Recherche-Historie)
 
+---
+
+## Status: ABGESCHLOSSEN (verifiziert 2026-09-07)
+
+Alle 8 Tasks umgesetzt und via `52c1f15 Merge branch 'zvg-portal-plan2'` nach
+`main` gemerged. Nachträglich abgeglichen am 2026-09-07:
+
+- **Code-verifiziert:** `schema.sql` trägt die 5 neuen Spalten; `pipeline.ts`,
+  `zvg-portal/{list,detail,index}.ts` + `data_gaps`-Warnzeile in `telegram.ts`
+  vorhanden; `npm test` grün (144 Tests); `npx tsc --noEmit` fehlerfrei;
+  `package.json`-Script heißt `scrape`; Workflow installiert Playwright-Chromium.
+  Betrifft Tasks 1–7.
+- **Aus dem laufenden System belegt:** Live-Migration + End-to-End-Läufe
+  (Task 8). Die Folge-Commits `e43fcaf` (Timeout/Laufzeitbudget), `487218a`
+  (Fehlerisolation je Kandidat, 429-Retry), `4b712ac` (Detailparser-Härtung)
+  sind genau die „Korrekturen aus End-to-End-Verifikation".
+- **Seither weiterentwickelt** (nicht Teil dieses Plans): voller ZVG-Inseratstext
+  statt Portal-Direktlink, Objektfotos/PDF-Exposés/Lagekarte je Meldung,
+  Verkehrswert-Parsing gehärtet, regionale Miete + Plausibilitätsgrenze
+  (`rent_estimate_unreliable`). Siehe `git log`.
+
+---
+
 ## Global Constraints
 
 - TypeScript strict mode, ESM-Imports mit `.js`-Endung (Node-ESM-Konvention, wie im bestehenden Code).
@@ -31,7 +54,7 @@
 **Interfaces:**
 - Produces: 5 neue Spalten auf `listing_versions` (`auction_at`, `court`, `case_number`, `raw_notice_text`, `data_gaps`), die Task 2+ als DB-Ziel voraussetzen.
 
-- [ ] **Step 1: `schema.sql` aktualisieren**
+- [x] **Step 1: `schema.sql` aktualisieren**
 
 In `schema.sql` die bestehende `create table listing_versions (...)`-Definition erweitern (fügt die 5 neuen Spalten direkt in die Tabellendefinition ein, damit ein frischer Projekt-Aufbau weiterhin mit einem einzigen Lauf funktioniert):
 
@@ -63,7 +86,7 @@ create table listing_versions (
 );
 ```
 
-- [ ] **Step 2: Migration gegen die LIVE-Datenbank ausführen**
+- [x] **Step 2: Migration gegen die LIVE-Datenbank ausführen**
 
 Im Supabase-Dashboard des immo-radar-Projekts: SQL Editor → folgendes ausführen (die Live-Tabelle existiert schon, `create table` würde fehlschlagen):
 
@@ -78,7 +101,7 @@ alter table listing_versions
 
 Erwartet: keine Fehler. Im Table Editor bei `listing_versions` die 5 neuen Spalten sichtbar.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -99,7 +122,7 @@ git commit -m "feat(db): Spalten fuer data_gaps-Mechanismus + ZVG-Portal-Felder"
 - Consumes: nichts Neues (reine Erweiterung bestehender Interfaces).
 - Produces: `ListingVersionData` mit 5 neuen **optionalen** Feldern (`dataGaps?`, `auctionAt?`, `court?`, `caseNumber?`, `rawNoticeText?`) — optional, damit der bestehende Immowelt-Call-Ort in `main.ts` unverändert weiter kompiliert, bis Task 6 ihn umbaut. `ListingSummary` mit neuem optionalen Feld `dataGaps?: string[]`. Neue Funktion `formatZvgTopTrefferMessage(listing: ZvgListingSummary, k: KennzahlenSummary): string` und Typ `ZvgListingSummary`.
 
-- [ ] **Step 1: `db.ts` um die neuen Felder erweitern**
+- [x] **Step 1: `db.ts` um die neuen Felder erweitern**
 
 In `scraper/lib/db.ts` das Interface `ListingVersionData` erweitern:
 
@@ -157,12 +180,12 @@ Im `insert`-Aufruf in `upsertListingAndVersion` die neuen Spalten ergänzen (mit
   });
 ```
 
-- [ ] **Step 2: `db.test.ts` laufen lassen (Regressionscheck)**
+- [x] **Step 2: `db.test.ts` laufen lassen (Regressionscheck)**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run lib/db.test.ts`
 Expected: PASS (die bestehenden `diffVersion`-Tests sind von dieser Änderung nicht betroffen).
 
-- [ ] **Step 3: Fehlschlagenden Telegram-Test für die Warnzeile schreiben**
+- [x] **Step 3: Fehlschlagenden Telegram-Test für die Warnzeile schreiben**
 
 In `scraper/lib/telegram.test.ts`, NACH dem bestehenden `describe("formatTopTrefferMessage", ...)`-Block, zwei neue `describe`-Blöcke ergänzen (bestehenden Code nicht verändern):
 
@@ -232,12 +255,12 @@ describe("formatZvgTopTrefferMessage", () => {
 });
 ```
 
-- [ ] **Step 4: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 4: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run lib/telegram.test.ts`
 Expected: FAIL — `formatZvgTopTrefferMessage is not a function` bzw. die `data_gaps`-Assertions schlagen fehl, weil die Warnzeile noch nicht existiert.
 
-- [ ] **Step 5: `telegram.ts` implementieren**
+- [x] **Step 5: `telegram.ts` implementieren**
 
 `scraper/lib/telegram.ts` komplett wie folgt ersetzen:
 
@@ -349,12 +372,12 @@ export async function sendTelegramMessage(config: TelegramConfig, text: string):
 }
 ```
 
-- [ ] **Step 6: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 6: Test laufen lassen, Erfolg bestätigen**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run lib/telegram.test.ts`
 Expected: PASS (alle bestehenden UND neuen Tests).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -374,7 +397,7 @@ git commit -m "feat(scraper): data_gaps-Warnzeile + ZVG-Telegram-Format"
 **Interfaces:**
 - Produces: `ZvgListSummary { externalId: string; url: string; caseNumber: string; court: string }`, `parseZvgResultsPage(html: string): ZvgListSummary[]`. Wird von Task 5 (`index.ts`) konsumiert.
 
-- [ ] **Step 1: Test schreiben**
+- [x] **Step 1: Test schreiben**
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -418,12 +441,12 @@ describe("parseZvgResultsPage", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run scrapers/zvg-portal/list.test.ts`
 Expected: FAIL — `Cannot find module './list.js'`.
 
-- [ ] **Step 3: `list.ts` implementieren**
+- [x] **Step 3: `list.ts` implementieren**
 
 ```ts
 import * as cheerio from "cheerio";
@@ -494,12 +517,12 @@ export function parseZvgResultsPage(html: string): ZvgListSummary[] {
 }
 ```
 
-- [ ] **Step 4: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 4: Test laufen lassen, Erfolg bestätigen**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run scrapers/zvg-portal/list.test.ts`
 Expected: PASS (alle 4 Tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -520,7 +543,7 @@ git commit -m "feat(scraper): ZVG-Portal Ergebnisliste parsen"
 - Consumes: nichts aus anderen Tasks (unabhängig von `list.ts` implementierbar/testbar).
 - Produces: `ZvgDetailData` (siehe unten), `parseZvgDetailPage(html: string, kontext: { externalId: string; url: string; court: string; caseNumber: string }): ZvgDetailData`. Wird von Task 5 (`index.ts`) konsumiert; Feldnamen müssen zu `PipelineCandidate` (Task 6) passen.
 
-- [ ] **Step 1: Test schreiben**
+- [x] **Step 1: Test schreiben**
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -610,12 +633,12 @@ describe("parseZvgDetailPage — kein Einheiten-Hinweis im Text", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run scrapers/zvg-portal/detail.test.ts`
 Expected: FAIL — `Cannot find module './detail.js'`.
 
-- [ ] **Step 3: `detail.ts` implementieren**
+- [x] **Step 3: `detail.ts` implementieren**
 
 ```ts
 import * as cheerio from "cheerio";
@@ -807,12 +830,12 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
 }
 ```
 
-- [ ] **Step 4: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 4: Test laufen lassen, Erfolg bestätigen**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run scrapers/zvg-portal/detail.test.ts`
 Expected: PASS (alle 9 Tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -833,7 +856,7 @@ git commit -m "feat(scraper): ZVG-Portal Detailseite parsen"
 
 Kein isolierter Unit-Test möglich (führt echte Netzwerk-Requests via Playwright aus) — Verifikation erfolgt manuell in Task 8, analog zu `scrapers/immowelt/index.ts`. Direkt implementieren:
 
-- [ ] **Step 1: `index.ts` implementieren**
+- [x] **Step 1: `index.ts` implementieren**
 
 ```ts
 import { chromium, type Page } from "playwright";
@@ -927,12 +950,12 @@ export async function scrapeZvgPortal(): Promise<ZvgDetailData[]> {
 }
 ```
 
-- [ ] **Step 2: TypeScript-Check**
+- [x] **Step 2: TypeScript-Check**
 
 Run: `cd C:\immo-radar\scraper && npx tsc --noEmit`
 Expected: keine Fehler.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -955,7 +978,7 @@ Dieser Task setzt die eigentliche `data_gaps`-Verhaltensänderung in Kraft (Obje
 - Consumes: `upsertListingAndVersion`, `logNotification` (aus `./db.js`), `berechneKennzahlen` (aus `./metrics.js`), `ermittleJahreskaltmiete` (aus `./rentEstimate.js`), `grunderwerbsteuerSatz`, `bundeslandFuerPlz` (aus `./grunderwerbsteuer.js`), `sendTelegramMessage`, `formatTopTrefferMessage`, `formatZvgTopTrefferMessage`, `formatPreisaenderungMessage`, `TelegramConfig` (aus `./telegram.js`).
 - Produces: `bewerteEinheiten(units: number | null): { ausschliessen: boolean; einheitenFuerBerechnung: number; dataGaps: string[] }` (pure, unit-getestet), `PipelineCandidate` (Interface), `processCandidate(supabase: SupabaseClient, telegramConfig: TelegramConfig, candidate: PipelineCandidate): Promise<void>`.
 
-- [ ] **Step 1: Test für `bewerteEinheiten` schreiben**
+- [x] **Step 1: Test für `bewerteEinheiten` schreiben**
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -983,12 +1006,12 @@ describe("bewerteEinheiten", () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+- [x] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run lib/pipeline.test.ts`
 Expected: FAIL — `Cannot find module './pipeline.js'`.
 
-- [ ] **Step 3: `pipeline.ts` implementieren**
+- [x] **Step 3: `pipeline.ts` implementieren**
 
 ```ts
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -1146,12 +1169,12 @@ export async function processCandidate(
 }
 ```
 
-- [ ] **Step 4: Test laufen lassen, Erfolg bestätigen**
+- [x] **Step 4: Test laufen lassen, Erfolg bestätigen**
 
 Run: `cd C:\immo-radar\scraper && npx vitest run lib/pipeline.test.ts`
 Expected: PASS (alle 3 Tests).
 
-- [ ] **Step 5: `main.ts` generalisieren**
+- [x] **Step 5: `main.ts` generalisieren**
 
 `scraper/main.ts` komplett wie folgt ersetzen:
 
@@ -1235,17 +1258,17 @@ main().catch((err) => {
 });
 ```
 
-- [ ] **Step 6: TypeScript-Check über das ganze Projekt**
+- [x] **Step 6: TypeScript-Check über das ganze Projekt**
 
 Run: `cd C:\immo-radar\scraper && npx tsc --noEmit`
 Expected: keine Fehler.
 
-- [ ] **Step 7: Gesamte Testsuite laufen lassen**
+- [x] **Step 7: Gesamte Testsuite laufen lassen**
 
 Run: `cd C:\immo-radar\scraper && npm test`
 Expected: alle Tests PASS (Immowelt-Tests weiterhin grün, neue ZVG- und Pipeline-Tests grün).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -1266,11 +1289,11 @@ uebersprungen, sondern mit data_gaps=[\"units_unconfirmed\"] gespeichert."
 
 **Interfaces:** keine (reine Infrastruktur-Änderung).
 
-- [ ] **Step 1: `package.json`-Script umbenennen**
+- [x] **Step 1: `package.json`-Script umbenennen**
 
 In `scraper/package.json` das Script `"scrape:immowelt": "tsx main.ts"` umbenennen zu `"scrape": "tsx main.ts"` (main.ts deckt jetzt beide Quellen ab, der alte Name ist irreführend geworden).
 
-- [ ] **Step 2: CI-Workflow aktualisieren**
+- [x] **Step 2: CI-Workflow aktualisieren**
 
 In `.github/workflows/scrape.yml` einen Playwright-Browser-Install-Schritt ergänzen und den Script-Namen anpassen:
 
@@ -1306,7 +1329,7 @@ jobs:
         working-directory: scraper
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -1322,11 +1345,11 @@ git commit -m "chore(ci): Playwright-Browser-Install + Script-Umbenennung fuer z
 
 **Files:** keine neuen — reine Verifikation, ggf. Korrekturen an bestehenden Dateien.
 
-- [ ] **Step 1: 15-Minuten-Timeout im Workflow prüfen**
+- [x] **Step 1: 15-Minuten-Timeout im Workflow prüfen**
 
 Ein voller Lauf umfasst jetzt 16 Playwright-Bundesland-Suchen (ZVG) zusätzlich zum bisherigen Immowelt-Scrape. Lokal die Laufzeit messen (nächster Schritt) und `timeout-minutes: 15` im Workflow bei Bedarf erhöhen.
 
-- [ ] **Step 2: Lokalen Testlauf mit echten Zugangsdaten ausführen**
+- [x] **Step 2: Lokalen Testlauf mit echten Zugangsdaten ausführen**
 
 `scraper/.env` lokal anlegen (nicht committen) mit `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`. Dann:
 
@@ -1334,19 +1357,19 @@ Run: `cd C:\immo-radar\scraper && npm run scrape`
 
 Erwartet: Konsolen-Log zeigt sowohl `Immowelt: ...` als auch `ZVG-Portal: ...`-Zeilen inkl. Treffer-Zahl je Bundesland; Lauf endet mit `Lauf abgeschlossen.` ohne unbehandelten Fehler. Laufzeit notieren, `timeout-minutes` in `scrape.yml` bei Bedarf anpassen (Schritt 1).
 
-- [ ] **Step 3: Datenbank stichprobenartig prüfen**
+- [x] **Step 3: Datenbank stichprobenartig prüfen**
 
 Im Supabase Table Editor `listing_versions` nach `source = 'zvg-portal'` filtern: mindestens einige Zeilen vorhanden, `case_number`/`court`/`auction_at`/`raw_notice_text` befüllt, `price_cents` plausibel (Verkehrswert-Größenordnung).
 
-- [ ] **Step 4: `data_gaps` stichprobenartig prüfen**
+- [x] **Step 4: `data_gaps` stichprobenartig prüfen**
 
 Nach Zeilen mit `data_gaps @> '{"units_unconfirmed"}'` filtern (sowohl `source='immowelt'` als auch `source='zvg-portal'` sollten vorkommen können). Bestätigt, dass Objekte mit unbekannter Einheitenzahl jetzt gespeichert werden statt zu verschwinden.
 
-- [ ] **Step 5: Telegram-Nachrichten sichten (falls ein Top-Treffer/eine Preisänderung ausgelöst wurde)**
+- [x] **Step 5: Telegram-Nachrichten sichten (falls ein Top-Treffer/eine Preisänderung ausgelöst wurde)**
 
 Im Telegram-Chat prüfen: ZVG-Nachrichten enthalten Gericht/Termin/Aktenzeichen im erwarteten Format; bei `data_gaps` erscheint die Warnzeile; Links sind gültige, aufrufbare `zvg-portal.de`-URLs.
 
-- [ ] **Step 6: Korrekturen committen (falls nötig)**
+- [x] **Step 6: Korrekturen committen (falls nötig)**
 
 Falls beim Live-Lauf Anpassungen nötig wurden (z.B. abweichende Feldformate bei anderen Bundesländern/Amtsgerichten):
 

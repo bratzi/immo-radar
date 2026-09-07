@@ -10,6 +10,30 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-05-immo-radar-design.md`
 
+---
+
+## Status: ABGESCHLOSSEN (verifiziert 2026-09-07)
+
+Alle 13 Tasks umgesetzt und nach `main` gemerged. Nachträglich abgeglichen am
+2026-09-07:
+
+- **Code-verifiziert:** alle Dateien vorhanden, `npm test` grün, `npx tsc --noEmit`
+  fehlerfrei. Betrifft Tasks 1–6, 8, 10, 11 (Code + Tests).
+- **Aus dem laufenden System belegt:** Supabase-Projekt, Live-Migration,
+  Telegram-Bot, privates GitHub-Repo, Actions-Secrets und die
+  End-to-End-Läufe (Tasks 7, 9, 12, 13). Beweis: `git remote origin` mit
+  gepushter Historie, vorhandene `scraper/.env`, und die Folge-Commits mit
+  Beobachtungen aus echten Telegram-Meldungen.
+- **Seither weiterentwickelt** (nicht Teil dieses Plans): `main.ts` → gemeinsame
+  `pipeline.ts` (Plan 2), Telegram-Nachrichten gegliedert + Fotos/PDF/Lagekarte,
+  regionale Mietschätzung. Siehe `git log`.
+
+Offene Anschlussarbeit steht nicht mehr in diesem Plan — siehe Abschnitt
+„Bewusst nicht enthalten" der Spec und den noch nicht geschriebenen Plan 3
+(Web-Dashboard).
+
+---
+
 ## Global Constraints
 
 - Node.js 22+ (verifiziert lokal vorhanden: v22.22.2), ESM (`"type": "module"` in jeder package.json).
@@ -37,7 +61,7 @@
 **Interfaces:**
 - Produces: `grunderwerbsteuerSatz(plz: string): number` (Prozentsatz, z.B. `3.5`)
 
-- [ ] **Step 1: `.gitignore` anlegen**
+- [x] **Step 1: `.gitignore` anlegen**
 
 ```
 node_modules/
@@ -46,7 +70,7 @@ node_modules/
 dist/
 ```
 
-- [ ] **Step 2: `scraper/package.json` anlegen**
+- [x] **Step 2: `scraper/package.json` anlegen**
 
 ```json
 {
@@ -74,7 +98,7 @@ dist/
 }
 ```
 
-- [ ] **Step 3: `scraper/tsconfig.json` anlegen**
+- [x] **Step 3: `scraper/tsconfig.json` anlegen**
 
 ```json
 {
@@ -89,12 +113,12 @@ dist/
 }
 ```
 
-- [ ] **Step 4: Dependencies installieren**
+- [x] **Step 4: Dependencies installieren**
 
 Run: `cd C:\immo-radar\scraper && npm install`
 Expected: `node_modules/` wird erzeugt, kein Fehler.
 
-- [ ] **Step 5: Generator-Skript für die PLZ→Bundesland-Tabelle schreiben**
+- [x] **Step 5: Generator-Skript für die PLZ→Bundesland-Tabelle schreiben**
 
 Datenquelle: GeoNames DE-Postleitzahlen-Datensatz (frei, verifiziert erreichbar unter
 `https://download.geonames.org/export/zip/DE.zip`, TSV-Format, Spalten:
@@ -175,12 +199,12 @@ async function main() {
 main();
 ```
 
-- [ ] **Step 6: Generator ausführen und Ergebnis prüfen**
+- [x] **Step 6: Generator ausführen und Ergebnis prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm run generate:plz`
 Expected: Ausgabe „Fertig: <N> PLZ-Einträge geschrieben..." mit N > 8000; Datei `scraper/lib/plzBundesland.generated.json` existiert.
 
-- [ ] **Step 7: Fehlschlagenden Test für `grunderwerbsteuerSatz` schreiben**
+- [x] **Step 7: Fehlschlagenden Test für `grunderwerbsteuerSatz` schreiben**
 
 `scraper/lib/grunderwerbsteuer.test.ts`:
 
@@ -211,12 +235,12 @@ describe("grunderwerbsteuerSatz", () => {
 });
 ```
 
-- [ ] **Step 8: Test ausführen, Fehlschlag prüfen**
+- [x] **Step 8: Test ausführen, Fehlschlag prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- grunderwerbsteuer`
 Expected: FAIL — `Cannot find module './grunderwerbsteuer.js'` (Datei existiert noch nicht).
 
-- [ ] **Step 9: `grunderwerbsteuer.ts` implementieren**
+- [x] **Step 9: `grunderwerbsteuer.ts` implementieren**
 
 `scraper/lib/grunderwerbsteuer.ts`:
 
@@ -258,12 +282,12 @@ export function grunderwerbsteuerSatz(plz: string): number {
 }
 ```
 
-- [ ] **Step 10: Test ausführen, Erfolg prüfen**
+- [x] **Step 10: Test ausführen, Erfolg prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- grunderwerbsteuer`
 Expected: PASS, 5 von 5 Tests grün.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -283,7 +307,7 @@ git commit -m "feat(scraper): Projekt-Grundgeruest + Grunderwerbsteuer-/PLZ-Look
 - Consumes: nichts (reine Funktionen, `grunderwerbsteuerSatz` wird vom Aufrufer übergeben, nicht importiert)
 - Produces: `berechneKennzahlen(input: KennzahlenInput, grunderwerbsteuerSatzProzent: number): Kennzahlen`, Typen `KennzahlenInput`, `Kennzahlen`
 
-- [ ] **Step 1: Fehlschlagenden Test schreiben**
+- [x] **Step 1: Fehlschlagenden Test schreiben**
 
 `scraper/lib/metrics.test.ts`:
 
@@ -367,12 +391,12 @@ describe("berechneKennzahlen", () => {
 });
 ```
 
-- [ ] **Step 2: Test ausführen, Fehlschlag prüfen**
+- [x] **Step 2: Test ausführen, Fehlschlag prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- metrics`
 Expected: FAIL — `Cannot find module './metrics.js'`.
 
-- [ ] **Step 3: `metrics.ts` implementieren**
+- [x] **Step 3: `metrics.ts` implementieren**
 
 `scraper/lib/metrics.ts`:
 
@@ -453,12 +477,12 @@ export function berechneKennzahlen(
 }
 ```
 
-- [ ] **Step 4: Test ausführen, Erfolg prüfen**
+- [x] **Step 4: Test ausführen, Erfolg prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- metrics`
 Expected: PASS, alle Tests grün.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -479,7 +503,7 @@ git commit -m "feat(scraper): Bewertungs-Engine (NOI, Kaufpreisfaktor, DSCR, Bel
 **Interfaces:**
 - Produces: `ermittleJahreskaltmiete(angegebeneMonatsmiete: number | null, wohnflaecheM2: number): MietSchaetzung`, Typen `MietQuelle`, `MietSchaetzung`
 
-- [ ] **Step 1: Fehlschlagenden Test schreiben**
+- [x] **Step 1: Fehlschlagenden Test schreiben**
 
 `scraper/lib/rentEstimate.test.ts`:
 
@@ -507,12 +531,12 @@ describe("ermittleJahreskaltmiete", () => {
 });
 ```
 
-- [ ] **Step 2: Test ausführen, Fehlschlag prüfen**
+- [x] **Step 2: Test ausführen, Fehlschlag prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- rentEstimate`
 Expected: FAIL — `Cannot find module './rentEstimate.js'`.
 
-- [ ] **Step 3: `rentEstimate.ts` implementieren**
+- [x] **Step 3: `rentEstimate.ts` implementieren**
 
 `scraper/lib/rentEstimate.ts`:
 
@@ -541,12 +565,12 @@ export function ermittleJahreskaltmiete(
 }
 ```
 
-- [ ] **Step 4: Test ausführen, Erfolg prüfen**
+- [x] **Step 4: Test ausführen, Erfolg prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- rentEstimate`
 Expected: PASS, alle 3 Tests grün.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -568,7 +592,7 @@ git commit -m "feat(scraper): Mietschaetzung v1 (angegeben / bundesweiter Durchs
 **Interfaces:**
 - Produces: `parseImmoweltListPage(html: string): ImmoweltListSummary[]`, `istMehrfamilienhausKandidat(titleLine: string): boolean`, Typ `ImmoweltListSummary`
 
-- [ ] **Step 1: Fehlschlagenden Test schreiben**
+- [x] **Step 1: Fehlschlagenden Test schreiben**
 
 `scraper/scrapers/immowelt/list.test.ts`:
 
@@ -619,12 +643,12 @@ describe("istMehrfamilienhausKandidat", () => {
 });
 ```
 
-- [ ] **Step 2: Test ausführen, Fehlschlag prüfen**
+- [x] **Step 2: Test ausführen, Fehlschlag prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- list.test`
 Expected: FAIL — `Cannot find module './list.js'`.
 
-- [ ] **Step 3: `list.ts` implementieren**
+- [x] **Step 3: `list.ts` implementieren**
 
 `scraper/scrapers/immowelt/list.ts`:
 
@@ -660,12 +684,12 @@ export function istMehrfamilienhausKandidat(titleLine: string): boolean {
 }
 ```
 
-- [ ] **Step 4: Test ausführen, Erfolg prüfen**
+- [x] **Step 4: Test ausführen, Erfolg prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- list.test`
 Expected: PASS, alle 5 Tests grün.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -687,7 +711,7 @@ git commit -m "feat(scraper): Immowelt Ergebnislisten-Parser (Fixture-getestet)"
 **Interfaces:**
 - Produces: `parseImmoweltDetailPage(html: string, kontext: { externalId: string; url: string }): ImmoweltDetailData`, Typ `ImmoweltDetailData`
 
-- [ ] **Step 1: Fehlschlagenden Test schreiben**
+- [x] **Step 1: Fehlschlagenden Test schreiben**
 
 `scraper/scrapers/immowelt/detail.test.ts`:
 
@@ -777,12 +801,12 @@ describe("parseImmoweltDetailPage — Einheiten-Erkennung mit synthetischem Text
 });
 ```
 
-- [ ] **Step 2: Test ausführen, Fehlschlag prüfen**
+- [x] **Step 2: Test ausführen, Fehlschlag prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- detail.test`
 Expected: FAIL — `Cannot find module './detail.js'`.
 
-- [ ] **Step 3: `detail.ts` implementieren**
+- [x] **Step 3: `detail.ts` implementieren**
 
 `scraper/scrapers/immowelt/detail.ts`:
 
@@ -881,12 +905,12 @@ export function parseImmoweltDetailPage(
 }
 ```
 
-- [ ] **Step 4: Test ausführen, Erfolg prüfen**
+- [x] **Step 4: Test ausführen, Erfolg prüfen**
 
 Run: `cd C:\immo-radar\scraper && npm test -- detail.test`
 Expected: PASS, alle 7 Tests grün.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd C:\immo-radar
@@ -907,7 +931,7 @@ git commit -m "feat(scraper): Immowelt Detailseiten-Parser (Fixture-getestet, ko
 - Consumes: `parseImmoweltListPage`, `istMehrfamilienhausKandidat` (aus `./list.js`), `parseImmoweltDetailPage`, `ImmoweltDetailData` (aus `./detail.js`)
 - Produces: `scrapeImmowelt(): Promise<ImmoweltDetailData[]>`
 
-- [ ] **Step 1: `index.ts` implementieren**
+- [x] **Step 1: `index.ts` implementieren**
 
 Kein isolierter Unit-Test möglich (führt echte Netzwerk-Requests aus) — Verifikation erfolgt manuell in Task 13. Direkt implementieren:
 
@@ -968,12 +992,12 @@ export async function scrapeImmowelt(): Promise<ImmoweltDetailData[]> {
 }
 ```
 
-- [ ] **Step 2: `tsc --noEmit` zur Typprüfung ausführen**
+- [x] **Step 2: `tsc --noEmit` zur Typprüfung ausführen**
 
 Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npx tsc --noEmit`
 Expected: Keine Fehler.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd C:\immo-radar\.worktrees\foundation-plan
@@ -987,14 +1011,14 @@ git commit -m "feat(scraper): Immowelt Live-Scraper-Orchestrierung (Seite 1, ged
 
 **Manueller Schritt (externer Dienst des Nutzers — nicht automatisiert):**
 
-- [ ] **Step 1: Supabase-Projekt anlegen**
+- [x] **Step 1: Supabase-Projekt anlegen**
 
 Der Nutzer legt unter [supabase.com](https://supabase.com) ein NEUES, eigenständiges Projekt an (Name-Vorschlag: `immo-radar`, getrennt vom bestehenden Margn-Projekt). Nach Anlage: `Project URL` und `service_role`-Key aus den Projekteinstellungen (Settings → API) notieren — werden in Task 9 gebraucht.
 
 **Files:**
 - Create: `C:\immo-radar\schema.sql`
 
-- [ ] **Step 2: `schema.sql` schreiben**
+- [x] **Step 2: `schema.sql` schreiben**
 
 ```sql
 create extension if not exists "pgcrypto";
@@ -1060,11 +1084,11 @@ alter table rent_estimates enable row level security;
 alter table notifications enable row level security;
 ```
 
-- [ ] **Step 3: Schema in Supabase ausführen**
+- [x] **Step 3: Schema in Supabase ausführen**
 
 Im Supabase-Dashboard des neuen Projekts: SQL Editor → Inhalt von `schema.sql` einfügen → Run. Erwartet: keine Fehler, 4 neue Tabellen sichtbar unter Table Editor, und im Table Editor bei jeder der 4 Tabellen ein Schloss-Symbol/"RLS enabled"-Hinweis (kein "Unrestricted"-Badge mehr).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd C:\immo-radar\.worktrees\foundation-plan
@@ -1085,7 +1109,7 @@ git commit -m "feat(db): Schema fuer listings/listing_versions/rent_estimates/no
 **Interfaces:**
 - Produces: `diffVersion(input: VersionDiffInput): VersionDiffResult` (rein, testbar), `upsertListingAndVersion(supabase: SupabaseClient, data: ListingVersionData): Promise<UpsertResult>` (I/O, manuell verifiziert), `logNotification(supabase: SupabaseClient, listingId: string, kind: "top_treffer" | "preisaenderung", detail: Record<string, unknown>): Promise<void>` (I/O, manuell verifiziert), Typen `VersionDiffInput`, `VersionDiffResult`, `ListingVersionData`, `UpsertResult`
 
-- [ ] **Step 1: `.env.example` anlegen**
+- [x] **Step 1: `.env.example` anlegen**
 
 ```
 SUPABASE_URL=
@@ -1094,7 +1118,7 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 ```
 
-- [ ] **Step 2: `scraper/lib/supabase.ts` anlegen**
+- [x] **Step 2: `scraper/lib/supabase.ts` anlegen**
 
 ```ts
 import "dotenv/config";
@@ -1107,7 +1131,7 @@ export const sb = createClient(
 );
 ```
 
-- [ ] **Step 3: Fehlschlagenden Test für `diffVersion` schreiben**
+- [x] **Step 3: Fehlschlagenden Test für `diffVersion` schreiben**
 
 `scraper/lib/db.test.ts`:
 
@@ -1152,12 +1176,12 @@ describe("diffVersion", () => {
 });
 ```
 
-- [ ] **Step 4: Test ausführen, Fehlschlag prüfen**
+- [x] **Step 4: Test ausführen, Fehlschlag prüfen**
 
 Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test -- db.test`
 Expected: FAIL — `Cannot find module './db.js'`.
 
-- [ ] **Step 5: `db.ts` implementieren**
+- [x] **Step 5: `db.ts` implementieren**
 
 `scraper/lib/db.ts`:
 
@@ -1300,12 +1324,12 @@ export async function logNotification(
 }
 ```
 
-- [ ] **Step 6: Test ausführen, Erfolg prüfen**
+- [x] **Step 6: Test ausführen, Erfolg prüfen**
 
 Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test -- db.test`
 Expected: PASS, alle 4 Tests grün (nur `diffVersion` wird hier getestet — `upsertListingAndVersion` braucht eine echte DB und wird in Task 13 manuell verifiziert).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd C:\immo-radar\.worktrees\foundation-plan
@@ -1319,7 +1343,7 @@ git commit -m "feat(scraper): DB-Zugriffsschicht mit Aenderungs-/Preissenkungs-E
 
 **Manueller Schritt (externer Dienst des Nutzers):**
 
-- [ ] **Step 1: Telegram-Bot anlegen**
+- [x] **Step 1: Telegram-Bot anlegen**
 
 Der Nutzer öffnet in Telegram den Chat mit **@BotFather**, sendet `/newbot`, vergibt einen Namen (z.B. "immo-radar") und erhält ein Bot-Token. Danach eine Nachricht an den neuen Bot schicken (z.B. "Start") und die eigene `chat_id` ermitteln, z.B. über `https://api.telegram.org/bot<TOKEN>/getUpdates` im Browser aufrufen und `"chat":{"id": ...}` im JSON ablesen. Beide Werte (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) in `scraper/.env` eintragen (lokal, nicht committen — durch `.gitignore` bereits ausgeschlossen).
 
@@ -1330,7 +1354,7 @@ Der Nutzer öffnet in Telegram den Chat mit **@BotFather**, sendet `/newbot`, ve
 **Interfaces:**
 - Produces: `formatTopTrefferMessage(listing: ListingSummary, k: KennzahlenSummary): string`, `formatPreisaenderungMessage(listing: ListingSummary, altPreisCents: number, neuPreisCents: number): string`, `sendTelegramMessage(config: TelegramConfig, text: string): Promise<void>`, Typen `ListingSummary`, `KennzahlenSummary`, `TelegramConfig`
 
-- [ ] **Step 2: Fehlschlagenden Test für die Formatierungsfunktionen schreiben**
+- [x] **Step 2: Fehlschlagenden Test für die Formatierungsfunktionen schreiben**
 
 `scraper/lib/telegram.test.ts`:
 
@@ -1374,12 +1398,12 @@ describe("formatPreisaenderungMessage", () => {
 });
 ```
 
-- [ ] **Step 3: Test ausführen, Fehlschlag prüfen**
+- [x] **Step 3: Test ausführen, Fehlschlag prüfen**
 
 Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test -- telegram.test`
 Expected: FAIL — `Cannot find module './telegram.js'`.
 
-- [ ] **Step 4: `telegram.ts` implementieren**
+- [x] **Step 4: `telegram.ts` implementieren**
 
 `scraper/lib/telegram.ts`:
 
@@ -1443,12 +1467,12 @@ export async function sendTelegramMessage(config: TelegramConfig, text: string):
 }
 ```
 
-- [ ] **Step 5: Test ausführen, Erfolg prüfen**
+- [x] **Step 5: Test ausführen, Erfolg prüfen**
 
 Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test -- telegram.test`
 Expected: PASS, beide Tests grün (`sendTelegramMessage` selbst wird in Task 13 manuell gegen den echten Bot verifiziert).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd C:\immo-radar\.worktrees\foundation-plan
@@ -1467,7 +1491,7 @@ git commit -m "feat(scraper): Telegram-Benachrichtigung (Top-Treffer + Preisaend
 - Consumes: `scrapeImmowelt` (aus `./scrapers/immowelt/index.js`), `grunderwerbsteuerSatz` (aus `./lib/grunderwerbsteuer.js`), `berechneKennzahlen` (aus `./lib/metrics.js`), `ermittleJahreskaltmiete` (aus `./lib/rentEstimate.js`), `upsertListingAndVersion`, `logNotification` (aus `./lib/db.js`), `sb` (aus `./lib/supabase.js`), `sendTelegramMessage`, `formatTopTrefferMessage`, `formatPreisaenderungMessage` (aus `./lib/telegram.js`)
 - Produces: ausführbares Skript, kein exportiertes Interface
 
-- [ ] **Step 1: `main.ts` implementieren**
+- [x] **Step 1: `main.ts` implementieren**
 
 Kein isolierter Unit-Test (orchestriert ausschließlich bereits getestete Bausteine + echte I/O) — Verifikation in Task 13.
 
@@ -1578,17 +1602,17 @@ main().catch((err) => {
 });
 ```
 
-- [ ] **Step 2: Typprüfung ausführen**
+- [x] **Step 2: Typprüfung ausführen**
 
 Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npx tsc --noEmit`
 Expected: Keine Fehler.
 
-- [ ] **Step 3: Alle bisherigen Tests erneut ausführen**
+- [x] **Step 3: Alle bisherigen Tests erneut ausführen**
 
 Run: `cd C:\immo-radar\.worktrees\foundation-plan\scraper && npm test`
 Expected: PASS, alle Tests aus allen bisherigen Tasks weiterhin grün (main.ts selbst hat keine eigenen Tests — reine Orchestrierung bereits getesteter Bausteine, siehe Task-Kopf).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd C:\immo-radar\.worktrees\foundation-plan
@@ -1603,7 +1627,7 @@ git commit -m "feat(scraper): main.ts Pipeline (Scrape -> Kennzahlen -> Speicher
 **Files:**
 - Create: `C:\immo-radar\.github\workflows\scrape.yml`
 
-- [ ] **Step 1: Workflow-Datei schreiben**
+- [x] **Step 1: Workflow-Datei schreiben**
 
 `.github/workflows/scrape.yml`:
 
@@ -1637,7 +1661,7 @@ jobs:
         working-directory: scraper
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 cd C:\immo-radar\.worktrees\foundation-plan
@@ -1651,11 +1675,11 @@ git commit -m "feat(ci): GitHub Actions Cron alle 3h fuer Immowelt-Scraper"
 
 **Manueller Schritt (externer Dienst des Nutzers):**
 
-- [ ] **Step 1: Privates Repo auf GitHub anlegen**
+- [x] **Step 1: Privates Repo auf GitHub anlegen**
 
 Der Nutzer legt unter github.com ein neues, **privates** Repo namens `immo-radar` an (leer, ohne README/„.gitignore"-Vorlage, da das lokale Repo bereits existiert).
 
-- [ ] **Step 2: Remote verbinden und pushen**
+- [x] **Step 2: Remote verbinden und pushen**
 
 ```bash
 cd C:\immo-radar
@@ -1665,7 +1689,7 @@ git push -u origin main
 
 (`<username>` durch den tatsächlichen GitHub-Benutzernamen des Nutzers ersetzen.)
 
-- [ ] **Step 3: Secrets im Repo hinterlegen**
+- [x] **Step 3: Secrets im Repo hinterlegen**
 
 Im GitHub-Repo unter Settings → Secrets and variables → Actions → "New repository secret" vier Secrets anlegen: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (aus Task 7), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (aus Task 9).
 
@@ -1675,26 +1699,26 @@ Im GitHub-Repo unter Settings → Secrets and variables → Actions → "New rep
 
 **Manueller Verifikationslauf gegen die echten Dienste:**
 
-- [ ] **Step 1: Lokalen Testlauf mit echten Zugangsdaten ausführen**
+- [x] **Step 1: Lokalen Testlauf mit echten Zugangsdaten ausführen**
 
 `scraper/.env` lokal anlegen (nicht committen) mit den vier Werten aus den Tasks 7 und 9. Dann:
 
 Run: `cd C:\immo-radar\scraper && npm run scrape:immowelt`
 Expected: Konsolen-Ausgabe zeigt "Immowelt: Scraping gestartet...", eine Anzahl gefundener Kandidaten, für jeden entweder eine Übersprungen-Zeile oder eine erfolgreiche Verarbeitung, zum Schluss "Lauf abgeschlossen." — kein unbehandelter Fehler.
 
-- [ ] **Step 2: Supabase-Daten prüfen**
+- [x] **Step 2: Supabase-Daten prüfen**
 
 Im Supabase-Dashboard, Table Editor: Tabelle `listings` enthält mindestens einen Eintrag mit `source = 'immowelt'`; Tabelle `listing_versions` enthält für jeden Eintrag mindestens eine Zeile mit einem befüllten `metrics`-JSON-Feld. Falls ein Top-Treffer oder eine Preisänderung aufgetreten ist, enthält Tabelle `notifications` einen entsprechenden Eintrag mit passendem `kind`.
 
-- [ ] **Step 3: Telegram-Zustellung prüfen (falls ein Top-Treffer vorhanden war)**
+- [x] **Step 3: Telegram-Zustellung prüfen (falls ein Top-Treffer vorhanden war)**
 
 Falls mindestens ein gefundenes Objekt `topTreffer: true` ergeben hat: im Telegram-Chat mit dem Bot ist die entsprechende Nachricht angekommen. Falls kein Top-Treffer vorhanden war (auf Seite 1 nicht garantiert), diesen Teilschritt durch einen manuellen Test ersetzen: `sendTelegramMessage` einmalig testweise mit einer festen Test-Nachricht aus einem Node-REPL oder kleinen Ad-hoc-Skript aufrufen, um die Zustellung unabhängig vom Vorhandensein eines echten Top-Treffers zu bestätigen.
 
-- [ ] **Step 4: Workflow manuell in GitHub Actions auslösen**
+- [x] **Step 4: Workflow manuell in GitHub Actions auslösen**
 
 Nach dem Push aus Task 12: im GitHub-Repo unter "Actions" den Workflow "scrape" über "Run workflow" (workflow_dispatch) manuell einmal starten. Erwartet: grüner Lauf, Log zeigt dieselbe Ausgabe wie beim lokalen Testlauf.
 
-- [ ] **Step 5: Abschluss-Commit, falls beim Verifizieren Anpassungen nötig waren**
+- [x] **Step 5: Abschluss-Commit, falls beim Verifizieren Anpassungen nötig waren**
 
 Falls in den vorherigen Schritten Korrekturen nötig wurden (z.B. Feldnamen-Tippfehler, die erst live auffallen):
 
