@@ -30,10 +30,12 @@ export interface KennzahlenSummary {
 const DATA_GAP_LABELS: Record<string, string> = {
   units_unconfirmed: "Einheiten nicht bestätigt",
   location_unconfirmed: "Lage (PLZ/Ort) nicht bestätigt",
+  rent_estimate_unreliable: "Miete nicht belastbar schätzbar — Faktor und DSCR unsicher",
 };
 
 const MIET_QUELLE_LABELS: Record<string, string> = {
   angegeben: "angegeben",
+  geschaetzt_regional: "geschätzt (Region)",
   geschaetzt_bundesweit: "geschätzt (Bundesschnitt)",
 };
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { bewerteEinheiten, processCandidate, type PipelineCandidate } from "./pipeline.js";
+import { bewerteEinheiten, bewerteMietschaetzung, processCandidate, type PipelineCandidate } from "./pipeline.js";
 
 describe("bewerteEinheiten", () => {
   it("schließt eine BESTÄTIGTE Zahl unter der Mindestgrenze aus", () => {
@@ -120,5 +120,25 @@ describe("processCandidate — data_gaps aus Quelle und Einheitenprüfung", () =
       sourceDataGaps: ["units_unconfirmed"],
     });
     expect(versionen[0].data_gaps).toEqual(["units_unconfirmed"]);
+  });
+});
+
+describe("bewerteMietschaetzung", () => {
+  it("meldet keine Luecke, wenn die Miete angegeben war", () => {
+    expect(bewerteMietschaetzung("angegeben", 60)).toEqual([]);
+  });
+
+  it("meldet keine Luecke bei plausibler geschaetzter Rendite", () => {
+    expect(bewerteMietschaetzung("geschaetzt_regional", 8)).toEqual([]);
+    expect(bewerteMietschaetzung("geschaetzt_regional", 19.9)).toEqual([]);
+  });
+
+  it("meldet eine Luecke, wenn die geschaetzte Miete eine unmoegliche Rendite ergibt", () => {
+    expect(bewerteMietschaetzung("geschaetzt_regional", 90)).toEqual(["rent_estimate_unreliable"]);
+    expect(bewerteMietschaetzung("geschaetzt_bundesweit", 25)).toEqual(["rent_estimate_unreliable"]);
+  });
+
+  it("meldet auch bei absurder Rendite nichts, wenn die Miete belegt ist", () => {
+    expect(bewerteMietschaetzung("angegeben", 200)).toEqual([]);
   });
 });

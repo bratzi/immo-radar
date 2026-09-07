@@ -40,6 +40,26 @@ export function bewerteEinheiten(units: number | null, unitsConfident: boolean):
   return { ausschliessen: false, einheitenFuerBerechnung: units, dataGaps: [] };
 }
 
+/**
+ * Bruttomietrendite, ab der eine GESCHAETZTE Miete nicht mehr glaubwuerdig
+ * ist. Im deutschen Wohnbestand gibt es real keine 20% Bruttorendite -- ein
+ * hoeherer Wert heisst, dass die Annahme "laesst sich normal vermieten"
+ * nicht traegt: bei Zwangsversteigerungen sind das typischerweise
+ * unbewohnbare Objekte, Erbbaurechte oder ideelle Anteile. Beispiel aus dem
+ * Bestand: 27.000 € fuer 349 m² in Plauen ergab rechnerisch Faktor 1,1.
+ */
+const MAX_PLAUSIBLE_BRUTTORENDITE = 20;
+
+/**
+ * Prueft, ob eine geschaetzte Miete zum Preis passt. Belegte Mieten werden
+ * nie angezweifelt -- dort ist eine hohe Rendite eine echte Information.
+ */
+export function bewerteMietschaetzung(mietQuelle: string, bruttomietrendite: number): string[] {
+  if (mietQuelle === "angegeben") return [];
+  if (bruttomietrendite <= MAX_PLAUSIBLE_BRUTTORENDITE) return [];
+  return ["rent_estimate_unreliable"];
+}
+
 export interface PipelineCandidate {
   source: string;
   externalId: string;
@@ -139,9 +159,9 @@ export async function processCandidate(
     return;
   }
 
-  const dataGaps = Array.from(new Set([...(candidate.sourceDataGaps ?? []), ...einheiten.dataGaps]));
+  const dataGaps = new Set([...(candidate.sourceDataGaps ?? []), ...einheiten.dataGaps]);
 
-  const miete = ermittleJahreskaltmiete(candidate.rentColdMonthly, candidate.livingAreaM2 ?? 0);
+  const miete = ermittleJahreskaltmiete(candidate.rentColdMonthly, candidate.livingAreaM2 ?? 0, candidate.zipCode);
   const satz = grunderwerbsteuerSatz(candidate.zipCode);
   const bundesland = bundeslandFuerPlz(candidate.zipCode);
   const kennzahlen = berechneKennzahlen(
@@ -154,6 +174,10 @@ export async function processCandidate(
     },
     satz
   );
+
+  for (const luecke of bewerteMietschaetzung(miete.quelle, kennzahlen.bruttomietrendite)) {
+    dataGaps.add(luecke);
+  }
 
   const diff = await upsertListingAndVersion(supabase, {
     source: candidate.source,
@@ -176,7 +200,7 @@ export async function processCandidate(
     court: candidate.court,
     caseNumber: candidate.caseNumber,
     rawNoticeText: candidate.rawNoticeText,
-    dataGaps,
+    dataGaps: [...dataGaps],
   });
 
   const listingSummary: ListingSummary = {
@@ -186,7 +210,7 @@ export async function processCandidate(
     zipCode: candidate.zipCode,
     priceCents: candidate.priceCents,
     units: candidate.units,
-    dataGaps,
+    dataGaps: [...dataGaps],
   };
 
   try {
