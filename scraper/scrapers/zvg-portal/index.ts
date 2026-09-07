@@ -22,6 +22,41 @@ const BUNDESLAND_CODES = [
   "ni", "nw", "rp", "sl", "sn", "st", "sh", "th",
 ];
 
+/**
+ * Systemische Nullausfall-Probe fuer den ZVG-Sweep.
+ *
+ * `trefferProRegion` traegt die Trefferzahl jedes Bundeslands, das OHNE
+ * Ausnahme durchlief (Regionen mit Fehler oder Seitenlimit kippen die
+ * Vollstaendigkeit bereits an anderer Stelle und zaehlen hier nicht mit).
+ *
+ * Ein EINZELNES leeres Bundesland ist kein Ausfall: Baden-Wuerttemberg,
+ * Berlin, Hamburg, Mecklenburg-Vorpommern und Schleswig-Holstein haben
+ * schlicht keine Zwangsversteigerung eines Mehrfamilienhauses gelistet. Zwei
+ * Live-Laeufe am 2026-09-07 zeigten beide reproduzierbar exakt diese fuenf
+ * (bw, be, hh, mv, sh) leer -- bei 188 Terminen insgesamt. Eine fruehere
+ * Fassung setzte pro leerem Bundesland `vollstaendig: false`; damit konnte
+ * der ZVG-Sweep NIE loeschen, weil dieselben fuenf in jedem Lauf leer sind.
+ * Eine Wache, die sich nie oeffnet, ist ein eigener Bug.
+ *
+ * Der gefaehrliche Fall -- eine grosse Region wie Nordrhein-Westfalen
+ * (88 von 188 Objekten) faellt still aus -- wird NICHT hier abgefangen,
+ * sondern von der Median-Historien-Pruefung in `lib/plausibilitaet.ts`:
+ * 188 auf 100 ist ein Einbruch von 47 %, weit ausserhalb der dortigen
+ * 25-%-Toleranz. Diese Probe hier waere dagegen redundant und zugleich
+ * schaedlich fuer den Normalfall -- deshalb prueft sie NUR den einen Fall,
+ * den der Median nicht sieht: einen stillen Ausfall des Suchformulars selbst
+ * (geaenderter Selektor, Formularumbau, Fehlerseite mit HTTP 200). Der
+ * trifft ALLE Regionen gleichzeitig, nie reproduzierbar nur die fuenf
+ * kleinsten. Bedingung also: jede erfasste Region null Treffer.
+ *
+ * Keine erfasste Region (leere Liste) ist KEIN Nullausfall in diesem Sinne
+ * -- dann liefen alle sechzehn Bundeslaender in eine Ausnahme, was die
+ * Vollstaendigkeit ohnehin schon gekippt hat.
+ */
+export function istFlaechendeckenderNullausfall(trefferProRegion: number[]): boolean {
+  return trefferProRegion.length > 0 && trefferProRegion.every((anzahl) => anzahl === 0);
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -72,6 +107,9 @@ export async function sweepZvgPortal(): Promise<{
   const browser = await chromium.launch({ headless: false });
   const zusammenfassungen = new Map<string, ZvgListSummary>();
   const geltungsbereich: string[] = [];
+  // Trefferzahl je Bundesland, das ohne Ausnahme durchlief -- Grundlage der
+  // systemischen Nullausfall-Probe nach der Schleife.
+  const trefferProRegion: number[] = [];
   let alleLiefen = true;
 
   try {
@@ -92,6 +130,7 @@ export async function sweepZvgPortal(): Promise<{
         }
         const { treffer, abgeschnitten } = await alleSeitenErfassen(page);
         for (const t of treffer) zusammenfassungen.set(t.externalId, t);
+        trefferProRegion.push(treffer.length);
         if (abgeschnitten) {
           alleLiefen = false;
           console.warn(
@@ -99,20 +138,20 @@ export async function sweepZvgPortal(): Promise<{
               `Bundesland bleibt vom Abgleich ausgenommen. ${treffer.length} Termine gespeichert.`
           );
         } else if (treffer.length === 0) {
-          // Ein Bundesland ohne einen einzigen Treffer ist technisch nicht von
-          // einem stillen Ausfall zu unterscheiden -- geaenderter Selektor,
-          // Formularumbau, Fehlerseite mit HTTP 200. zvg-portal.de weist keine
-          // Gesamttrefferzahl aus, deshalb gibt es fuer diese Quelle KEINE
-          // Selbstkonsistenz-Pruefung, die das nachtraeglich auffangen wuerde.
-          // Dass ein Bundesland wirklich einmal null Zwangsversteigerungen von
-          // Mehrfamilienhaeusern hat, ist moeglich, aber selten -- der Preis
-          // dafuer ist ein Lauf ohne ZVG-Loeschung, der Preis fuer die andere
-          // Richtung waere ein geloeschter Bestand. Also: im Zweifel nicht
-          // loeschen.
-          alleLiefen = false;
-          console.warn(
-            `ZVG-Sweep ${landAbk}: null Treffer -- nicht von einem stillen Ausfall ` +
-              `unterscheidbar, ZVG loescht in diesem Lauf nicht.`
+          // Ein EINZELNES leeres Bundesland kippt die Vollstaendigkeit NICHT
+          // (mehr) -- Begruendung samt Beleg an istFlaechendeckenderNullausfall.
+          // Kurz: manche Bundeslaender haben schlicht keine passende
+          // Zwangsversteigerung gelistet (2026-09-07: bw, be, hh, mv, sh leer
+          // bei 188 Terminen), und der gefaehrliche Fall -- eine grosse Region
+          // faellt still aus -- wird von der Median-Pruefung in
+          // lib/plausibilitaet.ts erschlagen, nicht hier. Nur wenn JEDE
+          // erfasste Region null Treffer meldet, ist es ein Formular-Ausfall;
+          // das entscheidet die Probe nach der Schleife. Ohne Treffer bleibt
+          // das Bundesland aus dem Geltungsbereich -- es gibt nichts
+          // abzugleichen -- zaehlt aber nicht als Fehler.
+          console.log(
+            `ZVG-Sweep ${landAbk}: null Treffer -- dieses Bundesland hat aktuell ` +
+              `keine passende Zwangsversteigerung gelistet.`
           );
         } else {
           geltungsbereich.push(landAbk);
@@ -122,6 +161,17 @@ export async function sweepZvgPortal(): Promise<{
         alleLiefen = false;
         console.warn(`ZVG-Sweep ${landAbk}: Fehler, Bundesland bleibt vom Abgleich ausgenommen`, err);
       }
+    }
+
+    // Systemische Nullausfall-Probe: ein leeres Bundesland ist normal, alle
+    // sechzehn leer ist ein stiller Ausfall des Suchformulars -- dann darf der
+    // Sweep nichts loeschen. Details und Beleg an istFlaechendeckenderNullausfall.
+    if (istFlaechendeckenderNullausfall(trefferProRegion)) {
+      alleLiefen = false;
+      console.warn(
+        `ZVG-Sweep: alle ${trefferProRegion.length} erfassten Bundeslaender ohne einen ` +
+          `einzigen Treffer -- stiller Ausfall des Suchformulars, ZVG loescht in diesem Lauf nicht.`
+      );
     }
   } finally {
     await browser.close();
