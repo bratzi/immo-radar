@@ -1,121 +1,183 @@
-# Übergabe — Stand 2026-09-07
+# Übergabe — Stand 2026-09-08
 
-> **Überblick über das ganze Projekt:** [`TODO.md`](TODO.md) — was es gibt,
-> was fehlt, was als Nächstes dran ist. Dieses Dokument hier ist die
-> Tiefenbegründung dazu.
+> **Zuerst lesen:** dieses Dokument, dann [`BACKLOG.md`](BACKLOG.md) (ausführbare
+> Aufgaben) und [`TODO.md`](TODO.md) (Statuslandkarte).
 
-Dieses Dokument ist der Einstiegspunkt für die nächste Sitzung. Es soll
-verhindern, dass irgendetwas davon noch einmal hergeleitet werden muss.
+Dieses Dokument soll verhindern, dass irgendetwas davon noch einmal
+hergeleitet werden muss.
 
 ## Wo wir stehen
 
-`main` = `137ba2d`, gepusht, Arbeitsverzeichnis sauber. 229 Tests grün,
-`npx tsc --noEmit` sauber. Der Cron läuft alle drei Stunden über GitHub
-Actions.
+`main` = `782d0da`, gepusht, Arbeitsverzeichnis sauber. **315 Tests grün**,
+`npx tsc --noEmit` sauber. Cron alle drei Stunden.
 
-Teilprojekt 1 („Vollständige Erfassung & Bestandsführung") ist umgesetzt,
-gemergt und live. Spec und Plan liegen in `docs/superpowers/`.
+Teilprojekt 1 (vollständige Erfassung & Bestandsführung) ist live. In dieser
+Sitzung kam dazu: die Immowelt-Pagination repariert, der Fundort eingeführt,
+die Wohnflächen-Ernte für ZVG, und Immowelt auf Listenbewertung umgestellt.
 
-## Was jetzt funktioniert
+## Die drei Regeln, die diese Sitzung teuer gelernt hat
 
-**Meldungen gehen nicht mehr verloren.** Früher wurde nur bei
-`diff.changed && topTreffer` gesendet — praktisch nur beim allerersten Sehen —
-und ein `try/catch` verschluckte Sendefehler. Jetzt entscheidet die
-`notifications`-Tabelle: gesendet wird, wenn die Meldeklasse eines Objekts
-steigt, und die Protokollzeile entsteht erst **nach** bestätigtem Versand.
-Ohne Zeile gilt das Objekt im nächsten Lauf weiter als nie gemeldet — der
-Fehlschlag heilt sich selbst.
+**1. Live-Abrufe laufen NIE über den Anschluss des Nutzers.** Das ist jetzt
+Code, kein Vorsatz: [`lib/nurInCi.ts`](../../scraper/lib/nurInCi.ts) bricht
+`npm run scrape` und jedes Prüfskript ab, wenn `CI` fehlt. Der Anschluss ist
+an einem Abend **zweimal** ausgefallen — beim zweiten Mal durch sechs einzelne
+Regionsläufe kurz hintereinander, jeder für sich regelkonform.
 
-**Der Bestand wird geführt.** Was im vollständigen Sweep fehlt, bekommt
-`disappeared_at` und wird nach zwei Tagen Karenz hart gelöscht. Taucht es
-vorher wieder auf, fällt die Markierung.
+Prüfungen laufen über [`pruefung.yml`](../../.github/workflows/pruefung.yml):
 
-**Drei Sicherungen vor jeder Löschung**: Abdeckungsprotokoll,
-Selbstkonsistenz gegen die vom Portal ausgewiesene Trefferzahl, und der
-Median der letzten zehn erfolgreichen Läufe bei 25 % Toleranz — wirksam erst
-ab drei Referenzläufen. Durchgängig gilt: **wer nicht urteilen kann, löscht
-nicht.**
-
-**Die Phasentrennung trägt.** Lauf 1 holte 185 ZVG-Detailseiten, Lauf 2 nur
-noch drei. Genau dafür wurde sie gebaut.
-
-## Offene Punkte, in dieser Reihenfolge
-
-### 1. Consent-Fix live verifizieren
-
-`137ba2d` ist getestet, aber **nicht gegen die echte Seite gelaufen**.
-
-Belegt ist: Das Usercentrics-Overlay fing jeden Paginierungs-Klick ab
-(30-s-Timeout, sechzehn von sechzehn Regionen). Nach erfolgreichem Zustimmen
-blätterte es — 84 statt 42 Objekte in Bremen. Der Selektor
-`[data-testid="uc-accept-all-button"]` (Beschriftung „OK") ist der richtige.
-
-Das Timing war das Problem: Der Host-Div `#usercentrics-root` hängt sofort an,
-der Dialog-Inhalt kommt später in den Shadow Root. `137ba2d` wartet deshalb
-pro Kandidat auf den Knopf selbst statt auf die Hülle.
-
-**Prüfung:** eine Region, ~10 Abrufe. Erwartung: Bremen kommt auf ~209 statt
-42 Objekte.
-
-### 2. Determinismus-Nachweis (Task 14, Step 2)
-
-Zwei aufeinanderfolgende Läufe müssen dieselbe Objektmenge liefern, bevor der
-Löschung zu trauen ist. Bis dahin greift ohnehin die
-Drei-Referenzläufe-Sperre — **es wird nichts gelöscht**.
-
-```sql
-select source, gesehene_objekte, gemeldete_treffer, vollstaendig, started_at
-from sweep_runs order by started_at desc limit 10;
+```bash
+gh workflow run pruefung.yml -f skript=pruefe-region -f region=hb -f max_seiten=12
+gh workflow run pruefung.yml -f skript=diagnose-overlays
+gh workflow run pruefung.yml -f skript=diagnose-detail
+gh workflow run pruefung.yml -f skript=diagnose-liste
+gh run watch && gh run view --log
 ```
 
-Schwanken die `gesehene_objekte` stark, stimmt etwas mit der Erfassung nicht.
+Unter zwei Minuten je Lauf, ohne Secrets.
 
-### 3. Immowelt-Löschhoheit
+**2. Eine Fehlermeldung, die eine Ursache behauptet, ist gefährlich.** Dreimal
+hat dieses Projekt in die falsche Richtung gesucht, weil eine Meldung riet
+statt zu messen: „Pagination kaputt", „Immowelt gesperrt", „Seitenstruktur
+geändert". Es war jedes Mal etwas anderes. `beurteileDetailAntwort` wertet
+deshalb jetzt den HTTP-Status aus, den `page.goto` immer schon zurückgab.
 
-Immowelt meldet strukturell `vollstaendig: false` und löscht nie. Der Sweep
-läuft in rotierenden Zeitscheiben (`SWEEP_BUDGET_MS`, 12 min), weil sonst das
-CAPTCHA unter Last zurückkehrt. Für die Löschhoheit bräuchte jedes Listing
-eine **Fundort-Spalte** — Immowelts UUID verrät den Ort nicht, anders als
-ZVGs `sn-40908`. Eigenes Arbeitspaket.
+**3. Wer eine Grenze entfernt, muss die dahinter suchen.** Der Umbau auf
+Listenbewertung hat unbemerkt das Detailbudget als Meldebremse entfernt — statt
+144 Objekten liefen plötzlich alle 3.665 durch die Bewertung. Der Lauf wurde
+abgebrochen, bevor die erste Nachricht rausging.
 
-### 4. Danach: Teilprojekt 2 und 3
+## Werkzeuge und Zugänge
 
-Mietqualität (`rent_estimates` als Korpus, ZVG-Mieternte) und das Dashboard.
-Anforderungen dafür liegen in
-`docs/superpowers/specs/2026-09-07-plan3-dashboard-anforderungen.md`.
+Alles vorhanden, nichts fehlt:
+
+| Zugang | Umfang |
+|---|---|
+| GitHub (Windows-Credential-Manager) | `repo, workflow, gist` |
+| Supabase Management-PAT | DDL, Logs, Secrets — in `scraper/.env` |
+| Supabase Service-Key | volle Datenrechte, umgeht RLS |
+| Telegram-Bot | `Immo2501bot` |
+
+**`gh` ist installiert** (2.100.0), aber **nicht** eingeloggt: `gh auth login`
+verlangt `read:org`, das dem Token fehlt. Stattdessen je Aufruf:
+
+```bash
+export PATH="$PATH:/c/Program Files/GitHub CLI"
+export GH_TOKEN=$(printf "protocol=https\nhost=github.com\n\n" | git credential fill | sed -n 's/^password=//p')
+```
+
+Die abgelaufene Benutzer-Umgebungsvariable `GH_TOKEN` wurde entfernt — sie
+lieferte 401 und hätte `gh` dauerhaft blockiert. **Offen:** Der Nutzer sollte
+das alte Token auf GitHub widerrufen; sein Wert ist am 2026-09-08 versehentlich
+in ein Sitzungsprotokoll geraten.
+
+## Was in dieser Sitzung gelöst wurde
+
+**Die Pagination — der Blockierer war nie DataDome.** Der Sweep brach seit
+jeher nach zwei Ergebnisseiten je Region ab. Ursache: Immowelts eigener
+Suchauftrag-Dialog (`data-testid="av-ssab-Modal-secondPageModal-submit"` —
+der Name sagt es: er kommt auf Seite 2) plus eine zweite Überlagerung, die
+sich nur über ein „x" oben links schließt. Beide tragen **keine** Dialog-Rolle
+und ihre Klassennamen werden bei jedem Rendern neu erzeugt. Deshalb sucht
+[`overlays.ts`](../../scraper/scrapers/overlays.ts) das Schließkreuz über die
+**Geometrie**: nur innerhalb eines Vorfahren, der fest positioniert ist und ein
+Viertel des Sichtfensters überdeckt.
+
+Dazu zwei weitere Fehler: `bestaetigeConsentBanner` teilte sein Zeitbudget auf
+sieben Kandidaten auf, sodass der einzig passende (`uc-accept-all-button`,
+Beschriftung **„OK"**) 1,4 von 10 Sekunden bekam — er erscheint aber erst nach
+rund 8. Und `blaettereWeiter` hielt „der Klick warf nicht" für Erfolg; erst die
+tatsächlich geänderte erste Ergebniskarte ist ein Beleg.
+
+**Belegt:** Bremen 42 → **201 von 209**. Hessen 483 aus 12 Seiten. In
+Produktion 717 → **3.665** Objekte, 96 % der ausgewiesenen Treffer.
+
+**Immowelt-Detailseiten sind von Rechenzentrums-Adressen gesperrt.** Auf einem
+GitHub-Runner, dieselbe Sitzung, direkt nacheinander: `/suche/` **HTTP 200**
+mit 1,13 MB, `/expose/` **HTTP 403** mit DataDome-CAPTCHA. Lokal liefern
+dieselben URLs 200. Die Detailphase verbrannte 144 Abrufe und 12 Minuten je
+Lauf für nichts.
+
+**Deshalb kommt Immowelts Bewertung jetzt aus der Ergebnisliste** — aus der
+Titelzeile, die der Sweep ohnehin einsammelt:
+
+```
+"Mehrfamilienhaus zum Kauf - West - 75.000 € - 8 Zimmer, 158,7 m², 184 m² Grundstück"
+```
+
+Null zusätzliche Abrufe. Der teuerste denkbare Fehler wäre, bei
+`80 m², 679 m² Grundstück` das Grundstück als Wohnfläche zu lesen — der
+Kaufpreisfaktor fiele um mehr als das Achtfache zu gut aus. Deshalb wird das
+Grundstück **zuerst** herausgeschnitten; ein Test hält genau das fest.
+
+**Preis dafür:** Die Suchseite nennt keine PLZ (weder im HTML noch im
+Datenmodell — beides geprüft). Die Miete wird über den Fundort
+bundeslandgenau geschätzt und trägt die Lücke `miete_nur_bundeslandgenau`.
+
+**Der Fundort wird mitgeschrieben** (`listings.fundort`, `sweep_region_runs`).
+Am Löschverhalten ändert das nichts — zwei Sperren stehen weiter.
+
+**ZVG-Wohnflächen geerntet.** 92 Gutachtentexte enthielten „Wohnfl" und der
+Parser las daraus **null**; die Lücke waren Füllwörter (`insgesamt`, `rd.`,
+`beträgt`, `ges.`). Jetzt eine Whitelist statt `.*?` — sonst würden
+Grundstücksgrößen („Größe 284 qm") oder Einzelwohnungen („Wohnflächen: Wohnung
+EG rd. 57 m²") als Hausfläche gelesen.
+
+**Teilprojekt 2 wurde widerlegt, bevor Code entstand.** Es gibt **zwei**
+Objekte mit angegebener Miete im ganzen Bestand, und in 442 ZVG-Texten steht
+**null** Mal eine Jahresmiete. Ein Mietkorpus hat keine Grundlage. Belegt in
+[`specs/2026-09-08-mietqualitaet-befund.md`](specs/2026-09-08-mietqualitaet-befund.md).
+
+## Was als Erstes zu tun ist
+
+**Lauf `34215003141` prüfen** (angestoßen 2026-09-08, mit den neuen Grenzen).
+Er ist der erste, der Immowelt aus der Liste bewertet.
+
+```sql
+select source, gesehene_objekte, gemeldete_treffer, vollstaendig,
+       array_length(geltungsbereich,1) as regionen, started_at
+from sweep_runs order by started_at desc limit 4;
+
+select count(*) filter (where fundort is not null) as mit_fundort, count(*)
+from listings where source = 'immowelt';
+```
+
+**Erwartet:** `listings` für Immowelt wächst erstmals seit dem 2026-09-07 über
+157 hinaus, `fundort` ist gefüllt, und im Log steht
+`Meldungen: N von hoechstens 25 gesendet`. Bleibt `listings` bei 157, zuerst
+das Log lesen — nicht raten.
+
+**Danach:** `BACKLOG.md` Teil B. B1 (regionsgenaues Löschen) ist entsperrt,
+sobald `sweep_region_runs` je Region drei vollständige Läufe zeigt. B2 (das
+Dashboard) ist der Punkt, an dem der Nutzer die Webseite erwartet — dort sind
+vier Entwurfsfragen offen, und die wichtigste ist neu: Nach den Messungen
+dieser Sitzung beruhen praktisch alle Mieten auf einer unvalidierten
+Handtabelle, über die Hälfte der Objekte trägt `wohnflaeche_fehlt` und 567 von
+1.000 Versionen `units_unconfirmed`. Ein Ranking, das das nicht abbildet,
+sortiert Nichtwissen wie Wissen.
 
 ## Fallen, die schon zugeschnappt sind
 
-**Nie einen bundesweiten Lauf über den Anschluss des Nutzers.** Ein voller
-lokaler Sweep hat dessen Heimnetz lahmgelegt — nicht die Datenmenge, sondern
-tausende parallele Verbindungen und DNS-Abfragen aus einem Browser mit
-Fenster. Der Scraper gehört in CI. Lokal höchstens **eine** Region.
+**Nie einen Live-Lauf lokal.** Siehe oben — jetzt durch Code gesperrt.
 
-**Immowelt ist nicht gesperrt — headless wird erkannt.** Direkter Vergleich,
-gleiche URL: `headless: true` → HTTP 403 plus DataDome-CAPTCHA;
-`headless: false` → HTTP 200 mit vollem Datenmodell. Deshalb läuft Chromium
-mit Fenster, in CI unter `xvfb-run`. Nicht auf headless „zurückoptimieren".
+**Immowelt ist nicht gesperrt, headless wird erkannt.** `headless: true` →
+HTTP 403 mit CAPTCHA; `headless: false` → HTTP 200. In CI unter `xvfb-run`.
+Nicht „zurückoptimieren".
 
-**Ein CAPTCHA wird nicht gelöst.** Es ist ein Messwert, kein Hindernis: es
-sagt, dass die Abrufrate zu hoch war. Antwort darauf ist Drosselung (5 s bei
-Immowelt), nicht Umgehung.
+**Ein CAPTCHA wird nicht gelöst.** Es misst eine zu hohe Abrufrate. Antwort
+ist Drosselung, nicht Umgehung.
 
-**Detailseiten brauchen eine warme Sitzung.** Ein frischer Browser, der
-direkt auf eine Exposé-URL geht, bekommt eine 403-Hülle, und der Parser
-meldet dann „Datenmodell fehlt". `erfasseImmoweltDetails` lädt deshalb erst
-eine Suchseite. Der ZVG-Scraper macht es nebenan genauso.
+**Leere Bundesländer sind bei ZVG normal.** Nur ein flächendeckender
+Nullausfall zählt als Störung.
 
-**Leere Bundesländer sind bei ZVG normal.** Baden-Württemberg, Berlin,
-Hamburg, Mecklenburg-Vorpommern und Schleswig-Holstein hatten in beiden
-Läufen null passende Zwangsversteigerungen. Eine Regel „leere Region →
-Quelle unvollständig" bedeutet, dass ZVG **nie** löscht. Nur ein
-flächendeckender Nullausfall zählt als Störung.
+**Fail-open in den Löschwachen ist der teuerste Fehler.** Ein früherer Entwurf
+hätte rund 7.500 echte Objekte gelöscht, weil ein still geblocktes
+Nordrhein-Westfalen innerhalb der 25-%-Toleranz lag. In `bestand.ts`,
+`plausibilitaet.ts` und `bestandDb.ts` gilt: ein unbekannter Zustand ist
+`null`/`false`, nie „in Ordnung".
 
-## Was die Reviews gefunden haben
+**Die `\n`-Falle beim Schreiben von Dateien.** Mehrfach hat ein `\n` in einem
+Python-Heredoc einen echten Zeilenumbruch mitten in eine JS-Zeichenkette
+geschrieben. Bei größeren Dateien das Write-Werkzeug nehmen.
 
-Neun echte Fehler, acht davon im Plan, keiner in der Umsetzung. Der teuerste:
-`vollstaendig` wurde mit Fail-open-Vergleichen gegen genau die Werte
-berechnet, die das Symptom des Fehlers sind — eine leere Trefferliste und
-eine fehlende Trefferzahl galten als „vollständig". Ein still geblocktes
-Nordrhein-Westfalen (21,2 % des Bestands, innerhalb der 25 %-Toleranz) hätte
-rund 7.500 echte Objekte gelöscht.
+**`tsx` und `page.evaluate`.** Verschachtelte Funktionen im `evaluate`-Rumpf
+brechen mit `ReferenceError: __name is not defined`. Alles flach halten.
