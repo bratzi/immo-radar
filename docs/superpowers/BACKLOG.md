@@ -119,7 +119,7 @@ ohne Datenmodell", ist der Parser dran.
 
 </details>
 
-## A2. Abgelaufenes GitHub-Token entfernen — TEILWEISE ERLEDIGT
+## A2. Abgelaufenes GitHub-Token entfernen — ERLEDIGT (2026-09-08)
 
 **Warum:** `GH_TOKEN` in `scraper/.env` wird von der GitHub-API mit **401 Bad
 credentials** abgewiesen — wirkungslos und trotzdem ein Geheimnis in einer
@@ -139,9 +139,13 @@ nirgends im Code gelesen (geprüft). Es ist eine **Windows-Benutzer-Umgebungs-
 variable** (93 Zeichen). Das ist Rechnerkonfiguration, kein Projektcode —
 deshalb nicht ungefragt entfernt.
 
-**Offen:** Der Nutzer widerruft das Token auf GitHub und löscht die
-Umgebungsvariable (`[Environment]::SetEnvironmentVariable('GH_TOKEN', $null,
-'User')`).
+**Abgeschlossen am 2026-09-08 durch Entscheidung des Nutzers:** Das Token
+wird **nicht** widerrufen. Der Punkt ist damit erledigt und **nicht wieder
+aufzubringen** — weder hier, noch in der Übergabe, noch als Rückfrage. Das
+Projekt ist davon nicht betroffen: Kein Workflow und keine Codestelle liest
+einen PAT (`scrape.yml` benutzt ausschließlich die Supabase- und
+Telegram-Secrets), und git arbeitet über ein OAuth-Token des Git Credential
+Managers, nicht über einen PAT.
 
 ## A3. Einweg-Diagnoseskript entfernen — ERLEDIGT
 

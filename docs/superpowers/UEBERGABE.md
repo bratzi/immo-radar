@@ -68,9 +68,9 @@ export GH_TOKEN=$(printf "protocol=https\nhost=github.com\n\n" | git credential 
 ```
 
 Die abgelaufene Benutzer-Umgebungsvariable `GH_TOKEN` wurde entfernt — sie
-lieferte 401 und hätte `gh` dauerhaft blockiert. **Offen:** Der Nutzer sollte
-das alte Token auf GitHub widerrufen; sein Wert ist am 2026-09-08 versehentlich
-in ein Sitzungsprotokoll geraten.
+lieferte 401 und hätte `gh` dauerhaft blockiert. **Erledigt (A2):** Der Nutzer
+hat am 2026-09-08 entschieden, das alte Token nicht zu widerrufen. Nicht wieder
+aufbringen.
 
 ## Was in dieser Sitzung gelöst wurde
 
