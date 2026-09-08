@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { trefferzahlAusTitel, istRegionVollstaendig, IMMOWELT_REGIONEN } from "./index.js";
+import {
+  trefferzahlAusTitel,
+  istRegionVollstaendig,
+  IMMOWELT_REGIONEN,
+  gemeldeteTrefferSumme,
+  blaettereWeiter,
+} from "./index.js";
 
 describe("trefferzahlAusTitel", () => {
   it("liest die Zahl aus einem echten Bundesland-Titel", () => {
@@ -71,5 +77,136 @@ describe("IMMOWELT_REGIONEN", () => {
     for (const region of IMMOWELT_REGIONEN) {
       expect(region.pfad).toMatch(/\/ad\d{2}de\d+$/);
     }
+  });
+});
+
+describe("gemeldeteTrefferSumme", () => {
+  // Diese Funktion entscheidet, ob der Sweep der vom Portal ausgewiesenen
+  // Trefferzahl trauen darf. Sie muss fail-closed sein: im Zweifel null.
+  // Live-Befund 2026-09-07: In der Datenbank stand `gemeldete_treffer = 0`
+  // neben 562 tatsaechlich eingesammelten Objekten -- ein Widerspruch, der nur
+  // entstehen kann, weil abgebrochene Regionen stillschweigend als "nichts zu
+  // melden" durchgingen statt als "nicht beurteilbar".
+
+  it("summiert die Trefferzahlen der erfassten Regionen", () => {
+    expect(
+      gemeldeteTrefferSumme([
+        { art: "erfasst", gemeldet: 209 },
+        { art: "erfasst", gemeldet: 7505 },
+      ])
+    ).toBe(7714);
+  });
+
+  it("liefert null, sobald eine Region keine Trefferzahl nannte", () => {
+    expect(
+      gemeldeteTrefferSumme([
+        { art: "erfasst", gemeldet: 209 },
+        { art: "erfasst", gemeldet: null },
+      ])
+    ).toBeNull();
+  });
+
+  it("liefert null, sobald eine Region mit einem Fehler abbrach", () => {
+    // Der Kern des Fehlers: eine abgestuerzte Region trug bisher 0 zur Summe
+    // bei, ohne die Summe als unbrauchbar zu markieren.
+    expect(
+      gemeldeteTrefferSumme([{ art: "erfasst", gemeldet: 209 }, { art: "fehler" }])
+    ).toBeNull();
+  });
+
+  it("liefert null, wenn ueberhaupt keine Region verarbeitet wurde", () => {
+    // Null Regionen sind kein Beleg fuer "null Treffer" -- sie sind gar kein
+    // Beleg. Vorher kam hier 0 heraus und sah aus wie eine Messung.
+    expect(gemeldeteTrefferSumme([])).toBeNull();
+  });
+});
+
+describe("blaettereWeiter", () => {
+  // Live-Befund 2026-09-07 (Bremen, echte Seite): Das Usercentrics-Overlay
+  // kommt nach JEDEM Seitenwechsel zurueck, und sein Akzeptieren-Knopf rendert
+  // unvorhersehbar spaet -- ein Versuch mit 10 s scheiterte, der naechste mit
+  // 2 s gelang, der uebernaechste mit 2 s scheiterte wieder. Mit nur einem
+  // Retry brach Bremen deshalb nach 2 von 5 Seiten ab: 80 statt 209 Objekte.
+
+  const nie = async () => {
+    throw new Error("Klick abgefangen");
+  };
+
+  it("meldet Erfolg, ohne das Consent-Banner anzufassen, wenn der Klick gleich sitzt", async () => {
+    let consentVersuche = 0;
+    const ok = await blaettereWeiter(
+      async () => {},
+      async () => {
+        consentVersuche += 1;
+      },
+      async () => true
+    );
+    expect(ok).toBe(true);
+    expect(consentVersuche).toBe(0);
+  });
+
+  it("blaettert weiter, wenn erst der zweite Consent-Versuch den Knopf findet", async () => {
+    // Genau der beobachtete Fall. Mit einem einzigen Retry endet die Region hier.
+    let consentVersuche = 0;
+    let zugestimmt = false;
+    const ok = await blaettereWeiter(
+      async () => {
+        if (!zugestimmt) throw new Error("Klick abgefangen");
+      },
+      async () => {
+        consentVersuche += 1;
+        if (consentVersuche >= 2) zugestimmt = true;
+      },
+      async () => zugestimmt
+    );
+    expect(ok).toBe(true);
+    expect(consentVersuche).toBe(2);
+  });
+
+  it("gibt auf, wenn auch nach allen Versuchen kein Klick durchgeht", async () => {
+    const ok = await blaettereWeiter(nie, async () => {}, async () => true);
+    expect(ok).toBe(false);
+  });
+
+  it("meldet Fehlschlag, wenn der Klick durchgeht, die Liste sich aber nicht aendert", async () => {
+    // Live belegt (Bremen, 2026-09-08): fuenf "erfolgreiche" Klicks, aber nur
+    // zwei tatsaechlich verschiedene Seiten. Ein Klick, der keine Ausnahme
+    // wirft, ist KEIN Beleg fuer einen Seitenwechsel -- ein Overlay kann ihn
+    // schlucken, ohne dass Playwright etwas merkt.
+    const ok = await blaettereWeiter(
+      async () => {},
+      async () => {},
+      async () => false
+    );
+    expect(ok).toBe(false);
+  });
+
+  it("versucht es weiter, bis sich die Liste wirklich geaendert hat", async () => {
+    let klicks = 0;
+    const ok = await blaettereWeiter(
+      async () => {
+        klicks += 1;
+      },
+      async () => {},
+      async () => klicks >= 2
+    );
+    expect(ok).toBe(true);
+    expect(klicks).toBe(2);
+  });
+
+  it("gibt dem Banner bei jedem weiteren Versuch mehr Zeit", async () => {
+    // 2 s waren nachweislich zu knapp. Ein spaeterer Versuch darf nicht
+    // dieselbe zu kurze Frist bekommen wie der erste.
+    const budgets: number[] = [];
+    await blaettereWeiter(
+      nie,
+      async (ms) => {
+        budgets.push(ms);
+      },
+      async () => true
+    );
+    expect(budgets.length).toBeGreaterThanOrEqual(3);
+    expect(budgets[1]).toBeGreaterThan(budgets[0]);
+    expect(budgets[2]).toBeGreaterThan(budgets[1]);
   });
 });

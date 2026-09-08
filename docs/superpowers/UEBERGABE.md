@@ -1,5 +1,9 @@
 # Übergabe — Stand 2026-09-07
 
+> **Überblick über das ganze Projekt:** [`TODO.md`](TODO.md) — was es gibt,
+> was fehlt, was als Nächstes dran ist. Dieses Dokument hier ist die
+> Tiefenbegründung dazu.
+
 Dieses Dokument ist der Einstiegspunkt für die nächste Sitzung. Es soll
 verhindern, dass irgendetwas davon noch einmal hergeleitet werden muss.
 

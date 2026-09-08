@@ -40,16 +40,26 @@ import type { Locator, Page } from "playwright";
  *    beobachtet: erster Aufruf direkt nach `goto` -> "KEIN Akzeptieren-Selektor
  *    hat funktioniert", nur Seite 1; beim Retry nach dem abgefangenen
  *    "naechste Seite"-Klick war derselbe Selektor
- *    `[data-testid="uc-accept-all-button"]` da und griff (Seite 2). Gefunden
- *    also erst auf dem Retry, nicht beim ersten Versuch. Konsequenz: es wird
- *    NICHT auf den Host gewartet und dann geprobt, sondern pro Kandidat auf den
- *    Akzeptieren-Knopf SELBST in `state: "attached"` gewartet -- mit einem
- *    ueber die Kandidaten aufgeteilten Zeitbudget aus `timeoutMs`.
- *  - Usercentrics baut das Overlay bei JEDEM Seitenwechsel neu auf
- *    (`data-created-at` unterscheidet sich zwischen zwei Beobachtungen). Eine
- *    Bestaetigung pro Browser-Context haelt daher ueber einen mehrseitigen
- *    Sweep NICHT -- der Pagination-Code muss bei einem fehlgeschlagenen
- *    "naechste Seite"-Klick erneut wegklicken (siehe scrapers/immowelt/index.ts).
+ *    `[data-testid="uc-accept-all-button"]` da und griff (Seite 2).
+ *    AUSGEMESSEN am 2026-09-08 (Bremen, echte Seite): nach 3 s ist der Shadow
+ *    Root LEER, nach rund 8 s traegt er vier Knoepfe -- darunter genau einen
+ *    passenden, `[data-testid="uc-accept-all-button"]` mit der Beschriftung
+ *    "OK". Keine der Text-Varianten unten trifft dieses Banner.
+ *  - Daraus die wichtigste Konsequenz: Auf das Erscheinen wird EINMAL gewartet,
+ *    mit dem GANZEN Budget, auf alle Kandidaten gleichzeitig (`Locator.or`).
+ *    Eine fruehere Fassung teilte `timeoutMs` gleichmaessig auf die sieben
+ *    Kandidaten auf; der einzige passende bekam davon ein Siebtel (~1,4 s von
+ *    10 s) und war nach 1,4 s laengst aufgegeben, waehrend der Knopf 8 s
+ *    braucht. Die Zustimmung kam so nie zustande. NICHT auf "Budget pro
+ *    Kandidat" zurueckbauen.
+ *  - Das Overlay bleibt nach dem Erscheinen LIEGEN. Frueher stand hier, es
+ *    werde bei jedem Seitenwechsel neu gebaut; die Messung vom 2026-09-08
+ *    widerlegt das: ueber drei aufeinanderfolgende Blaetter-Runden trug es
+ *    unveraendert `data-created-at="1788818662736"` und fing dabei jeden Klick
+ *    auf den "naechste Seite"-Knopf ab. Es taucht erst NACH dem ersten
+ *    Seitenwechsel auf -- direkt nach dem Laden liegt es noch nicht ueber der
+ *    Seite. Der Pagination-Code muss daher auch mitten in einer Region noch
+ *    wegklicken koennen (siehe scrapers/immowelt/index.ts).
  *
  * Es wird der "Akzeptieren"-Knopf geklickt -- so, wie es ein Mensch tut. Das
  * Overlay wird NICHT aus dem DOM gerissen; das waere etwas anderes als eine
@@ -72,6 +82,15 @@ const ERSCHEINEN_TIMEOUT_MS = 10_000;
  *  Host-Div `#usercentrics-root` selbst bleibt nach der Einwilligung bestehen
  *  und taugt daher NICHT als Erfolgssignal. */
 const VERSCHWINDEN_TIMEOUT_MS = 4_000;
+
+/**
+ * Zusaetzliche Zeit, um nach dem Erscheinen des Banners herauszufinden, WELCHER
+ * Kandidat der Akzeptieren-Knopf ist, und ihn zu klicken. Kommt bewusst oben
+ * auf `timeoutMs` drauf: jenes Budget misst das Warten auf ein verzoegert
+ * nachladendes Banner, und ein Banner, das erst kurz vor dessen Ablauf
+ * erscheint, muss trotzdem noch geklickt werden koennen.
+ */
+const KANDIDAT_AUFLOESUNG_MS = 2_000;
 
 /** Klick-Timeout pro Kandidat -- kurz halten, damit ein kaputtes Banner nicht
  *  jede Kandidatenrunde um 30 s verlaengert. */
@@ -102,13 +121,11 @@ const AKZEPTIEREN_TEXTE = [
  * Host `#usercentrics-root` wird nie sichtbar, blockt aber Pointer-Events,
  * sobald er angehaengt ist (Begruendung ausfuehrlich im Dateikopf).
  *
- * Das Warten auf den Host dient nur noch als Klassifikator "Banner da oder
- * nicht" (kein Overlay -> stiller Regulaerausgang, u. a. fuer das ZVG-Portal).
- * Auf den Akzeptieren-Knopf wird danach PRO KANDIDAT einzeln gewartet
- * (`state: "attached"`), weil der Shadow-Inhalt spaeter als der Host rendert.
- * Das Zeitbudget `timeoutMs` wird dabei ueber die Kandidaten aufgeteilt, statt
- * pro Kandidat voll bezahlt zu werden -- ein `timeoutMs`-Schnellcheck von
- * 2000 ms bleibt so bei rund 2000 ms und nicht 2000 ms pro Selektor.
+ * Das Warten auf den Host dient nur als Klassifikator "Banner da oder nicht"
+ * (kein Overlay -> stiller Regulaerausgang, u. a. fuer das ZVG-Portal). Auf den
+ * Akzeptieren-Knopf wird danach EINMAL gewartet, mit dem ganzen Restbudget und
+ * auf alle Kandidaten gleichzeitig; erst wenn feststeht, DASS einer da ist,
+ * wird kurz durchprobiert, WELCHER es ist (Begruendung im Dateikopf).
  *
  * @param page       Die Playwright-Seite.
  * @param timeoutMs  Wie lange auf das (verzoegert nachladende) Banner gewartet
@@ -122,10 +139,10 @@ export async function bestaetigeConsentBanner(
   timeoutMs: number = ERSCHEINEN_TIMEOUT_MS
 ): Promise<void> {
   try {
-    // Ein Zeitbudget fuer den GESAMTEN Versuch. Der Host-Wait unten verbraucht
-    // davon fast nichts, solange ein Banner da ist (er haengt praktisch sofort
-    // an); ist keins da, laeuft er als einziger Posten voll aus und wir kehren
-    // still zurueck. Danach teilt sich der Rest auf die Kandidaten auf.
+    // Ein Zeitbudget fuer das ERSCHEINEN. Der Host-Wait unten verbraucht davon
+    // fast nichts, solange ein Banner da ist (er haengt praktisch sofort an);
+    // ist keins da, laeuft er als einziger Posten voll aus und wir kehren still
+    // zurueck. Der Rest steht danach ungeteilt fuer den Knopf bereit.
     const gesamtDeadline = Date.now() + timeoutMs;
     const overlay = page.locator(OVERLAY_SELEKTOR);
 
@@ -159,14 +176,47 @@ export async function bestaetigeConsentBanner(
       })),
     ];
 
-    // Restbudget nach dem Host-Wait gleichmaessig auf die Kandidaten verteilen.
-    // Untergrenze pro Kandidat, damit ein winziges `timeoutMs` nicht in
-    // 0-ms-Waits ausartet; die Deadline-Klammer unten deckelt die Summe.
-    const restNachHost = Math.max(0, gesamtDeadline - Date.now());
-    const proKandidatMs = Math.max(250, Math.ceil(restNachHost / kandidaten.length));
+    // EINMAL auf den Dialoginhalt warten -- mit dem GANZEN Restbudget und auf
+    // alle Kandidaten GLEICHZEITIG (`Locator.or`), nicht nacheinander.
+    //
+    // WARUM DAS DER KERN IST: Frueher wurde das Budget gleichmaessig auf die
+    // Kandidaten aufgeteilt. Live gemessen (Immowelt/Bremen, 2026-09-08) ist
+    // der Shadow Root nach 3 s noch leer und traegt erst nach rund 8 s vier
+    // Knoepfe, darunter den einzigen passenden:
+    // `[data-testid="uc-accept-all-button"]` mit der Beschriftung "OK". Bei
+    // 10 s Budget bekam genau dieser Selektor davon ein Siebtel -- ~1,4 s --,
+    // und die sechs uebrigen verbrauchten den Rest mit Warten auf
+    // Beschriftungen, die dieses Banner gar nicht traegt ("OK" ist keine
+    // davon). Die Zustimmung kam so nie zustande, und in der Folge lief jeder
+    // Paginierungs-Klick in das liegengebliebene Overlay. NICHT wieder auf
+    // "Budget pro Kandidat" umbauen.
+    const irgendeinKandidat = kandidaten
+      .map((k) => k.locator)
+      .reduce((a, b) => a.or(b))
+      .first();
+    let inhaltDa = true;
+    try {
+      await irgendeinKandidat.waitFor({
+        state: "attached",
+        timeout: Math.max(1, gesamtDeadline - Date.now()),
+      });
+    } catch {
+      // Kein Kandidat binnen Budget erschienen. Die Schleife unten laeuft dann
+      // leer durch und die Warnung am Ende greift.
+      inhaltDa = false;
+    }
+
+    // Ab hier steht fest, DASS ein Knopf da ist -- offen ist nur, WELCHER.
+    // Dafuer genuegt eine kurze Frist je Kandidat, und sie kommt bewusst
+    // zusaetzlich zum Erscheinens-Budget: `timeoutMs` bemisst das Warten auf
+    // das Banner, nicht das Auseinanderhalten bereits vorhandener Knoepfe. Ohne
+    // diesen Zuschlag waere ein Banner, das erst kurz vor Ablauf erscheint,
+    // gefunden und trotzdem nicht geklickt worden.
+    const aufloesungsDeadline = Date.now() + (inhaltDa ? KANDIDAT_AUFLOESUNG_MS : 0);
+    const proKandidatMs = 500;
 
     for (const kandidat of kandidaten) {
-      const restBudget = gesamtDeadline - Date.now();
+      const restBudget = aufloesungsDeadline - Date.now();
       if (restBudget <= 0) break;
 
       try {
@@ -186,7 +236,7 @@ export async function bestaetigeConsentBanner(
         }
 
         await ziel.click({
-          timeout: Math.min(KLICK_TIMEOUT_MS, Math.max(500, gesamtDeadline - Date.now())),
+          timeout: Math.min(KLICK_TIMEOUT_MS, Math.max(500, aufloesungsDeadline - Date.now())),
         });
 
         try {
