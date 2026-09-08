@@ -83,6 +83,17 @@ Neu ist außerdem `scripts/pruefe-region.mts`: prüft **eine** Region gegen die
 echte Seite, ohne Datenbank und ohne Meldungen. Es existiert, damit nie wieder
 versehentlich ein bundesweiter Lauf lokal startet.
 
+## Noch offen: die Produktionsbestätigung der Pagination
+
+Der Cron-Lauf um 07:43 UTC am 2026-09-08 lief **noch mit dem alten Code**
+(`gesehen=717`, `bereich=0` — rund eine Seite je Region); der Merge ging erst
+um ~07:40 UTC raus. Der erste Lauf mit dem Fix ist der darauffolgende.
+
+**Woran man den Erfolg erkennt:** `gesehene_objekte` springt von ~650 auf ein
+Vielfaches, und `geltungsbereich` ist nicht mehr leer. Bleibt es bei ~650,
+verhält sich CI anders als lokal — dann zuerst prüfen, ob das Wegklicken der
+Overlays unter `xvfb` greift.
+
 ## Warnung: der Anschluss ist am 2026-09-08 erneut ausgefallen
 
 Sechs Einzelläufe kurz hintereinander haben denselben Schaden angerichtet wie
@@ -181,22 +192,42 @@ gewollte Verhalten, kein Fehler.
 Offen bleibt nur: Ein ZVG-Lauf (19:42) meldete `vollstaendig: false`. Einmalig
 oder wiederkehrend? Beobachten, nicht sofort reparieren.
 
-### 4. Immowelt-Löschhoheit — Entscheidung nötig, nicht sofort Code
+### 4. Immowelt-Löschhoheit — Phase 1 erledigt, Phase 2 wartet auf Historie
 
-Heute löscht nur ZVG. Damit Immowelt es auch darf, braucht `listings` eine
-**Fundort-Spalte**: ZVG trägt sein Bundesland in der `externalId`
-(`sn-40908`), Immowelts UUID verrät nichts.
+**Warum es zwei Phasen sind:** Die Mengenprüfung verlangt
+`MIN_REFERENZLAEUFE = 3`. Eine Region darf erst löschen, wenn sie drei eigene
+erfolgreiche Läufe als Maßstab hat. Der Umbau kann also gar nicht wirken,
+bevor die Daten aufgelaufen sind.
 
-Vorher ist aber eine Frage zu klären, die noch offen ist: In
-[`specs/2026-09-07-immowelt-sitemap-befund.md`](specs/2026-09-07-immowelt-sitemap-befund.md)
-steht, Blättern sei durch DataDome unmöglich und man müsse auf 8.901
-Sitemap-Orte umbauen. Diese Diagnose stammt aus der Zeit **vor** dem
-Consent-Fund — und der Consent-Fund hat gezeigt, dass die Pagination am
-Cookie-Overlay hing, nicht am Anti-Bot-System. Nach dem Zustimmen blätterte
-Bremen (42 → 84 Objekte).
+**Phase 1 (erledigt, 2026-09-08).** Der Fundort wird mitgeschrieben:
 
-**Der Sitemap-Umbau ist also womöglich gar nicht nötig.** To-do 1 entscheidet
-das. Erst danach lohnt sich hier ein Plan.
+- `listings.fundort` hält fest, auf welcher Regionsliste ein Objekt gefunden
+  wurde. `null` heißt „nicht zuzuordnen" (Altbestand, ZVG) — und
+  Unzuordenbares ist nie ein Abgang.
+- `sweep_region_runs` sammelt die Mengenhistorie je Region. Bewusst eine
+  eigene Tabelle: `ladeSweepHistorie` bildet den Median über alle Zeilen einer
+  Quelle in `sweep_runs` und filtert nur auf `vollstaendig`. Regionszeilen
+  dort würden in genau diesen Median einfließen und die Wache verfälschen, die
+  vor Massenlöschung schützt.
+- `geltungsbereich` wird für Immowelt jetzt gefüllt (bisher bewusst leer).
+
+Die Migration ist gegen die Live-Datenbank gelaufen und nachgeprüft.
+
+**Am Löschverhalten hat sich nichts geändert.** Immowelt meldet weiter
+`vollstaendig: false`, und `partitionAusExternalId` liefert für diese Quelle
+weiter `null` — zwei unabhängige Sperren stehen.
+
+**Phase 2, wenn die Historie da ist:** Plausibilität je Region statt je
+Quelle, `ermittleAbgaenge` über den Fundort verengt. Das berührt genau die
+Wachen, die schon einmal beinahe 7.500 Objekte gelöscht hätten — eigener
+Entwurf, eigene Freigabe. Frühestens sinnvoll, wenn `sweep_region_runs` für
+die betroffenen Regionen drei vollständige Läufe zeigt:
+
+```sql
+select partition, count(*) filter (where vollstaendig) as referenzlaeufe
+from sweep_region_runs where source = 'immowelt'
+group by partition order by referenzlaeufe desc;
+```
 
 ### 5. Teilprojekt 2 — Mietqualität
 
