@@ -229,17 +229,35 @@ from sweep_region_runs where source = 'immowelt'
 group by partition order by referenzlaeufe desc;
 ```
 
-### 5. Teilprojekt 2 — Mietqualität
+### 5. Teilprojekt 2 — Mietqualität: neu zugeschnitten, Kern erledigt
 
-Der Kern des Ertragsmodells steht auf der schwächsten Stelle: Fehlt eine
-angegebene Miete, schätzt [`lib/rentEstimate.ts`](../../scraper/lib/rentEstimate.ts)
-aus einer **handrecherchierten Tabelle** von 95 Zweistellern. Die Tabelle
-`rent_estimates` ist im Schema angelegt, **leer**, und wird von keiner Zeile
-Code gelesen oder geschrieben.
+**Der ursprüngliche Zuschnitt trägt nicht.** Messung am Bestand (2026-09-08):
+Es gibt **zwei** Objekte mit angegebener Miete im gesamten Bestand, und in
+442 ZVG-Gutachtentexten steht **null** Mal eine Jahresmiete. Ein Korpus aus
+zwei Beobachtungen ist kein Korpus, und die „ZVG-Mieternte" hat keine
+Grundlage. Vollständig belegt in
+[`specs/2026-09-08-mietqualitaet-befund.md`](specs/2026-09-08-mietqualitaet-befund.md).
 
-Aufgabe: aus echten Beobachtungen einen Mietkorpus aufbauen (`rent_estimates`
-als Korpus, dazu die ZVG-Mieternte aus den Gutachtentexten) und die
-Schätzung darauf umstellen. Braucht ein eigenes Brainstorming.
+**Das eigentliche Problem lag daneben:** 210 der 400 neuesten Versionen haben
+keine Wohnfläche. Ohne Fläche rechnet die Schätzung mit 0 m² → Miete 0 →
+Rendite 0, und das Objekt sieht aus wie *geprüft und schlecht* statt *nicht
+beurteilbar*. Für ein Ranking-Dashboard ist das der gefährlichste Zustand.
+
+**Erledigt:**
+
+- **Wohnflächen geerntet.** 92 Gutachtentexte enthielten „Wohnfl", der Parser
+  las daraus null — die Lücke waren Füllwörter (`insgesamt`, `rd.`, `beträgt`,
+  `ges.`, `:`). Jetzt eine Whitelist statt `.*?`, damit nie eine
+  Grundstücksgröße oder die Fläche einer Einzelwohnung durchrutscht. Alle
+  Testfälle sind wörtliche Fundstellen aus echten Gutachten.
+- **`wohnflaeche_fehlt`** als ausdrückliche Datenlücke.
+
+**Offen bleibt:** Rund 80 % der Objekte ohne Fläche behalten sie — die Zahl
+steht nicht im Text. Und die Regionaltabelle in `lib/rentEstimate.ts` bleibt
+95 handrecherchierte, unvalidierte Werte. **Das ist die größte verbleibende
+Unsicherheit im Ertragsmodell** und gehört in den Dashboard-Entwurf: Ein
+Prüfkandidat mit geschätzter Miete ist etwas anderes als ein Top-Treffer mit
+angegebener.
 
 ### 6. Teilprojekt 3 — Dashboard / Webseite
 

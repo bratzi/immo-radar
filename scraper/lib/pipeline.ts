@@ -62,6 +62,28 @@ export function bewerteMietschaetzung(mietQuelle: string, bruttomietrendite: num
 }
 
 /**
+ * Haelt fest, dass ein Objekt ohne Wohnflaeche NICHT BEURTEILBAR ist.
+ *
+ * WARUM DAS NOETIG IST: `ermittleJahreskaltmiete` rechnet ohne Flaeche mit
+ * 0 m², was eine Jahresmiete von 0 und damit eine Bruttorendite von 0 ergibt.
+ * Das Objekt faellt durch alle Schwellen und sieht am Ende aus wie geprueft
+ * und schlecht -- dabei fehlt schlicht die Grundlage. `bewerteMietschaetzung`
+ * faengt das nicht ab: die schlaegt nur bei einer zu HOHEN Rendite an, nie bei
+ * null.
+ *
+ * Gemessen am Bestand (2026-09-08): 210 der 400 zuletzt erfassten Versionen
+ * haben keine Wohnflaeche, weit ueberwiegend ZVG. Diese Luecke macht den
+ * Unterschied zwischen "geprueft und schlecht" und "nicht beurteilbar"
+ * sichtbar -- fuer das Dashboard ist das der entscheidende Unterschied.
+ *
+ * Am Meldeverhalten aendert sie nichts; die Schwellen schliessen solche
+ * Objekte ohnehin aus.
+ */
+export function bewerteFlaechenangabe(livingAreaM2: number | null): string[] {
+  return livingAreaM2 !== null && livingAreaM2 > 0 ? [] : ["wohnflaeche_fehlt"];
+}
+
+/**
  * Gesendet wird nur bei einem echten AUFSTIEG. Damit ist ein Objekt genau
  * einmal je Klasse eine Nachricht wert, und eine Verbesserung
  * (pruefkandidat -> top_treffer) meldet sich erneut.
@@ -193,6 +215,9 @@ export async function processCandidate(
   );
 
   for (const luecke of bewerteMietschaetzung(miete.quelle, kennzahlen.bruttomietrendite)) {
+    dataGaps.add(luecke);
+  }
+  for (const luecke of bewerteFlaechenangabe(candidate.livingAreaM2)) {
     dataGaps.add(luecke);
   }
 

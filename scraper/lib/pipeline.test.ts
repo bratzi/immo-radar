@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { bewerteEinheiten, bewerteMietschaetzung, processCandidate, type PipelineCandidate } from "./pipeline.js";
+import { bewerteEinheiten, bewerteMietschaetzung, processCandidate, type PipelineCandidate,
+  bewerteFlaechenangabe,
+} from "./pipeline.js";
 
 describe("bewerteEinheiten", () => {
   it("schließt eine BESTÄTIGTE Zahl unter der Mindestgrenze aus", () => {
@@ -164,5 +166,23 @@ describe("sollGesendetWerden", () => {
 
   it("sendet NICHT beim Abstieg -- eine Rueckstufung ist keine Nachricht wert", () => {
     expect(sollGesendetWerden("pruefkandidat", "top_treffer")).toBe(false);
+  });
+});
+
+describe("bewerteFlaechenangabe", () => {
+  it("meldet eine Luecke, wenn keine Wohnflaeche vorliegt", () => {
+    // Ohne Flaeche rechnet ermittleJahreskaltmiete mit 0 m² -> Miete 0 ->
+    // Bruttorendite 0. Das Objekt sieht dann aus wie geprueft und schlecht,
+    // obwohl es schlicht nicht beurteilbar ist. Gemessen am Bestand
+    // (2026-09-08): 210 von 400 neuesten Versionen trifft das.
+    expect(bewerteFlaechenangabe(null)).toEqual(["wohnflaeche_fehlt"]);
+  });
+
+  it("meldet eine Luecke auch bei 0 m²", () => {
+    expect(bewerteFlaechenangabe(0)).toEqual(["wohnflaeche_fehlt"]);
+  });
+
+  it("meldet nichts, wenn eine Flaeche vorliegt", () => {
+    expect(bewerteFlaechenangabe(291)).toEqual([]);
   });
 });

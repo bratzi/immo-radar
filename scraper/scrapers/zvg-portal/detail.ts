@@ -58,11 +58,37 @@ const UNIT_WORDS: Record<string, number> = {
   zehn: 10,
 };
 // Wohnflaeche: beide Wortstellungen (Wert-vor-Label und Label-vor-Wert),
-// Einheiten qm/m²/m2, Label Wohnfl. / Wohnfläche / Wohnflaeche.
+// Einheiten qm/m²/m2, Label Wohnfl. / Wohnfläche / Wohnflaeche(n).
 // Der Treffer-Helfer liefert immer Gruppe 1 als Zahl.
+//
+// ZWISCHEN LABEL UND ZAHL STEHT FAST IMMER ETWAS, und genau daran scheiterte
+// die Erfassung: Von 92 Gutachtentexten, die "Wohnfl" enthielten und deren
+// Objekt keine Wohnflaeche hatte, las der Parser NULL (Messung am Bestand,
+// 2026-09-08). Die Luecke waren durchweg Fuellwoerter -- "insgesamt", "rd.",
+// "beträgt", "ges.", ":".
+//
+// Zugelassen ist deshalb eine WHITELIST solcher Fuellwoerter, beliebig oft
+// wiederholt, und sonst nichts. Kein `.*?`: Sobald ein beliebiges Wort dazwischen
+// stehen darf, liest der Parser irgendwann die Grundstuecksgroesse als
+// Wohnflaeche ("Größe 284 qm" steht in denselben Texten) oder die Flaeche einer
+// EINZELNEN Wohnung ("Wohnflächen: Wohnung EG rd. 57 m²"). Letzteres waere der
+// teurere Fehler: der Kaufpreisfaktor fiele um ein Vielfaches zu gut aus und das
+// Objekt landete faelschlich ganz oben. Lieber eine Angabe verlieren als eine
+// falsche uebernehmen.
+//
+// Reihenfolge der Alternativen: laengere zuerst, sonst frisst "ges" den Anfang
+// von "gesamt".
+const FUELLWORT = String.raw`(?:insgesamt|insg\.?|gesamt|ges\.?|bemisst\s+sich\s+auf|beträgt|betraegt|ca\.?|c\.|rd\.?|rund|etwa|von|:)`;
+const WOHNFLAECHE_LABEL = String.raw`Wohnfl(?:\.|(?:ä|ae)chen?)`;
 const WOHNFLAECHE_PATTERNS = [
-  /(\d+(?:[.,]\d+)?)\s*(?:qm|m²|m2)\s*(?:gr(?:o|ö)(?:ss|ß)e\s*)?Wohnfl(?:\.|(?:ä|ae)che)/i,
-  /Wohnfl(?:\.|(?:ä|ae)che)\s*:?\s*(?:von\s*)?(?:ca\.?\s*|rund\s*|etwa\s*)?(\d+(?:[.,]\d+)?)\s*(?:qm|m²|m2)/i,
+  new RegExp(
+    String.raw`(\d+(?:[.,]\d+)?)\s*(?:qm|m²|m2)\s*(?:gr(?:o|ö)(?:ss|ß)e\s*)?` + WOHNFLAECHE_LABEL,
+    "i"
+  ),
+  new RegExp(
+    WOHNFLAECHE_LABEL + String.raw`(?:\s*` + FUELLWORT + String.raw`)*\s*(\d+(?:[.,]\d+)?)\s*(?:qm|m²|m2)`,
+    "i"
+  ),
 ];
 // Baujahr: "Bj. 1937", "Bj 1937", "Baujahr 1937", "Baujahr: 1937",
 // "erbaut 1937", "erbaut um 1937", "erbaut im Jahre 1937".
@@ -158,6 +184,18 @@ function parseGermanNumber(text: string): number {
   return parseFloat(cleaned);
 }
 
+/**
+ * Wohnflaeche des GESAMTEN Objekts aus dem Gutachtentext, oder null.
+ *
+ * Herausgezogen, damit sich ohne HTML-Fixture pruefen laesst, was gelesen wird
+ * und was ausdruecklich NICHT -- die Negativfaelle sind hier die wichtigere
+ * Haelfte (siehe WOHNFLAECHE_PATTERNS).
+ */
+export function wohnflaecheAusBeschreibung(text: string): number | null {
+  const treffer = ersteTrefferGruppe(text, WOHNFLAECHE_PATTERNS);
+  return treffer === null ? null : parseGermanNumber(treffer);
+}
+
 function parseUnits(text: string): { units: number | null; unitsConfident: boolean } {
   const zahlMatch = text.match(UNIT_COUNT_PATTERN);
   if (zahlMatch) {
@@ -250,7 +288,7 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
   const unitsConfident =
     roheEinheiten.unitsConfident && units !== null && units >= MIN_EINHEITEN_FUER_BESTAETIGUNG;
 
-  const wohnflaecheText = ersteTrefferGruppe(beschreibungText, WOHNFLAECHE_PATTERNS);
+  const wohnflaeche = wohnflaecheAusBeschreibung(beschreibungText);
   const baujahrText = ersteTrefferGruppe(beschreibungText, BAUJAHR_PATTERNS);
 
   const priceCents = Math.round(parseVerkehrswert(verkehrswertText) * 100);
@@ -285,7 +323,7 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
     city,
     units,
     unitsConfident,
-    livingAreaM2: wohnflaecheText === null ? null : parseGermanNumber(wohnflaecheText),
+    livingAreaM2: wohnflaeche,
     yearBuilt: baujahrText === null ? null : parseInt(baujahrText, 10),
     rawNoticeText: rawNoticeTextZeilen.join("\n"),
     dataGaps,

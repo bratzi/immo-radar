@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { parseZvgDetailPage } from "./detail.js";
+import { parseZvgDetailPage, wohnflaecheAusBeschreibung } from "./detail.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixtureHtml = readFileSync(
@@ -339,5 +339,66 @@ describe("parseZvgDetailPage — Verkehrswert ohne Waehrungszeichen im Feld", ()
   it("verwirft ein Feld ganz ohne Betrag", () => {
     expect(() => mitWert("Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €")).toThrow(/Verkehrswert/);
     expect(() => mitWert("Lfd. Nr. 1")).toThrow(/Verkehrswert/);
+  });
+});
+
+/**
+ * Alle Zeichenketten hier stammen WOERTLICH aus `raw_notice_text` echter
+ * ZVG-Gutachten (Bestand vom 2026-09-08). Gemessen: 92 der zuletzt erfassten
+ * Objekte ohne Wohnflaeche haben "Wohnfl" im Text -- und der Parser holte
+ * daraus null. Die Luecke sind ausschliesslich Fuellwoerter zwischen Label und
+ * Zahl.
+ */
+describe("wohnflaecheAusBeschreibung", () => {
+  const gesamtflaechen: [string, number][] = [
+    ["Wohnfläche insgesamt ca. 235 m²", 235],
+    ["Wohnfl. ges. ca. 291 qm", 291],
+    ["Wohnfläche insgesamt 236 qm", 236],
+    ["Wohnfläche beträgt insgesamt ca. 333 m²", 333],
+    ["Wohnflächen insgesamt: ca. 285 m²", 285],
+    ["Wohnfläche beträgt ca. 415 m²", 415],
+    ["Wohnfläche: insgesamt 365,37 qm", 365.37],
+    ["wohnfläche: ca.: 854 m²", 854],
+    ["Wohnfläche rd. 330 m²", 330],
+    ["Wohnfläche insgesamt c. 402,51 qm", 402.51],
+    ["Wohnfläche gesamt: 277 qm", 277],
+    ["Wohnfläche insgesamt: ca.192m²", 192],
+    ["Wohnfläche bemisst sich auf insgesamt ca. 364 m²", 364],
+    ["Wohnfläche: rd. 349 qm", 349],
+  ];
+
+  for (const [text, erwartet] of gesamtflaechen) {
+    it(`liest ${erwartet} aus "${text}"`, () => {
+      expect(wohnflaecheAusBeschreibung(text)).toBe(erwartet);
+    });
+  }
+
+  it("liest weiterhin die Wert-vor-Label-Stellung", () => {
+    expect(wohnflaecheAusBeschreibung("ca. 180 qm Wohnfläche")).toBe(180);
+  });
+
+  // Die wichtigere Haelfte: was NICHT gelesen werden darf.
+  const einzelflaechen = [
+    "Wohnflächen: Wohnung EG rd. 57 m²",
+    "Wohnflächen EG: 65 m²",
+    "Wohnfläche Wohnung 1 ca. 49m²",
+  ];
+  for (const text of einzelflaechen) {
+    it(`nimmt KEINE Einzelwohnung: "${text}"`, () => {
+      // Waere das die Hausflaeche, fiele der Kaufpreisfaktor um ein
+      // Vielfaches zu gut aus und das Objekt landete faelschlich ganz oben.
+      expect(wohnflaecheAusBeschreibung(text)).toBeNull();
+    });
+  }
+
+  it("nimmt keine Zahl hinter einem beliebigen Wort", () => {
+    // "Mehrfamilienwohnhaus" ist plausibel die Hausflaeche -- aber wer hier
+    // beliebige Woerter zulaesst, liest irgendwann die Grundstuecksgroesse
+    // ("Größe 284 qm") als Wohnflaeche. Lieber eine Angabe verlieren.
+    expect(wohnflaecheAusBeschreibung("Wohnfl. Mehrfamilienwohnhaus 425 m²")).toBeNull();
+  });
+
+  it("liefert null, wenn gar keine Wohnflaeche genannt ist", () => {
+    expect(wohnflaecheAusBeschreibung("Grundstück Größe 284 qm, Baujahr 1900")).toBeNull();
   });
 });
