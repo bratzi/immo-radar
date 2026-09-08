@@ -335,18 +335,25 @@ Prüfung bei Zeile 296; `BETRAG_PATTERN` bei Zeile 123).
       URL an, und `pruefung.yml` kennt nur die Eingaben `skript`, `region`
       und `max_seiten` — es gibt keinen Weg, eine ZVG-URL hineinzureichen,
       ohne das Skript umzubauen.
-- [ ] **Schritt 3 — die Frage hat sich verschoben.** Zu reparieren ist nicht
-      das Lesen, sondern der Umgang mit dem Fehlen. Drei Teilfragen, vor der
-      Umsetzung zu entscheiden:
-      1. Ist ein Objekt ohne Verkehrswert überhaupt bewertbar? Ohne
-         Vergleichsmaßstab gibt es keine Kennzahl und keine Meldung.
-      2. Wenn nein: das Verwerfen darf nicht als `Fehler, übersprungen`
-         auftreten. Ein Gericht, das kein Feld ausfüllt, ist kein Ausfall des
-         Radars — die Meldung soll das trennen, sonst verdeckt Rauschen
-         echte Störungen.
-      3. Der Phantomwert 78.031 € zu `zvg_id=13233` steht weiterhin im
-         Bestand und wird nie überschrieben. Er gehört gelöscht — aber
-         `bestand.ts`-Regel beachten: wer nicht urteilen kann, löscht nicht.
+- [~] **Schritt 3 — Teil 2 erledigt, Teil 1 und 3 offen.** Zu reparieren ist
+      nicht das Lesen, sondern der Umgang mit dem Fehlen.
+      1. **OFFEN — ist ein Objekt ohne Verkehrswert bewertbar?** Ohne
+         Vergleichsmaßstab gibt es keine Kennzahl und keine Meldung. Es
+         konsequent wie `wohnflaeche_fehlt` zu behandeln — speichern und die
+         Lücke sichtbar machen, statt es fallen zu lassen — würde
+         `price_cents` nullbar verlangen, also eine Schemaänderung. Das ist
+         eine Entscheidung des Nutzers, keine Aufräumarbeit.
+      2. **ERLEDIGT (`ea68fbf`).** `VerkehrswertFehltError` trennt „die Quelle
+         nennt keinen Wert" von einer echten Störung;
+         `beschreibeDetailFehler` entscheidet daraus Text und Schwere und
+         steht unter Test. Vorher standen in **jedem** Lauf dreimal
+         `Fehler, übersprungen` samt Stapelabzug im Log — Rauschen, das echte
+         Störungen verdeckt.
+      3. **OFFEN — der Phantomwert 78.031 €** zu `zvg_id=13233` steht
+         weiterhin im Bestand und wird nie überschrieben, weil das Objekt nie
+         wieder erfasst wird. Er gehört gelöscht, aber die `bestand.ts`-Regel
+         gilt: wer nicht urteilen kann, löscht nicht. Ein Schreibzugriff auf
+         Produktionsdaten ist eine Entscheidung des Nutzers.
 
 **Abnahme:** erfüllt für Schritt 1. Die geforderte Alternative ist eingetreten:
 *„es ist belegt, dass die Seite selbst keinen nennt"* — belegt für einen der

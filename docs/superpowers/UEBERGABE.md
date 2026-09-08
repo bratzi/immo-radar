@@ -172,14 +172,25 @@ OBEN. Zwei Objekte mit falschen Preisen (2.840 € auf 198,8 m²) gingen als
 `top_treffer` an den Nutzer, mit einer Bruttorendite von 571 %. **Je kaputter
 die Zahl, desto besser sah das Objekt aus.**
 
+**A7a** — die Rechnung an `SWEEP_BUDGET_MS` setzte nur die Drossel von 5 s je
+Seite an; gemessen sind 8,7 bis 11,5. Der Wert bleibt bei 12 min: Der
+beherrschende Term ist die eine grosse Region, die nach der Wache noch startet,
+nicht das Budget. Laengster echter Lauf 50,1 min gegen `timeout-minutes: 75`.
+**`by` und `bw` sind nie gesweept worden** -- sind sie groesser als `nw`,
+schrumpft die Marge, und der Kill traefe VOR dem Loeschblock.
+
+**A6 Schritt 3, Teil 2** — ein fehlender Verkehrswert erscheint nicht mehr als
+`Fehler, uebersprungen` mit Stapelabzug. Drei solche Zeilen in jedem Lauf
+verdeckten echte Stoerungen.
+
 ## Was offen ist
 
-- **A7a** — die Rechnung an `SWEEP_BUDGET_MS` unterstellt 5 s je Seite,
-  gemessen sind 8,7 bis 11,5. Die Drossel ist NICHT der Hebel; sie ist die
-  Hoeflichkeitsgrenze, und ein CAPTCHA misst genau die Abrufrate.
-- **A6 Schritt 3** — Umgang mit dem fehlenden Verkehrswert: Ist so ein Objekt
-  bewertbar? Das Verwerfen darf nicht als `Fehler, uebersprungen` erscheinen.
-  Und der Phantomwert 78.031 EUR zu `zvg_id=13233` steht weiter im Bestand.
+- **A6 Schritt 3, Rest.** Zwei Entscheidungen des Nutzers, keine
+  Aufraeumarbeit: (1) Soll ein Objekt ohne Verkehrswert gespeichert werden --
+  konsequent wie `wohnflaeche_fehlt` -- statt fallen gelassen? Das verlangt
+  `price_cents` nullbar, also eine Schemaaenderung. (2) Der Phantomwert
+  78.031 EUR zu `zvg_id=13233` steht weiter im Bestand und wird nie
+  ueberschrieben; ihn zu loeschen ist ein Schreibzugriff auf Produktionsdaten.
 - **A9 Rest** — die beiden falsch gemeldeten Objekte tragen den falschen Preis
   weiterhin. Ob eine versandte Falschmeldung richtiggestellt gehoert, ist eine
   Entscheidung des Nutzers.
