@@ -1,6 +1,10 @@
 import { chromium, type Browser, type Page } from "playwright";
 import { parseZvgResultsPage, type ZvgListSummary } from "./list.js";
-import { parseZvgDetailPage, type ZvgDetailData } from "./detail.js";
+import {
+  parseZvgDetailPage,
+  VerkehrswertFehltError,
+  type ZvgDetailData,
+} from "./detail.js";
 import type { SweepErgebnis } from "../../lib/bestand.js";
 import { bestaetigeConsentBanner } from "../consent.js";
 
@@ -192,6 +196,27 @@ export async function sweepZvgPortal(): Promise<{
   };
 }
 
+/**
+ * Entscheidet, ob ein Fehler beim Abruf einer Detailseite eine Stoerung ist
+ * oder eine Eigenschaft der Quelle -- und wie die Zeile im Log lautet.
+ *
+ * Getrennt herausgezogen, damit diese Entscheidung unter Test steht. Eine
+ * Meldung, die eine Ursache behauptet, hat dieses Projekt schon dreimal in die
+ * falsche Richtung geschickt.
+ */
+export function beschreibeDetailFehler(
+  url: string,
+  err: unknown
+): { text: string; stoerung: boolean } {
+  if (err instanceof VerkehrswertFehltError) {
+    return {
+      text: `ZVG-Detailseite ${url}: uebersprungen -- die Bekanntmachung nennt keinen verwertbaren Verkehrswert ("${err.feldtext}"). Das ist keine Stoerung, sondern eine Eigenschaft der Quelle.`,
+      stoerung: false,
+    };
+  }
+  return { text: `ZVG-Detailseite ${url}: Fehler, übersprungen`, stoerung: true };
+}
+
 async function detailSeiteHolen(
   page: Page,
   zusammenfassung: ZvgListSummary,
@@ -206,7 +231,12 @@ async function detailSeiteHolen(
       caseNumber: zusammenfassung.caseNumber,
     });
   } catch (err) {
-    console.warn(`ZVG-Detailseite ${zusammenfassung.url}: Fehler, übersprungen`, err);
+    const { text, stoerung } = beschreibeDetailFehler(zusammenfassung.url, err);
+    // Nur eine echte Stoerung bekommt den Stapelabzug. Ein Gericht, das ein
+    // Feld leer laesst, ist keine -- und drei solcher Zeilen in JEDEM Lauf
+    // wuerden echte Stoerungen im Log verdecken.
+    if (stoerung) console.warn(text, err);
+    else console.log(text);
     return null;
   }
 }

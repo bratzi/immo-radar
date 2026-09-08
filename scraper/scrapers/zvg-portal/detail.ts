@@ -112,6 +112,28 @@ const GERMAN_MONTHS: Record<string, number> = {
   Dezember: 12,
 };
 
+/**
+ * Die Bekanntmachung nennt keinen verwertbaren Verkehrswert.
+ *
+ * Ein eigener Typ, damit die Fangstelle das von einer echten Stoerung
+ * unterscheiden kann. Gemessen am 2026-09-08: 3 von 194 Bekanntmachungen
+ * trifft das, ueber acht Laeufe hinweg immer dieselben drei. Bei
+ * "Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €" hat das Amtsgericht den
+ * Betrag schlicht ausgelassen -- die Schwesterbekanntmachungen desselben
+ * Gerichts fuellen dieselbe Schablone korrekt aus.
+ *
+ * Ein Gericht, das ein Feld leer laesst, ist kein Ausfall des Radars. Stuende
+ * das als `Fehler, uebersprungen` mit Stapelabzug im Log, wuerde das Rauschen
+ * echte Stoerungen verdecken -- und genau daran hat dieses Projekt schon
+ * dreimal in die falsche Richtung gesucht.
+ */
+export class VerkehrswertFehltError extends Error {
+  constructor(public readonly feldtext: string) {
+    super(`Die Bekanntmachung nennt keinen verwertbaren Verkehrswert: "${feldtext}"`);
+    this.name = "VerkehrswertFehltError";
+  }
+}
+
 function normalizeWhitespace(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
@@ -300,7 +322,7 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
 
   const priceCents = Math.round(parseVerkehrswert(verkehrswertText) * 100);
   if (!Number.isFinite(priceCents) || priceCents <= 0) {
-    throw new Error(`Ungültiger Verkehrswert (nicht numerisch oder nicht positiv): "${verkehrswertText}"`);
+    throw new VerkehrswertFehltError(verkehrswertText);
   }
 
   const attachments: ZvgAttachment[] = $('a[aria-label="Anhang"]')

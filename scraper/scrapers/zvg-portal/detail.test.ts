@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { parseZvgDetailPage, wohnflaecheAusBeschreibung } from "./detail.js";
+import {
+  parseZvgDetailPage,
+  wohnflaecheAusBeschreibung,
+  VerkehrswertFehltError,
+} from "./detail.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixtureHtml = readFileSync(
@@ -125,6 +129,26 @@ describe("parseZvgDetailPage — Verkehrswert-Plausibilität", () => {
     expect(() =>
       parseMitErsetzung(["<p>271.000,00</p>", "<p>auf Anfrage</p>"])
     ).toThrow(/Verkehrswert/);
+  });
+
+  it("kennzeichnet ein fehlendes Feld als Eigenschaft der Quelle, nicht als Stoerung", () => {
+    // Gemessen: 3 von 194 Bekanntmachungen nennen selbst keine Zahl -- immer
+    // dieselben drei, ueber acht Laeufe hinweg. Bei "Blatt 7803" hat das
+    // Amtsgericht den Betrag ausgelassen, waehrend die Schwesterbekannt-
+    // machungen desselben Gerichts dieselbe Schablone korrekt fuellen.
+    // Das ist kein Ausfall des Radars und darf nicht als Fehler mit
+    // Stapelabzug im Log stehen -- sonst verdeckt das Rauschen echte
+    // Stoerungen.
+    let gefangen: unknown;
+    try {
+      parseMitErsetzung([
+        "<p>271.000,00</p>",
+        "<p>Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €</p>",
+      ]);
+    } catch (err) {
+      gefangen = err;
+    }
+    expect(gefangen).toBeInstanceOf(VerkehrswertFehltError);
   });
 });
 
