@@ -49,7 +49,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| D-1 | Belegt, dass Telegram die Nachrichten angenommen hat | **offen, aber entschärft** — das Verhalten ist nachweislich richtig, nur steht der Beleg nicht in der Zeile und kein Test schützt ihn (A12) |
+| D-1 | Belegt, dass Telegram die Nachrichten angenommen hat | **code-seitig erfüllt** seit `be00d09` — die Zeile trägt jetzt die bestätigte `message_id` und die `runId`, sechs Tests schützen die Reihenfolge, zwei Sabotageproben belegen, dass sie greifen. **Fehlt nur noch der Beleg an einem echten Lauf** (A12) |
 | D-2 | Der Nachrichtentext nennt die Datenlücken im Klartext | **erfüllt** seit `d6c4cc1` |
 | D-3 | Die Formatierung bricht nicht bei fehlenden Feldern | **erfüllt** seit `d6c4cc1` |
 | D-4 | Jede Meldung nennt Bundesland und Ort; fehlende PLZ ist sichtbar | **erfüllt** seit `d6c4cc1` |

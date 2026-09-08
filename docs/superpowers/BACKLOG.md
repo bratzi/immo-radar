@@ -887,10 +887,11 @@ kein Titel. Strukturell geht es heute auch nicht:
 `listing_versions.price_cents` ist `bigint **not null**` (`schema.sql:35`) und
 `PipelineCandidate.priceCents: number` (`lib/pipeline.ts:144`).
 
-- [ ] **Schritt 1 (Voraussetzung fuer alles Weitere):** Im `null`-Zweig die
+- [x] **Schritt 1 (Voraussetzung fuer alles Weitere):** Im `null`-Zweig die
       Titelzeile mitloggen. Eine Zeile, kostet nichts, und nach einem Lauf
       liegen die echten Zeilen im Actions-Log — dann ist die Klassifikation
       bewiesen statt begruendet. Das ist die A6-Lehre: messen statt behaupten.
+      **Erledigt:** `Immowelt ohne Preis [bw]: "..."` je Fall.
 - [ ] **Schritt 2 — Entscheidung des Nutzers, wie A-4 dauerhaft erfuellt wird:**
       **(a)** eine `listings`-Zeile ohne `listing_versions`-Zeile anlegen —
       ohne Schemaaenderung, das Objekt bleibt sichtbar und taucht im Abgleich
@@ -903,9 +904,10 @@ kein Titel. Strukturell geht es heute auch nicht:
       (Quelle nennt keinen Preis) und `preis_unlesbar` (Titel enthaelt `€`,
       Muster greift nicht). Nur so verraet eine steigende Quote kuenftig
       sofort, ob es Markt oder Regression ist.
-- [ ] **Schritt 4:** Das Laufprotokoll (`main.ts:386–389`) um die
-      Fundort-Aufschluesselung ergaenzen („39 ohne Preisangabe, davon bw 39").
-      Sonst liest sich jeder bw-Lauf wie eine Verschlechterung.
+- [x] **Schritt 4:** Das Laufprotokoll um die Fundort-Aufschluesselung
+      ergaenzen. **Erledigt:** `fasseOhnePreisZusammen` in
+      `scrapers/immowelt/titelzeile.ts`, vier Tests. Ein fehlender Fundort
+      erscheint ausdruecklich als „ohne Fundort" statt zu fehlen.
 - [ ] **Schritt 5 (optional, TDD):** `75000 €` darf nicht 0 ergeben.
 
 **Bemerkung zu A-3/B-1:** Solange ein Lauf nur 1 von 16 Regionen schafft, ist

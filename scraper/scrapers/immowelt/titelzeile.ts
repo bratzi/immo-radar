@@ -94,3 +94,36 @@ export function werteAusTitelzeile(titleLine: string): TitelzeilenWerte {
     lage,
   };
 }
+
+/**
+ * Fasst die Objekte zusammen, die ohne Preis uebersprungen wurden -- nach
+ * Fundort aufgeschluesselt.
+ *
+ * Warum die Aufschluesselung: Die Quote schwankte zwischen 0,5 % und 6,5 %
+ * je Lauf. Gemessen ist das ein Regionseffekt und keine Verschlechterung --
+ * der 6,5-%-Lauf zog seine ganze Bewertungsscheibe aus Baden-Wuerttemberg,
+ * die 0-%-Laeufe aus Nordrhein-Westfalen. Ohne diese Zeile liest sich jeder
+ * bw-Lauf wie ein Rueckschritt (Backlog A13).
+ *
+ * Ein fehlender Fundort wird ausdruecklich als "ohne Fundort" ausgewiesen,
+ * nicht weggelassen: Ein unbekannter Zustand ist in diesem Projekt nie
+ * "in Ordnung".
+ */
+export function fasseOhnePreisZusammen(
+  faelle: { fundort: string | null; titleLine: string }[]
+): string {
+  if (faelle.length === 0) return "0 ohne Preisangabe uebersprungen.";
+
+  const jeFundort = new Map<string, number>();
+  for (const fall of faelle) {
+    const schluessel = fall.fundort ?? "ohne Fundort";
+    jeFundort.set(schluessel, (jeFundort.get(schluessel) ?? 0) + 1);
+  }
+
+  const aufschluesselung = [...jeFundort.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([fundort, anzahl]) => `${fundort} ${anzahl}`)
+    .join(", ");
+
+  return `${faelle.length} ohne Preisangabe uebersprungen (${aufschluesselung}).`;
+}

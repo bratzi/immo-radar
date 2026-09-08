@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { werteAusTitelzeile } from "./titelzeile.js";
+import { werteAusTitelzeile, fasseOhnePreisZusammen } from "./titelzeile.js";
 
 /**
  * Alle Zeichenketten hier stammen WOERTLICH aus einer echten Immowelt-
@@ -65,5 +65,45 @@ describe("werteAusTitelzeile", () => {
     const w = werteAusTitelzeile("Mehrfamilienhaus zum Kauf - West - Preis auf Anfrage - 6 Zimmer, 140 m²");
     expect(w.preisCents).toBeNull();
     expect(w.wohnflaecheM2).toBe(140);
+  });
+});
+
+/**
+ * Warum das eine eigene Funktion ist: Die Quote der Objekte ohne Preis
+ * schwankte zwischen 0,5 % und 6,5 % je Lauf und sah damit wie eine
+ * Verschlechterung aus. Gemessen ist es ein Regionseffekt -- der
+ * 6,5-%-Lauf zog seine ganze Bewertungsscheibe aus Baden-Wuerttemberg, die
+ * 0-%-Laeufe aus Nordrhein-Westfalen. Ohne die Aufschluesselung im
+ * Laufprotokoll liest sich jeder bw-Lauf wie ein Rueckschritt (Backlog A13).
+ */
+describe("fasseOhnePreisZusammen", () => {
+  it("nennt bei null Faellen keine Region", () => {
+    expect(fasseOhnePreisZusammen([])).toBe("0 ohne Preisangabe uebersprungen.");
+  });
+
+  it("schluesselt nach Fundort auf", () => {
+    const faelle = [
+      { fundort: "bw", titleLine: "a" },
+      { fundort: "bw", titleLine: "b" },
+      { fundort: "nw", titleLine: "c" },
+    ];
+    expect(fasseOhnePreisZusammen(faelle)).toBe(
+      "3 ohne Preisangabe uebersprungen (bw 2, nw 1)."
+    );
+  });
+
+  it("sortiert die groesste Region nach vorn", () => {
+    const faelle = [
+      { fundort: "hb", titleLine: "a" },
+      { fundort: "nw", titleLine: "b" },
+      { fundort: "nw", titleLine: "c" },
+    ];
+    expect(fasseOhnePreisZusammen(faelle)).toContain("(nw 2, hb 1)");
+  });
+
+  it("macht einen fehlenden Fundort sichtbar statt ihn zu verschweigen", () => {
+    expect(fasseOhnePreisZusammen([{ fundort: null, titleLine: "a" }])).toBe(
+      "1 ohne Preisangabe uebersprungen (ohne Fundort 1)."
+    );
   });
 });

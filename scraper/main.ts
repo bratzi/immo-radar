@@ -35,7 +35,7 @@ import {
   type TelegramConfig,
 } from "./lib/telegram.js";
 import { sb } from "./lib/supabase.js";
-import { werteAusTitelzeile } from "./scrapers/immowelt/titelzeile.js";
+import { werteAusTitelzeile, fasseOhnePreisZusammen } from "./scrapers/immowelt/titelzeile.js";
 import { erstelleMeldebudget, type Meldebudget } from "./lib/meldebudget.js";
 import { nurInCiAusfuehren } from "./lib/nurInCi.js";
 
@@ -340,7 +340,7 @@ async function main() {
   //  * Die Einheitenzahl -- die lieferte Immowelt aber auch auf der
   //    Detailseite nie (`units: null` selbst in der Fixture).
   let immoweltBewertet = 0;
-  let immoweltOhnePreis = 0;
+  const immoweltOhnePreis: { fundort: string | null; titleLine: string }[] = [];
   // Rotierende Scheibe: nicht alle gesehenen Objekte in einem Lauf bewerten.
   const immoweltAuswahl = new Set(
     budgetiereDetailKandidaten(
@@ -356,7 +356,20 @@ async function main() {
     // Ohne Preis ist nichts zu rechnen. Ein erfundener Preis waere schlimmer
     // als gar keiner -- er ginge unmittelbar in den Kaufpreisfaktor ein.
     if (werte.preisCents === null) {
-      immoweltOhnePreis += 1;
+      immoweltOhnePreis.push({
+        fundort: zusammenfassung.fundort ?? null,
+        titleLine: zusammenfassung.titleLine,
+      });
+      // Die Titelzeile MUSS ins Protokoll: Der `continue` unten schreibt
+      // nichts, das Objekt ist nach dem Lauf sonst nirgends mehr auffindbar
+      // (Abnahmekriterium A-4). Erst diese Zeile trennt "die Quelle nennt
+      // keinen Preis" von "der Parser hat versagt" -- ohne sie bleibt die
+      // Klassifikation eine Vermutung, und genau daran hat sich dieses
+      // Projekt bei A6 schon einmal verrannt.
+      console.log(
+        `Immowelt ohne Preis [${zusammenfassung.fundort ?? "ohne Fundort"}]: ` +
+          JSON.stringify(zusammenfassung.titleLine)
+      );
       continue;
     }
     immoweltBewertet += 1;
@@ -388,7 +401,7 @@ async function main() {
   }
   console.log(
     `Immowelt: ${immoweltBewertet} von ${immowelt.zusammenfassungen.size} gesehenen Objekten ` +
-      `aus der Ergebnisliste bewertet, ${immoweltOhnePreis} ohne Preisangabe uebersprungen.`
+      `aus der Ergebnisliste bewertet, ${fasseOhnePreisZusammen(immoweltOhnePreis)}`
   );
 
   // --- ZVG-Portal -------------------------------------------------------
