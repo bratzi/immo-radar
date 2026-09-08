@@ -763,18 +763,26 @@ vorzieht, bekommt eine gruene Suite.
 `notifications` traegt keine `run_id` — der Abgleich Log↔Datenbank
 funktioniert nur, weil sich die Laufzeitfenster zufaellig nicht ueberlappen.
 
-- [ ] **Schritt 1:** `sendTelegramMessage` gibt die `message_id` zurueck
+- [x] **Schritt 1:** `sendTelegramMessage` gibt die `message_id` zurueck
       (`res.json()` im `res.ok`-Zweig, Parsen in `try/catch`, damit ein
       fehlender JSON-Rumpf einen bestaetigten Versand nicht in einen
       Fehlschlag verwandelt) und `pipeline.ts:394` legt sie als
       `telegramMessageId` ins bestehende `detail`-jsonb. **Keine
       Schemaaenderung** — `detail jsonb` traegt das bereits (`schema.sql:116`).
-- [ ] **Schritt 2:** Regressionstest fuer den Transport — `globalThis.fetch`
+- [~] **Schritt 2 (teilweise):** Regressionstest fuer den Transport — `globalThis.fetch`
       stubben: 200 → kein Wurf, `message_id` zurueck; 403 → wirft; 429 zweimal
       dann 200 → genau drei Aufrufe; 429 dauerhaft → wirft nach drei. Dazu ein
       `processCandidate`-Test: wirft der Versand, wird `logNotification`
       **nicht** gerufen. Im Rot-Gruen-Zyklus verifizieren.
-- [ ] **Schritt 3:** `process.env.GITHUB_RUN_ID` als `runId` ins `detail`.
+      **Stand:** Die vier Transportfaelle stehen (`telegram.test.ts`), rot
+      gesehen fuer die drei, die neues Verhalten verlangen; die beiden
+      Fehlerfaelle 403 und dauerhaftes 429 waren sofort gruen und sind damit
+      Absicherung vorhandenen Verhaltens, kein Neubau. **Der
+      Reihenfolgetest in `processCandidate` fehlt weiterhin** -- er braucht
+      einen Doppelgaenger fuer `upsertListingAndVersion`, `diffVersion` und
+      `hoechsteGemeldeteKlasse` und ist damit die eigentliche Arbeit. Bis er
+      steht, haengt die Reihenfolgegarantie nach wie vor an zwei Anweisungen.
+- [x] **Schritt 3:** `process.env.GITHUB_RUN_ID` als `runId` ins `detail`.
 - [ ] **Schritt 4:** Eine Erfolgszeile je Versand ins Log.
 
 **Bewusst nicht vorgeschlagen:** eine eigene Spalte `telegram_message_id` oder

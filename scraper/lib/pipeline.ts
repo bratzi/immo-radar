@@ -7,7 +7,7 @@ import {
 import { berechneKennzahlen, MIN_PLAUSIBLER_KAUFPREISFAKTOR } from "./metrics.js";
 import { ermittleJahreskaltmiete, bundeslandFuerRegionscode } from "./rentEstimate.js";
 import { bestimmeMeldeklasse, istHoeher, type Meldeklasse } from "./meldung.js";
-import { upsertListingAndVersion, logNotification, hoechsteGemeldeteKlasse } from "./db.js";
+import { upsertListingAndVersion, logNotification, hoechsteGemeldeteKlasse, versandBeleg } from "./db.js";
 import { kartePngFuerPlz } from "./karte.js";
 import type { Meldebudget } from "./meldebudget.js";
 import {
@@ -373,7 +373,7 @@ export async function processCandidate(
       // Objekt weiterhin als "noch nie gemeldet" und holt es nach. Genau das
       // war der Fehler der alten changed-Logik.
       await schlafe(TELEGRAM_SENDEABSTAND_MS);
-      await sendTelegramMessage(telegramConfig, text);
+      const messageId = await sendTelegramMessage(telegramConfig, text);
       // Medien sind Beiwerk, die notifications-Zeile ist das Hauptbuch.
       // Deshalb faengt dieses try/catch AUSSCHLIESSLICH sendeMedien ab und
       // laesst sendTelegramMessage und logNotification unangetastet: Ein
@@ -394,6 +394,7 @@ export async function processCandidate(
       await logNotification(supabase, diff.listingId, klasse, {
         ...kennzahlenSummary,
         priceCents: candidate.priceCents,
+        ...versandBeleg(messageId, process.env.GITHUB_RUN_ID),
       });
       meldebudget?.verbuchen();
     }
@@ -407,13 +408,14 @@ export async function processCandidate(
       return;
     }
     await schlafe(TELEGRAM_SENDEABSTAND_MS);
-    await sendTelegramMessage(
+    const preisMessageId = await sendTelegramMessage(
       telegramConfig,
       formatPreisaenderungMessage(listingSummary, diff.previousPriceCents, candidate.priceCents)
     );
     await logNotification(supabase, diff.listingId, "preisaenderung", {
       altPreisCents: diff.previousPriceCents,
       neuPreisCents: candidate.priceCents,
+      ...versandBeleg(preisMessageId, process.env.GITHUB_RUN_ID),
     });
     meldebudget?.verbuchen();
   }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Kennzahlen } from "./metrics.js";
-import { diffVersion, versionInsertZeile, listingUpsertZeile } from "./db.js";
+import { diffVersion, versionInsertZeile, listingUpsertZeile, versandBeleg } from "./db.js";
 
 describe("diffVersion", () => {
   it("meldet changed=true und priceDropped=false für die allererste Version", () => {
@@ -110,5 +110,28 @@ describe("listingUpsertZeile", () => {
     expect(zeile.disappeared_at).toBeNull();
     expect(zeile.last_seen).toBe(jetzt);
     expect(zeile.last_detail_at).toBe(jetzt);
+  });
+});
+
+/**
+ * Der Beleg, der eine `notifications`-Zeile von einer blossen Behauptung
+ * unterscheidet: eine Zahl, die nur Telegram vergeben kann, und der Lauf, in
+ * dem sie entstand. Ohne `runId` laesst sich Log gegen Datenbank nur ueber
+ * sich zufaellig nicht ueberlappende Zeitfenster abgleichen (D-1).
+ */
+describe("versandBeleg", () => {
+  it("haelt message_id und Lauf-ID fest", () => {
+    expect(versandBeleg(4711, "34261364448")).toEqual({
+      telegramMessageId: 4711,
+      runId: "34261364448",
+    });
+  });
+
+  it("traegt null statt zu raten, wenn Telegram keine message_id nannte", () => {
+    expect(versandBeleg(null, "34261364448")).toMatchObject({ telegramMessageId: null });
+  });
+
+  it("traegt null als Lauf-ID ausserhalb von GitHub Actions", () => {
+    expect(versandBeleg(4711, undefined)).toMatchObject({ runId: null });
   });
 });

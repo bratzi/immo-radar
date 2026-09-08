@@ -175,6 +175,19 @@ export async function upsertListingAndVersion(
   };
 }
 
+/**
+ * Der Beleg, den eine `notifications`-Zeile tragen muss, damit sie eine
+ * Zustellung belegt statt sie zu behaupten (Abnahmekriterium D-1). Die
+ * `message_id` kann nur Telegram vergeben; die Lauf-ID macht den Abgleich
+ * zwischen Actions-Log und Datenbank exakt statt zeitfensterbasiert.
+ */
+export function versandBeleg(
+  telegramMessageId: number | null,
+  runId: string | undefined
+): Record<string, unknown> {
+  return { telegramMessageId, runId: runId ?? null };
+}
+
 export async function logNotification(
   supabase: SupabaseClient,
   listingId: string,

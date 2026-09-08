@@ -418,7 +418,20 @@ export async function sendTelegramDocument(
   await telegramAufruf(config, "sendDocument", form);
 }
 
-export async function sendTelegramMessage(config: TelegramConfig, text: string): Promise<void> {
+/**
+ * Verschickt eine Nachricht und gibt die `message_id` zurueck, die Telegram
+ * bestaetigt hat -- der einzige Beleg, den eine Zeile in `notifications`
+ * spaeter noch tragen kann (Abnahmekriterium D-1).
+ *
+ * Der Rueckgabewert ist `number | null`, nicht `number`: Ein bestaetigter
+ * Versand (HTTP 2xx) darf nicht daran scheitern, dass der Antwortrumpf
+ * unerwartet aussieht. HTTP 200 heiszt angenommen; die `message_id` ist ein
+ * Zusatzbeleg, keine Bedingung.
+ */
+export async function sendTelegramMessage(
+  config: TelegramConfig,
+  text: string
+): Promise<number | null> {
   const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
   for (let versuch = 1; ; versuch += 1) {
     const res = await fetch(url, {
@@ -431,7 +444,14 @@ export async function sendTelegramMessage(config: TelegramConfig, text: string):
         link_preview_options: { is_disabled: true },
       }),
     });
-    if (res.ok) return;
+    if (res.ok) {
+      try {
+        const rumpf = (await res.json()) as { result?: { message_id?: number } };
+        return rumpf?.result?.message_id ?? null;
+      } catch {
+        return null;
+      }
+    }
 
     const koerper = await res.text();
     if (res.status === 429 && versuch <= MAX_RATE_LIMIT_WIEDERHOLUNGEN) {

@@ -27,7 +27,7 @@ import {
   speichereRegionsLaeufe,
   ladeSweepHistorie,
 } from "./lib/bestandDb.js";
-import { hoechsteGemeldeteKlasse, logNotification } from "./lib/db.js";
+import { hoechsteGemeldeteKlasse, logNotification, versandBeleg } from "./lib/db.js";
 import {
   sendTelegramMessage,
   formatAbgangMessage,
@@ -263,7 +263,7 @@ async function gleicheBestandAb(
       if (!data) continue;
 
       await schlafe(TELEGRAM_SENDEABSTAND_MS);
-      await sendTelegramMessage(
+      const abgangMessageId = await sendTelegramMessage(
         telegramConfig,
         formatAbgangMessage({
           title: (data.title as string) ?? "Objekt",
@@ -274,7 +274,10 @@ async function gleicheBestandAb(
           units: (data.units as number | null) ?? null,
         })
       );
-      await logNotification(sb, abgang.id, "verschwunden", { externalId: abgang.externalId });
+      await logNotification(sb, abgang.id, "verschwunden", {
+        externalId: abgang.externalId,
+        ...versandBeleg(abgangMessageId, process.env.GITHUB_RUN_ID),
+      });
     } catch (err) {
       console.error(`Abgangsmeldung fehlgeschlagen [${abgang.externalId}]:`, err);
     }
