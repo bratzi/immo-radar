@@ -419,7 +419,8 @@ Der Startpunkt ist `Math.floor(Date.now() / 3_600_000)` — Stunden seit Epoche.
 
 Das Fenster ist 600 breit und wandert **1 Eintrag je Stunde**. Beim
 Drei-Stunden-Cron heisst das: **3 von 600** Eintraegen sind im Folgelauf neu,
-597 dieselben. Die Zeile
+597 dieselben. (Gemessen laeuft der Cron nur alle ~5 h — siehe A10; das macht
+den Schritt 5 statt 3 und aendert nichts an der Aussage.) Die Zeile
 
 ```
 RUECKSTAND 8729 auf spaetere Laeufe zurueckgestellt
@@ -527,6 +528,56 @@ stilles `topTreffer = false` nicht verbirgt, dass die Zahl kaputt ist.
 weiterhin im Bestand. Sie werden erst korrigiert, wenn die Listenbewertung sie
 erneut trifft. Ob eine bereits versandte Falschmeldung richtiggestellt gehoert,
 ist eine Entscheidung des Nutzers.
+
+---
+
+## A10. Der Cron laeuft nicht alle drei Stunden — 43 % der Termine fallen aus
+
+**Gemessen am 2026-09-08 ueber alle 13 geplanten Laeufe** (`gh run list
+--workflow=scrape.yml`, Ausloeser `schedule`, 2026-09-05 bis 2026-09-08):
+
+```
+23 Soll-Termine (cron "0 */3 * * *")
+13 gelaufen, 10 AUSGEFALLEN  -> 43 % Ausfall
+Verspaetung der gelaufenen: 8 bis 171 min, Median rund 100 min
+
+09-07 06:00  AUSGEFALLEN
+09-07 09:00  AUSGEFALLEN     <- fuenf Termine hintereinander,
+09-07 12:00  AUSGEFALLEN        neun Stunden ohne Lauf
+09-07 15:00  AUSGEFALLEN
+09-07 18:00  gelaufen +171 min
+```
+
+Das ist **kein Fehler dieses Projekts**. GitHub fuehrt geplante Laeufe
+ausdruecklich nur nach bestem Bemuehen aus und laesst sie unter Last aus. Aber
+es widerlegt eine Annahme, die an mehreren Stellen mitgerechnet wurde: „Cron
+alle drei Stunden". Tatsaechlich ist es **ein Lauf je rund fuenf Stunden**.
+
+**Was daran haengt:**
+
+- **B1** verlangt drei vollstaendige Laeufe **je Region**. Bei 16 Regionen,
+  einer Regionsrotation, die je Lauf um `versatz % 16` weiterwandert, und nur
+  einem Lauf je 5 h dauert das ein Vielfaches der bisher angenommenen Zeit.
+- Die Abdeckungsrechnung in A7b ging von 3 h aus. Mit 5 h wandert der Versatz
+  je Lauf um 5 statt 3 — `ggT(5,16) = 1`, alle Startpunkte werden also weiter
+  erreicht, aber langsamer.
+
+**Gut daran:** Die Rotation haengt an der Uhr
+(`Math.floor(Date.now() / 3_600_000)`), nicht an einem Zaehler. Ein
+ausgefallener Lauf ueberspringt einen Versatz, er wiederholt keinen — die
+Abdeckung bleibt also gleichmaessig, sie ist nur langsamer.
+
+**Nicht entschieden, weil es eine Abwaegung ist:** Ein haeufigerer Cron (etwa
+stuendlich) faengt Ausfaelle auf, ohne die Abrufrate je Seite zu erhoehen --
+die Drossel bleibt bei 5 s. Er erhoeht aber die Tagesmenge an Abrufen bei
+Immowelt, und genau die misst ein CAPTCHA. Das gehoert dem Nutzer.
+
+- [ ] **Schritt 1:** Entscheiden, ob der Cron dichter getaktet wird.
+- [ ] **Schritt 2:** Falls ja, danach messen, ob die Ausfallquote sinkt und ob
+      Immowelt haerter drosselt.
+
+**Abnahme:** Die Annahme „alle drei Stunden" steht nirgends mehr unwidersprochen
+im Repo.
 
 ---
 

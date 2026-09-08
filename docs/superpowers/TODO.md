@@ -16,7 +16,7 @@ dran ist. Die Detailbegründungen und die Fallen stehen in
 
 | Baustein | Zustand |
 |---|---|
-| **Betrieb** (Scraper, Cron, Telegram) | **läuft**, alle 3 h, zuletzt 23:17 Uhr |
+| **Betrieb** (Scraper, Cron, Telegram) | **läuft**, aber der Cron fällt zu 43 % aus — gemessen ein Lauf je ~5 h statt alle 3 h (A10) |
 | **Teilprojekt 1** — Vollständige Erfassung & Bestandsführung | **gemergt und live**, in Produktion bestätigt (Lauf `34215003141`) |
 | **Teilprojekt 2** — Mietqualität | **nicht begonnen**, Tabelle `rent_estimates` ist leer und wird von keinem Code gelesen |
 | **Teilprojekt 3** — Dashboard / Webseite | **nicht begonnen**, kein einziges Frontend-File im Repo |

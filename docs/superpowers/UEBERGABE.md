@@ -9,7 +9,9 @@ hergeleitet werden muss.
 ## Wo wir stehen
 
 `main` = `64de963`, **nicht gepusht**, Arbeitsverzeichnis sauber. **327 Tests grün**,
-`npx tsc --noEmit` sauber. Cron alle drei Stunden.
+`npx tsc --noEmit` sauber. Cron ist auf drei Stunden gestellt, laeuft
+aber gemessen nur **alle rund fuenf** — 10 von 23 Soll-Terminen sind ganz
+ausgefallen, die uebrigen 8 bis 171 min zu spaet. Siehe `BACKLOG.md` A10.
 
 Teilprojekt 1 (vollständige Erfassung & Bestandsführung) ist live. In dieser
 Sitzung kam dazu: die Immowelt-Pagination repariert, der Fundort eingeführt,
