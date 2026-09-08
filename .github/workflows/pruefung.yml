@@ -1,0 +1,90 @@
+name: pruefung
+
+# Einzelne Pruef- und Diagnoselaeufe gegen die echten Portale -- auf GitHubs
+# Rechnern, NICHT auf dem Rechner des Nutzers.
+#
+# WARUM ES DIESEN WORKFLOW GIBT: Jede lokale Live-Pruefung lief ueber den
+# privaten Anschluss des Nutzers und hat ihn am 2026-09-08 zweimal lahmgelegt --
+# nicht die Datenmenge, sondern tausende Verbindungen und DNS-Abfragen aus einem
+# Browser mit Fenster. Danach loeste fuer Minuten nichts mehr auf, auch
+# example.com nicht. Seither gilt: Live-Abrufe gehoeren hierher.
+#
+# Ein Lauf dauert wenige Minuten statt der ~28 des vollen `scrape`-Workflows und
+# beruehrt weder Datenbank noch Telegram -- die Pruefskripte speichern nichts
+# und melden nichts. Deshalb bekommt dieser Workflow auch KEINE Secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      skript:
+        description: "Welche Pruefung"
+        required: true
+        default: pruefe-region
+        type: choice
+        options:
+          - pruefe-region
+          - diagnose-overlays
+          - diagnose-detail
+      region:
+        description: "Regionscode fuer pruefe-region (hb, he, nw, by, ...)"
+        required: false
+        default: "hb"
+      max_seiten:
+        description: "Seitendeckel fuer pruefe-region (Zahl)"
+        required: false
+        default: "12"
+
+jobs:
+  pruefung:
+    runs-on: ubuntu-latest
+    # Kurz gehalten: eine Region mit Deckel ist in wenigen Minuten durch. Laeuft
+    # es laenger, stimmt etwas nicht und der Job soll enden statt zu haengen.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: scraper/package-lock.json
+      - run: npm ci
+        working-directory: scraper
+      - run: npx playwright install --with-deps chromium
+        working-directory: scraper
+      # xvfb explizit nachziehen: `playwright install --with-deps` bringt die
+      # Chromium-Bibliotheken mit, aber nicht zwingend Xvfb selbst.
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      # Die Eingaben kommen ueber die Umgebung in die Shell, nicht per
+      # `${{ }}`-Ersetzung mitten im Skript. Sonst waere jeder Eingabewert eine
+      # Einfallstuer fuer eingeschleuste Befehle.
+      - name: Pruefung ausfuehren
+        working-directory: scraper
+        env:
+          SKRIPT: ${{ inputs.skript }}
+          REGION: ${{ inputs.region }}
+          MAX_SEITEN: ${{ inputs.max_seiten }}
+        run: |
+          set -euo pipefail
+          case "$SKRIPT" in
+            pruefe-region)
+              # Regionscode und Deckel streng pruefen, bevor sie an das Skript
+              # gehen -- zwei Buchstaben und eine Zahl, sonst nichts.
+              if ! printf '%s' "$REGION" | grep -qE '^[a-z]{2}$'; then
+                echo "Ungueltiger Regionscode: $REGION" >&2; exit 1
+              fi
+              if ! printf '%s' "$MAX_SEITEN" | grep -qE '^[0-9]{1,3}$'; then
+                echo "Ungueltiger Seitendeckel: $MAX_SEITEN" >&2; exit 1
+              fi
+              xvfb-run --auto-servernum npx tsx scripts/pruefe-region.mts "$REGION" "$MAX_SEITEN"
+              ;;
+            diagnose-overlays)
+              xvfb-run --auto-servernum npx tsx scripts/diagnose-overlays.mts
+              ;;
+            diagnose-detail)
+              xvfb-run --auto-servernum npx tsx scripts/diagnose-detail.mts
+              ;;
+            *)
+              echo "Unbekanntes Skript: $SKRIPT" >&2; exit 1
+              ;;
+          esac

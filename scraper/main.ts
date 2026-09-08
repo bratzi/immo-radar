@@ -36,6 +36,13 @@ import {
   type TelegramConfig,
 } from "./lib/telegram.js";
 import { sb } from "./lib/supabase.js";
+import { nurInCiAusfuehren } from "./lib/nurInCi.js";
+
+// Der volle Lauf faehrt einen Browser gegen zwei Portale und ist der Grund,
+// warum der Anschluss des Nutzers am 2026-09-08 lahmlag. Er gehoert auf
+// GitHubs Rechner (.github/workflows/scrape.yml), nicht auf einen privaten
+// Anschluss. Begruendung ausfuehrlich in lib/nurInCi.ts.
+nurInCiAusfuehren("npm run scrape");
 
 /** Detailseiten aelter als das werden neu geholt. */
 const DETAIL_MAX_ALTER_TAGE = 7;

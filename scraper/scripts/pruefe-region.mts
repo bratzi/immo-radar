@@ -19,8 +19,13 @@
  * heisst: die Pagination blaettert nicht.
  */
 import { chromium } from "playwright";
+import { nurInCiAusfuehren } from "../lib/nurInCi.js";
 import { IMMOWELT_REGIONEN, regionErfassen, trefferzahlAusTitel } from "../scrapers/immowelt/index.js";
 import type { ImmoweltListSummary } from "../scrapers/immowelt/list.js";
+
+// Live-Abruf: laeuft nur auf GitHubs Rechnern, nicht ueber den Anschluss
+// des Nutzers (Begruendung in lib/nurInCi.ts).
+nurInCiAusfuehren("pruefe-region");
 
 const code = process.argv[2] ?? "hb";
 /** Seitendeckel fuer diese Pruefung -- schont den Anschluss bei grossen Regionen. */

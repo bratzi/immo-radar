@@ -34,23 +34,60 @@ Ein Lauf alle 3 Stunden über GitHub Actions (`.github/workflows/scrape.yml`), *
 Während des Umbaus „vollständige Erfassung & Bestandsführung" war der Zeitplan pausiert;
 seit dessen Merge am 2026-09-07 läuft er wieder.
 
-Lokal:
+### Live-Läufe gehören auf GitHubs Rechner, nicht auf deinen
+
+**Der Scraper läuft nicht lokal.** `npm run scrape` und die Prüfskripte brechen
+mit einer Erklärung ab, wenn `CI` nicht gesetzt ist.
+
+Das ist keine Vorsicht, sondern Erfahrung: Live-Läufe über einen privaten
+Anschluss haben ihn am 2026-09-08 **zweimal** lahmgelegt. Nicht die Datenmenge
+war schuld, sondern tausende Verbindungen und DNS-Abfragen aus einem Browser
+mit Fenster — danach löste minutenlang gar nichts mehr auf, auch `example.com`
+nicht. Beim ersten Mal war es ein bundesweiter Lauf, beim zweiten Mal sechs
+einzelne Regionsläufe kurz hintereinander: jeder für sich regelkonform, in der
+Summe derselbe Schaden.
+
+Der volle Lauf läuft alle drei Stunden über
+[`scrape.yml`](.github/workflows/scrape.yml). Einzelne Prüfungen startest du
+über [`pruefung.yml`](.github/workflows/pruefung.yml):
+
+```bash
+# Eine Region erfassen, auf 12 Ergebnisseiten gedeckelt
+gh workflow run pruefung.yml -f skript=pruefe-region -f region=hb -f max_seiten=12
+
+# Welche Overlays fangen die Blätter-Klicks ab?
+gh workflow run pruefung.yml -f skript=diagnose-overlays
+
+# Warum liefert eine Detailseite kein Datenmodell?
+gh workflow run pruefung.yml -f skript=diagnose-detail
+
+gh run watch          # zusehen
+gh run view --log     # Ausgabe lesen
+```
+
+Diese Prüfungen berühren weder Datenbank noch Telegram und brauchen deshalb
+keine Secrets. Ein Lauf dauert wenige Minuten.
+
+**Ausnahme, nur auf ausdrückliche Ansage des Nutzers und dann genau einmal:**
+
+```bash
+cd scraper
+ICH_HABE_DEN_ANSCHLUSS_FREIGEGEBEN=ja npx tsx scripts/pruefe-region.mts hb 12
+```
+
+Danach auswerten, bevor irgendetwas Weiteres startet. Mehrere Läufe kurz
+hintereinander sind genau der Fehler, der schon zweimal passiert ist.
+
+### Entwickeln ohne Netz
+
+Tests und Typprüfung brauchen keinen Live-Zugriff:
 
 ```bash
 cd scraper
 npm ci
-npx playwright install chromium
-npm run scrape
-```
-
-Der Scraper startet Chromium bewusst im Fenstermodus (`headless: false`, siehe
-[Immowelt: Teil-Sweep pro Lauf](#immowelt-teil-sweep-pro-lauf)) und braucht daher
-ein Display. Auf einem headless Linux-Rechner — und in CI — muss der Lauf
-deshalb unter `xvfb-run` erfolgen:
-
-```bash
-sudo apt-get install -y xvfb
-xvfb-run --auto-servernum npm run scrape
+npx playwright install chromium   # für die Browser-Tests gegen eigene Fixtures
+npm test
+npx tsc --noEmit
 ```
 
 Benötigte Umgebungsvariablen (lokal in `scraper/.env`, in CI als Repo-Secrets):

@@ -11,8 +11,13 @@
  * danach zwei Detailseiten.
  */
 import { chromium } from "playwright";
+import { nurInCiAusfuehren } from "../lib/nurInCi.js";
 import { bestaetigeConsentBanner } from "../scrapers/consent.js";
 import { schliesseStoerendeUeberlagerung } from "../scrapers/overlays.js";
+
+// Live-Abruf: laeuft nur auf GitHubs Rechnern, nicht ueber den Anschluss
+// des Nutzers (Begruendung in lib/nurInCi.ts).
+nurInCiAusfuehren("diagnose-detail");
 
 const AUFWAERM = "https://www.immowelt.de/suche/kaufen/haus/mehrfamilienhaus/guenstig/nordrhein-westfalen/ad04de5";
 // Zwei URLs, die im Produktivlauf gescheitert sind (aus dem Actions-Log).

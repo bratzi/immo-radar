@@ -16,8 +16,13 @@
  *  - ob sich die Ergebnisliste nach dem Klick wirklich geaendert hat.
  */
 import { chromium } from "playwright";
+import { nurInCiAusfuehren } from "../lib/nurInCi.js";
 import { bestaetigeConsentBanner } from "../scrapers/consent.js";
 import { schliesseStoerendeUeberlagerung } from "../scrapers/overlays.js";
+
+// Live-Abruf: laeuft nur auf GitHubs Rechnern, nicht ueber den Anschluss
+// des Nutzers (Begruendung in lib/nurInCi.ts).
+nurInCiAusfuehren("diagnose-overlays");
 
 const URL =
   "https://www.immowelt.de/suche/kaufen/haus/mehrfamilienhaus/guenstig/bremen/bremen-28219/ad08de2110";
