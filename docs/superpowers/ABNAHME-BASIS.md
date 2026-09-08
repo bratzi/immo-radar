@@ -32,16 +32,16 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| B-1 | Jedes der 16 Bundesländer war mindestens einmal erfasst | **offen** — zuletzt fehlten 6 |
-| B-2 | Ein verschwundenes Immowelt-Objekt wird als verschwunden erkannt | **offen** — 0 von 754 haben `disappeared_at` |
+| B-1 | Jedes der 16 Bundesländer war mindestens einmal erfasst | **offen** — zuletzt fehlten 6; gerechnet: mit der heutigen Uhr-Rotation 13 Tage bis zur vollen Abdeckung, mit einer Fortsetzungsrotation 5,7 — ohne zusätzliche Abrufe |
+| B-2 | Ein verschwundenes Immowelt-Objekt wird als verschwunden erkannt | **offen** — 0 von inzwischen 1.915 haben `disappeared_at`; fünf Sperren stehen davor, die erste ist der Fehler A14. Entwurf mit Optionen liegt vor (`specs/2026-09-08-immowelt-abgaenge-optionen.md`) |
 | B-3 | Die Löschwachen bleiben fail-closed | **erfüllt**, muss bei jeder Änderung erneut gelten |
 
 ## C — Die Zahlen
 
 | # | Kriterium | Stand |
 |---|---|---|
-| C-1 | Die Mietschätzung ist gegen eine belegbare Quelle geprüft | **in Prüfung** |
-| C-2 | Bekannt ist, wie stark eine falsche Miete die Meldeschwelle verschiebt | **in Prüfung** |
+| C-1 | Die Mietschätzung ist gegen eine belegbare Quelle geprüft | **geprüft, Beleg fehlt im Code** — gegen Zensus 2022/BBSR: n = 23, Median −11,4 %, 17/23 innerhalb ±15 %; im Repo steht davon noch nichts (A11 Schritt 1–3) |
+| C-2 | Bekannt ist, wie stark eine falsche Miete die Meldeschwelle verschiebt | **erfüllt** — ±30 % Miete verschieben 278 bzw. 280 von 1.879 Meldeklassen (14,8 / 14,9 %), 558 (29,7 %) irgendwo im Band (A11) |
 | C-3 | Unplausible Zahlen erzeugen keine Meldung, bleiben aber sichtbar | **erfüllt** seit `64de963` / `d43637b` |
 | C-4 | Kein gespeicherter Wert ist offensichtlich unmöglich | **erfüllt** — Stichprobe über alle 2.864 Versionen, kein absurder Wert aktuell |
 

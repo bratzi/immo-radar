@@ -598,12 +598,125 @@ stuendlich) faengt Ausfaelle auf, ohne die Abrufrate je Seite zu erhoehen --
 die Drossel bleibt bei 5 s. Er erhoeht aber die Tagesmenge an Abrufen bei
 Immowelt, und genau die misst ein CAPTCHA. Das gehoert dem Nutzer.
 
+**Nachtrag 2026-09-08, der die Entscheidung entschaerft:** Die Rechnung in
+[`specs/2026-09-08-immowelt-abgaenge-optionen.md`](specs/2026-09-08-immowelt-abgaenge-optionen.md)
+zeigt, dass eine **Fortsetzungsrotation** (Startindex aus `sweep_region_runs`
+fortschreiben statt aus der Uhr) bei drei Stunden fast so schnell abdeckt wie
+ein Stunden-Cron heute — 5,7 gegen 4,2 Tage, **ohne einen einzigen
+zusaetzlichen Abruf**. Ein dichterer Cron waere damit nur noch ein Mittel
+gegen die 43 % ausgefallenen Termine, nicht gegen die Abdeckung.
+
 - [ ] **Schritt 1:** Entscheiden, ob der Cron dichter getaktet wird.
 - [ ] **Schritt 2:** Falls ja, danach messen, ob die Ausfallquote sinkt und ob
       Immowelt haerter drosselt.
 
 **Abnahme:** Die Annahme „alle drei Stunden" steht nirgends mehr unwidersprochen
 im Repo.
+
+---
+
+## A11. Die Mietschätzung hat keine Quelle im Repo — und verschiebt jede siebte Meldeklasse
+
+**Untersucht am 2026-09-08** für C-1 und C-2. Die Tabelle ist **besser als ihr
+Ruf und schlechter dokumentiert als jede andere Zahl im Projekt.**
+
+**Herkunft.** Im ganzen Repo steht **eine** Quellenangabe zur Miete
+(`lib/rentEstimate.ts:26`, ImmoScout24-Wohnpreisatlas, 9,23 €/m²) — und die
+gilt fuer den unwichtigsten Wert, benutzt von 5 von 2.108 Versionen. Die 95
+handrecherchierten PLZ-Werte (`:37–57`) kamen als geschlossener Block in
+`590e5fe` und tragen **keine Quelle und kein Datum**. Die Bundeslandstufe ist
+keine eigene Recherche: Sie mittelt die vorhandenen PLZ-Werte des Landes
+(`:117–132`) — und traegt **83 % des Bestands** (1.758 von 2.108).
+
+**Belastbarkeit — geprueft gegen Zensus 2022** (Destatis-Regionaltabelle,
+12.439 Gebietszeilen, amtlich und frei). Der Zensus misst Bestandsmieten, der
+Code schaetzt Angebotsmieten; ueberbrueckt ueber den BBSR-Abstand 2025
+(11,11 gegen 7,76 €/m², rund 43 %), kalibriert auf den Bundeswert.
+
+> **n = 23 PLZ-Zweisteller · Mittel −8,5 % · Median −11,4 % · Spanne −23,7 %
+> bis +23,9 % · 17 von 23 innerhalb ±15 %.**
+
+Haerteste Gegenprobe ohne Umrechnung, gegen drei direkt veroeffentlichte
+BBSR-Angebotsmieten 2025: Muenchen −2,4 %, Frankfurt −0,8 %, Stuttgart −6,4 %.
+**Die Tabelle ist nicht geraten.** Sie trifft Niveau und Gefaelle und liegt
+systematisch leicht zu niedrig — erwartbar, weil ein PLZ-Zweisteller mehr
+umfasst als seine Kernstadt (die „44" ist Dortmund *und* Bochum *und* Herne).
+
+**Der schwaechste Punkt ist nicht die Tabelle, sondern die Bundeslandstufe** —
+nicht wegen ihres Mittelwerts (Median −2,8 %, 13 von 16 innerhalb ±15 %),
+sondern wegen der Spanne, die sie einebnet:
+
+```
+Nordrhein-Westfalen   6,50 bis 16,50 €/m²   -37,1 % bis +59,7 %
+Bayern                8,00 bis 20,50 €/m²   -34,8 % bis +67,1 %
+```
+
+**7 von 16 Bundeslaendern verlassen intern das ±30-%-Band, und dort liegen
+1.202 von 1.879 bewerteten Objekten — 64 %.** Die ±30-%-Rechnung unten ist
+damit keine Hypothese, sondern die gemessene Unschaerfe des Regelwegs.
+
+**Hebelwirkung.** Alle 1.879 bewertbaren Objekte mit den **echten** Funktionen
+nachgerechnet (`berechneKennzahlen`, `ermittleJahreskaltmiete`,
+`bewerteEinheiten`, `bestimmeMeldeklasse`), Miete × 0,7 / × 1,0 / × 1,3. Der
+nachgerechnete Kaufpreisfaktor stimmt bei **1.879 von 1.879** mit dem
+gespeicherten `metrics.kaufpreisfaktor` ueberein — die Simulation rechnet
+nachweislich dasselbe wie die Pipeline.
+
+| Schwelle | −30 % | heute | +30 % |
+|---|---:|---:|---:|
+| `kaufpreisfaktor <= 15` | 602 (32,0 %) | 910 (48,4 %) | 1.218 (64,8 %) |
+| `geschaetzterDscr >= 1,3` | 261 (13,9 %) | 502 (26,7 %) | 735 (39,1 %) |
+| `topTreffer` (alle vier) | 205 (10,9 %) | 409 (21,8 %) | 595 (31,7 %) |
+
+> **Meldeklasse wechselt: 278 Objekte (14,8 %) bei −30 %, 280 (14,9 %) bei
+> +30 %, 558 (29,7 %) irgendwo im Band.**
+
+`top_treffer` bleibt in allen drei Szenarien **0** — nur drei Objekte tragen
+eine belegte Miete, keines passiert die Schwellen. **Eine falsche Schaetzung
+kann nie einen `top_treffer` erzeugen**, sie erzeugt oder verhindert
+ausschliesslich `pruefkandidat`. Der Hebel sitzt fast vollstaendig auf der
+Bundeslandstufe (1.699 der 1.879 Objekte, 237 bzw. 241 der Wechsel).
+
+**Warum das nicht akademisch ist:** Heute erfuellen 409 Objekte die Schwellen,
+das Meldebudget liegt bei 25 je Lauf und war zuletzt ausgeschoepft (D-5). Der
+Rueckstand betraegt rund 250 Meldungen — ein Mietfehler von ±30 % verschiebt
+ihn um **±200 Objekte**. Er entscheidet also nicht nur, *ob* gemeldet wird,
+sondern ueber Wochen, *was zuerst*.
+
+**Nebenbefund in die Gegenrichtung:** Bei +30 % verlieren einzelne Objekte die
+Meldeklasse, weil ihr Faktor unter `MIN_PLAUSIBLER_KAUFPREISFAKTOR = 3`
+rutscht. Die A9-Untergrenze wirkt genau wie beabsichtigt.
+
+- [ ] **Schritt 1 (Doku, kein Verhalten):** Ueber `REGIONALE_MIETE_PRO_M2` einen
+      Kommentarblock setzen: handrecherchiert, ohne benannte Quelle
+      (`590e5fe`), geprueft am 2026-09-08 gegen Zensus 2022/BBSR mit n = 23,
+      Median −11,4 %, 17/23 innerhalb ±15 %. Dieselbe Angabe fuer die
+      Bundeslandstufe samt interner Spanne.
+- [ ] **Schritt 2:** `BUNDESWEITER_MIETPREIS_PRO_M2_MONAT` von 9,23 auf den
+      belegten BBSR-Wert **11,11 €/m² (2025)** heben — der alte Wert ist
+      −16,9 % zu niedrig. Betrifft 5 Objekte, gehoert trotzdem gemessen.
+- [ ] **Schritt 3 (B3):** INKAR-Indikator **2113 „Angebotsmietpreise"**
+      (BBSR, Kreisebene, 2010–2024, gleiche Bezugsgroesse wie der Code) als
+      CSV exportieren und als Pruefdatei ins Repo legen. Danach ein Test, der
+      jeden der 95 Werte gegen seinen Referenzkreis haelt und bei mehr als
+      ±25 % fehlschlaegt. **Die Zuordnung PLZ-Zweisteller → Referenzkreis muss
+      von Hand entstehen und im Repo stehen** — sie ist die eigentliche
+      Arbeit, nicht der Test.
+- [ ] **Schritt 4 — Entscheidung des Nutzers:** Darf eine bundeslandgenaue
+      Schaetzung ueberhaupt eine Meldung ausloesen? Diese Objekte stellen 339
+      der 409 Meldekandidaten, und ihre Unschaerfe umfasst in NRW und Bayern
+      das gesamte ±30-%-Band. Alternative: speichern und im Dashboard zeigen,
+      aber nicht per Telegram melden.
+
+**Ehrliche Fehlanzeige:** Eine frei *automatisiert* abrufbare Tabelle mit
+Angebotsmieten je Kreis gibt es nicht. Der Deutschlandatlas antwortet
+Nicht-Browser-Clients mit HTTP 400, die undokumentierte INKAR-API lieferte
+leere Antworten. Der Export aus Schritt 3 ist Handarbeit — einmalig.
+
+**Abnahme:** C-1 gilt als erfuellt, wenn im Repo an der Tabelle steht, gegen
+welche Quelle sie geprueft wurde, mit welchem Ergebnis und zu welchem Stand,
+und wenn der Test aus Schritt 3 gruen laeuft **und bei einer kuenstlich um
+30 % verschobenen Tabelle rot wird**. C-2 ist mit diesem Eintrag erfuellt.
 
 ---
 
@@ -778,12 +891,89 @@ Preis ist nach dem Lauf noch auffindbar.
 
 ---
 
+## A14. `.in()` reisst ab 642 IDs — der Bestandsabgleich faellt stumm aus
+
+**Gefunden am 2026-09-08** bei der Untersuchung zu B-2. Das ist ein echter
+Fehler, kein Entwurfsthema, und er trifft ausgerechnet die Wache, die
+verhindert, dass gesehene Objekte geloescht werden.
+
+**Beleg, Lauf `34230052647`** (2026-09-08 13:07 UTC), Logzeile 13:50:03 —
+direkt nach `Meldungen: 15 von hoechstens 25 gesendet`:
+
+```
+Bestandsabgleich fehlgeschlagen [immowelt]: { message: 'Bad Request' }
+```
+
+Der gesamte `gleicheBestandAb` fuer Immowelt brach ab, also auch
+`aktualisiereLastSeen`.
+
+**Ursache, rein lesend reproduziert** gegen dieselbe Tabelle:
+`aktualisiereLastSeen` (`lib/bestandDb.ts:133`) schickt alle IDs in **einem**
+`.in("id", …)`. Die Grenze ist die URL-Laenge, nicht die Datenbank:
+
+```
+  641 IDs → URL 25.072 B → HTTP 200
+  642 IDs → URL 25.111 B → HTTP 400 "Bad Request"
+1.500 IDs → HTTP 414
+```
+
+Die Laeufe, die durchliefen, hatten 608 bzw. 563 IDs. Der 13:07-Lauf haette
+rund 1.300 gebraucht.
+
+**Warum es dringend ist:** Der Bestand waechst schnell (754 → **1.915**
+Immowelt-Objekte binnen eines Tages). Die Grenze von 641 wird kuenftig in
+**jedem** Lauf gerissen. Betroffen sind ausserdem `markiereVerschwunden`,
+`hebeVerschwundenAuf` und `loescheAbgelaufene` (`bestandDb.ts:108/120/160 ff.`)
+— **jede Option zu B-2 setzt voraus, dass das zuerst repariert ist.**
+
+**Nebenwirkung, die eine Messung unmoeglich macht:** 560 `nw`-Objekte tragen
+`last_seen = 2026-09-08T11:11:28`, obwohl `nw` 2,5 h spaeter erneut
+vollstaendig gesweept wurde. Ob sie fehlten oder ob nur der Abgleich
+abstuerzte, ist aus den Daten nicht zu trennen.
+
+- [ ] **Schritt 1:** Test, der `aktualisiereLastSeen` mit mehr als 641 IDs
+      aufruft und heute fehlschlaegt.
+- [ ] **Schritt 2:** Die vier Stellen in Bloecken zu hoechstens 500 IDs fahren
+      (oder serverseitig ueber einen `external_id`-Filter), Bloecke einzeln
+      quittieren. **Fail-closed bleibt Pflicht:** Scheitert ein Block, gilt
+      der Abgleich als unvollstaendig — nicht als „der Rest war in Ordnung".
+
+**Abnahme:** Ein Produktionslauf mit mehr als 1.000 Immowelt-Objekten
+protokolliert keinen `Bestandsabgleich fehlgeschlagen` mehr, und die Zahl der
+aktualisierten `last_seen`-Zeilen entspricht der Zahl der gesehenen Objekte.
+
+---
+
 # Teil B — Braucht erst einen Entwurf
 
 Nicht direkt implementieren. Reihenfolge: `superpowers:brainstorming` → Spec
 unter `docs/superpowers/specs/` → `superpowers:writing-plans` → Umsetzung.
 
 ## B1. Immowelt-Löschhoheit, Phase 2 — regionsgenaues Löschen
+
+> **Der Entwurf liegt vor:**
+> [`specs/2026-09-08-immowelt-abgaenge-optionen.md`](specs/2026-09-08-immowelt-abgaenge-optionen.md).
+> Kurzfassung: **fünf** Sperren stehen vor `disappeared_at`, nicht zwei; die
+> erste davon ist der Fehler A14. Die Rotation wurde validiert (fünf von fünf
+> Läufen vorhergesagt), und eine Monte-Carlo-Rechnung über 3.000 Durchläufe
+> sagt: drei Referenzläufe je Region sind in **13 Tagen** erreichbar
+> (90. Perzentil 20) — mit einer **Fortsetzungsrotation statt der Uhr in 5,7
+> Tagen, ohne einen einzigen zusätzlichen Abruf**. B1 ist also erreichbar.
+>
+> **Empfohlen wird trotzdem nicht B1, sondern Markieren ohne Löschen** —
+> derselbe Code mit abgeschaltetem letztem Schritt. Grund: Ein Lauf, der `nw`
+> soft-geblockt mit einer Karte einsammelt, gilt heute als vollständig, weil
+> `istRegionVollstaendig` bei fehlender Trefferzahl `true` liefert — und die
+> Trefferzahl fehlt ausgerechnet für `nw`, `bw` und `mv`. Das wären heute
+> **1.160**, am Sättigungspunkt **~6.900** fälschlich gelöschte Objekte.
+> Selbst mit reparierter Trefferzahl erlaubt die 25-%-Toleranz **bis zu 1.724**
+> in einem Zug.
+>
+> **Drei Fail-open-Stellen** müssen vorher fallen: `bestand.ts:78` (leerer
+> Geltungsbereich = voller Geltungsbereich), `istRegionVollstaendig`
+> (`immowelt/index.ts:146`, `null` = vollständig) und `loescheAbgelaufene`
+> (`bestandDb.ts:155`, filtert **nicht** nach `source` — wer heute markiert,
+> löscht zwei Tage später mit).
 
 **Harte Voraussetzung:** `sweep_region_runs` muss je Region **drei**
 vollständige Läufe zeigen. Vorher ist die Aufgabe wirkungslos.
