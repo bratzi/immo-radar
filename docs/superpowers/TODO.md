@@ -96,106 +96,80 @@ die SPA feuert pro Seite Dutzende XHRs.
 
 ## Die To-do-Liste, in dieser Reihenfolge
 
-### 1. Immowelt-Pagination — der Blockierer ist identifiziert, aber nicht besiegt
+### 1. Immowelt-Pagination — GELÖST und live bestätigt
 
-**Stand 2026-09-08.** Der Sweep bricht seit jeher nach **zwei** Ergebnisseiten
-je Region ab. Das wurde nacheinander als kaputte Pagination, als
-DataDome-Block und als Cookie-Overlay gedeutet. Gemessen an der echten Seite
-ist es keins davon:
+**Bremen liefert 201 von 209 Objekten** (Lauf vom 2026-09-08, 75 s, fünf
+Seiten). Vorher waren es 80, davor 42. `istRegionVollstaendig(201, 209)` ist
+damit erfüllt.
+
+Der Sweep brach seit jeher nach zwei Ergebnisseiten je Region ab. Das wurde
+nacheinander als kaputte Pagination, als DataDome-Block und als Cookie-Overlay
+gedeutet. Es war **keins davon**, sondern drei zusammenwirkende Fehler:
+
+**a) Immowelts eigene Werbe-Überlagerungen** fangen die Blätter-Klicks ab —
+mindestens zwei verschiedene, gestapelt:
 
 ```
-ELEMENT <div class="css-1lcifqp">   fixed, 1265x720, pointer-events: auto
-  TEXT:  "Beschleunige deine Suche mit einem Suchauftrag ... E-Mail ..."
-  KNOPF: aria-label="Schließen"
-  KNOPF: "Suchauftrag speichern"
-         data-testid="av-ssab-Modal-secondPageModal-submit"
+<div class="css-1lcifqp">  fixed, 1265x720, pointer-events: auto
+  role=-  aria-modal=-  data-testid=-        <- KEINE Dialog-Rolle
+  "Beschleunige deine Suche mit einem Suchauftrag ..."
+  KNOPF aria-label="Schließen"
+  KNOPF data-testid="av-ssab-Modal-secondPageModal-submit"
 ```
 
-Immowelts eigener Suchauftrag-/Newsletter-Dialog. Sein Testid sagt, wann er
-kommt: `secondPageModal` — beim Wechsel auf Seite 2. Seine Klassennamen werden
-bei jedem Rendern neu erzeugt (`css-8g8ihq`, `css-5h5f1k`, `css-1lcifqp` für
-dasselbe Ding), ein Klassen-Selektor ist deshalb wertlos. Stabil sind die
-Rolle `dialog` und `aria-label="Schließen"`.
+`secondPageModal` sagt es wörtlich: der Dialog kommt beim Wechsel auf Seite 2.
+Die zweite Bauart schließt nur über ein **„x" oben links**, ohne `aria-label`.
+Klassennamen werden bei jedem Rendern neu erzeugt (`css-8g8ihq`, `css-5h5f1k`,
+`css-1lcifqp` für dasselbe Element) — kein Selektor darf daran hängen.
 
-**Was daraufhin behoben wurde (mit Tests, live bestätigt):**
+`scrapers/overlays.ts` sucht deshalb über die **Geometrie**: Ein „x" zählt nur,
+wenn sein Vorfahr fest positioniert ist *und* mindestens ein Viertel des
+Sichtfensters überdeckt. Ein Test hält fest, dass ein „x" im normalen
+Seiteninhalt dadurch nicht geklickt wird. Die Dialoge werden **geschlossen,
+nicht bedient** — ihre Absenden-Knöpfe legen einen Suchauftrag an bzw. melden
+an; auch dafür gibt es einen Test.
 
-- `scrapers/overlays.ts` schließt den Dialog. Live belegt: *„Stoerende
-  Ueberlagerung geschlossen ueber `[role="dialog"] button[aria-label="Schließen"]`"*.
-  Er wird **geschlossen, nicht bedient** — sein Absenden-Knopf würde einen
-  Suchauftrag im Namen des Nutzers anlegen.
-- `bestaetigeConsentBanner` teilte sein Zeitbudget auf **sieben** Kandidaten
-  auf. Live gemessen erscheint der einzig passende Knopf
-  (`[data-testid="uc-accept-all-button"]`, Beschriftung **„OK"**) erst nach
-  ~8 s; nach 3 s ist der Shadow Root leer. Von 10 s bekam er ein Siebtel —
-  ~1,4 s — und wurde nie lange genug abgewartet. Jetzt wird **einmal** auf
-  alle Kandidaten gleichzeitig gewartet (`Locator.or`), mit dem ganzen Budget.
-  Seither gelingt die Zustimmung im ersten Anlauf.
+**b) Das Consent-Budget** wurde auf sieben Kandidaten aufgeteilt. Der einzig
+passende Knopf (`[data-testid="uc-accept-all-button"]`, Beschriftung **„OK"**)
+erscheint erst nach ~8 s, bekam davon aber ein Siebtel — ~1,4 s. Jetzt wird
+einmal auf alle Kandidaten gleichzeitig gewartet (`Locator.or`), mit dem
+ganzen Budget.
 
-**Nachtrag 2026-09-08, zweite Bauart.** Der Nutzer hat beobachtet, dass neben
-dem Suchauftrag-Dialog noch eine **zweite** Überlagerung liegt, die sich nur
-über ein **„x" oben links** schließen lässt — ohne `aria-label`. Von Hand
-weggeklickt ließ sich blättern. `schliesseStoerendeUeberlagerung` räumt
-deshalb jetzt in mehreren Runden auf, bis nichts mehr da ist, und erkennt
-beide Bauarten; bei mehreren Treffern wird der am weitesten oben links
-liegende genommen. Ein Test hält fest, dass **kein anderer** Knopf der
-Überlagerung angefasst wird — deren Absenden-Knöpfe legen einen Suchauftrag
-an bzw. melden an.
+**c) Das Erfolgskriterium war falsch.** `blaettereWeiter` wertete „der Klick
+hat keine Ausnahme geworfen" als Erfolg. Live widerlegt: fünf Klicks gingen
+durch, während die Liste stehenblieb — dieselbe Seite wurde wieder und wieder
+gelesen und über die `externalId` wegdedupliziert. Erfolg ist jetzt, dass die
+erste Ergebniskarte danach eine **andere** ist.
 
-**Dazu der dritte Defekt, behoben:** `blaettereWeiter` wertete „der Klick hat
-keine Ausnahme geworfen" als Erfolg. Live widerlegt: fünf Klicks gingen durch,
-während die Liste ab Seite 2 stehenblieb — 80 statt 209 Objekte, weil dieselbe
-Seite wieder und wieder gelesen und über die `externalId` wegdedupliziert
-wurde. Erfolg ist jetzt, dass die erste Ergebniskarte danach eine **andere**
-ist (`wartetAufNeueListe`).
+### 2. Der Sitemap-Umbau ist nicht nötig
 
-**Noch offen: die Live-Bestätigung.** Die drei Korrekturen sind durch Tests
-gedeckt (247 grün), aber **nicht** gegen die echte Seite gelaufen — der
-Anschluss war während des Laufs nicht belastbar (Chromium erreichte auch
-`example.com` nicht). Der Lauf dafür ist ein Befehl:
+Derselbe Lauf hat mitprotokolliert:
 
-```bash
-cd scraper && npx tsx scripts/pruefe-region.mts hb
+```
+200  https://www.immowelt.de/serp-bff/search
+200  https://www.immowelt.de/classified-search?distributionTypes=Buy,Buy_Auction,...
 ```
 
-Erwartung: deutlich mehr als 80 Objekte, Sollwert 209. Bleibt es bei ~80,
-greift die Architekturfrage in To-do 2.
+**HTTP 200, kein 403.** Die Annahme in
+[`specs/2026-09-07-immowelt-sitemap-befund.md`](specs/2026-09-07-immowelt-sitemap-befund.md),
+Blättern sei ohne Umgehung eines Anti-Bot-Systems unmöglich, beschreibt nicht
+die heutige Lage. Der Befund war eine Fehldiagnose der Overlay-Blockade. Der
+Umbau auf 8.901 Sitemap-Orte entfällt damit als Notwendigkeit.
 
-### 2. Die offene Architekturfrage — erst beantworten, dann weiterbauen
+**Was dadurch neu zu bedenken ist:**
 
-Drei Fixversuche haben die Pagination nicht über Seite 2 hinaus gebracht. Das
-ist der Punkt, an dem nicht ein vierter Versuch drangehört, sondern eine
-Entscheidung.
-
-**Verdacht, noch unbelegt:** Der Klick auf „nächste Seite" ist ab Seite 2
-keine echte Navigation mehr, sondern ein XHR der SPA — und genau den weist
-DataDome ab. Der Knopf wird also erfolgreich geklickt, die Anfrage läuft ins
-Leere, die Liste bleibt stehen. Dazu passt der alte Befund in
-[`specs/2026-09-07-immowelt-sitemap-befund.md`](specs/2026-09-07-immowelt-sitemap-befund.md):
-`GET 403 /classified-search?…&page=2` und `POST 403 /serp-bff/search`.
-
-Trifft das zu, dann war der Sitemap-Weg die ganze Zeit richtig — nur aus
-einem anderen Grund als dort beschrieben, und die Grenze liegt nicht bei
-Seite 1, sondern bei Seite 2.
-
-**Wie es zu belegen wäre:** ein Lauf, der beim steckengebliebenen Klick den
-Netzwerkverkehr mitschneidet. Das Skript dafür steht
-(`scripts/diagnose-overlays.mts` schneidet bereits mit); der Lauf kam nicht
-mehr zustande, weil der Anschluss ausfiel (siehe unten).
-
-**Zwei Wege stehen dann zur Wahl:**
-
-1. **Sitemap-Umbau** — 8.901 Ortsseiten, je eine Seite, kein Blättern nötig.
-   Braucht Caching, Rotation über den Tag und eine Fundort-Spalte.
-2. **Bei zwei Seiten je Region bleiben** und akzeptieren, dass Immowelt nur
-   Kandidaten liefert und niemals löscht (heutiger Zustand, sicher, aber
-   unvollständig).
-
-**Zwingend zuerst zu klären, unabhängig vom Weg:** Ein weiterer Defekt ist
-belegt, aber noch nicht behoben — `blaettereWeiter` wertet „der Klick hat
-keine Ausnahme geworfen" als Erfolg. Das ist nachweislich falsch: fünf
-„erfolgreiche" Klicks, zwei tatsächliche Seiten. Das Erfolgskriterium muss
-die **tatsächliche Änderung der Ergebnisliste** sein. Solange das so bleibt,
-meldet der Sweep Seitenzahlen, die es nicht gab.
+- Der Sweep sieht jetzt ein Vielfaches an Objekten (Bremen allein 201 statt
+  42). `SWEEP_BUDGET_MS` (12 min) begrenzt weiterhin, wie viele Bundesländer
+  ein Lauf schafft — es werden deutlich weniger je Lauf sein, der volle Kreis
+  dauert länger. Das ist gewollt.
+- Die Zahlen in `sweep_runs.gesehene_objekte` springen dadurch stark. Für
+  Löschungen ist das ungefährlich: Immowelt meldet weiterhin
+  `vollstaendig: false` und autorisiert keine.
+- Keine Meldungsflut: Detailabrufe sind auf `DETAIL_BUDGET_MS /
+  IMMOWELT_VERZOEGERUNG_MS = 144` je Lauf gedeckelt, und ohne Details keine
+  Meldung.
+- Die **Fundort-Spalte** bleibt die Voraussetzung dafür, dass Immowelt
+  überhaupt löschen darf (siehe To-do 4).
 
 ### 3. Determinismus-Nachweis — für ZVG erledigt
 
