@@ -5,6 +5,7 @@ import {
   IMMOWELT_REGIONEN,
   gemeldeteTrefferSumme,
   blaettereWeiter,
+  beurteileDetailAntwort,
 } from "./index.js";
 
 describe("trefferzahlAusTitel", () => {
@@ -208,5 +209,46 @@ describe("blaettereWeiter", () => {
     expect(budgets.length).toBeGreaterThanOrEqual(3);
     expect(budgets[1]).toBeGreaterThan(budgets[0]);
     expect(budgets[2]).toBeGreaterThan(budgets[1]);
+  });
+});
+
+describe("beurteileDetailAntwort", () => {
+  // Warum es diese Funktion gibt: Im Produktivlauf scheiterten ALLE 144
+  // Immowelt-Detailseiten mit "__UFRN_LIFECYCLE_SERVERREQUEST__ nicht
+  // gefunden -- Seitenstruktur hat sich vermutlich geaendert". Dieselben URLs
+  // lieferten lokal HTTP 200 mit vollstaendigem Datenmodell (geprueft
+  // 2026-09-08). Die Struktur war also nie das Problem.
+  //
+  // Genau diese Verwechslung -- Sperre als Strukturaenderung gemeldet -- hat
+  // in diesem Projekt schon dreimal in die falsche Richtung gefuehrt. Der
+  // HTTP-Status stand die ganze Zeit zur Verfuegung und wurde nie ausgewertet.
+
+  it("nennt einen abgewiesenen Abruf beim Namen, statt die Struktur zu verdaechtigen", () => {
+    const urteil = beurteileDetailAntwort(403, 1500, false);
+    expect(urteil).not.toBeNull();
+    expect(urteil).toMatch(/403/);
+    expect(urteil).toMatch(/abgewiesen/i);
+    expect(urteil).not.toMatch(/Struktur/i);
+  });
+
+  it("erkennt den Soft-Block: HTTP 200 mit leerer Huelle", () => {
+    // DataDome antwortet auch mit 200 und ~1,5 kB Huelle statt der Seite.
+    const urteil = beurteileDetailAntwort(200, 1500, false);
+    expect(urteil).toMatch(/Huelle|Hülle/);
+    expect(urteil).not.toMatch(/Struktur/i);
+  });
+
+  it("verdaechtigt die Struktur NUR bei einer vollstaendigen Seite ohne Datenmodell", () => {
+    const urteil = beurteileDetailAntwort(200, 650_000, false);
+    expect(urteil).toMatch(/Struktur/i);
+  });
+
+  it("meldet nichts, wenn die Seite in Ordnung ist", () => {
+    expect(beurteileDetailAntwort(200, 650_000, true)).toBeNull();
+  });
+
+  it("behandelt eine fehlende Antwort als nicht beurteilbar, nicht als in Ordnung", () => {
+    // page.goto kann null liefern. Das ist kein Beleg fuer eine heile Seite.
+    expect(beurteileDetailAntwort(null, 0, false)).not.toBeNull();
   });
 });

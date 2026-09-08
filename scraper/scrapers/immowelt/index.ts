@@ -506,6 +506,62 @@ export async function sweepImmowelt(): Promise<{
   };
 }
 
+/**
+ * Ab welcher HTML-Groesse eine Antwort als vollstaendige Seite gilt. Echte
+ * Immowelt-Seiten liegen bei 650.000 bis 1.150.000 Zeichen (lokal gemessen,
+ * 2026-09-08); eine DataDome-Huelle bei rund 1,5 kB.
+ */
+const VOLLE_SEITE_AB_ZEICHEN = 50_000;
+
+/**
+ * Warum ein Detailabruf nichts brauchbares geliefert hat -- oder null, wenn
+ * alles in Ordnung ist.
+ *
+ * WARUM DIESE FUNKTION EXISTIERT: Im Produktivlauf scheiterten ALLE 144
+ * Immowelt-Detailseiten mit der Parser-Meldung
+ * "__UFRN_LIFECYCLE_SERVERREQUEST__ nicht gefunden -- Seitenstruktur hat sich
+ * vermutlich geaendert". Dieselben URLs lieferten lokal HTTP 200 mit
+ * vollstaendigem Datenmodell. Die Struktur war also nie das Problem, und die
+ * Meldung schickte die Fehlersuche in die falsche Richtung -- zum dritten Mal
+ * in diesem Projekt (davor: "Pagination kaputt", "Immowelt gesperrt").
+ *
+ * Der HTTP-Status stand die ganze Zeit zur Verfuegung: `page.goto` gibt eine
+ * Response zurueck, die niemand ausgewertet hat. Diese Funktion trennt die
+ * drei Faelle, die sich sonst gleich anfuehlen:
+ *
+ *  - Status ungleich 200: der Abruf wurde abgewiesen. Eine Sperre, kein Umbau.
+ *  - Status 200, aber winzige Seite: DataDomes Soft-Block antwortet mit 200
+ *    und einer ~1,5-kB-Huelle ("Please enable JS and disable any ad blocker").
+ *  - Status 200, vollstaendige Seite, trotzdem kein Datenmodell: erst HIER
+ *    darf man die Seitenstruktur verdaechtigen.
+ *
+ * Eine fehlende Antwort (`status === null`) gilt als nicht beurteilbar, nicht
+ * als in Ordnung.
+ */
+export function beurteileDetailAntwort(
+  status: number | null,
+  htmlLaenge: number,
+  hatDatenmodell: boolean
+): string | null {
+  if (status === null) {
+    return "Keine HTTP-Antwort erhalten -- nicht beurteilbar.";
+  }
+  if (status !== 200) {
+    return `Abruf abgewiesen: HTTP ${status}. Das ist eine Sperre oder ein Fehler der Gegenseite.`;
+  }
+  if (hatDatenmodell) return null;
+  if (htmlLaenge < VOLLE_SEITE_AB_ZEICHEN) {
+    return (
+      `HTTP 200, aber nur ${htmlLaenge} Zeichen -- eine Huelle statt der Seite. ` +
+      `So sieht DataDomes Soft-Block aus. Antwort darauf ist Drosselung, nicht Umgehung.`
+    );
+  }
+  return (
+    `HTTP 200 und ${htmlLaenge} Zeichen, aber kein Datenmodell -- hier kann die ` +
+    `Seitenstruktur tatsaechlich geaendert sein. Erst jetzt lohnt ein Blick in den Parser.`
+  );
+}
+
 /** Phase B: Detailseiten nur fuer die uebergebenen externalIds. */
 export async function erfasseImmoweltDetails(
   zusammenfassungen: Map<string, ImmoweltListSummary>,
@@ -516,6 +572,10 @@ export async function erfasseImmoweltDetails(
   // headless: false zwingend -- Begruendung siehe sweepImmowelt oben.
   const browser: Browser = await chromium.launch({ headless: false });
   const ergebnisse: ImmoweltDetailData[] = [];
+  // Wie viele Abrufe nichts brauchbares lieferten. Nur die ersten drei werden
+  // einzeln gemeldet -- 144 gleichlautende Zeilen verstopfen das Log und
+  // verbergen die eine Zahl, auf die es ankommt.
+  let abgewiesen = 0;
   try {
     const page: Page = await browser.newPage();
 
@@ -550,9 +610,28 @@ export async function erfasseImmoweltDetails(
       // weiterer Seitenabruf und damit wie die uebrigen gedrosselt.
       await sleep(IMMOWELT_VERZOEGERUNG_MS);
       try {
-        await page.goto(zusammenfassung.url, { waitUntil: "domcontentloaded", referer });
+        const antwort = await page.goto(zusammenfassung.url, {
+          waitUntil: "domcontentloaded",
+          referer,
+        });
+        const html = await page.content();
+        // Erst beurteilen, DANN parsen: Der Parser kann nur "Datenmodell
+        // fehlt" sagen und verdaechtigt dafuer die Seitenstruktur -- auch
+        // dann, wenn in Wahrheit eine Sperre geantwortet hat.
+        const urteil = beurteileDetailAntwort(
+          antwort?.status() ?? null,
+          html.length,
+          html.includes("__UFRN_LIFECYCLE_SERVERREQUEST__")
+        );
+        if (urteil !== null) {
+          abgewiesen += 1;
+          if (abgewiesen <= 3) {
+            console.warn(`Immowelt-Detailseite ${zusammenfassung.url}: ${urteil}`);
+          }
+          continue;
+        }
         ergebnisse.push(
-          parseImmoweltDetailPage(await page.content(), {
+          parseImmoweltDetailPage(html, {
             externalId: zusammenfassung.externalId,
             url: zusammenfassung.url,
           })
@@ -563,6 +642,13 @@ export async function erfasseImmoweltDetails(
     }
   } finally {
     await browser.close();
+  }
+  if (abgewiesen > 0) {
+    console.warn(
+      `Immowelt-Details: ${abgewiesen} von ${externalIds.length} Abrufen ohne Datenmodell, ` +
+        `${ergebnisse.length} erfasst. Bei einem Totalausfall zuerst den oben genannten ` +
+        `Grund lesen -- eine Sperre erfordert Drosselung, eine Strukturaenderung den Parser.`
+    );
   }
   return ergebnisse;
 }
