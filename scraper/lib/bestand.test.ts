@@ -7,6 +7,8 @@ import {
   istHartLoeschbar,
   waehleDetailKandidaten,
   rotiereAuswahl,
+  streueAuswahl,
+  budgetiereKandidaten,
   type SweepErgebnis,
   type BekanntesListing,
 } from "./bestand.js";
@@ -205,5 +207,69 @@ describe("rotiereAuswahl", () => {
 
   it("liefert bei leerer Liste eine leere Liste", () => {
     expect(rotiereAuswahl([], 3, 7)).toEqual([]);
+  });
+});
+
+describe("streueAuswahl", () => {
+  /**
+   * Nachgebaute Kandidatenliste eines echten Laufs: die Regionen stehen
+   * hintereinander, so wie der Sweep sie einsammelt. Gemessen am 2026-09-08
+   * lieferte ein Lauf 202 Objekte aus Bremen und danach 6823 aus
+   * Nordrhein-Westfalen.
+   */
+  function bandAusZweiRegionen(): string[] {
+    return [
+      ...Array.from({ length: 202 }, (_, i) => `hb-${i}`),
+      ...Array.from({ length: 6823 }, (_, i) => `nw-${i}`),
+    ];
+  }
+
+  it("waehlt aus jeder Region der Liste, nicht nur aus einer", () => {
+    const auswahl = streueAuswahl(bandAusZweiRegionen(), 600, 496907);
+    const hb = auswahl.filter((id) => id.startsWith("hb-")).length;
+    const nw = auswahl.filter((id) => id.startsWith("nw-")).length;
+    // Anteilig waeren es ~17 aus Bremen. Die Zahl muss nicht exakt sein, aber
+    // Bremen darf nicht wegfallen und Nordrhein-Westfalen nicht alles stellen.
+    expect(hb).toBeGreaterThan(5);
+    expect(nw).toBeGreaterThan(500);
+    expect(hb + nw).toBe(600);
+  });
+
+  it("erreicht ueber aufeinanderfolgende Laeufe jeden Eintrag", () => {
+    // Das ist die Eigenschaft, die dem alten zusammenhaengenden Fenster fehlte:
+    // Bei Versatzschritt 3 deckten zehn Laeufe nur 127 von 1000 Eintraegen ab,
+    // weil sich die Fenster fast vollstaendig ueberlappten.
+    const liste = Array.from({ length: 1000 }, (_, i) => `id-${i}`);
+    const erreicht = new Set<string>();
+    for (let lauf = 0; lauf < 10; lauf += 1) {
+      for (const id of streueAuswahl(liste, 100, lauf * 3)) erreicht.add(id);
+    }
+    expect(erreicht.size).toBe(1000);
+  });
+
+  it("liefert genau Budget-viele verschiedene Eintraege", () => {
+    const liste = Array.from({ length: 1000 }, (_, i) => `id-${i}`);
+    const auswahl = streueAuswahl(liste, 300, 77);
+    expect(auswahl).toHaveLength(300);
+    expect(new Set(auswahl).size).toBe(300);
+  });
+
+  it("liefert alles, wenn die Liste nicht laenger als das Budget ist", () => {
+    expect(streueAuswahl(["a", "b", "c"], 3, 5)).toEqual(["a", "b", "c"]);
+    expect(streueAuswahl([], 10, 5)).toEqual([]);
+  });
+});
+
+describe("budgetiereKandidaten", () => {
+  const viele = Array.from({ length: 9329 }, (_, i) => `id-${i}`);
+
+  it("verspricht nicht, dass der Rest in spaeteren Laeufen drankommt", () => {
+    // Die alte Meldung sagte "RUECKSTAND 8729 auf spaetere Laeufe
+    // zurueckgestellt". Gemessen am 2026-09-08 traf das nicht zu: das Fenster
+    // wanderte 3 von 600 Eintraegen je Lauf. Eine Meldung, die eine Ursache
+    // behauptet statt zu messen, hat dieses Projekt schon dreimal in die
+    // falsche Richtung geschickt.
+    const { meldung } = budgetiereKandidaten("Immowelt-Bewertung", 600, viele, 0);
+    expect(meldung).not.toMatch(/zurueckgestellt|spaetere Laeufe|RUECKSTAND/);
   });
 });

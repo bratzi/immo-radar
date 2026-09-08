@@ -182,6 +182,62 @@ export function waehleDetailKandidaten(
  * Uhr abgeleitet (Stunden seit Epoche) -- kein persistenter Zustand, keine
  * neue Abhaengigkeit, gleiche Mechanik wie frueher die Bundesland-Rotation.
  */
+/**
+ * Waehlt die Kandidatenscheibe eines Laufs und formuliert dazu die Log-Zeile.
+ *
+ * Beides zusammen, weil die Meldung sonst behauptet, was die Auswahl nicht
+ * haelt: Die Vorgaengerin sagte "RUECKSTAND N auf spaetere Laeufe
+ * zurueckgestellt". Gemessen am 2026-09-08 traf das nicht zu -- die Auswahl
+ * verschob sich um 3 von 600 Eintraegen je Lauf. Die Zeile sagt jetzt nur
+ * noch, was in DIESEM Lauf geschah.
+ */
+export function budgetiereKandidaten(
+  quelle: string,
+  budget: number,
+  kandidaten: string[],
+  versatz: number
+): { auswahl: string[]; meldung: string } {
+  const auswahl = streueAuswahl(kandidaten, budget, versatz);
+  const unbearbeitet = kandidaten.length - auswahl.length;
+  const meldung =
+    `${quelle}: ${auswahl.length} von ${kandidaten.length} Kandidaten in diesem Lauf ` +
+    `bearbeitet, ueber die Liste gestreut. ` +
+    (unbearbeitet === 0
+      ? `Keiner bleibt uebrig.`
+      : `${unbearbeitet} bleiben in diesem Lauf unbearbeitet.`);
+  return { auswahl, meldung };
+}
+
+/**
+ * Waehlt hoechstens `budget` Eintraege, die ueber die GANZE Liste gestreut
+ * sind, statt sie wie `rotiereAuswahl` zusammenhaengend herauszuschneiden.
+ *
+ * Warum es beides gibt: Der Sweep rotiert die 16 Bundeslaender und braucht
+ * dort ein zusammenhaengendes Fenster -- die Reihenfolge ist der Zweck. Die
+ * Bewertungsauswahl braucht das Gegenteil. Gemessen am 2026-09-08 (Lauf
+ * 34215003141) schnitt das zusammenhaengende Fenster 560 von 597 Objekten aus
+ * einem einzigen Bundesland, weil Nordrhein-Westfalen 73 % der Liste stellt.
+ *
+ * Und es wanderte kaum: Das Fenster ist 600 breit, der Versatz waechst 1 je
+ * Stunde, der Cron laeuft alle 3 Stunden -- 597 von 600 Eintraegen waren im
+ * Folgelauf dieselben. Nordrhein-Westfalen haette so 6895/48 = 144 Laeufe
+ * gebraucht, also rund 287 Tage, bis es einmal vollstaendig bewertet ist.
+ */
+export function streueAuswahl(kandidaten: string[], budget: number, versatz: number): string[] {
+  if (kandidaten.length <= budget) return kandidaten;
+  const n = kandidaten.length;
+  // Abstand zwischen zwei gewaehlten Eintraegen. `Math.floor` haelt
+  // `budget * schritt <= n`, und genau das macht die Indizes unten
+  // garantiert verschieden -- sie laufen nie ein zweites Mal um.
+  const schritt = Math.floor(n / budget);
+  const start = ((versatz % n) + n) % n;
+  const auswahl: string[] = [];
+  for (let i = 0; i < budget; i += 1) {
+    auswahl.push(kandidaten[(start + i * schritt) % n]);
+  }
+  return auswahl;
+}
+
 export function rotiereAuswahl(kandidaten: string[], budget: number, versatz: number): string[] {
   if (kandidaten.length < budget) return kandidaten;
   const start = ((versatz % kandidaten.length) + kandidaten.length) % kandidaten.length;

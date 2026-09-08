@@ -12,7 +12,7 @@ import {
   ermittleAbgaenge,
   ermittleRueckkehrer,
   waehleDetailKandidaten,
-  rotiereAuswahl,
+  budgetiereKandidaten,
   type SweepErgebnis,
 } from "./lib/bestand.js";
 import { pruefeMengenplausibilitaet } from "./lib/plausibilitaet.js";
@@ -117,18 +117,24 @@ const MAX_MELDUNGEN_JE_LAUF = 25;
  * Hoechstzahl Immowelt-Objekte, die ein Lauf aus der Ergebnisliste bewertet.
  *
  * Nicht die Abrufe sind hier der Engpass -- die Liste ist ohnehin schon
- * geladen --, sondern die Datenbankrunden je Kandidat und die Laufzeit. Der
- * Rest wird ueber die rotierende Auswahl auf Folgelaeufe verteilt, genau wie
- * bei der ZVG-Detailerfassung.
+ * geladen --, sondern die Datenbankrunden je Kandidat und die Laufzeit.
+ *
+ * Was der Rest NICHT tut: sich zuverlaessig ueber Folgelaeufe verteilen. Das
+ * stand hier bis zum 2026-09-08 und war gemessen falsch. Die Auswahl streut
+ * seit `streueAuswahl` wenigstens ueber alle Regionen statt ein
+ * zusammenhaengendes Stueck zu schneiden, aber sie deckt je Lauf 600 von
+ * zuletzt 9.329 gesehenen Objekten ab. Wer diesen Deckel anfasst, misst
+ * vorher die Laufzeit -- ein Kill durch `timeout-minutes` trifft VOR dem
+ * Abgleichs- und Loeschblock.
  */
 const MAX_BEWERTUNGEN_IMMOWELT = 600;
 
 const TELEGRAM_SENDEABSTAND_MS = 500;
 
 /**
- * Waehlt aus den Detailkandidaten einer Quelle die Scheibe fuer diesen Lauf und
- * protokolliert, wie viele auf spaetere Laeufe zurueckgestellt werden -- so ist
- * der Rueckstand im Run-Log Lauf fuer Lauf sichtbar (und sollte schrumpfen).
+ * Waehlt die Kandidatenscheibe dieses Laufs und schreibt die Log-Zeile dazu.
+ * Auswahl und Meldung stecken in `budgetiereKandidaten` (lib/bestand.ts) --
+ * dort sind sie unter Test, hier waren sie es nie.
  */
 function budgetiereDetailKandidaten(
   quelle: string,
@@ -136,13 +142,13 @@ function budgetiereDetailKandidaten(
   kandidaten: string[],
   versatz: number
 ): string[] {
-  const auswahl = rotiereAuswahl(kandidaten, maxKandidaten, versatz);
-  const zurueckgestellt = kandidaten.length - auswahl.length;
-  console.log(
-    `${quelle}: ${auswahl.length} Detailseiten in diesem Lauf, ` +
-      `RUECKSTAND ${zurueckgestellt} auf spaetere Laeufe zurueckgestellt ` +
-      `(von ${kandidaten.length} offenen Kandidaten).`
+  const { auswahl, meldung } = budgetiereKandidaten(
+    quelle,
+    maxKandidaten,
+    kandidaten,
+    versatz
   );
+  console.log(meldung);
   return auswahl;
 }
 
