@@ -691,14 +691,17 @@ sondern ueber Wochen, *was zuerst*.
 Meldeklasse, weil ihr Faktor unter `MIN_PLAUSIBLER_KAUFPREISFAKTOR = 3`
 rutscht. Die A9-Untergrenze wirkt genau wie beabsichtigt.
 
-- [ ] **Schritt 1 (Doku, kein Verhalten):** Ueber `REGIONALE_MIETE_PRO_M2` einen
+- [x] **Schritt 1 (Doku, kein Verhalten):** Ueber `REGIONALE_MIETE_PRO_M2` einen
       Kommentarblock setzen: handrecherchiert, ohne benannte Quelle
       (`590e5fe`), geprueft am 2026-09-08 gegen Zensus 2022/BBSR mit n = 23,
       Median −11,4 %, 17/23 innerhalb ±15 %. Dieselbe Angabe fuer die
       Bundeslandstufe samt interner Spanne.
-- [ ] **Schritt 2:** `BUNDESWEITER_MIETPREIS_PRO_M2_MONAT` von 9,23 auf den
+- [x] **Schritt 2:** `BUNDESWEITER_MIETPREIS_PRO_M2_MONAT` von 9,23 auf den
       belegten BBSR-Wert **11,11 €/m² (2025)** heben — der alte Wert ist
       −16,9 % zu niedrig. Betrifft 5 Objekte, gehoert trotzdem gemessen.
+      **Erledigt.** Der Fehler ging gegen den Nutzer: zu niedrige Miete heiszt
+      zu schlechter Kaufpreisfaktor, ein lohnendes Objekt fiele unter die
+      Meldeschwelle.
 - [ ] **Schritt 3 (B3):** INKAR-Indikator **2113 „Angebotsmietpreise"**
       (BBSR, Kreisebene, 2010–2024, gleiche Bezugsgroesse wie der Code) als
       CSV exportieren und als Pruefdatei ins Repo legen. Danach ein Test, der

@@ -40,7 +40,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| C-1 | Die Mietschätzung ist gegen eine belegbare Quelle geprüft | **geprüft, Beleg fehlt im Code** — gegen Zensus 2022/BBSR: n = 23, Median −11,4 %, 17/23 innerhalb ±15 %; im Repo steht davon noch nichts (A11 Schritt 1–3) |
+| C-1 | Die Mietschätzung ist gegen eine belegbare Quelle geprüft | **geprüft und belegt im Code** — gegen Zensus 2022/BBSR: n = 23, Median −11,4 %, 17/23 innerhalb ±15 %; Herkunft und Prüfstand stehen jetzt über der Tabelle. Offen bleibt nur der dauerhafte Test gegen INKAR (A11 Schritt 3) |
 | C-2 | Bekannt ist, wie stark eine falsche Miete die Meldeschwelle verschiebt | **erfüllt** — ±30 % Miete verschieben 278 bzw. 280 von 1.879 Meldeklassen (14,8 / 14,9 %), 558 (29,7 %) irgendwo im Band (A11) |
 | C-3 | Unplausible Zahlen erzeugen keine Meldung, bleiben aber sichtbar | **erfüllt** seit `64de963` / `d43637b` |
 | C-4 | Kein gespeicherter Wert ist offensichtlich unmöglich | **erfüllt** — Stichprobe über alle 2.864 Versionen, kein absurder Wert aktuell |

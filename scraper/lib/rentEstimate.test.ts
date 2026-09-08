@@ -17,6 +17,19 @@ describe("ermittleJahreskaltmiete", () => {
     expect(r.jahreskaltmiete).toBeGreaterThan(0);
   });
 
+  /**
+   * Der bisherige Wert 9,23 €/m² stammte aus dem ImmoScout-Wohnpreisatlas
+   * (Recherchestand 09/2026) und ist gegen die BBSR-Angebotsmiete 2025
+   * (11,11 €/m²) um 16,9 % zu niedrig. Zu niedrig heiszt hier: Der
+   * Kaufpreisfaktor faellt zu schlecht aus und ein lohnendes Objekt fiele
+   * unter die Meldeschwelle -- der Fehler geht also gegen den Nutzer.
+   * Quelle: BBSR, "Mieten driften immer weiter auseinander" (2025).
+   */
+  it("setzt den belegten BBSR-Wert 2025 von 11,11 €/m² an", () => {
+    const r = ermittleJahreskaltmiete(null, 100);
+    expect(r.jahreskaltmiete).toBeCloseTo(11.11 * 100 * 12, 6);
+  });
+
   it("schätzt bundesweit auch bei 0 oder negativer Angabe", () => {
     const r = ermittleJahreskaltmiete(0, 100);
     expect(r.quelle).toBe("geschaetzt_bundesweit");

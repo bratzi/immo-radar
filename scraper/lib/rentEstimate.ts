@@ -23,8 +23,19 @@ export interface MietSchaetzung {
   quelle: MietQuelle;
 }
 
-// Bundesweiter Durchschnitt Kaltmiete, Stand Recherche 09/2026 (ImmoScout24-Wohnpreisatlas: 9,23 €/m²).
-export const BUNDESWEITER_MIETPREIS_PRO_M2_MONAT = 9.23;
+/**
+ * Bundesweite Angebots-Kaltmiete. Quelle: BBSR, "Mieten driften immer weiter
+ * auseinander" (2025) -- Angebotsmiete 11,11 €/m², Bestandsmiete rund
+ * 7,76 €/m². Angebotsmiete ist die richtige Bezugsgroesse: Dieses Projekt
+ * bewertet Objekte, die neu vermietet wuerden, nicht laufende Vertraege.
+ *
+ * Vorher stand hier 9,23 €/m² aus dem ImmoScout-Wohnpreisatlas
+ * (Recherchestand 09/2026) -- gegen den BBSR-Wert 16,9 % zu niedrig. Zu
+ * niedrig heiszt: Der Kaufpreisfaktor faellt zu schlecht aus, ein lohnendes
+ * Objekt fiele unter die Meldeschwelle. Der Fehler ging also gegen den
+ * Nutzer.
+ */
+export const BUNDESWEITER_MIETPREIS_PRO_M2_MONAT = 11.11;
 
 /**
  * Naeherungs-Kaltmiete in €/m²/Monat je zweistelligem PLZ-Bereich.
@@ -33,6 +44,28 @@ export const BUNDESWEITER_MIETPREIS_PRO_M2_MONAT = 9.23;
  * fuer ein 27.000-€-Objekt in Plauen 38.500 € Jahresmiete an und erzeugte so
  * einen Kaufpreisfaktor von 0,7. Die Spanne zwischen Muenchen (~20 €/m²) und
  * strukturschwachen Regionen (~5 €/m²) ist zu gross, um sie zu mitteln.
+ *
+ * HERKUNFT UND PRUEFSTAND -- bitte vor jeder "Korrektur" lesen:
+ *
+ * Diese 95 Werte sind HANDRECHERCHIERT und kamen ohne benannte Quelle in
+ * `590e5fe` (2026-09-07) ins Repo. Am 2026-09-08 wurden sie erstmals gegen
+ * eine Quelle geprueft (Backlog A11): Zensus 2022, Regionaltabelle Gebaeude
+ * und Wohnungen, Spalte "durchschn. Nettokaltmiete pro Quadratmeter",
+ * umgerechnet von Bestands- auf Angebotsmiete ueber den BBSR-Abstand 2025.
+ *
+ *   n = 23 Stichproben (Gross-, Mittelstadt und laendlich, Ost und West)
+ *   Mittel -8,5 %, Median -11,4 %, Spanne -23,7 % bis +23,9 %
+ *   17 von 23 innerhalb ±15 %
+ *
+ * Gegenprobe ohne Umrechnung, gegen direkt veroeffentlichte
+ * BBSR-Angebotsmieten 2025: Muenchen -2,4 %, Frankfurt -0,8 %,
+ * Stuttgart -6,4 %.
+ *
+ * Die Tabelle ist also NICHT geraten. Sie trifft Niveau und Gefaelle und
+ * liegt systematisch leicht zu niedrig -- erwartbar, weil ein
+ * PLZ-Zweisteller mehr umfasst als seine Kernstadt (die "44" ist Dortmund
+ * UND Bochum UND Herne). Wer einen Einzelwert anhebt, verschiebt damit auch
+ * den Bundeslandmittelwert, der daraus gebildet wird.
  */
 const REGIONALE_MIETE_PRO_M2: Record<string, number> = {
   "01": 9.0, "02": 6.0, "03": 6.5, "04": 9.5, "06": 6.8, "07": 7.2, "08": 6.0, "09": 6.5,
@@ -103,6 +136,21 @@ export function bundeslandFuerRegionscode(code: string): string | null {
  * Nordrhein-Westfalen liegen Duesseldorf (12,50) und laendliche Kreise (9,00)
  * unter demselben Mittelwert. Objekte, die so bewertet werden, tragen deshalb
  * die Datenluecke `miete_nur_bundeslandgenau`.
+ *
+ * WIE GROB, ist seit dem 2026-09-08 gemessen (Backlog A11). Der Mittelwert
+ * als Zahl ist gut -- Median -2,8 % gegen Zensus 2022/BBSR, 13 von 16
+ * Laendern innerhalb ±15 %. Das Problem ist die Spanne, die er einebnet:
+ *
+ *   Nordrhein-Westfalen   6,50 bis 16,50 €/m²   -37,1 % bis +59,7 %
+ *   Bayern                8,00 bis 20,50 €/m²   -34,8 % bis +67,1 %
+ *
+ * 7 der 16 Laender verlassen intern das ±30-%-Band, und dort liegen 64 % der
+ * bewerteten Objekte. Diese Stufe traegt 83 % des Bestands (1.758 von 2.108
+ * Versionen), weil Immowelt-Ergebnislisten keine PLZ nennen. Gemessene
+ * Auswirkung: ±30 % Miete verschieben rund 15 % aller Meldeklassen.
+ *
+ * Der wirksamste Hebel ist deshalb NICHT eine bessere Tabelle, sondern eine
+ * PLZ fuer Immowelt-Objekte.
  *
  * Wird beim ersten Aufruf berechnet und gemerkt -- 10.812 PLZ-Eintraege sind
  * nichts, aber es passiert einmal je Kandidat.
