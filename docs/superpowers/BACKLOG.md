@@ -607,6 +607,81 @@ im Repo.
 
 ---
 
+## A12. Telegram-Zustellung: richtig, aber nicht belegt und nicht getestet
+
+**Untersucht am 2026-09-08** für Abnahmekriterium D-1. Der Verdacht war, die
+Tabelle `notifications` zähle Versandversuche statt Zustellungen. **Er ist
+widerlegt** — das Verhalten ist korrekt, nur unbewiesen und ungeschützt.
+
+**Was gemessen wurde:**
+
+- Die Reihenfolge stimmt an allen drei Aufrufstellen: erst senden, dann
+  protokollieren (`lib/pipeline.ts:376` → `:394`, `:410` → `:414`,
+  `main.ts:266` → `:277`). Das `try/catch` in `pipeline.ts:385` umschliesst
+  **nur** `sendeMedien`; `sendTelegramMessage` wirft ungebremst durch.
+- Der HTTP-Status wird ausgewertet (`lib/telegram.ts:434`): 200 → still
+  weiter, 429 → bis zu zwei Wiederholungen mit `Retry-After` (auf 30 s
+  gedeckelt), alles andere → `throw` mit Status und Rumpf. Der Wurf landet in
+  `main.ts:169` als `console.error`, die Zeile entsteht nicht, und
+  `hoechsteGemeldeteKlasse` sieht das Objekt weiter als nie gemeldet.
+- Der Antwortrumpf wird **nie** gelesen — keine `message_id`, kein `ok`-Feld.
+  Zwei lesende API-Aufrufe zeigen aber, dass Telegram `error_code` auf den
+  HTTP-Status spiegelt (`getChat` mit ungueltiger ID → HTTP 400,
+  `getMe` → HTTP 200). `ok:false` bei 2xx ist damit kein praktischer Fall.
+- **Der Beleg an Produktionsdaten:** Lauf `34230052647` hatte zwei
+  `ETIMEDOUT`-Fehlschlaege in `sendTelegramMessage`. Das Log meldet
+  `15 von hoechstens 25 gesendet`, die Tabelle traegt **15** Zeilen, nicht 17.
+  Ein gescheiterter Versand hinterlaesst nachweislich keine Zeile. Die Laeufe
+  `34215003141` (25/25) und `34261364448` (25/25) stimmen ebenfalls exakt.
+- **Nebenbefund:** `verbuchen()` laeuft in `pipeline.ts:400` nach
+  `logNotification`. Die Zahl in `Meldungen: X von hoechstens 25` zaehlt also
+  bestaetigte Versaende, nicht Versuche — D-5 ist praeziser als angenommen.
+
+**Warum es trotzdem offen ist:** In der Zeile selbst steht nichts, was die
+Zustellung beweist. Die Garantie haengt an einem Kommentar und an der
+Reihenfolge zweier Anweisungen — **keine Testzeile schuetzt sie**. Kein Test im
+Projekt enthaelt das Wort `fetch`; `telegram.test.ts` prueft ausschliesslich
+Formatierer. Wer `if (res.ok) return;` streicht oder `logNotification`
+vorzieht, bekommt eine gruene Suite.
+
+**Weitere Luecken:** Fotos und ZVG-PDFs scheitern still mit `console.warn`
+(`pipeline.ts:385`) und haben null Nachweis. Die Sweep-Warnung
+(`main.ts:232`) hinterlaesst bewusst gar nichts (`listing_id` ist `not null`).
+`notifications` traegt keine `run_id` — der Abgleich Log↔Datenbank
+funktioniert nur, weil sich die Laufzeitfenster zufaellig nicht ueberlappen.
+
+- [ ] **Schritt 1:** `sendTelegramMessage` gibt die `message_id` zurueck
+      (`res.json()` im `res.ok`-Zweig, Parsen in `try/catch`, damit ein
+      fehlender JSON-Rumpf einen bestaetigten Versand nicht in einen
+      Fehlschlag verwandelt) und `pipeline.ts:394` legt sie als
+      `telegramMessageId` ins bestehende `detail`-jsonb. **Keine
+      Schemaaenderung** — `detail jsonb` traegt das bereits (`schema.sql:116`).
+- [ ] **Schritt 2:** Regressionstest fuer den Transport — `globalThis.fetch`
+      stubben: 200 → kein Wurf, `message_id` zurueck; 403 → wirft; 429 zweimal
+      dann 200 → genau drei Aufrufe; 429 dauerhaft → wirft nach drei. Dazu ein
+      `processCandidate`-Test: wirft der Versand, wird `logNotification`
+      **nicht** gerufen. Im Rot-Gruen-Zyklus verifizieren.
+- [ ] **Schritt 3:** `process.env.GITHUB_RUN_ID` als `runId` ins `detail`.
+- [ ] **Schritt 4:** Eine Erfolgszeile je Versand ins Log.
+
+**Bewusst nicht vorgeschlagen:** eine eigene Spalte `telegram_message_id` oder
+`status`. Das `detail`-jsonb leistet dasselbe ohne Migration; eine Spalte lohnt
+erst, wenn darauf gefiltert oder indiziert wird. Und keine Testnachricht an den
+Chat des Nutzers — nach Schritt 1 belegt der naechste regulaere Lauf dasselbe
+von allein.
+
+**Abnahme:** An **einem** Produktionslauf gilt gleichzeitig: (1)
+`select count(*) from notifications where detail->>'telegramMessageId' is null
+and detail->>'runId' = '<id>'` ergibt 0; (2) die Zahl stimmt per `runId` mit
+der Logzeile ueberein; (3) die Transporttests sind gruen und der
+Reihenfolgetest ist rot gesehen worden; (4) enthaelt der Lauf einen
+Fehlschlag, liegt die Zeilenzahl um genau diese Anzahl unter den
+qualifizierten Kandidaten — so wie es `34230052647` heute schon zeigt.
+Punkt 4 ist der Kern: Ein Lauf ohne Fehlschlag belegt nur, dass nichts
+schiefging, nicht dass ein Fehlschlag richtig behandelt wuerde.
+
+---
+
 # Teil B — Braucht erst einen Entwurf
 
 Nicht direkt implementieren. Reihenfolge: `superpowers:brainstorming` → Spec
