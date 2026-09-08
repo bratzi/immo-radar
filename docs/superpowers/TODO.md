@@ -3,6 +3,9 @@
 **Stand:** 2026-09-07, 23:30 Uhr. Belegt durch Abfrage der Produktionsdatenbank
 und `git log`, nicht aus dem Gedächtnis.
 
+> **Ausfuehrbare Aufgabenliste:** [BACKLOG.md](BACKLOG.md) - Teil A ist so
+> geschnitten, dass Subagenten es ohne Vorwissen abarbeiten koennen.
+
 Dieses Dokument ist die **Landkarte**: was es gibt, was fehlt, was als Nächstes
 dran ist. Die Detailbegründungen und die Fallen stehen in
 [`UEBERGABE.md`](UEBERGABE.md) — hier steht nur, wo wir sind.
@@ -83,16 +86,26 @@ Neu ist außerdem `scripts/pruefe-region.mts`: prüft **eine** Region gegen die
 echte Seite, ohne Datenbank und ohne Meldungen. Es existiert, damit nie wieder
 versehentlich ein bundesweiter Lauf lokal startet.
 
-## Noch offen: die Produktionsbestätigung der Pagination
+## Produktionsbestätigung der Pagination — bestanden
 
-Der Cron-Lauf um 07:43 UTC am 2026-09-08 lief **noch mit dem alten Code**
-(`gesehen=717`, `bereich=0` — rund eine Seite je Region); der Merge ging erst
-um ~07:40 UTC raus. Der erste Lauf mit dem Fix ist der darauffolgende.
+Lauf #14 (2026-09-08, 08:15 UTC, sha `8fbb877`):
 
-**Woran man den Erfolg erkennt:** `gesehene_objekte` springt von ~650 auf ein
-Vielfaches, und `geltungsbereich` ist nicht mehr leer. Bleibt es bei ~650,
-verhält sich CI anders als lokal — dann zuerst prüfen, ob das Wegklicken der
-Overlays unter `xvfb` greift.
+```
+08:15  immowelt  gesehen=3665  gemeldet=3818  vollst=false  bereich=4
+07:43  immowelt  gesehen= 717  gemeldet=   -  vollst=false  bereich=0   <- alter Code
+```
+
+**3.665 statt 717 Objekte, Faktor 5,1.** 3.665 von 3.818 ausgewiesenen
+Treffern sind 96 % — die vier abgearbeiteten Bundesländer wurden praktisch
+vollständig erfasst. `geltungsbereich` ist erstmals gefüllt, und
+`gemeldete_treffer` ist nach dem Fail-closed-Umbau ein echter Wert statt `0`.
+
+`sweep_region_runs` trägt die ersten vier Zeilen (`br` 1099/1134, `st`
+927/983, `th` 881/917, `sl` 766/784), alle als `vollstaendig: true`.
+
+**Aber:** Die Detailerfassung für Immowelt liefert seit dem 2026-09-07 um
+17:41 UTC nichts mehr. Der Sweep findet tausende Objekte, bewertet wird
+keines. Siehe [`BACKLOG.md`](BACKLOG.md) A1 — dringendster offener Punkt.
 
 ## Warnung: der Anschluss ist am 2026-09-08 erneut ausgefallen
 
