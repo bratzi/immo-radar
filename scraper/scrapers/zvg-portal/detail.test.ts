@@ -298,6 +298,24 @@ describe("parseZvgDetailPage — Verkehrswert mit Zusatztext (echte Portal-Faell
     expect(mitWert("Verkehrswert: 353.000,-€")).toBe(353_000_00);
   });
 
+  it("versteht auch den doppelten Strich", () => {
+    // Echter Fall, zvg_id=4198&land_abk=rp: Die Gesamtsumme steht mit ",--",
+    // die Teilwerte mit ",00". Ohne den zweiten Strich faellt genau die
+    // Gesamtsumme aus dem Muster, und der groesste ERKANNTE Betrag ist dann
+    // ein Teilwert -- gespeichert waren 160.000 statt 282.000 €, 43 % zu wenig.
+    expect(mitWert("Gesamtverkehrswert: 282.000,-- €")).toBe(282_000_00);
+  });
+
+  it("nimmt die Gesamtsumme, auch wenn nur sie den doppelten Strich traegt", () => {
+    expect(
+      mitWert(
+        "Verkehrswert Flur 25 Nr. 24/1: 122.000,00 € " +
+          "Verkehrswert Flur 25 Nr. 295: 160.000,00 € " +
+          "Gesamtverkehrswert: 282.000,-- €"
+      )
+    ).toBe(282_000_00);
+  });
+
   it("versteht 'Euro' ausgeschrieben und fehlende Leerzeichen", () => {
     expect(mitWert("25.000,00 Euro")).toBe(25_000_00);
     expect(mitWert("Verkehrswert:268.000,00€")).toBe(268_000_00);

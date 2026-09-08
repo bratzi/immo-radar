@@ -118,9 +118,16 @@ function normalizeWhitespace(text: string): string {
 
 /**
  * Deutscher Geldbetrag, gefolgt von einer Waehrungsangabe -- z. B.
- * "605.000,00 €", "89.000,00 EUR", "353.000,-€", "25.000,00 Euro".
+ * "605.000,00 €", "89.000,00 EUR", "353.000,-€", "282.000,-- €",
+ * "25.000,00 Euro".
+ *
+ * Der zweite Strich ist nicht kosmetisch. Bei zvg_id=4198 (rp) trugen die
+ * Teilwerte ",00" und nur die Gesamtsumme ",--". Ohne `,--` fiel damit genau
+ * die Gesamtsumme aus dem Muster, und die Max-Regel unten waehlte den
+ * groessten ERKANNTEN Betrag -- einen Teilwert. Gespeichert waren 160.000
+ * statt 282.000 €.
  */
-const BETRAG_PATTERN = /(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{2})|,-)?\s*(?:€|EUR|Euro)/gi;
+const BETRAG_PATTERN = /(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{2})|,--?)?\s*(?:€|EUR|Euro)/gi;
 
 /** Geldbetrag ohne Waehrungsangabe, an den Nachkommastellen erkennbar. */
 const BETRAG_OHNE_WAEHRUNG_PATTERN = /(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})(?!\d)/g;
