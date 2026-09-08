@@ -25,6 +25,7 @@ import {
   aktualisiereLastSeen,
   loescheAbgelaufene,
   speichereSweepLauf,
+  speichereRegionsLaeufe,
   ladeSweepHistorie,
 } from "./lib/bestandDb.js";
 import { hoechsteGemeldeteKlasse, logNotification } from "./lib/db.js";
@@ -259,6 +260,9 @@ async function main() {
   console.log("Immowelt: Sweep gestartet...");
   const immowelt = await sweepImmowelt();
   await speichereSweepLauf(sb, immowelt.sweep);
+  // Mengenhistorie je Region. Aendert am Loeschverhalten nichts -- sie sammelt
+  // die Referenzlaeufe, die eine spaetere regionsgenaue Loeschhoheit braucht.
+  await speichereRegionsLaeufe(sb, "immowelt", immowelt.regionLaeufe);
 
   const immoweltBekannt = new Set(
     (await ladeBekannteListings(sb, "immowelt")).map((l) => l.externalId)
@@ -281,6 +285,8 @@ async function main() {
       source: "immowelt",
       externalId: objekt.externalId,
       url: objekt.url,
+      // Woher das Objekt stammt, weiss nur der Sweep -- die Detailseite nicht.
+      fundort: immowelt.zusammenfassungen.get(objekt.externalId)?.fundort ?? null,
       title: objekt.title,
       priceCents: objekt.priceCents,
       livingAreaM2: objekt.livingAreaM2,

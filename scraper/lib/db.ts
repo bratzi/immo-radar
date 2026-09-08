@@ -48,6 +48,12 @@ export interface ListingVersionData {
   bundesland: string | null;
   title: string;
   kennzahlen: Kennzahlen;
+  /**
+   * Region, auf deren Ergebnisliste das Objekt gefunden wurde. null heisst
+   * "nicht zuzuordnen" -- so wie eine ZVG-externalId ohne Bundeslandpraefix,
+   * und mit derselben Folge: Unzuordenbares ist nie ein Abgang.
+   */
+  fundort?: string | null;
   auctionAt?: string | null;
   court?: string | null;
   caseNumber?: string | null;
@@ -94,6 +100,30 @@ export function versionInsertZeile(
   };
 }
 
+/**
+ * Die `listings`-Zeile eines gerade erfassten Objekts. Als reine Funktion
+ * herausgezogen, damit sich ohne Datenbank pruefen laesst, WAS geschrieben
+ * wird -- gleiches Muster wie `versionInsertZeile`.
+ */
+export function listingUpsertZeile(
+  data: Pick<ListingVersionData, "source" | "externalId" | "url"> & { fundort?: string | null },
+  jetzt: string
+): Record<string, unknown> {
+  return {
+    source: data.source,
+    external_id: data.externalId,
+    url: data.url,
+    last_seen: jetzt,
+    // Das Objekt wurde gerade im Detail erfasst, ist also wieder da.
+    disappeared_at: null,
+    last_detail_at: jetzt,
+    // null = nicht zuzuordnen. Bewusst kein Default auf irgendeine Region:
+    // ein falscher Fundort waere schlimmer als gar keiner, weil er ein Objekt
+    // in den Geltungsbereich eines Sweeps zoege, der es nie gesehen hat.
+    fundort: data.fundort ?? null,
+  };
+}
+
 export async function upsertListingAndVersion(
   supabase: SupabaseClient,
   data: ListingVersionData
@@ -101,18 +131,7 @@ export async function upsertListingAndVersion(
   const jetzt = new Date().toISOString();
   const { data: listing, error: listingError } = await supabase
     .from("listings")
-    .upsert(
-      {
-        source: data.source,
-        external_id: data.externalId,
-        url: data.url,
-        last_seen: jetzt,
-        // Das Objekt wurde gerade im Detail erfasst, ist also wieder da.
-        disappeared_at: null,
-        last_detail_at: jetzt,
-      },
-      { onConflict: "source,external_id" }
-    )
+    .upsert(listingUpsertZeile(data, jetzt), { onConflict: "source,external_id" })
     .select()
     .single();
   if (listingError) throw listingError;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Kennzahlen } from "./metrics.js";
-import { diffVersion, versionInsertZeile } from "./db.js";
+import { diffVersion, versionInsertZeile, listingUpsertZeile } from "./db.js";
 
 describe("diffVersion", () => {
   it("meldet changed=true und priceDropped=false für die allererste Version", () => {
@@ -84,5 +84,31 @@ describe("versionInsertZeile", () => {
     expect(zeile.court).toBe("Leipzig in Sachsen");
     expect(zeile.data_gaps).toEqual(["units_unconfirmed"]);
     expect(zeile.price_dropped).toBe(true);
+  });
+});
+
+describe("listingUpsertZeile", () => {
+  const jetzt = "2026-09-08T10:00:00.000Z";
+  const basis = { source: "immowelt", externalId: "abc-123", url: "https://example.invalid/x" };
+
+  it("schreibt den Fundort mit, wenn der Sweep ihn kennt", () => {
+    // Der Fundort ist die Voraussetzung dafuer, dass Immowelt spaeter
+    // regionsgenau loeschen darf: seine externalId ist eine UUID und verraet
+    // den Ort nicht, anders als ZVGs "sn-40908".
+    const zeile = listingUpsertZeile({ ...basis, fundort: "he" }, jetzt);
+    expect(zeile.fundort).toBe("he");
+  });
+
+  it("laesst den Fundort null, wenn die Quelle ihn nicht kennt", () => {
+    // null heisst "nicht zuzuordnen" -- und Unzuordenbares ist nie ein Abgang.
+    const zeile = listingUpsertZeile(basis, jetzt);
+    expect(zeile.fundort).toBeNull();
+  });
+
+  it("setzt disappeared_at zurueck, weil das Objekt gerade erfasst wurde", () => {
+    const zeile = listingUpsertZeile(basis, jetzt);
+    expect(zeile.disappeared_at).toBeNull();
+    expect(zeile.last_seen).toBe(jetzt);
+    expect(zeile.last_detail_at).toBe(jetzt);
   });
 });

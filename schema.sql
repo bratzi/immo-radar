@@ -12,6 +12,19 @@ create table listings (
   disappeared_at timestamptz,
   -- Letzte Detailerfassung. Steuert, wann die Detailseite neu geholt wird.
   last_detail_at timestamptz,
+  -- Region, auf deren Ergebnisliste das Objekt gefunden wurde (Bundesland-
+  -- kuerzel, z. B. "he"). null = nicht zuzuordnen.
+  --
+  -- WOZU: Immowelts external_id ist eine UUID und verraet den Fundort nicht,
+  -- anders als ZVGs "sn-40908". Ohne diese Angabe laesst sich nicht sagen,
+  -- welcher Sweep ein Objekt ueberhaupt abgedeckt hat -- und damit darf
+  -- Immowelt nie auf Abwesenheit hin loeschen. Die Spalte sammelt die
+  -- Grundlage dafuer; das Loeschverhalten aendert sie noch nicht.
+  --
+  -- null bleibt bewusst zulaessig: der Altbestand hat keinen Fundort mehr,
+  -- und ZVG braucht keinen. Unzuordenbares ist nie ein Abgang -- dieselbe
+  -- Regel, die `imGeltungsbereich` fuer unlesbare ZVG-Partitionen anwendet.
+  fundort text,
   unique (source, external_id)
 );
 
@@ -62,6 +75,32 @@ create table sweep_runs (
 
 create index sweep_runs_source_idx on sweep_runs (source, started_at desc);
 
+-- Mengenhistorie je REGION. Bewusst eine eigene Tabelle und keine Spalte in
+-- sweep_runs: `ladeSweepHistorie` bildet den Median dort ueber alle Zeilen
+-- einer Quelle und filtert nur auf `vollstaendig`. Regionszeilen wuerden in
+-- genau diesen Median einflieszen -- eine Region mit 200 Objekten neben einem
+-- Quellenlauf mit 5.000 verschiebt ihn beliebig -- und damit die Wache
+-- verfaelschen, die vor einer Massenloeschung schuetzt. Getrennt kann das
+-- strukturell nicht passieren, und keine bestehende Abfrage aendert sich.
+--
+-- Diese Tabelle aendert heute NICHTS am Loeschverhalten. Sie sammelt die
+-- Referenzlaeufe, die eine spaetere regionsgenaue Loeschhoheit braucht --
+-- wirksam wird die ohnehin erst, wenn eine Region MIN_REFERENZLAEUFE eigene
+-- erfolgreiche Laeufe vorweisen kann.
+create table sweep_region_runs (
+  id uuid primary key default gen_random_uuid(),
+  source text not null,
+  -- Bundeslandkuerzel, z. B. "he".
+  partition text not null,
+  started_at timestamptz not null default now(),
+  gesehene_objekte integer not null,
+  gemeldete_treffer integer,
+  vollstaendig boolean not null
+);
+
+create index sweep_region_runs_idx
+  on sweep_region_runs (source, partition, started_at desc);
+
 create table rent_estimates (
   zip_code text primary key,
   avg_rent_per_m2_cents integer not null,
@@ -92,3 +131,4 @@ alter table listing_versions enable row level security;
 alter table rent_estimates enable row level security;
 alter table notifications enable row level security;
 alter table sweep_runs enable row level security;
+alter table sweep_region_runs enable row level security;

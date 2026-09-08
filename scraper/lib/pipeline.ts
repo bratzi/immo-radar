@@ -74,6 +74,13 @@ export interface PipelineCandidate {
   source: string;
   externalId: string;
   url: string;
+  /**
+   * Region, auf deren Ergebnisliste das Objekt gefunden wurde. Nur Immowelt
+   * setzt das -- ZVG traegt sein Bundesland bereits in der externalId
+   * ("sn-40908"), wo `partitionAusExternalId` es liest. null heisst "nicht
+   * zuzuordnen" und schuetzt damit vor Loeschung.
+   */
+  fundort?: string | null;
   title: string;
   priceCents: number;
   livingAreaM2: number | null;
@@ -193,6 +200,7 @@ export async function processCandidate(
     source: candidate.source,
     externalId: candidate.externalId,
     url: candidate.url,
+    fundort: candidate.fundort,
     priceCents: candidate.priceCents,
     rentColdMonthlyCents: candidate.rentColdMonthly === null ? null : Math.round(candidate.rentColdMonthly * 100),
     rentSource: miete.quelle,

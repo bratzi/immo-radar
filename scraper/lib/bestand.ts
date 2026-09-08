@@ -34,6 +34,18 @@ export interface SweepErgebnis {
   gemeldeteTreffer: number | null;
 }
 
+/**
+ * Was eine einzelne Region in einem Lauf geliefert hat. Grundlage der
+ * spaeteren regionsgenauen Loeschhoheit -- heute nur protokolliert.
+ */
+export interface RegionLauf {
+  /** Bundeslandkuerzel, z. B. "he". */
+  partition: string;
+  gesehene: number;
+  gemeldeteTreffer: number | null;
+  vollstaendig: boolean;
+}
+
 export interface BekanntesListing {
   id: string;
   externalId: string;

@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { istHartLoeschbar, type BekanntesListing, type SweepErgebnis } from "./bestand.js";
+import {
+  istHartLoeschbar,
+  type BekanntesListing,
+  type RegionLauf,
+  type SweepErgebnis,
+} from "./bestand.js";
 import { HISTORIE_LAENGE } from "./plausibilitaet.js";
 
 /**
@@ -179,6 +184,46 @@ export async function speichereSweepLauf(
     geltungsbereich: sweep.geltungsbereich,
   });
   if (error) throw error;
+}
+
+/**
+ * Zeile fuer `sweep_region_runs` -- die Mengenhistorie EINER Region.
+ *
+ * WARUM EINE EIGENE TABELLE: `ladeSweepHistorie` liest den Median aus
+ * `sweep_runs` und filtert dabei nur auf `source` und `vollstaendig`.
+ * Regionszeilen dort wuerden in genau diesen Median einflieszen und die
+ * Wache verfaelschen, die vor einer Massenloeschung schuetzt -- eine Region
+ * mit 200 Objekten neben einem Quellenlauf mit 5000 verschiebt ihn
+ * beliebig. Eine getrennte Tabelle kann das strukturell nicht. Sie ist
+ * ausserdem rein additiv: keine bestehende Abfrage aendert sich.
+ *
+ * Diese Zeilen aendern heute NICHTS am Loeschverhalten. Sie sammeln die
+ * Historie, die eine spaetere regionsgenaue Loeschhoheit braucht -- die
+ * greift ohnehin erst, wenn eine Region MIN_REFERENZLAEUFE eigene
+ * erfolgreiche Laeufe vorweisen kann.
+ */
+export function regionsLaufZeile(source: string, lauf: RegionLauf): Record<string, unknown> {
+  return {
+    source,
+    partition: lauf.partition,
+    gesehene_objekte: lauf.gesehene,
+    gemeldete_treffer: lauf.gemeldeteTreffer,
+    vollstaendig: lauf.vollstaendig,
+  };
+}
+
+/** Schreibt die Regionszeilen eines Laufs. Fehler brechen den Lauf nicht ab:
+ *  diese Protokollierung ist Vorbereitung, kein Betriebsmittel. */
+export async function speichereRegionsLaeufe(
+  supabase: SupabaseClient,
+  source: string,
+  laeufe: RegionLauf[]
+): Promise<void> {
+  if (laeufe.length === 0) return;
+  const { error } = await supabase
+    .from("sweep_region_runs")
+    .insert(laeufe.map((l) => regionsLaufZeile(source, l)));
+  if (error) console.warn("sweep_region_runs: nicht geschrieben", error);
 }
 
 /**

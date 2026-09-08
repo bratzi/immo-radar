@@ -5,7 +5,7 @@ import {
   type ImmoweltListSummary,
 } from "./list.js";
 import { parseImmoweltDetailPage, type ImmoweltDetailData } from "./detail.js";
-import { rotiereAuswahl, type SweepErgebnis } from "../../lib/bestand.js";
+import { rotiereAuswahl, type RegionLauf, type SweepErgebnis } from "../../lib/bestand.js";
 import { bestaetigeConsentBanner } from "../consent.js";
 import { schliesseStoerendeUeberlagerung } from "../overlays.js";
 
@@ -295,7 +295,9 @@ export async function regionErfassen(
   let seite = 1;
   const deckel = Math.min(SEITEN_DECKEL, maxSeiten);
   for (; seite <= deckel; seite += 1) {
-    for (const karte of parseImmoweltListPage(await page.content())) {
+    // Fundort aufpraegen: Immowelts externalId ist eine UUID und verraet
+    // nicht, auf welcher Regionsliste das Objekt stand.
+    for (const karte of parseImmoweltListPage(await page.content(), region.code)) {
       if (istMehrfamilienhausKandidat(karte.titleLine)) {
         ziel.set(karte.externalId, karte);
         regionIds.add(karte.externalId);
@@ -353,6 +355,8 @@ export async function regionErfassen(
 export async function sweepImmowelt(): Promise<{
   sweep: SweepErgebnis;
   zusammenfassungen: Map<string, ImmoweltListSummary>;
+  /** Mengenhistorie je Region -- Vorbereitung der regionsgenauen Loeschhoheit. */
+  regionLaeufe: RegionLauf[];
 }> {
   // headless: false ist zwingend, kein Versehen. Immowelt sitzt hinter DataDome.
   // Direktvergleich (gleicher Code, gleiche URL, nur dieses Flag, 2026-09-07):
@@ -372,6 +376,10 @@ export async function sweepImmowelt(): Promise<{
   // gemeldeteTrefferSumme). Frueher waren das zwei lose Variablen, und eine
   // abgestuerzte Region beruehrte keine von beiden.
   const ausgaenge: RegionAusgang[] = [];
+  // Was JEDE angefasste Region geliefert hat. Aendert heute nichts am
+  // Loeschverhalten; sammelt die Historie, die eine spaetere regionsgenaue
+  // Loeschhoheit braucht.
+  const regionLaeufe: RegionLauf[] = [];
 
   // Die volle Regionsliste in Rotationsreihenfolge. `rotiereAuswahl` (aus
   // lib/bestand.js, unit-getestet) liefert bei Budget == Listenlaenge die
@@ -430,10 +438,26 @@ export async function sweepImmowelt(): Promise<{
           );
         }
         ausgaenge.push({ art: "erfasst", gemeldet });
+        regionLaeufe.push({
+          partition: region.code,
+          gesehene: gesammelt,
+          gemeldeteTreffer: gemeldet,
+          vollstaendig: istRegionVollstaendig(gesammelt, gemeldet),
+        });
       } catch (err) {
         // Eine abgebrochene Region ist NICHT "null gemeldete Treffer". Sie ist
         // nicht beurteilbar, und das muss bis in die Trefferzahl durchschlagen.
         ausgaenge.push({ art: "fehler" });
+        // Wie viel diese Region vor dem Abbruch schon eingesammelt hatte,
+        // laesst sich hier nicht sagen -- die Ausnahme kam aus der Mitte der
+        // Blaetterschleife. Festgehalten wird deshalb nur, DASS sie nicht
+        // beurteilbar ist; als Referenzlauf zaehlt sie dadurch nie.
+        regionLaeufe.push({
+          partition: region.code,
+          gesehene: 0,
+          gemeldeteTreffer: null,
+          vollstaendig: false,
+        });
         console.warn(`Immowelt-Sweep ${region.code}: Fehler`, err);
       }
     }
@@ -468,13 +492,17 @@ export async function sweepImmowelt(): Promise<{
       // oben. Diese Unvollstaendigkeit ist erwartet und darf in
       // `gleicheBestandAb` nicht als Anomalie ueber Telegram gemeldet werden.
       strukturellTeilweise: true,
-      // Bewusst leer: die Immowelt-externalId ist eine UUID ohne Bundesland,
-      // eine partitionsgenaue Loeschung waere daraus nicht ableitbar.
-      geltungsbereich: [],
+      // Die Regionen, die in diesem Lauf VOLLSTAENDIG durchliefen. Als Beleg
+      // protokolliert, nicht als Loeschfilter: `vollstaendig` ist fuer
+      // Immowelt immer false, und `partitionAusExternalId` liefert fuer diese
+      // Quelle null -- zwei unabhaengige Sperren, die bestehen bleiben, bis
+      // die regionsgenaue Loeschhoheit bewusst gebaut wird.
+      geltungsbereich: regionLaeufe.filter((l) => l.vollstaendig).map((l) => l.partition),
       gesehene: new Set(zusammenfassungen.keys()),
       gemeldeteTreffer: gemeldeteTrefferSumme(ausgaenge),
     },
     zusammenfassungen,
+    regionLaeufe,
   };
 }
 

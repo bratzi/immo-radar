@@ -42,3 +42,17 @@ describe("istMehrfamilienhausKandidat", () => {
     expect(istMehrfamilienhausKandidat("Doppelhaushälfte zum Kauf - Würzburg - 429.000 €")).toBe(false);
   });
 });
+
+describe("parseImmoweltListPage -- Fundort", () => {
+  it("stempelt jeden Treffer mit der Region, auf deren Seite er stand", () => {
+    // Immowelts externalId ist eine UUID ohne Ortsbezug. Woher ein Objekt
+    // stammt, weiss nur der Sweep -- also muss er es festhalten.
+    const karten = parseImmoweltListPage(fixtureHtml, "he");
+    expect(karten.length).toBeGreaterThan(0);
+    expect(karten.every((k) => k.fundort === "he")).toBe(true);
+  });
+
+  it("laesst den Fundort null, wenn keiner angegeben wurde", () => {
+    expect(parseImmoweltListPage(fixtureHtml)[0].fundort).toBeNull();
+  });
+});
