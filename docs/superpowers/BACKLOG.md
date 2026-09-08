@@ -35,7 +35,29 @@ Gelten für **jede** Aufgabe hier, deshalb nur einmal genannt:
 
 # Teil A — Sofort ausführbar
 
-## A1. Immowelt-Detailerfassung liefert nichts — DRINGEND
+## A1. Immowelt-Detailerfassung liefert nichts — ERLEDIGT (2026-09-08)
+
+**Abnahme bestanden.** Lauf `34215003141` (`782d0da`, 10:21–11:11 UTC) ist der
+erste, der Immowelt aus der Ergebnisliste bewertet:
+
+```
+Immowelt-Sweep: 9329 Mehrfamilienhaus-Kandidaten.
+Immowelt-Bewertung: 600 Detailseiten in diesem Lauf, RUECKSTAND 8729 ...
+Immowelt: 597 von 9329 gesehenen Objekten aus der Ergebnisliste bewertet,
+          3 ohne Preisangabe uebersprungen.
+Meldungen: 25 von hoechstens 25 gesendet, 293 wegen des Budgets zurueckgestellt
+```
+
+Datenbank danach: `listings` für Immowelt **157 → 754**, davon **597 mit
+`fundort`** (vorher 0). Damit ist auch die Sperre vor B1 weg — der Fundort
+wird geschrieben.
+
+Die Ursache stand nie im Detailparser: `/expose/` liefert von
+Rechenzentrums-Adressen HTTP 403, `/suche/` HTTP 200. Die Herleitung steht in
+[`UEBERGABE.md`](UEBERGABE.md). Der Verlauf darunter bleibt als Beleg stehen.
+
+<details><summary>Verlauf der Untersuchung</summary>
+
 
 **Befund (2026-09-08):** Der Sweep sieht seit dem Pagination-Fix **3.665**
 Objekte statt 717. Die letzte erfolgreiche Immowelt-Detailerfassung war
@@ -94,6 +116,8 @@ ohne Datenmodell", ist der Parser dran.
 
 **Abnahme:** Nach einem Produktionslauf steigt `listings` für Immowelt, und
 `select count(*) from listings where fundort is not null` ist größer als 0.
+
+</details>
 
 ## A2. Abgelaufenes GitHub-Token entfernen — TEILWEISE ERLEDIGT
 
@@ -193,6 +217,74 @@ damit korrekt als nicht beurteilbar markiert. **Kein Fix nötig.**
 **Nebenbefund für B4:** Immowelt weist für Mehrfamilienhäuser **gar keine**
 Einheitenzahl aus (auch in der Fixture `units: null`), daher die 82 %. Das ist
 ein schlechteres Verhältnis als bei ZVG.
+
+---
+
+## A6. ZVG-Verkehrswert: der Parser liest Fließtext statt einer Zahl
+
+**Befund (2026-09-08, Lauf `34215003141`):** Von **4** ZVG-Detailseiten wurden
+**3** übersprungen. Die Meldung nennt jedes Mal, was tatsächlich in der Zelle
+stand:
+
+```
+Ungültiger Verkehrswert (nicht numerisch oder nicht positiv):
+  "s. obige Beschreibungen"
+  "Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €"
+  "Die Flurstücke bilden eine wirtschaftliche Einheit."
+```
+
+Der zweite Fall ist der aufschlussreiche: Dort steht ein `€` **hinter** einer
+Grundbuchangabe. Das ist kein fehlender Wert, sondern die falsche Zelle — der
+Parser greift offenbar auf die Zeile daneben, wenn die Verkehrswertzeile
+mehrspaltig oder mit Fußnote gesetzt ist.
+
+**Warum das zählt:** Ohne Verkehrswert kein Vergleichsmaßstab. Die Stichprobe
+ist mit 4 Seiten klein — deshalb ist **Schritt 1 messen, nicht reparieren**.
+
+**Dateien:** `scraper/scrapers/zvg-portal/detail.ts` (`parseZvgDetailPage`,
+die Prüfung liegt bei Zeile 296).
+
+- [ ] **Schritt 1:** In `listing_versions` zählen, wie viele ZVG-Objekte
+      überhaupt einen Verkehrswert tragen und wie viele nicht. Erst diese Quote
+      sagt, ob es drei Einzelfälle oder ein Muster sind.
+- [ ] **Schritt 2:** Die drei genannten Gutachten über
+      `gh workflow run pruefung.yml -f skript=diagnose-detail` holen und die
+      Verkehrswertzeile im Rohtext ansehen.
+- [ ] **Schritt 3:** Erst nach benannter Ursache ein Fixture mit genau dieser
+      Zeilenform anlegen, den Test scheitern sehen, dann beheben.
+
+**Abnahme:** Die drei Gutachten liefern einen Verkehrswert oder es ist belegt,
+dass die Seite selbst keinen nennt.
+
+## A7. Nordrhein-Westfalen verbraucht drei Viertel des Sweep-Budgets
+
+**Befund (2026-09-08, Lauf `34215003141`):** Die Regionszeiten des Sweeps:
+
+```
+10:26:07  th  22 Seiten,  858 Karten
+10:28:31  mv  16 Seiten,  619 Karten
+10:29:59  be  10 Seiten,  399 Karten
+10:31:37  hh  11 Seiten,  433 Karten
+10:32:24  hb   5 Seiten,  202 Karten
+11:05:34  nw  173 Seiten, 6823 Karten   <- 33 von 43 Minuten
+```
+
+`nw` allein dauert länger als die sechs anderen Regionen zusammen. Folge:
+**7 von 16** Regionen abgearbeitet, 9 zurückgestellt — und die 597 Bewertungen
+dieses Laufs stammen fast nur aus `nw` (560) und `hb` (37).
+
+**Warum das zählt:** Zwei Punkte hängen daran. B1 verlangt **drei vollständige
+Läufe je Region**, bevor regionsgenau gelöscht werden darf; bei sieben Regionen
+je Lauf dauert das entsprechend lang. Und die Bewertungsauswahl bevorzugt
+derzeit faktisch die zuletzt gesweepte Großregion, statt über die Regionen zu
+streuen.
+
+**Noch nicht entschieden — und deshalb hier und nicht in Teil A gelöst:** ob
+`nw` in Teilbereiche zerlegt wird (die Seitenzahl sinkt, die Abrufzahl nicht),
+ob das Zeitbudget je Region gedeckelt wird (dann bleibt `nw` dauerhaft
+unvollständig, was die Löschsperre auslöst), oder ob die Reihenfolge rotiert.
+Vor einer Änderung messen, ob die 11,5 s je Seite Drosselung oder Ladezeit
+sind.
 
 ---
 

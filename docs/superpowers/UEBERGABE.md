@@ -1,4 +1,4 @@
-# Übergabe — Stand 2026-09-08
+# Übergabe — Stand 2026-09-08, 11:15 UTC
 
 > **Zuerst lesen:** dieses Dokument, dann [`BACKLOG.md`](BACKLOG.md) (ausführbare
 > Aufgaben) und [`TODO.md`](TODO.md) (Statuslandkarte).
@@ -8,7 +8,7 @@ hergeleitet werden muss.
 
 ## Wo wir stehen
 
-`main` = `782d0da`, gepusht, Arbeitsverzeichnis sauber. **315 Tests grün**,
+`main` = `5d2c8e9`, gepusht, Arbeitsverzeichnis sauber. **315 Tests grün**,
 `npx tsc --noEmit` sauber. Cron alle drei Stunden.
 
 Teilprojekt 1 (vollständige Erfassung & Bestandsführung) ist live. In dieser
@@ -129,31 +129,37 @@ Objekte mit angegebener Miete im ganzen Bestand, und in 442 ZVG-Texten steht
 
 ## Was als Erstes zu tun ist
 
-**Lauf `34215003141` prüfen** (angestoßen 2026-09-08, mit den neuen Grenzen).
-Er ist der erste, der Immowelt aus der Liste bewertet.
+**Lauf `34215003141` ist geprüft und bestanden** (2026-09-08, 10:21–11:11 UTC).
+Der Listen-Umbau trägt in Produktion:
 
-```sql
-select source, gesehene_objekte, gemeldete_treffer, vollstaendig,
-       array_length(geltungsbereich,1) as regionen, started_at
-from sweep_runs order by started_at desc limit 4;
-
-select count(*) filter (where fundort is not null) as mit_fundort, count(*)
-from listings where source = 'immowelt';
+```
+Immowelt-Sweep: 9329 Kandidaten (7 von 16 Regionen)
+Immowelt: 597 von 9329 aus der Ergebnisliste bewertet, 3 ohne Preis
+Meldungen: 25 von hoechstens 25 gesendet, 293 zurueckgestellt
+listings immowelt 157 -> 754, davon 597 mit fundort (vorher 0)
 ```
 
-**Erwartet:** `listings` für Immowelt wächst erstmals seit dem 2026-09-07 über
-157 hinaus, `fundort` ist gefüllt, und im Log steht
-`Meldungen: N von hoechstens 25 gesendet`. Bleibt `listings` bei 157, zuerst
-das Log lesen — nicht raten.
+Damit ist A1 geschlossen und die Sperre vor B1 gefallen — `fundort` wird
+geschrieben. **B1 bleibt trotzdem zu**, bis `sweep_region_runs` je Region drei
+vollständige Läufe zeigt; nach A7 dauert das länger als gedacht.
 
-**Danach:** `BACKLOG.md` Teil B. B1 (regionsgenaues Löschen) ist entsperrt,
-sobald `sweep_region_runs` je Region drei vollständige Läufe zeigt. B2 (das
-Dashboard) ist der Punkt, an dem der Nutzer die Webseite erwartet — dort sind
-vier Entwurfsfragen offen, und die wichtigste ist neu: Nach den Messungen
-dieser Sitzung beruhen praktisch alle Mieten auf einer unvalidierten
-Handtabelle, über die Hälfte der Objekte trägt `wohnflaeche_fehlt` und 567 von
-1.000 Versionen `units_unconfirmed`. Ein Ranking, das das nicht abbildet,
-sortiert Nichtwissen wie Wissen.
+**Zwei neue Punkte aus diesem Lauf**, beide in `BACKLOG.md`:
+
+- **A6** — Der ZVG-Verkehrswertparser liest bei 3 von 4 Gutachten Fließtext
+  statt einer Zahl (`"Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €"`).
+  Sieht nach falscher Zelle aus, nicht nach fehlendem Wert. Erst die Quote im
+  Bestand messen, dann reparieren.
+- **A7** — Nordrhein-Westfalen braucht 33 der 43 Sweep-Minuten (173 Seiten,
+  6.823 Karten). Deshalb bleiben 9 von 16 Regionen liegen, und die 597
+  Bewertungen stammen fast nur aus `nw` (560) und `hb` (37).
+
+**Danach:** `BACKLOG.md` Teil B. B2 (das Dashboard) ist der Punkt, an dem der
+Nutzer die Webseite erwartet — dort sind vier Entwurfsfragen offen, und die
+wichtigste ist unverändert: Nach den Messungen dieser Sitzung beruhen praktisch
+alle Mieten auf einer unvalidierten Handtabelle, über die Hälfte der Objekte
+trägt `wohnflaeche_fehlt`, und Immowelt trägt zusätzlich
+`miete_nur_bundeslandgenau`, weil die Suchseite keine PLZ nennt. Ein Ranking,
+das das nicht abbildet, sortiert Nichtwissen wie Wissen.
 
 ## Fallen, die schon zugeschnappt sind
 

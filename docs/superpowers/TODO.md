@@ -1,6 +1,6 @@
 # immo-radar — Überblick und To-do-Liste
 
-**Stand:** 2026-09-07, 23:30 Uhr. Belegt durch Abfrage der Produktionsdatenbank
+**Stand:** 2026-09-08, 11:15 UTC. Belegt durch Abfrage der Produktionsdatenbank
 und `git log`, nicht aus dem Gedächtnis.
 
 > **Ausfuehrbare Aufgabenliste:** [BACKLOG.md](BACKLOG.md) - Teil A ist so
@@ -17,7 +17,7 @@ dran ist. Die Detailbegründungen und die Fallen stehen in
 | Baustein | Zustand |
 |---|---|
 | **Betrieb** (Scraper, Cron, Telegram) | **läuft**, alle 3 h, zuletzt 23:17 Uhr |
-| **Teilprojekt 1** — Vollständige Erfassung & Bestandsführung | **gemergt und live**, ein Punkt noch nicht live geprüft |
+| **Teilprojekt 1** — Vollständige Erfassung & Bestandsführung | **gemergt und live**, in Produktion bestätigt (Lauf `34215003141`) |
 | **Teilprojekt 2** — Mietqualität | **nicht begonnen**, Tabelle `rent_estimates` ist leer und wird von keinem Code gelesen |
 | **Teilprojekt 3** — Dashboard / Webseite | **nicht begonnen**, kein einziges Frontend-File im Repo |
 
@@ -28,15 +28,18 @@ bisher nur den Scraper und Telegram als Ausgabe.
 
 ## Belegter Ist-Zustand
 
-Abfrage der Datenbank am 2026-09-07 um 23:26 Uhr:
+Abfrage der Datenbank am 2026-09-08 um 11:15 UTC, nach Lauf `34215003141`:
 
 ```
-listings immowelt:   157   (disappeared_at gesetzt: 0)
-listings zvg-portal: 187   (disappeared_at gesetzt: 1)
-listing_versions:   1661
-notifications:       156
-rent_estimates:        0   <- leer
+listings immowelt:   754   (disappeared_at gesetzt: 0, davon 597 mit fundort)
+listings zvg-portal: 191   (disappeared_at gesetzt: 1)
+listing_versions:   2262
+notifications:       181
+rent_estimates:        0   <- leer, siehe Mietqualitaets-Befund
 ```
+
+Der Sprung bei Immowelt (157 → 754) ist der erste Lauf, der aus der
+**Ergebnisliste** bewertet statt aus den gesperrten Detailseiten.
 
 Die letzten Sweeps:
 
@@ -103,9 +106,25 @@ vollständig erfasst. `geltungsbereich` ist erstmals gefüllt, und
 `sweep_region_runs` trägt die ersten vier Zeilen (`br` 1099/1134, `st`
 927/983, `th` 881/917, `sl` 766/784), alle als `vollstaendig: true`.
 
-**Aber:** Die Detailerfassung für Immowelt liefert seit dem 2026-09-07 um
-17:41 UTC nichts mehr. Der Sweep findet tausende Objekte, bewertet wird
-keines. Siehe [`BACKLOG.md`](BACKLOG.md) A1 — dringendster offener Punkt.
+## Bewertung aus der Ergebnisliste — bestanden
+
+Lauf `34215003141` (2026-09-08, 10:21–11:11 UTC, sha `782d0da`) ist der erste
+mit dem Listen-Umbau. Damit ist A1 geschlossen:
+
+```
+Immowelt-Sweep: 9329 Mehrfamilienhaus-Kandidaten (7 von 16 Regionen).
+Immowelt: 597 von 9329 aus der Ergebnisliste bewertet, 3 ohne Preis.
+Meldungen: 25 von hoechstens 25 gesendet, 293 zurueckgestellt.
+```
+
+`listings` für Immowelt 157 → **754**, `fundort` 0 → **597**. Die Meldebremse
+aus `782d0da` greift: 25 statt 318 Nachrichten.
+
+**Zwei neue Punkte aus demselben Lauf**, beide in
+[`BACKLOG.md`](BACKLOG.md): **A6** — der ZVG-Verkehrswertparser liest bei 3 von
+4 Gutachten Fließtext statt einer Zahl. **A7** — Nordrhein-Westfalen
+verbraucht 33 der 43 Sweep-Minuten, weshalb 9 von 16 Regionen liegen bleiben
+und die Bewertung faktisch nur `nw` und `hb` trifft.
 
 ## Warnung: der Anschluss ist am 2026-09-08 erneut ausgefallen
 
