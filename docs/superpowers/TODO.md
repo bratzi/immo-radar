@@ -122,9 +122,11 @@ aus `782d0da` greift: 25 statt 318 Nachrichten.
 
 **Zwei neue Punkte aus demselben Lauf**, beide in
 [`BACKLOG.md`](BACKLOG.md): **A6** — der ZVG-Verkehrswertparser liest bei 3 von
-4 Gutachten Fließtext statt einer Zahl. **A7** — Nordrhein-Westfalen
-verbraucht 33 der 43 Sweep-Minuten, weshalb 9 von 16 Regionen liegen bleiben
-und die Bewertung faktisch nur `nw` und `hb` trifft.
+4 Gutachten Fließtext statt einer Zahl. **A7** — das
+Bewertungsfenster ist 600 Eintraege breit und wandert nur 1 Eintrag je Stunde,
+beim Drei-Stunden-Cron also 3 je Lauf. Deshalb trifft die Bewertung faktisch
+nur `nw` (560) und `hb` (37), und die Zeile `RUECKSTAND 8729 auf spaetere
+Laeufe zurueckgestellt` behauptet etwas, das so nicht eintritt.
 
 ## Warnung: der Anschluss ist am 2026-09-08 erneut ausgefallen
 

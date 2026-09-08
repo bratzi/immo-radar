@@ -149,9 +149,14 @@ vollständige Läufe zeigt; nach A7 dauert das länger als gedacht.
   statt einer Zahl (`"Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €"`).
   Sieht nach falscher Zelle aus, nicht nach fehlendem Wert. Erst die Quote im
   Bestand messen, dann reparieren.
-- **A7** — Nordrhein-Westfalen braucht 33 der 43 Sweep-Minuten (173 Seiten,
-  6.823 Karten). Deshalb bleiben 9 von 16 Regionen liegen, und die 597
-  Bewertungen stammen fast nur aus `nw` (560) und `hb` (37).
+- **A7** — gemessen und praeziser gefasst: Das Bewertungsfenster ist 600
+  Eintraege breit und wandert 1 Eintrag je Stunde, beim Drei-Stunden-Cron also
+  3 je Lauf — 597 von 600 sind im Folgelauf dieselben. Rechnerisch belegt: der
+  Fensterstart 2470 sagt 41x `hb` + 559x `nw` voraus, gemessen wurden 37 und
+  560. Dass `nw` das Sweep-Budget ueberzieht, ist dagegen so gewollt (eine
+  begonnene Region wird immer zu Ende geblaettert). Nebenbefund: die Drossel
+  ist 5 s, die echte Zeit je Seite 9 bis 11,5 s — die Rechnung am
+  `SWEEP_BUDGET_MS` ist um mehr als das Doppelte zu optimistisch.
 
 **Danach:** `BACKLOG.md` Teil B. B2 (das Dashboard) ist der Punkt, an dem der
 Nutzer die Webseite erwartet — dort sind vier Entwurfsfragen offen, und die

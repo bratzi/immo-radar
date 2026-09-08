@@ -256,35 +256,95 @@ die Prüfung liegt bei Zeile 296).
 **Abnahme:** Die drei Gutachten liefern einen Verkehrswert oder es ist belegt,
 dass die Seite selbst keinen nennt.
 
-## A7. Nordrhein-Westfalen verbraucht drei Viertel des Sweep-Budgets
+## A7. Das Bewertungsfenster wandert 3 Kandidaten je Lauf — bei 600 Breite
 
-**Befund (2026-09-08, Lauf `34215003141`):** Die Regionszeiten des Sweeps:
+**Gemessen am 2026-09-08 aus Lauf `34215003141`.** Der erste Verdacht
+(„Nordrhein-Westfalen frisst das Budget") war die Oberflaeche. Darunter liegen
+zwei getrennte Befunde.
+
+### A7a — Die Budgetrechnung unterstellt 5 s je Seite, gemessen sind 9 bis 11,5
+
+Zeit je Ergebnisseite, aus den Regionszeiten desselben Laufs:
 
 ```
-10:26:07  th  22 Seiten,  858 Karten
-10:28:31  mv  16 Seiten,  619 Karten
-10:29:59  be  10 Seiten,  399 Karten
-10:31:37  hh  11 Seiten,  433 Karten
-10:32:24  hb   5 Seiten,  202 Karten
-11:05:34  nw  173 Seiten, 6823 Karten   <- 33 von 43 Minuten
+be    10 Seiten     87s    8,73 s/Seite
+mv    16 Seiten    144s    9,00 s/Seite
+hh    11 Seiten     98s    8,91 s/Seite
+hb     5 Seiten     47s    9,50 s/Seite
+th    22 Seiten    238s   10,81 s/Seite
+nw   173 Seiten   1990s   11,50 s/Seite
 ```
 
-`nw` allein dauert länger als die sechs anderen Regionen zusammen. Folge:
-**7 von 16** Regionen abgearbeitet, 9 zurückgestellt — und die 597 Bewertungen
-dieses Laufs stammen fast nur aus `nw` (560) und `hb` (37).
+`IMMOWELT_VERZOEGERUNG_MS` ist 5 s. Der gemessene Boden liegt bei ~8,8 s —
+also **~3,8 s echte Ladezeit** je Seite zusaetzlich zur Drossel. `nw` liegt
+noch einmal ~2,7 s darueber, vermutlich weil das Blaettern tief in einer
+173-Seiten-Liste teurer wird (nicht gemessen, nur Vermutung).
 
-**Warum das zählt:** Zwei Punkte hängen daran. B1 verlangt **drei vollständige
-Läufe je Region**, bevor regionsgenau gelöscht werden darf; bei sieben Regionen
-je Lauf dauert das entsprechend lang. Und die Bewertungsauswahl bevorzugt
-derzeit faktisch die zuletzt gesweepte Großregion, statt über die Regionen zu
-streuen.
+Damit ist die Rechnung im Kommentar ueber `SWEEP_BUDGET_MS` um mehr als das
+Doppelte zu optimistisch: „~885 Seiten bundesweit -> ~74 min -> ~6 Laeufe"
+rechnet nur die Drossel. Real sind es ~10 s je Seite.
 
-**Noch nicht entschieden — und deshalb hier und nicht in Teil A gelöst:** ob
-`nw` in Teilbereiche zerlegt wird (die Seitenzahl sinkt, die Abrufzahl nicht),
-ob das Zeitbudget je Region gedeckelt wird (dann bleibt `nw` dauerhaft
-unvollständig, was die Löschsperre auslöst), oder ob die Reihenfolge rotiert.
-Vor einer Änderung messen, ob die 11,5 s je Seite Drosselung oder Ladezeit
-sind.
+**Die Drossel ist NICHT der Hebel.** Sie ist die Hoeflichkeitsgrenze gegenueber
+Immowelt, und ein CAPTCHA misst genau die Abrufrate. Wer hier kuerzt, kauft
+Tempo mit dem Risiko, das der Rest des Projekts teuer vermeidet.
+
+Dass `nw` das Budget um das Dreifache ueberzieht, ist dagegen **so gewollt**:
+die Budget-Wache steht vor dem Start einer Region, und eine begonnene Region
+wird immer zu Ende geblaettert — „ein halb erfasstes Bundesland waere eine
+Luege ueber die Abdeckung". Das ist kein Fehler, sondern der bezahlte Preis.
+
+### A7b — Das Bewertungsfenster bewegt sich praktisch nicht
+
+`budgetiereDetailKandidaten` waehlt ueber `rotiereAuswahl` ein
+**zusammenhaengendes** Fenster von `MAX_BEWERTUNGEN_IMMOWELT` = 600 Eintraegen.
+Der Startpunkt ist `Math.floor(Date.now() / 3_600_000)` — Stunden seit Epoche.
+
+Das Fenster ist 600 breit und wandert **1 Eintrag je Stunde**. Beim
+Drei-Stunden-Cron heisst das: **3 von 600** Eintraegen sind im Folgelauf neu,
+597 dieselben. Die Zeile
+
+```
+RUECKSTAND 8729 auf spaetere Laeufe zurueckgestellt
+```
+
+behauptet damit etwas, das nicht eintritt. Genau die Sorte Meldung, vor der
+`UEBERGABE.md` warnt: sie nennt eine Ursache, statt zu messen.
+
+**Rechnerisch belegt, nicht vermutet.** Fuer den Lauf um 11:05 UTC ergibt
+`versatz % 9329` den Fensterstart **2470**, also 41 Objekte aus `hb`
+(Band 2309–2510) und 559 aus `nw` (ab 2511). Gemeldet wurden **37 aus `hb` und
+560 aus `nw`** — die Differenz sind die 3 Objekte ohne Preis und 5 doppelte
+IDs. Die Vorhersage trifft.
+
+**Zwei Dinge daempfen den Schaden**, beide gehoeren vor eine Reparatur geprueft:
+
+1. Die Kandidatenliste ist **kein Bestand**, sondern wird je Lauf aus dem
+   Sweep dieses Laufs gebaut. Sie ist also ohnehin jedes Mal eine andere.
+2. Die Regionsrotation im Sweep benutzt **denselben** Versatz
+   (`versatz % 16`) und verschiebt sich um 3 Regionen je Lauf. Beide Rotationen
+   laufen im Gleichtakt — ob die Ueberlagerung am Ende doch alle Regionen
+   erreicht oder ein systematisches Loch erzeugt, ist **nicht gemessen**.
+
+**Dateien:** `scraper/main.ts` (`budgetiereDetailKandidaten`, `detailVersatz`),
+`scraper/lib/bestand.ts` (`rotiereAuswahl`), `scraper/scrapers/immowelt/index.ts`
+(`SWEEP_BUDGET_MS`, Regionsrotation).
+
+- [ ] **Schritt 1 — messen, ob wirklich ein Loch entsteht.** Ueber mehrere
+      Versatzwerte simulieren, welche Regionen ueber 8 aufeinanderfolgende
+      Laeufe je bewertet wuerden. Reine Rechnung, kein Abruf, gehoert in einen
+      Test.
+- [ ] **Schritt 2 — erst dann den Entwurf.** Naheliegend waere, das Fenster um
+      seine eigene Breite je Lauf weiterzuschieben statt um 1 je Stunde, oder
+      die Auswahl ueber die Regionen zu streuen statt zusammenhaengend zu
+      schneiden. Beides aendert das Meldeverhalten und braucht erst einen Test,
+      der das heutige Verhalten festhaelt.
+- [ ] **Schritt 3 — die RUECKSTAND-Meldung ehrlich machen.** Sie darf nicht
+      „auf spaetere Laeufe zurueckgestellt" behaupten, solange das nicht
+      gemessen ist.
+
+**Abnahme:** Ein Test zeigt ueber mehrere Laeufe hinweg, welcher Anteil der
+gesehenen Objekte je bewertet wird, und die Log-Zeile sagt nichts, was dieser
+Test nicht deckt.
 
 ---
 
