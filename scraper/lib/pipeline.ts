@@ -9,6 +9,7 @@ import { ermittleJahreskaltmiete, bundeslandFuerRegionscode } from "./rentEstima
 import { bestimmeMeldeklasse, istHoeher, type Meldeklasse } from "./meldung.js";
 import { upsertListingAndVersion, logNotification, hoechsteGemeldeteKlasse } from "./db.js";
 import { kartePngFuerPlz } from "./karte.js";
+import type { Meldebudget } from "./meldebudget.js";
 import {
   sendTelegramMessage,
   sendTelegramPhotos,
@@ -201,7 +202,13 @@ async function sendeMedien(
 export async function processCandidate(
   supabase: SupabaseClient,
   telegramConfig: TelegramConfig,
-  candidate: PipelineCandidate
+  candidate: PipelineCandidate,
+  /**
+   * Obergrenze fuer Meldungen dieses Laufs. Fehlt sie, wird ungebremst
+   * gesendet -- das ist nur fuer Tests gedacht, der Produktivlauf reicht immer
+   * eines herein.
+   */
+  meldebudget?: Meldebudget
 ): Promise<void> {
   const einheiten = bewerteEinheiten(candidate.units, candidate.unitsConfident);
   if (einheiten.ausschliessen) {
@@ -297,7 +304,19 @@ export async function processCandidate(
 
   if (klasse !== "keine") {
     const bereitsGemeldet = await hoechsteGemeldeteKlasse(supabase, diff.listingId);
-    if (sollGesendetWerden(klasse, bereitsGemeldet)) {
+    const meldenNoetig = sollGesendetWerden(klasse, bereitsGemeldet);
+    // Budgetwache VOR dem Versand. Ist das Budget des Laufs aufgebraucht, wird
+    // NICHT gesendet und AUCH NICHT protokolliert -- ohne Zeile in
+    // `notifications` gilt das Objekt im naechsten Lauf weiter als nie gemeldet
+    // und wird nachgeholt. Die Meldung ist verschoben, nicht verworfen
+    // (Begruendung ausfuehrlich in lib/meldebudget.ts).
+    //
+    // KEIN vorzeitiges `return` an dieser Stelle: die Preisaenderungs-Meldung
+    // weiter unten haengt nicht an der Meldeklasse und muesste sonst
+    // mitausfallen.
+    if (meldenNoetig && meldebudget !== undefined && !meldebudget.darfSenden()) {
+      meldebudget.zurueckstellen();
+    } else if (meldenNoetig) {
       const kennzahlenSummary = {
         kaufpreisfaktor: kennzahlen.kaufpreisfaktor,
         geschaetzterDscr: kennzahlen.geschaetzterDscr,
@@ -345,10 +364,17 @@ export async function processCandidate(
         ...kennzahlenSummary,
         priceCents: candidate.priceCents,
       });
+      meldebudget?.verbuchen();
     }
   }
 
+  // Auch die Preisaenderung ist eine Telegram-Nachricht und zaehlt gegen
+  // dasselbe Budget.
   if (diff.priceDropped && diff.previousPriceCents !== null) {
+    if (meldebudget !== undefined && !meldebudget.darfSenden()) {
+      meldebudget.zurueckstellen();
+      return;
+    }
     await schlafe(TELEGRAM_SENDEABSTAND_MS);
     await sendTelegramMessage(
       telegramConfig,
@@ -358,5 +384,6 @@ export async function processCandidate(
       altPreisCents: diff.previousPriceCents,
       neuPreisCents: candidate.priceCents,
     });
+    meldebudget?.verbuchen();
   }
 }

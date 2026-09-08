@@ -36,6 +36,7 @@ import {
 } from "./lib/telegram.js";
 import { sb } from "./lib/supabase.js";
 import { werteAusTitelzeile } from "./scrapers/immowelt/titelzeile.js";
+import { erstelleMeldebudget, type Meldebudget } from "./lib/meldebudget.js";
 import { nurInCiAusfuehren } from "./lib/nurInCi.js";
 
 // Der volle Lauf faehrt einen Browser gegen zwei Portale und ist der Grund,
@@ -96,6 +97,32 @@ const DETAIL_MAX_KANDIDATEN: Record<"zvg-portal", number> = {
   "zvg-portal": Math.floor(DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS),
 };
 
+/**
+ * Hoechstzahl Telegram-Meldungen je Lauf.
+ *
+ * Seit Immowelt aus der Ergebnisliste bewertet wird, laufen potenziell alle
+ * gesehenen Objekte durch die Bewertung -- beim letzten Sweep 3.665 statt der
+ * frueheren 144. Guenstige Objekte passieren die Schwellen dabei fast alle:
+ * 75.000 € auf 158 m² ergeben bundeslandgenau rund 19.000 € Jahresmiete und
+ * damit Kaufpreisfaktor ~4, weit unter der Schwelle von 15. Ohne Deckel waere
+ * der erste Lauf Dauerfeuer und liefe bei 500 ms Sendeabstand ins
+ * 75-Minuten-Limit des Jobs -- dessen Kill trifft VOR dem Abgleichsblock.
+ *
+ * Nichts geht verloren: Ohne Zeile in `notifications` gilt ein Objekt im
+ * naechsten Lauf weiter als nie gemeldet (siehe lib/meldebudget.ts).
+ */
+const MAX_MELDUNGEN_JE_LAUF = 25;
+
+/**
+ * Hoechstzahl Immowelt-Objekte, die ein Lauf aus der Ergebnisliste bewertet.
+ *
+ * Nicht die Abrufe sind hier der Engpass -- die Liste ist ohnehin schon
+ * geladen --, sondern die Datenbankrunden je Kandidat und die Laufzeit. Der
+ * Rest wird ueber die rotierende Auswahl auf Folgelaeufe verteilt, genau wie
+ * bei der ZVG-Detailerfassung.
+ */
+const MAX_BEWERTUNGEN_IMMOWELT = 600;
+
 const TELEGRAM_SENDEABSTAND_MS = 500;
 
 /**
@@ -130,10 +157,11 @@ function schlafe(ms: number): Promise<void> {
  */
 async function verarbeiteKandidatIsoliert(
   telegramConfig: TelegramConfig,
-  candidate: PipelineCandidate
+  candidate: PipelineCandidate,
+  meldebudget: Meldebudget
 ): Promise<void> {
   try {
-    await processCandidate(sb, telegramConfig, candidate);
+    await processCandidate(sb, telegramConfig, candidate, meldebudget);
   } catch (err) {
     console.error(
       `Kandidat fehlgeschlagen, uebersprungen [${candidate.source} · ${candidate.externalId} · ${candidate.url}]:`,
@@ -260,6 +288,9 @@ async function main() {
     chatId: process.env.TELEGRAM_CHAT_ID!,
   };
 
+  // Ein Budget fuer den GANZEN Lauf, ueber beide Quellen hinweg.
+  const meldebudget = erstelleMeldebudget(MAX_MELDUNGEN_JE_LAUF);
+
   const detailGrenze = new Date(Date.now() - DETAIL_MAX_ALTER_TAGE * 24 * 60 * 60 * 1000);
 
   // Versatz fuer die Kandidaten-Rotation: Stunden seit Epoche. Kein
@@ -301,7 +332,17 @@ async function main() {
   //    Detailseite nie (`units: null` selbst in der Fixture).
   let immoweltBewertet = 0;
   let immoweltOhnePreis = 0;
+  // Rotierende Scheibe: nicht alle gesehenen Objekte in einem Lauf bewerten.
+  const immoweltAuswahl = new Set(
+    budgetiereDetailKandidaten(
+      "Immowelt-Bewertung",
+      MAX_BEWERTUNGEN_IMMOWELT,
+      [...immowelt.zusammenfassungen.keys()],
+      detailVersatz
+    )
+  );
   for (const zusammenfassung of immowelt.zusammenfassungen.values()) {
+    if (!immoweltAuswahl.has(zusammenfassung.externalId)) continue;
     const werte = werteAusTitelzeile(zusammenfassung.titleLine);
     // Ohne Preis ist nichts zu rechnen. Ein erfundener Preis waere schlimmer
     // als gar keiner -- er ginge unmittelbar in den Kaufpreisfaktor ein.
@@ -334,11 +375,11 @@ async function main() {
       caseNumber: null,
       rawNoticeText: null,
       photoUrls: [],
-    });
+    }, meldebudget);
   }
   console.log(
-    `Immowelt: ${immoweltBewertet} Objekte aus der Ergebnisliste bewertet, ` +
-      `${immoweltOhnePreis} ohne Preisangabe uebersprungen.`
+    `Immowelt: ${immoweltBewertet} von ${immowelt.zusammenfassungen.size} gesehenen Objekten ` +
+      `aus der Ergebnisliste bewertet, ${immoweltOhnePreis} ohne Preisangabe uebersprungen.`
   );
 
   // --- ZVG-Portal -------------------------------------------------------
@@ -379,10 +420,18 @@ async function main() {
       rawNoticeText: termin.rawNoticeText,
       sourceDataGaps: termin.dataGaps,
       attachments: termin.attachments,
-    });
+    }, meldebudget);
   }
 
   // --- Bestandsfuehrung -------------------------------------------------
+  console.log(
+    `Meldungen: ${meldebudget.verbraucht()} von hoechstens ${MAX_MELDUNGEN_JE_LAUF} gesendet` +
+      (meldebudget.zurueckgestellt() > 0
+        ? `, ${meldebudget.zurueckgestellt()} wegen des Budgets auf Folgelaeufe zurueckgestellt ` +
+          `(sie gelten weiter als nie gemeldet und werden nachgeholt).`
+        : ".")
+  );
+
   for (const sweep of [immowelt.sweep, zvg.sweep]) {
     try {
       await gleicheBestandAb(telegramConfig, sweep);
