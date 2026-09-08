@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { regionsLaufZeile } from "./bestandDb.js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  regionsLaufZeile,
+  aktualisiereLastSeen,
+  markiereVerschwunden,
+  hebeVerschwundenAuf,
+  loescheAbgelaufene,
+} from "./bestandDb.js";
 
 /**
  * Warum diese Zeilen in eine EIGENE Tabelle gehen und nicht in `sweep_runs`:
@@ -37,5 +44,120 @@ describe("regionsLaufZeile", () => {
     expect(zeile.vollstaendig).toBe(false);
     expect(zeile.gemeldete_treffer).toBeNull();
     expect(zeile.gesehene_objekte).toBe(0);
+  });
+});
+
+/**
+ * Warum diese Tests existieren: Am 2026-09-08 brach im Lauf 34230052647 der
+ * ganze Bestandsabgleich fuer Immowelt mit `Bad Request` ab, weil alle IDs in
+ * EINEM `.in("id", ...)` verschickt wurden. Gemessen liegt die Grenze bei der
+ * URL-Laenge: 641 IDs ergeben HTTP 200, 642 ergeben HTTP 400, 1500 ergeben
+ * HTTP 414. Getroffen hat es ausgerechnet `aktualisiereLastSeen` -- die
+ * Wache, die verhindert, dass gesehene Objekte spaeter geloescht werden.
+ * Der Bestand waechst; ohne Stueckelung reisst das kuenftig in jedem Lauf.
+ */
+type InAufruf = { tabelle: string; art: "update" | "delete"; ids: string[] };
+
+function fakeSupabase(optionen: { fehlerBeimAufruf?: number; zeilen?: unknown[] } = {}) {
+  const aufrufe: InAufruf[] = [];
+  const zeilen = optionen.zeilen ?? [];
+  let nummer = 0;
+
+  const antwort = (tabelle: string, art: "update" | "delete") => ({
+    in(_spalte: string, ids: string[]) {
+      nummer += 1;
+      aufrufe.push({ tabelle, art, ids: [...ids] });
+      const fehler =
+        optionen.fehlerBeimAufruf === nummer ? { message: "Bad Request" } : null;
+      return Promise.resolve({ error: fehler });
+    },
+  });
+
+  const client = {
+    from(tabelle: string) {
+      return {
+        update: (_werte: unknown) => antwort(tabelle, "update"),
+        delete: () => antwort(tabelle, "delete"),
+        select: (_spalten: string) => ({
+          not: (_spalte: string, _pruef: string, _wert: unknown) => ({
+            range: (von: number, bis: number) =>
+              Promise.resolve({ data: zeilen.slice(von, bis + 1), error: null }),
+          }),
+        }),
+      };
+    },
+  };
+
+  return { client: client as unknown as SupabaseClient, aufrufe };
+}
+
+const ids = (anzahl: number) =>
+  Array.from({ length: anzahl }, (_, i) => `id-${i.toString().padStart(5, "0")}`);
+
+const HOECHSTE_BLOCKGROESSE = 500;
+
+describe("Stueckelung der .in()-Listen", () => {
+  const faelle = [
+    {
+      name: "aktualisiereLastSeen",
+      ruf: (client: SupabaseClient, liste: string[]) =>
+        aktualisiereLastSeen(client, liste, new Date("2026-09-08T18:00:00Z")),
+    },
+    {
+      name: "markiereVerschwunden",
+      ruf: (client: SupabaseClient, liste: string[]) =>
+        markiereVerschwunden(client, liste, new Date("2026-09-08T18:00:00Z")),
+    },
+    {
+      name: "hebeVerschwundenAuf",
+      ruf: (client: SupabaseClient, liste: string[]) => hebeVerschwundenAuf(client, liste),
+    },
+  ];
+
+  for (const fall of faelle) {
+    it(`${fall.name} verschickt 1200 IDs in Bloecken statt in einer Anfrage`, async () => {
+      const { client, aufrufe } = fakeSupabase();
+      const liste = ids(1200);
+
+      await fall.ruf(client, liste);
+
+      const groessen = aufrufe.map((aufruf) => aufruf.ids.length);
+      expect(Math.max(...groessen)).toBeLessThanOrEqual(HOECHSTE_BLOCKGROESSE);
+      // Keine ID darf dabei verlorengehen oder doppelt gehen.
+      expect(aufrufe.flatMap((aufruf) => aufruf.ids)).toEqual(liste);
+    });
+  }
+
+  it("wirft, wenn ein spaeterer Block scheitert -- der Abgleich gilt dann als gescheitert", async () => {
+    // Fail-closed: Ein Teilerfolg darf nie als Erfolg durchgehen, sonst
+    // gelten gesehene Objekte als nicht gesehen und werden loeschbar.
+    const { client, aufrufe } = fakeSupabase({ fehlerBeimAufruf: 2 });
+
+    await expect(
+      aktualisiereLastSeen(client, ids(1200), new Date("2026-09-08T18:00:00Z"))
+    ).rejects.toMatchObject({ message: "Bad Request" });
+
+    expect(aufrufe.length).toBe(2);
+  });
+
+  it("loescheAbgelaufene loescht 1200 faellige Objekte in Bloecken", async () => {
+    const alt = new Date("2026-08-01T00:00:00Z").toISOString();
+    const { client, aufrufe } = fakeSupabase({
+      zeilen: ids(1200).map((id) => ({ id, disappeared_at: alt, last_seen: alt })),
+    });
+
+    const geloescht = await loescheAbgelaufene(client, new Date("2026-09-08T18:00:00Z"));
+
+    expect(geloescht).toBe(1200);
+    const loeschAufrufe = aufrufe.filter((aufruf) => aufruf.art === "delete");
+    expect(Math.max(...loeschAufrufe.map((aufruf) => aufruf.ids.length))).toBeLessThanOrEqual(
+      HOECHSTE_BLOCKGROESSE
+    );
+  });
+
+  it("schickt bei leerer Liste gar keine Anfrage", async () => {
+    const { client, aufrufe } = fakeSupabase();
+    await aktualisiereLastSeen(client, [], new Date("2026-09-08T18:00:00Z"));
+    expect(aufrufe).toEqual([]);
   });
 });

@@ -96,29 +96,49 @@ export async function ladeVeralteteExternalIds(
   return zeilen.map((zeile) => zeile.external_id);
 }
 
+/**
+ * Groesse eines `.in()`-Blocks. Die Grenze ist die URL-Laenge, nicht die
+ * Datenbank: gemessen am 2026-09-08 gehen 641 IDs durch (25.072 B), 642
+ * ergeben HTTP 400 `Bad Request`, 1.500 ergeben HTTP 414. 500 laesst Luft
+ * fuer laengere Spaltennamen und zusaetzliche Filter.
+ */
+const BLOCKGROESSE = 500;
+
+/**
+ * Fuehrt eine Schreiboperation blockweise aus. Scheitert ein Block, wirft die
+ * Funktion sofort -- ein Teilerfolg darf nie als Erfolg durchgehen. Sonst
+ * gelten gesehene Objekte als nicht gesehen und werden loeschbar.
+ */
+async function jeBlock(
+  listingIds: string[],
+  schreibe: (block: string[]) => PromiseLike<{ error: any }>
+): Promise<void> {
+  for (let von = 0; von < listingIds.length; von += BLOCKGROESSE) {
+    const { error } = await schreibe(listingIds.slice(von, von + BLOCKGROESSE));
+    if (error) throw error;
+  }
+}
+
 export async function markiereVerschwunden(
   supabase: SupabaseClient,
   listingIds: string[],
   zeitpunkt: Date
 ): Promise<void> {
-  if (listingIds.length === 0) return;
-  const { error } = await supabase
-    .from("listings")
-    .update({ disappeared_at: zeitpunkt.toISOString() })
-    .in("id", listingIds);
-  if (error) throw error;
+  await jeBlock(listingIds, (block) =>
+    supabase
+      .from("listings")
+      .update({ disappeared_at: zeitpunkt.toISOString() })
+      .in("id", block)
+  );
 }
 
 export async function hebeVerschwundenAuf(
   supabase: SupabaseClient,
   listingIds: string[]
 ): Promise<void> {
-  if (listingIds.length === 0) return;
-  const { error } = await supabase
-    .from("listings")
-    .update({ disappeared_at: null })
-    .in("id", listingIds);
-  if (error) throw error;
+  await jeBlock(listingIds, (block) =>
+    supabase.from("listings").update({ disappeared_at: null }).in("id", block)
+  );
 }
 
 export async function aktualisiereLastSeen(
@@ -126,12 +146,12 @@ export async function aktualisiereLastSeen(
   listingIds: string[],
   zeitpunkt: Date
 ): Promise<void> {
-  if (listingIds.length === 0) return;
-  const { error } = await supabase
-    .from("listings")
-    .update({ last_seen: zeitpunkt.toISOString() })
-    .in("id", listingIds);
-  if (error) throw error;
+  await jeBlock(listingIds, (block) =>
+    supabase
+      .from("listings")
+      .update({ last_seen: zeitpunkt.toISOString() })
+      .in("id", block)
+  );
 }
 
 /**
@@ -167,8 +187,7 @@ export async function loescheAbgelaufene(
     .map((zeile) => zeile.id);
   if (faellig.length === 0) return 0;
 
-  const { error: loeschFehler } = await supabase.from("listings").delete().in("id", faellig);
-  if (loeschFehler) throw loeschFehler;
+  await jeBlock(faellig, (block) => supabase.from("listings").delete().in("id", block));
   return faellig.length;
 }
 

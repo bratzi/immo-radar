@@ -931,12 +931,16 @@ Immowelt-Objekte binnen eines Tages). Die Grenze von 641 wird kuenftig in
 vollstaendig gesweept wurde. Ob sie fehlten oder ob nur der Abgleich
 abstuerzte, ist aus den Daten nicht zu trennen.
 
-- [ ] **Schritt 1:** Test, der `aktualisiereLastSeen` mit mehr als 641 IDs
-      aufruft und heute fehlschlaegt.
-- [ ] **Schritt 2:** Die vier Stellen in Bloecken zu hoechstens 500 IDs fahren
-      (oder serverseitig ueber einen `external_id`-Filter), Bloecke einzeln
-      quittieren. **Fail-closed bleibt Pflicht:** Scheitert ein Block, gilt
-      der Abgleich als unvollstaendig — nicht als „der Rest war in Ordnung".
+- [x] **Schritt 1:** Test, der die vier Stellen mit 1.200 IDs aufruft. Rot
+      gesehen: fuenf Fehlschlaege, `expected 1200 to be less than or equal to
+      500`.
+- [x] **Schritt 2:** `jeBlock` fuehrt jede Schreiboperation in Bloecken zu
+      hoechstens `BLOCKGROESSE = 500` aus, alle vier Stellen benutzen es.
+      **Fail-closed:** Scheitert ein Block, wirft die Funktion sofort — ein
+      Teilerfolg geht nie als Erfolg durch. Ein eigener Test haelt das fest.
+      348 Tests gruen (vorher 342), `tsc --noEmit` sauber.
+- [ ] **Schritt 3 (offen, braucht einen Lauf):** Die Abnahme unten an einem
+      Produktionslauf belegen.
 
 **Abnahme:** Ein Produktionslauf mit mehr als 1.000 Immowelt-Objekten
 protokolliert keinen `Bestandsabgleich fehlgeschlagen` mehr, und die Zahl der
