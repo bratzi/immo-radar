@@ -562,7 +562,23 @@ export function beurteileDetailAntwort(
   );
 }
 
-/** Phase B: Detailseiten nur fuer die uebergebenen externalIds. */
+/**
+ * Phase B: Detailseiten nur fuer die uebergebenen externalIds.
+ *
+ * WIRD VOM PRODUKTIVLAUF NICHT MEHR AUFGERUFEN (Stand 2026-09-08). Immowelts
+ * /expose/-Seiten antworten von Rechenzentrums-Adressen mit HTTP 403 und einem
+ * DataDome-CAPTCHA, waehrend /suche/ im selben Lauf und derselben
+ * Browser-Sitzung HTTP 200 mit vollstaendiger Seite liefert -- direkt
+ * nacheinander auf einem GitHub-Runner gemessen. 144 von 144 Abrufen je Lauf
+ * scheiterten so, zwoelf Minuten Budget fuer nichts.
+ *
+ * Die Bewertung kommt seither aus der Titelzeile der Ergebniskarte
+ * (scrapers/immowelt/titelzeile.ts). Diese Funktion bleibt stehen, weil sie
+ * von einem gewoehnlichen Anschluss aus nachweislich funktioniert (lokal
+ * geprueft, HTTP 200 mit vollem Datenmodell) -- sie waere der Weg, falls der
+ * Lauf je von einer nicht gesperrten Adresse aus stattfindet. Vorher aber
+ * pruefen, ob die Sperre noch besteht, statt sie einfach wieder einzuhaengen.
+ */
 export async function erfasseImmoweltDetails(
   zusammenfassungen: Map<string, ImmoweltListSummary>,
   externalIds: string[]

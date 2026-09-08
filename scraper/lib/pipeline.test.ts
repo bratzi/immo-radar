@@ -186,3 +186,22 @@ describe("bewerteFlaechenangabe", () => {
     expect(bewerteFlaechenangabe(291)).toEqual([]);
   });
 });
+
+describe("bewerteMietschaetzung -- bundeslandgenaue Miete", () => {
+  it("weist die groebere Schaetzung ausdruecklich aus", () => {
+    // Immowelt-Ergebnislisten nennen keine PLZ. Ein so bewertetes Objekt ist
+    // nicht falsch, aber ungenauer -- und das muss dranstehen, sonst rankt das
+    // Dashboard spaeter Nichtwissen wie Wissen.
+    expect(bewerteMietschaetzung("geschaetzt_bundesland", 6)).toContain("miete_nur_bundeslandgenau");
+  });
+
+  it("meldet die Luecke nicht bei PLZ-genauer Schaetzung", () => {
+    expect(bewerteMietschaetzung("geschaetzt_regional", 6)).not.toContain("miete_nur_bundeslandgenau");
+  });
+
+  it("meldet zusaetzlich Unglaubwuerdigkeit bei absurder Rendite", () => {
+    const luecken = bewerteMietschaetzung("geschaetzt_bundesland", 45);
+    expect(luecken).toContain("miete_nur_bundeslandgenau");
+    expect(luecken).toContain("rent_estimate_unreliable");
+  });
+});

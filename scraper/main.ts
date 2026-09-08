@@ -1,6 +1,5 @@
 import {
   sweepImmowelt,
-  erfasseImmoweltDetails,
   IMMOWELT_VERZOEGERUNG_MS,
 } from "./scrapers/immowelt/index.js";
 import {
@@ -36,6 +35,7 @@ import {
   type TelegramConfig,
 } from "./lib/telegram.js";
 import { sb } from "./lib/supabase.js";
+import { werteAusTitelzeile } from "./scrapers/immowelt/titelzeile.js";
 import { nurInCiAusfuehren } from "./lib/nurInCi.js";
 
 // Der volle Lauf faehrt einen Browser gegen zwei Portale und ist der Grund,
@@ -56,16 +56,21 @@ const DETAIL_MAX_ALTER_TAGE = 7;
  * jede Quelle pro Lauf nur eine begrenzte Scheibe Kandidaten; der Rueckstand
  * wird ueber aufeinanderfolgende Laeufe abgetragen.
  *
+ * SEIT DEM 2026-09-08 GILT DAS NUR NOCH FUER ZVG. Immowelt hat keine
+ * Detailphase mehr: seine /expose/-Seiten antworten von
+ * Rechenzentrums-Adressen mit HTTP 403 und DataDome-CAPTCHA, waehrend /suche/
+ * im selben Lauf HTTP 200 liefert. Die Bewertung kommt dort jetzt aus der
+ * Titelzeile der Ergebniskarte (siehe scrapers/immowelt/titelzeile.ts) und
+ * kostet gar kein Budget.
+ *
  * Die Scheibengroesse ist DETAIL_BUDGET_MS geteilt durch die Drossel der
  * Quelle -- und die Drosselwerte werden aus den Scraper-Modulen IMPORTIERT,
- * nie hier von Hand wiederholt. Genau diese Dopplung war der Fehler: als
- * Immowelt zum Schutz vor der Anti-Bot-Ratenschwelle von 1 s auf 5 s
- * hochgedrosselt wurde, blieb die Detailkosten-Konstante bei 1000 ms stehen,
- * und Immowelts Detailphase wurde als 12 min budgetiert, lief aber ~60 min.
- *   Immowelt: DETAIL_BUDGET_MS / IMMOWELT_VERZOEGERUNG_MS
- *             = 720_000 / 5_000 = 144 Kandidaten  (~12 min)
- *   ZVG:      DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS
- *             = 720_000 / 1_000 = 720 Kandidaten  (~12 min)
+ * nie hier von Hand wiederholt. Genau diese Dopplung war schon einmal der
+ * Fehler: als Immowelt von 1 s auf 5 s hochgedrosselt wurde, blieb die
+ * Detailkosten-Konstante bei 1000 ms stehen, und die Detailphase wurde als
+ * 12 min budgetiert, lief aber ~60 min.
+ *   ZVG: DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS
+ *        = 720_000 / 1_000 = 720 Kandidaten  (~12 min)
  *
  * Warum das ernst ist und nicht bloss langsam: Laeuft ein Lauf ueber
  * `timeout-minutes` des GitHub-Actions-Jobs, wird er per SIGKILL beendet --
@@ -83,12 +88,11 @@ const DETAIL_MAX_ALTER_TAGE = 7;
 const DETAIL_BUDGET_MS = 12 * 60 * 1000;
 
 /**
- * Wie viele Detailkandidaten das Budget je Quelle zulaesst -- abgeleitet aus
- * der pro Fetch importierten Drossel der jeweiligen Quelle, damit Budget und
- * Drossel nie wieder auseinanderlaufen koennen.
+ * Wie viele Detailkandidaten das Budget zulaesst -- abgeleitet aus der
+ * importierten Drossel der Quelle, damit Budget und Drossel nie wieder
+ * auseinanderlaufen koennen. Nur noch ZVG hat eine Detailphase.
  */
-const DETAIL_MAX_KANDIDATEN: Record<"immowelt" | "zvg-portal", number> = {
-  immowelt: Math.floor(DETAIL_BUDGET_MS / IMMOWELT_VERZOEGERUNG_MS),
+const DETAIL_MAX_KANDIDATEN: Record<"zvg-portal", number> = {
   "zvg-portal": Math.floor(DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS),
 };
 
@@ -271,46 +275,71 @@ async function main() {
   // die Referenzlaeufe, die eine spaetere regionsgenaue Loeschhoheit braucht.
   await speichereRegionsLaeufe(sb, "immowelt", immowelt.regionLaeufe);
 
-  const immoweltBekannt = new Set(
-    (await ladeBekannteListings(sb, "immowelt")).map((l) => l.externalId)
-  );
-  const immoweltVeraltet = new Set(await ladeVeralteteExternalIds(sb, "immowelt", detailGrenze));
-  const immoweltKandidaten = waehleDetailKandidaten(
-    [...immowelt.sweep.gesehene],
-    immoweltBekannt,
-    immoweltVeraltet
-  );
-  const immoweltAuswahl = budgetiereDetailKandidaten(
-    "Immowelt",
-    DETAIL_MAX_KANDIDATEN.immowelt,
-    immoweltKandidaten,
-    detailVersatz
-  );
-
-  for (const objekt of await erfasseImmoweltDetails(immowelt.zusammenfassungen, immoweltAuswahl)) {
+  // Immowelt wird AUS DER ERGEBNISLISTE bewertet, nicht aus Detailseiten.
+  //
+  // WARUM: Immowelts /expose/-Seiten antworten von Rechenzentrums-Adressen mit
+  // HTTP 403 und einem DataDome-CAPTCHA, waehrend /suche/ im selben Lauf und
+  // derselben Browser-Sitzung HTTP 200 mit vollstaendiger Seite liefert
+  // (gemessen 2026-09-08 auf einem GitHub-Runner, unmittelbar nacheinander).
+  // Die frueher hier stehende Detailphase holte 144 Seiten je Lauf und bekam
+  // 144-mal 403: zwoelf Minuten Budget fuer nichts, und 144 Anfragen gegen
+  // einen Anti-Bot-Schutz, den wir nicht reizen wollen.
+  //
+  // Die Ergebnisliste traegt alles Noetige in der Titelzeile der Karte, die
+  // der Sweep ohnehin schon einsammelt:
+  //
+  //   "Mehrfamilienhaus zum Kauf - West - 75.000 € - 8 Zimmer, 158,7 m², 184 m² Grundstück"
+  //
+  // Das kostet keinen einzigen zusaetzlichen Abruf.
+  //
+  // Was dabei fehlt und bewusst hingenommen wird:
+  //  * Die PLZ. Sie steht weder im Seiten-HTML noch im Datenmodell der
+  //    Suchseite. Die Miete wird deshalb bundeslandgenau geschaetzt (ueber den
+  //    Fundort) und traegt die Datenluecke `miete_nur_bundeslandgenau`.
+  //  * Baujahr und Beschreibung.
+  //  * Die Einheitenzahl -- die lieferte Immowelt aber auch auf der
+  //    Detailseite nie (`units: null` selbst in der Fixture).
+  let immoweltBewertet = 0;
+  let immoweltOhnePreis = 0;
+  for (const zusammenfassung of immowelt.zusammenfassungen.values()) {
+    const werte = werteAusTitelzeile(zusammenfassung.titleLine);
+    // Ohne Preis ist nichts zu rechnen. Ein erfundener Preis waere schlimmer
+    // als gar keiner -- er ginge unmittelbar in den Kaufpreisfaktor ein.
+    if (werte.preisCents === null) {
+      immoweltOhnePreis += 1;
+      continue;
+    }
+    immoweltBewertet += 1;
     await verarbeiteKandidatIsoliert(telegramConfig, {
       source: "immowelt",
-      externalId: objekt.externalId,
-      url: objekt.url,
-      // Woher das Objekt stammt, weiss nur der Sweep -- die Detailseite nicht.
-      fundort: immowelt.zusammenfassungen.get(objekt.externalId)?.fundort ?? null,
-      title: objekt.title,
-      priceCents: objekt.priceCents,
-      livingAreaM2: objekt.livingAreaM2,
-      plotAreaM2: objekt.plotAreaM2,
-      units: objekt.units,
-      unitsConfident: objekt.unitsConfident,
-      yearBuilt: objekt.yearBuilt,
-      zipCode: objekt.zipCode,
-      city: objekt.city,
-      rentColdMonthly: objekt.rentColdMonthly,
+      externalId: zusammenfassung.externalId,
+      url: zusammenfassung.url,
+      fundort: zusammenfassung.fundort,
+      title: zusammenfassung.titleLine,
+      priceCents: werte.preisCents,
+      livingAreaM2: werte.wohnflaecheM2,
+      plotAreaM2: werte.grundstueckM2,
+      // Die Zimmerzahl ist NICHT die Zahl der Wohneinheiten. Sie hier
+      // einzusetzen waere eine stille Erfindung; `bewerteEinheiten` nimmt
+      // stattdessen wie bisher den Mindestwert an und markiert das.
+      units: null,
+      unitsConfident: false,
+      yearBuilt: null,
+      // Ohne PLZ: die Ortsangabe der Karte ist ein Stadtteilname.
+      zipCode: "",
+      city: werte.lage ?? "",
+      rentColdMonthly: null,
       auctionAt: null,
       court: null,
       caseNumber: null,
       rawNoticeText: null,
-      photoUrls: objekt.photoUrls,
+      photoUrls: [],
     });
   }
+  console.log(
+    `Immowelt: ${immoweltBewertet} Objekte aus der Ergebnisliste bewertet, ` +
+      `${immoweltOhnePreis} ohne Preisangabe uebersprungen.`
+  );
 
   // --- ZVG-Portal -------------------------------------------------------
   console.log("ZVG-Portal: Sweep gestartet...");

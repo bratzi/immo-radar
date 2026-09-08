@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { grunderwerbsteuerSatz, bundeslandFuerPlz } from "./grunderwerbsteuer.js";
+import { grunderwerbsteuerSatz, bundeslandFuerPlz,
+  grunderwerbsteuerSatzFuerBundesland,
+  BUNDESWEITER_GRUNDERWERBSTEUER_DURCHSCHNITT,
+} from "./grunderwerbsteuer.js";
 
 describe("grunderwerbsteuerSatz", () => {
   it("liefert 3.5 für München (Bayern)", () => {
@@ -30,5 +33,20 @@ describe("bundeslandFuerPlz", () => {
 
   it("liefert null für eine unbekannte PLZ", () => {
     expect(bundeslandFuerPlz("00000")).toBeNull();
+  });
+});
+
+describe("grunderwerbsteuerSatzFuerBundesland", () => {
+  it("liefert den Satz ohne Umweg ueber eine PLZ", () => {
+    // Immowelt-Objekte aus der Ergebnisliste haben keine PLZ, wohl aber das
+    // Bundesland ihrer Fundstelle. Der Steuersatz haengt ohnehin am Land.
+    expect(grunderwerbsteuerSatzFuerBundesland("Bayern")).toBe(3.5);
+    expect(grunderwerbsteuerSatzFuerBundesland("Nordrhein-Westfalen")).toBe(6.5);
+    expect(grunderwerbsteuerSatzFuerBundesland("Bremen")).toBe(5.5);
+  });
+
+  it("faellt auf den Bundesschnitt zurueck, statt zu raten", () => {
+    expect(grunderwerbsteuerSatzFuerBundesland("Elbonien")).toBe(BUNDESWEITER_GRUNDERWERBSTEUER_DURCHSCHNITT);
+    expect(grunderwerbsteuerSatzFuerBundesland(null)).toBe(BUNDESWEITER_GRUNDERWERBSTEUER_DURCHSCHNITT);
   });
 });

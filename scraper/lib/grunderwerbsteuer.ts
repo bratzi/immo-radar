@@ -34,6 +34,19 @@ export function grunderwerbsteuerSatz(plz: string): number {
   return SATZ_JE_BUNDESLAND[bundesland] ?? BUNDESWEITER_GRUNDERWERBSTEUER_DURCHSCHNITT;
 }
 
+/**
+ * Steuersatz direkt aus dem Bundesland, ohne Umweg ueber eine PLZ.
+ *
+ * WOZU: Immowelt-Objekte, die aus der Ergebnisliste bewertet werden, haben
+ * keine Postleitzahl -- die steht dort nirgends, und die Detailseite ist von
+ * Rechenzentrums-Adressen gesperrt. Das Bundesland ist aber bekannt, und der
+ * Steuersatz haengt ohnehin nur daran.
+ */
+export function grunderwerbsteuerSatzFuerBundesland(bundesland: string | null): number {
+  if (bundesland === null) return BUNDESWEITER_GRUNDERWERBSTEUER_DURCHSCHNITT;
+  return SATZ_JE_BUNDESLAND[bundesland] ?? BUNDESWEITER_GRUNDERWERBSTEUER_DURCHSCHNITT;
+}
+
 export function bundeslandFuerPlz(plz: string): string | null {
   return plzBundesland[plz] ?? null;
 }

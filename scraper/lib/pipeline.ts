@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { grunderwerbsteuerSatz, bundeslandFuerPlz } from "./grunderwerbsteuer.js";
+import {
+  grunderwerbsteuerSatz,
+  grunderwerbsteuerSatzFuerBundesland,
+  bundeslandFuerPlz,
+} from "./grunderwerbsteuer.js";
 import { berechneKennzahlen } from "./metrics.js";
-import { ermittleJahreskaltmiete } from "./rentEstimate.js";
+import { ermittleJahreskaltmiete, bundeslandFuerRegionscode } from "./rentEstimate.js";
 import { bestimmeMeldeklasse, istHoeher, type Meldeklasse } from "./meldung.js";
 import { upsertListingAndVersion, logNotification, hoechsteGemeldeteKlasse } from "./db.js";
 import { kartePngFuerPlz } from "./karte.js";
@@ -56,9 +60,18 @@ const MAX_PLAUSIBLE_BRUTTORENDITE = 20;
  * nie angezweifelt -- dort ist eine hohe Rendite eine echte Information.
  */
 export function bewerteMietschaetzung(mietQuelle: string, bruttomietrendite: number): string[] {
-  if (mietQuelle === "angegeben") return [];
-  if (bruttomietrendite <= MAX_PLAUSIBLE_BRUTTORENDITE) return [];
-  return ["rent_estimate_unreliable"];
+  const luecken: string[] = [];
+
+  // Bundeslandgenau heisst: ueber ganz Nordrhein-Westfalen derselbe Mietwert,
+  // von Duesseldorf bis zum laendlichen Kreis. Nicht falsch, aber deutlich
+  // groeber als die PLZ-Schaetzung -- und das muss dranstehen, sonst rankt
+  // das Dashboard spaeter Nichtwissen wie Wissen.
+  if (mietQuelle === "geschaetzt_bundesland") luecken.push("miete_nur_bundeslandgenau");
+
+  if (mietQuelle !== "angegeben" && bruttomietrendite > MAX_PLAUSIBLE_BRUTTORENDITE) {
+    luecken.push("rent_estimate_unreliable");
+  }
+  return luecken;
 }
 
 /**
@@ -200,9 +213,28 @@ export async function processCandidate(
 
   const dataGaps = new Set([...(candidate.sourceDataGaps ?? []), ...einheiten.dataGaps]);
 
-  const miete = ermittleJahreskaltmiete(candidate.rentColdMonthly, candidate.livingAreaM2 ?? 0, candidate.zipCode);
-  const satz = grunderwerbsteuerSatz(candidate.zipCode);
-  const bundesland = bundeslandFuerPlz(candidate.zipCode);
+  // Das Bundesland kommt aus der PLZ, wenn es eine gibt -- sonst aus dem
+  // Fundort. Immowelt-Objekte aus der Ergebnisliste haben keine PLZ (die steht
+  // dort nirgends, und die Detailseite ist von Rechenzentrums-Adressen
+  // gesperrt), wohl aber die Region, in deren Liste sie standen.
+  const bundesland =
+    bundeslandFuerPlz(candidate.zipCode) ??
+    (candidate.fundort === undefined || candidate.fundort === null
+      ? null
+      : bundeslandFuerRegionscode(candidate.fundort));
+
+  const miete = ermittleJahreskaltmiete(
+    candidate.rentColdMonthly,
+    candidate.livingAreaM2 ?? 0,
+    candidate.zipCode,
+    bundesland
+  );
+  // Ohne PLZ ueber das Bundesland gehen statt auf den Bundesschnitt zu
+  // fallen -- der Steuersatz haengt ohnehin nur am Land.
+  const satz =
+    candidate.zipCode === "" || bundeslandFuerPlz(candidate.zipCode) === null
+      ? grunderwerbsteuerSatzFuerBundesland(bundesland)
+      : grunderwerbsteuerSatz(candidate.zipCode);
   const kennzahlen = berechneKennzahlen(
     {
       kaufpreis: candidate.priceCents / 100,
