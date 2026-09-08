@@ -220,41 +220,137 @@ ein schlechteres Verhältnis als bei ZVG.
 
 ---
 
-## A6. ZVG-Verkehrswert: der Parser liest Fließtext statt einer Zahl
+## A6. ZVG-Verkehrswert: die Quelle nennt in 3 von 194 Fällen keine Zahl
 
-**Befund (2026-09-08, Lauf `34215003141`):** Von **4** ZVG-Detailseiten wurden
-**3** übersprungen. Die Meldung nennt jedes Mal, was tatsächlich in der Zelle
-stand:
+**Gemessen am 2026-09-08 (Schritt 1). Der Verdacht „falsche Zelle" ist
+widerlegt.** Der Parser greift die richtige Zelle; in diesen drei Bekannt-
+machungen steht dort schlicht kein Betrag. A6 ist damit kein Parserfehler,
+sondern eine Eigenschaft der Quelle.
+
+### Die Quote im Bestand
+
+`listing_versions` kann die Lücke nicht zeigen: `price_cents` ist dort nie
+`NULL` (0 von 2.864 Zeilen), weil `parseZvgDetailPage` wirft, *bevor*
+geschrieben wird — ein Objekt ohne Verkehrswert kommt gar nicht erst in die
+Tabelle. Gemessen wurde deshalb gegen den Sweep und die Actions-Logs:
 
 ```
-Ungültiger Verkehrswert (nicht numerisch oder nicht positiv):
-  "s. obige Beschreibungen"
-  "Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €"
-  "Die Flurstücke bilden eine wirtschaftliche Einheit."
+ZVG-Termine im Sweep (Lauf 34230052647, 2026-09-08 13:07 UTC)   194
+davon mit Verkehrswert erfasst                                  191   98,5 %
+davon dauerhaft ohne Verkehrswert                                 3    1,5 %
 ```
 
-Der zweite Fall ist der aufschlussreiche: Dort steht ein `€` **hinter** einer
-Grundbuchangabe. Das ist kein fehlender Wert, sondern die falsche Zelle — der
-Parser greift offenbar auf die Zeile daneben, wenn die Verkehrswertzeile
-mehrspaltig oder mit Fußnote gesetzt ist.
+Über **acht** aufeinanderfolgende Läufe (34160967277 bis 34230052647,
+2026-09-07 20:51 bis 2026-09-08 13:07 UTC) scheitern **immer exakt dieselben
+drei IDs**: `zvg_id=49119&land_abk=by`, `zvg_id=13233&land_abk=ni`,
+`zvg_id=167869&land_abk=nw`. Sie bilden einen stehenden Rückstand — jeder Lauf
+holt sie erneut und verwirft sie erneut.
 
-**Warum das zählt:** Ohne Verkehrswert kein Vergleichsmaßstab. Die Stichprobe
-ist mit 4 Seiten klein — deshalb ist **Schritt 1 messen, nicht reparieren**.
+Die „3 von 4" aus dem ursprünglichen Befund waren also nicht die Quote,
+sondern nur der Ausschnitt: der Lauf hatte an dem Tag bloß 4 offene
+Detailkandidaten, und 3 davon sind die immer gleichen Dauerfälle.
+
+### Was in der Zelle wirklich steht
+
+Für `zvg_id=13233` liegt der Rohtext in der Datenbank vor (die Seite wurde am
+2026-09-07 03:40 UTC noch von der *alten* Parserfassung angenommen). Er
+belegt, dass die Zuordnung Label → Wert stimmt:
+
+```
+Grundbuch:          Duderstadt Blatt 7803
+Objekt/Lage:        Mehrfamilienhaus: August-Werner-Allee, 37115 Duderstadt
+Beschreibung:       Wohnung im Obergeschoss mit Kellerraum, Baujahr 2017/2018
+Verkehrswert in €:  Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €
+Termin:             Mittwoch, 23. September 2026, 11:30 Uhr
+```
+
+Alle Nachbarfelder sitzen richtig; nur im Verkehrswertfeld fehlt der Betrag.
+Dass es ein Versäumnis des Gerichts ist und kein Spaltenversatz, zeigen die
+Schwesterbekanntmachungen desselben Amtsgerichts, die dieselbe Schablone
+ausgefüllt haben:
+
+```
+Blatt 7796 lfd.Nr. 1: 130.000 €      (zvg_id=13232)
+Blatt 4248 lfd.Nr. 1: 52.000,00 €    (zvg_id=13234)
+Blatt 7803 lfd.Nr. 1: €              (zvg_id=13233)  <- Betrag ausgelassen
+```
+
+Für `zvg_id=49119` („s. obige Beschreibungen") und `zvg_id=167869` („Die
+Flurstücke bilden eine wirtschaftliche Einheit.") liegt **kein Rohtext vor** —
+sie wurden nie erfolgreich erfasst. Beide Texte verweisen dem Wortlaut nach
+auf eine andere Stelle des Gutachtens; belegt ist das nicht, nur konsistent
+mit dem gemessenen Fall.
+
+### Ein Phantomwert im Bestand
+
+Der DB-Eintrag zu `zvg_id=13233` trägt **78.031 €**. Diese Zahl steht auf
+keiner Seite: die alte Fassung von `parseGermanNumber` hat die Ziffern aus
+„Blatt **7803** lfd.Nr. **1**" zusammengeklebt. `fe5749a` (2026-09-07 05:37
+UTC) hat das behoben — seither scheitert die Seite ehrlich, statt still zu
+lügen. Der falsche Wert aus dem Lauf davor steht aber noch da und wird nie
+überschrieben, weil das Objekt nie wieder erfasst wird.
+
+Nachgerechnet über alle 193 gespeicherten ZVG-Objekte: der heutige Parser
+liefert in **192** Fällen exakt den gespeicherten Wert. Der eine Abweichler
+ist genau dieser Phantomwert.
+
+### Nebenbefund: die Verkehrswertzelle ist oft mehrteilig — und das trägt
+
+```
+Objekte mit Verkehrswert im Bestand                    193
+davon reine Zahl in der Zelle                          147
+davon mit Begleittext (Grundbuch, lfd.Nr., Hinweise)    46
+davon mehrzeilige Zellen (mehrere Absätze)              17
+davon mit mehr als einem Euro-Betrag in der Zelle       14
+```
+
+Die Max-über-alle-Beträge-Regel in `parseVerkehrswert` hält: **6** dieser
+Zellen weisen ausdrücklich einen `Gesamtverkehrswert` aus, und in **5** davon
+steht genau dieser Wert in der Datenbank. Die Währungspflicht schützt
+zuverlässig vor Kassenzeichen und IBAN — 7 Felder enthalten elfstellige
+Zahlen, keine davon wurde als Preis gelesen.
+
+Die eine Ausnahme ist ein **eigener, kleiner Parserfehler** —
+`zvg_id=4198&land_abk=rp`:
+
+```
+Verkehrswert Flur 25 Nr. 24/1: 122.000,00 €
+Verkehrswert Flur 25 Nr. 295:  160.000,00 €
+Gesamtverkehrswert:            282.000,-- €     <- nicht erkannt
+```
+
+`BETRAG_PATTERN` kennt `,-`, aber nicht `,--`. Gespeichert sind **160.000 €**
+statt 282.000 € — 43 % zu niedrig. Nicht Teil von A6, aber derselbe
+Zeilenbereich; gehört in einen eigenen Punkt mit eigenem Fixture.
 
 **Dateien:** `scraper/scrapers/zvg-portal/detail.ts` (`parseZvgDetailPage`,
-die Prüfung liegt bei Zeile 296).
+Prüfung bei Zeile 296; `BETRAG_PATTERN` bei Zeile 123).
 
-- [ ] **Schritt 1:** In `listing_versions` zählen, wie viele ZVG-Objekte
-      überhaupt einen Verkehrswert tragen und wie viele nicht. Erst diese Quote
-      sagt, ob es drei Einzelfälle oder ein Muster sind.
-- [ ] **Schritt 2:** Die drei genannten Gutachten über
-      `gh workflow run pruefung.yml -f skript=diagnose-detail` holen und die
-      Verkehrswertzeile im Rohtext ansehen.
-- [ ] **Schritt 3:** Erst nach benannter Ursache ein Fixture mit genau dieser
-      Zeilenform anlegen, den Test scheitern sehen, dann beheben.
+- [x] **Schritt 1 — erledigt:** 3 von 194 (1,5 %), stehender Rückstand aus
+      immer denselben drei IDs. Kein Muster, das den Parser verdächtigt.
+- [~] **Schritt 2 — nur teilweise möglich:** Für `zvg_id=13233` ersetzte der
+      Rohtext aus `listing_versions.raw_notice_text` den Live-Abruf. Die
+      beiden anderen bleiben ungemessen: `scripts/diagnose-detail.mts` ist
+      fest auf zwei Immowelt-`/expose/`-URLs verdrahtet und nimmt keine
+      URL an, und `pruefung.yml` kennt nur die Eingaben `skript`, `region`
+      und `max_seiten` — es gibt keinen Weg, eine ZVG-URL hineinzureichen,
+      ohne das Skript umzubauen.
+- [ ] **Schritt 3 — die Frage hat sich verschoben.** Zu reparieren ist nicht
+      das Lesen, sondern der Umgang mit dem Fehlen. Drei Teilfragen, vor der
+      Umsetzung zu entscheiden:
+      1. Ist ein Objekt ohne Verkehrswert überhaupt bewertbar? Ohne
+         Vergleichsmaßstab gibt es keine Kennzahl und keine Meldung.
+      2. Wenn nein: das Verwerfen darf nicht als `Fehler, übersprungen`
+         auftreten. Ein Gericht, das kein Feld ausfüllt, ist kein Ausfall des
+         Radars — die Meldung soll das trennen, sonst verdeckt Rauschen
+         echte Störungen.
+      3. Der Phantomwert 78.031 € zu `zvg_id=13233` steht weiterhin im
+         Bestand und wird nie überschrieben. Er gehört gelöscht — aber
+         `bestand.ts`-Regel beachten: wer nicht urteilen kann, löscht nicht.
 
-**Abnahme:** Die drei Gutachten liefern einen Verkehrswert oder es ist belegt,
-dass die Seite selbst keinen nennt.
+**Abnahme:** erfüllt für Schritt 1. Die geforderte Alternative ist eingetreten:
+*„es ist belegt, dass die Seite selbst keinen nennt"* — belegt für einen der
+drei Fälle, plausibel für die anderen beiden.
 
 ## A7. Das Bewertungsfenster wandert 3 Kandidaten je Lauf — bei 600 Breite
 
