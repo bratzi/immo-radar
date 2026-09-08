@@ -272,7 +272,14 @@ export async function regionErfassen(
   page: Page,
   region: { code: string; pfad: string },
   ziel: Map<string, ImmoweltListSummary>,
-  consentBereitsBestaetigt: boolean
+  consentBereitsBestaetigt: boolean,
+  /**
+   * Obergrenze der Ergebnisseiten. NUR fuer `scripts/pruefe-region.mts`
+   * gedacht, damit eine grosse Region lokal geprueft werden kann, ohne den
+   * Anschluss des Nutzers mit 60 Seitenabrufen zu belasten. Im Produktivlauf
+   * bleibt es beim Seitendeckel des Portals.
+   */
+  maxSeiten: number = SEITEN_DECKEL
 ): Promise<{ gemeldet: number | null; abgeschnitten: boolean; gesammelt: number }> {
   await page.goto(`${BASIS}${region.pfad}`, { waitUntil: "domcontentloaded" });
   // Einmal pro Browser-Context, direkt nach der ersten Navigation: das
@@ -286,7 +293,8 @@ export async function regionErfassen(
   // taugt daher nicht zum Zaehlen, was ein einzelnes Land geliefert hat.
   const regionIds = new Set<string>();
   let seite = 1;
-  for (; seite <= SEITEN_DECKEL; seite += 1) {
+  const deckel = Math.min(SEITEN_DECKEL, maxSeiten);
+  for (; seite <= deckel; seite += 1) {
     for (const karte of parseImmoweltListPage(await page.content())) {
       if (istMehrfamilienhausKandidat(karte.titleLine)) {
         ziel.set(karte.externalId, karte);

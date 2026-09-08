@@ -23,6 +23,8 @@ import { IMMOWELT_REGIONEN, regionErfassen, trefferzahlAusTitel } from "../scrap
 import type { ImmoweltListSummary } from "../scrapers/immowelt/list.js";
 
 const code = process.argv[2] ?? "hb";
+/** Seitendeckel fuer diese Pruefung -- schont den Anschluss bei grossen Regionen. */
+const maxSeiten = Number.parseInt(process.argv[3] ?? "", 10) || 250;
 const region = IMMOWELT_REGIONEN.find((r) => r.code === code);
 if (region === undefined) {
   console.error(
@@ -32,6 +34,7 @@ if (region === undefined) {
 }
 
 console.log(`=== Pruefe GENAU EINE Region: ${region.code} (${region.pfad}) ===`);
+console.log(`Hoechstens ${maxSeiten} Ergebnisseiten.`);
 console.log("Es wird nichts gespeichert und nichts gemeldet.\n");
 
 // headless: false ist zwingend -- Immowelt weist headless Chromium ab.
@@ -66,7 +69,7 @@ try {
   try {
     // consentBereitsBestaetigt = false: frischer Context, wie im echten Lauf
     // fuer die erste Region.
-    ergebnis = await regionErfassen(page, region, zusammenfassungen, false);
+    ergebnis = await regionErfassen(page, region, zusammenfassungen, false, maxSeiten);
   } catch (err) {
     // Genau das schluckt `sweepImmowelt` im Produktivlauf still weg. Hier nicht.
     fehler = err;
