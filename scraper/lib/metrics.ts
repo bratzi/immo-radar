@@ -19,6 +19,19 @@ export interface Kennzahlen {
   topTreffer: boolean;
 }
 
+/**
+ * Untergrenze, unter der ein Kaufpreisfaktor keine Gelegenheit mehr anzeigt,
+ * sondern einen Datenfehler.
+ *
+ * Bewusst weit unter jedem Marktniveau: Selbst stark sanierungsbeduerftige
+ * Mehrfamilienhaeuser wechseln in Deutschland nicht unter dem Sechs- bis
+ * Achtfachen der Jahreskaltmiete den Besitzer. Ein Faktor von 3 hiesse, das
+ * Haus habe sich nach drei Jahren Bruttomiete bezahlt. Die Schwelle soll
+ * kaputte Eingaben abfangen, NICHT ueber die Guete eines Angebots urteilen --
+ * darum liegt sie so tief, dass sie ein echtes Schnaeppchen nie trifft.
+ */
+export const MIN_PLAUSIBLER_KAUFPREISFAKTOR = 3;
+
 const KAPITALDIENST_SATZ = 0.06;
 const NOTAR_GRUNDBUCH_SATZ = 0.015;
 const MAKLER_SATZ = 0.0357;
@@ -57,7 +70,17 @@ export function berechneKennzahlen(
   const geschaetzterDscr = noi / ((input.kaufpreis + kaufnebenkosten) * KAPITALDIENST_SATZ);
   const geschaetzterBeleihungswert = noi / KAPITALDIENST_SATZ;
   const finanzierungsrisiko = input.kaufpreis > geschaetzterBeleihungswert * 1.1;
-  const topTreffer = kaufpreisfaktor <= 15 && geschaetzterDscr >= 1.3 && !finanzierungsrisiko;
+  // Nach OBEN pruefen reicht nicht. Am 2026-09-07 ging listing 2f41102f als
+  // top_treffer raus: 2.840 € fuer 198,8 m², Kaufpreisfaktor 0,175,
+  // Bruttomietrendite 571 %. Die Rechnung war fehlerfrei -- der Preis kam aus
+  // dem alten Immowelt-Detailparser und war falsch. `<= 15` erfuellt so ein
+  // Wert muehelos, und je kaputter die Zahl, desto besser sah das Objekt aus.
+  const kaufpreisfaktorUnplausibel = kaufpreisfaktor < MIN_PLAUSIBLER_KAUFPREISFAKTOR;
+  const topTreffer =
+    !kaufpreisfaktorUnplausibel &&
+    kaufpreisfaktor <= 15 &&
+    geschaetzterDscr >= 1.3 &&
+    !finanzierungsrisiko;
 
   return {
     bewirtschaftungskosten,

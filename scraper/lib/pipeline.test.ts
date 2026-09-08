@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { bewerteEinheiten, bewerteMietschaetzung, processCandidate, type PipelineCandidate,
   bewerteFlaechenangabe,
+  bewertePreisplausibilitaet,
 } from "./pipeline.js";
 
 describe("bewerteEinheiten", () => {
@@ -203,5 +204,20 @@ describe("bewerteMietschaetzung -- bundeslandgenaue Miete", () => {
     const luecken = bewerteMietschaetzung("geschaetzt_bundesland", 45);
     expect(luecken).toContain("miete_nur_bundeslandgenau");
     expect(luecken).toContain("rent_estimate_unreliable");
+  });
+});
+
+describe("bewertePreisplausibilitaet", () => {
+  it("haelt einen unmoeglich niedrigen Kaufpreisfaktor als Luecke fest", () => {
+    // listing 2f41102f, gemeldet am 2026-09-07: 2.840 € fuer 198,8 m²,
+    // Kaufpreisfaktor 0,175. Ohne diese Luecke faellt so ein Objekt nur
+    // lautlos durch die Schwellen -- und niemand sieht, dass die ZAHL kaputt
+    // ist und nicht das Angebot schlecht.
+    expect(bewertePreisplausibilitaet(0.175)).toEqual(["kaufpreis_unplausibel"]);
+  });
+
+  it("laesst einen echten Kaufpreisfaktor unangetastet", () => {
+    expect(bewertePreisplausibilitaet(8)).toEqual([]);
+    expect(bewertePreisplausibilitaet(22)).toEqual([]);
   });
 });

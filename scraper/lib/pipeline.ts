@@ -4,7 +4,7 @@ import {
   grunderwerbsteuerSatzFuerBundesland,
   bundeslandFuerPlz,
 } from "./grunderwerbsteuer.js";
-import { berechneKennzahlen } from "./metrics.js";
+import { berechneKennzahlen, MIN_PLAUSIBLER_KAUFPREISFAKTOR } from "./metrics.js";
 import { ermittleJahreskaltmiete, bundeslandFuerRegionscode } from "./rentEstimate.js";
 import { bestimmeMeldeklasse, istHoeher, type Meldeklasse } from "./meldung.js";
 import { upsertListingAndVersion, logNotification, hoechsteGemeldeteKlasse } from "./db.js";
@@ -73,6 +73,22 @@ export function bewerteMietschaetzung(mietQuelle: string, bruttomietrendite: num
     luecken.push("rent_estimate_unreliable");
   }
   return luecken;
+}
+
+/**
+ * Haelt fest, dass ein Kaufpreis zur Miete in keinem moeglichen Verhaeltnis
+ * steht -- dass also die ZAHL kaputt ist und nicht das Angebot schlecht.
+ *
+ * `berechneKennzahlen` verweigert solchen Objekten bereits den Top-Treffer.
+ * Ohne diese Luecke waere das aber unsichtbar: Das Objekt saehe aus wie
+ * geprueft und durchgefallen. Dieselbe Unterscheidung wie bei
+ * `wohnflaeche_fehlt`.
+ *
+ * Die Schwelle kommt aus metrics.ts und wird hier NICHT wiederholt -- eine
+ * zweite Kopie derselben Zahl war in diesem Projekt schon einmal der Fehler.
+ */
+export function bewertePreisplausibilitaet(kaufpreisfaktor: number): string[] {
+  return kaufpreisfaktor < MIN_PLAUSIBLER_KAUFPREISFAKTOR ? ["kaufpreis_unplausibel"] : [];
 }
 
 /**
@@ -257,6 +273,9 @@ export async function processCandidate(
     dataGaps.add(luecke);
   }
   for (const luecke of bewerteFlaechenangabe(candidate.livingAreaM2)) {
+    dataGaps.add(luecke);
+  }
+  for (const luecke of bewertePreisplausibilitaet(kennzahlen.kaufpreisfaktor)) {
     dataGaps.add(luecke);
   }
 

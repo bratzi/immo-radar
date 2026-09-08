@@ -75,3 +75,33 @@ describe("berechneKennzahlen", () => {
     expect(schlecht.topTreffer).toBe(false);
   });
 });
+
+describe("berechneKennzahlen -- Untergrenze der Plausibilitaet", () => {
+  /**
+   * Echter Fall aus der Produktion: listing 2f41102f, gemeldet am 2026-09-07
+   * als top_treffer. Der Preis von 2.840 € fuer 198,8 m² stammte aus dem alten
+   * Immowelt-Detailparser und war falsch. Die Kennzahlen waren rechnerisch
+   * einwandfrei -- Kaufpreisfaktor 0,175, Bruttomietrendite 571 % -- und genau
+   * deshalb ging die Meldung raus: geprueft wurde nur `kaufpreisfaktor <= 15`.
+   */
+  const kaputt = {
+    kaufpreis: 2_840,
+    jahreskaltmiete: 16_224,
+    einheiten: 3,
+    baujahr: 1998,
+    wohnflaecheM2: 198.8,
+  };
+
+  it("meldet keinen Top-Treffer bei einem unmoeglich niedrigen Kaufpreisfaktor", () => {
+    const k = berechneKennzahlen(kaputt, 5.5);
+    expect(k.kaufpreisfaktor).toBeLessThan(1);
+    expect(k.topTreffer).toBe(false);
+  });
+
+  it("laesst ein echtes Schnaeppchen unangetastet", () => {
+    // Kaufpreisfaktor 8 -- guenstig, aber real. Muss Top-Treffer bleiben.
+    const k = berechneKennzahlen({ ...kaputt, kaufpreis: 129_792 }, 5.5);
+    expect(k.kaufpreisfaktor).toBeCloseTo(8, 5);
+    expect(k.topTreffer).toBe(true);
+  });
+});
