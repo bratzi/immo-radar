@@ -134,8 +134,18 @@ Vier weitere Punkte, drei davon inzwischen behoben. Einzelheiten in
 | A9 | `topTreffer` prüfte nur nach oben — zwei Falschmeldungen mit 571 % Rendite | behoben |
 
 **A9 ist der Punkt, der den Nutzer erreicht hat.** 19 der 186 gemeldeten
-Objekte tragen einen Wert unter 25.000 €; zwei gingen mit falschen Preisen als
-`top_treffer` raus. Je kaputter die Zahl, desto besser sah das Objekt aus.
+Objekte tragen einen Wert unter 25.000 €; zwei wurden mit falschen Preisen
+gemeldet. Je kaputter die Zahl, desto besser sah das Objekt aus — geprüft
+wurde nur `kaufpreisfaktor <= 15`.
+
+Sie gingen als `pruefkandidat` raus, **nicht** als `top_treffer`:
+`bestimmeMeldeklasse` stuft geschätzte Mieten ohnehin herunter. Das Feld
+`topTreffer` der Kennzahlen ist die Schwellenprüfung, nicht die Meldeklasse.
+
+**Was dabei auffiel und für B2 zählt:** Seit dem 2026-09-07 um 05:43 ist kein
+einziger `top_treffer` mehr versandt worden. Alle 42 Treffer des Laufs vom
+2026-09-08 18:29 beruhen auf geschätzter Miete; im ganzen Bestand tragen nur
+zwei Objekte eine belegte. Die höchste Meldeklasse ist praktisch unerreichbar.
 
 ## Warnung: der Anschluss ist am 2026-09-08 erneut ausgefallen
 
