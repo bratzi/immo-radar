@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { bewerteEinheiten, bewerteMietschaetzung, processCandidate, type PipelineCandidate,
   bewerteFlaechenangabe,
@@ -219,5 +219,114 @@ describe("bewertePreisplausibilitaet", () => {
   it("laesst einen echten Kaufpreisfaktor unangetastet", () => {
     expect(bewertePreisplausibilitaet(8)).toEqual([]);
     expect(bewertePreisplausibilitaet(22)).toEqual([]);
+  });
+});
+
+/**
+ * Die Reihenfolge "erst senden, dann protokollieren" ist die ganze Grundlage
+ * dafuer, dass eine Zeile in `notifications` eine Zustellung belegt statt sie
+ * zu behaupten (Abnahmekriterium D-1). Bis hierhin hing sie an zwei
+ * Anweisungen und einem Kommentar: Wer `logNotification` vorzieht oder
+ * `if (res.ok)` streicht, haette eine gruene Suite bekommen.
+ *
+ * Diese Tests stubben ausschliesslich `fetch` -- die Telegram-Schicht, die
+ * Pipeline und `logNotification` laufen echt.
+ */
+describe("processCandidate — Reihenfolge von Versand und Protokoll", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** Wie die Attrappe oben, aber mit abweichender Vorgaengerversion (also
+   *  changed=true) und mit `notifications`, damit wirklich gesendet wird. */
+  function meldeAttrappe(protokoll: Record<string, unknown>[]): SupabaseClient {
+    return {
+      from(tabelle: string) {
+        if (tabelle === "listings") {
+          return {
+            upsert: () => ({
+              select: () => ({
+                single: () => Promise.resolve({ data: { id: "listing-1" }, error: null }),
+              }),
+            }),
+          };
+        }
+        if (tabelle === "listing_versions") {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => ({
+                  limit: () => ({
+                    maybeSingle: () =>
+                      Promise.resolve({
+                        // Anderer, aber NIEDRIGERER Preis: changed=true und
+                        // priceDropped=false. Sonst laeuft der Test ueber die
+                        // Preisaenderungs-Meldung und prueft den falschen
+                        // Aufrufort -- genau das ist beim ersten Entwurf
+                        // passiert und erst durch die Sabotageprobe aufgefallen.
+                        data: { price_cents: 100_000_00, rent_cold_monthly_cents: null, units: 2 },
+                        error: null,
+                      }),
+                  }),
+                }),
+              }),
+            }),
+            insert: () => Promise.resolve({ error: null }),
+          };
+        }
+        if (tabelle === "notifications") {
+          return {
+            select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+            insert: (zeile: Record<string, unknown>) => {
+              protokoll.push(zeile);
+              return Promise.resolve({ error: null });
+            },
+          };
+        }
+        throw new Error(`Unerwartete Tabelle in der Attrappe: ${tabelle}`);
+      },
+    } as unknown as SupabaseClient;
+  }
+
+  const telegramAntwort = (status: number, koerper: unknown) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: () => null },
+    json: async () => koerper,
+    text: async () => JSON.stringify(koerper),
+  });
+
+  /** Preis so, dass Kaufpreisfaktor und DSCR die Schwellen passieren --
+   *  sonst ist die Meldeklasse "keine" und es wird gar nicht gesendet. */
+  const MELDEWUERDIG: PipelineCandidate = { ...BASIS_KANDIDAT, priceCents: 150_000_00 };
+
+  it("schreibt KEINE Zeile, wenn Telegram den Versand ablehnt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => telegramAntwort(403, { ok: false, description: "bot blocked" }))
+    );
+    const protokoll: Record<string, unknown>[] = [];
+
+    await expect(
+      processCandidate(meldeAttrappe(protokoll), TELEGRAM_ATTRAPPE, MELDEWUERDIG)
+    ).rejects.toThrow("HTTP 403");
+
+    // Kein Protokoll ohne Zustellung: sonst gaelte das Objekt als gemeldet
+    // und der naechste Lauf holte es nie nach.
+    expect(protokoll).toEqual([]);
+  });
+
+  it("legt die bestaetigte message_id in die Zeile, wenn der Versand glueckt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => telegramAntwort(200, { ok: true, result: { message_id: 4711 } }))
+    );
+    const protokoll: Record<string, unknown>[] = [];
+
+    await processCandidate(meldeAttrappe(protokoll), TELEGRAM_ATTRAPPE, MELDEWUERDIG);
+
+    expect(protokoll).toHaveLength(1);
+    expect(protokoll[0].kind).toBe("pruefkandidat");
+    expect(protokoll[0].detail).toMatchObject({ telegramMessageId: 4711 });
   });
 });

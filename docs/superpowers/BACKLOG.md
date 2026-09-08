@@ -773,19 +773,32 @@ funktioniert nur, weil sich die Laufzeitfenster zufaellig nicht ueberlappen.
       Fehlschlag verwandelt) und `pipeline.ts:394` legt sie als
       `telegramMessageId` ins bestehende `detail`-jsonb. **Keine
       Schemaaenderung** — `detail jsonb` traegt das bereits (`schema.sql:116`).
-- [~] **Schritt 2 (teilweise):** Regressionstest fuer den Transport — `globalThis.fetch`
+- [x] **Schritt 2:** Regressionstest fuer den Transport — `globalThis.fetch`
       stubben: 200 → kein Wurf, `message_id` zurueck; 403 → wirft; 429 zweimal
       dann 200 → genau drei Aufrufe; 429 dauerhaft → wirft nach drei. Dazu ein
       `processCandidate`-Test: wirft der Versand, wird `logNotification`
       **nicht** gerufen. Im Rot-Gruen-Zyklus verifizieren.
-      **Stand:** Die vier Transportfaelle stehen (`telegram.test.ts`), rot
-      gesehen fuer die drei, die neues Verhalten verlangen; die beiden
-      Fehlerfaelle 403 und dauerhaftes 429 waren sofort gruen und sind damit
-      Absicherung vorhandenen Verhaltens, kein Neubau. **Der
-      Reihenfolgetest in `processCandidate` fehlt weiterhin** -- er braucht
-      einen Doppelgaenger fuer `upsertListingAndVersion`, `diffVersion` und
-      `hoechsteGemeldeteKlasse` und ist damit die eigentliche Arbeit. Bis er
-      steht, haengt die Reihenfolgegarantie nach wie vor an zwei Anweisungen.
+      **Erledigt.** Vier Transportfaelle in `telegram.test.ts`, zwei
+      Reihenfolgetests in `pipeline.test.ts`. Letztere stubben
+      ausschliesslich `fetch` -- Telegram-Schicht, Pipeline und
+      `logNotification` laufen echt.
+
+      **Zwei Sabotageproben belegen, dass die Tests greifen** (beide
+      zurueckgenommen):
+
+      1. `logNotification` VOR den Versand gezogen → beide
+         Reihenfolgetests rot (`expected [ { listing_id: 'listing-1', … } ]
+         to deeply equal []`).
+      2. Die Pruefung `if (res.ok)` entfernt → vier Tests rot
+         (`promise resolved "null" instead of rejecting`).
+
+      **Ein Fehler im ersten Testentwurf, den erst Probe 1 aufgedeckt hat:**
+      Die Attrappe lieferte eine Vorgaengerversion mit HOEHEREM Preis, also
+      `priceDropped=true` -- der Versand lief damit ueber die
+      Preisaenderungs-Meldung und der Test prueste den falschen Aufrufort.
+      Er war gruen und wertlos. Die Attrappe liefert jetzt einen niedrigeren
+      Vorgaengerpreis, und der Kandidat traegt einen Preis, der die
+      Schwellen wirklich passiert.
 - [x] **Schritt 3:** `process.env.GITHUB_RUN_ID` als `runId` ins `detail`.
 - [ ] **Schritt 4:** Eine Erfolgszeile je Versand ins Log.
 
