@@ -40,63 +40,47 @@ const kandidaten = karten.filter((k) => istMehrfamilienhausKandidat(k.titleLine)
 console.log(`Karten: ${karten.length}, davon Mehrfamilienhaus-Kandidaten: ${kandidaten.length}`);
 console.log(`Beispiel-Titelzeile: ${JSON.stringify(kandidaten[0]?.titleLine ?? null)}`);
 
-// Traegt die Liste dasselbe Datenmodell wie eine Detailseite?
-console.log("\n=== Datenmodell auf der Suchseite ===");
-const hatModell = html.includes("__UFRN_LIFECYCLE_SERVERREQUEST__");
-console.log(`__UFRN_LIFECYCLE_SERVERREQUEST__: ${hatModell ? "vorhanden" : "fehlt"}`);
+console.log("
+=== Titelzeilen (was schon heute erfasst wird) ===");
+for (const k of kandidaten.slice(0, 6)) console.log(`  ${JSON.stringify(k.titleLine)}`);
 
-if (hatModell) {
-  // Keine verschachtelten Funktionen im evaluate-Rumpf (tsx-__name-Falle).
-  const bericht = await page.evaluate(() => {
-    const w = window as unknown as Record<string, unknown>;
-    const roh = w["__UFRN_LIFECYCLE_SERVERREQUEST__"];
-    if (typeof roh !== "string") return { fehler: `Typ ${typeof roh}, kein String` };
-    let daten: unknown;
-    try {
-      daten = JSON.parse(roh);
-    } catch {
-      return { fehler: "nicht als JSON lesbar" };
+console.log("
+=== Woher koennte die PLZ kommen? ===");
+// 1) Steht eine PLZ ueberhaupt im Karten-Markup?
+const plzImHtml = [...new Set(html.match(/\d{5}/g) ?? [])].slice(0, 12);
+console.log(`  Fuenfstellige Zahlen im Seiten-HTML: ${plzImHtml.join(", ") || "keine"}`);
+
+// 2) Traegt das Datenmodell strukturierte Ortsangaben?
+const ortsbericht = await page.evaluate(() => {
+  const w = window as unknown as Record<string, unknown>;
+  const roh = w["__UFRN_LIFECYCLE_SERVERREQUEST__"];
+  const daten = typeof roh === "string" ? JSON.parse(roh) : roh;
+  const warteschlange: { wert: unknown; pfad: string }[] = [{ wert: daten, pfad: "" }];
+  const funde: string[] = [];
+  let besucht = 0;
+  while (warteschlange.length > 0 && besucht < 20000 && funde.length < 6) {
+    const e = warteschlange.shift();
+    if (e === undefined) break;
+    besucht += 1;
+    const v = e.wert;
+    if (typeof v === "string" && /^\d{5}$/.test(v)) {
+      funde.push(`${e.pfad} = ${v}`);
+      continue;
     }
-    const obj = daten as Record<string, unknown>;
-    const wurzeln = Object.keys(obj);
-
-    // Erste Karte suchen: irgendwo unterhalb steckt eine Liste von Objekten
-    // mit einer id und einem Preis. Breitensuche statt Raten.
-    const warteschlange: { wert: unknown; pfad: string }[] = [{ wert: daten, pfad: "" }];
-    let treffer: { pfad: string; schluessel: string[]; probe: string } | null = null;
-    let besucht = 0;
-    while (warteschlange.length > 0 && besucht < 4000 && treffer === null) {
-      const eintrag = warteschlange.shift();
-      if (eintrag === undefined) break;
-      besucht += 1;
-      const v = eintrag.wert;
-      if (Array.isArray(v)) {
-        const erstes = v[0];
-        if (erstes !== null && typeof erstes === "object") {
-          const k = Object.keys(erstes as Record<string, unknown>);
-          const sieht = k.some((x) => /price|preis/i.test(x)) && k.some((x) => /id$/i.test(x));
-          if (sieht) {
-            treffer = {
-              pfad: eintrag.pfad,
-              schluessel: k,
-              probe: JSON.stringify(erstes).slice(0, 700),
-            };
-            break;
-          }
-        }
-        for (let i = 0; i < Math.min(v.length, 3); i += 1) {
-          warteschlange.push({ wert: v[i], pfad: `${eintrag.pfad}[${i}]` });
-        }
-      } else if (v !== null && typeof v === "object") {
-        for (const [k, kind] of Object.entries(v as Record<string, unknown>)) {
-          warteschlange.push({ wert: kind, pfad: eintrag.pfad === "" ? k : `${eintrag.pfad}.${k}` });
-        }
+    if (Array.isArray(v)) {
+      for (let i = 0; i < Math.min(v.length, 4); i += 1) {
+        warteschlange.push({ wert: v[i], pfad: `${e.pfad}[${i}]` });
+      }
+    } else if (v !== null && typeof v === "object") {
+      for (const [k, kind] of Object.entries(v as Record<string, unknown>)) {
+        warteschlange.push({ wert: kind, pfad: e.pfad === "" ? k : `${e.pfad}.${k}` });
       }
     }
-    return { wurzeln, treffer, besucht };
-  });
-
-  console.log(JSON.stringify(bericht, null, 2).slice(0, 2500));
-}
+  }
+  return { funde, besucht };
+});
+console.log(`  PLZ-Pfade im Datenmodell (${ortsbericht.besucht} Knoten durchsucht):`);
+for (const f of ortsbericht.funde) console.log(`    ${f}`);
+if (ortsbericht.funde.length === 0) console.log("    keine gefunden");
 
 await browser.close();
