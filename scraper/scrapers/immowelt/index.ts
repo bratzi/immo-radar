@@ -27,15 +27,32 @@ export const IMMOWELT_VERZOEGERUNG_MS = 5000;
 
 /**
  * Wanduhr-Budget eines einzelnen Immowelt-Laufs. Kein Regionen-Zaehler: die
- * Bundeslaender sind viel zu unterschiedlich gross (Nordrhein-Westfalen allein
- * ~188 Ergebnisseiten -> ~16 min bei 5 s Drossel; NRW + Bayern +
- * Baden-Wuerttemberg zusammen ~441 Seiten -> ~37 min), die Lauflaenge wuerde je
+ * Bundeslaender sind viel zu unterschiedlich gross, die Lauflaenge wuerde je
  * nach ausgeloster Scheibe wild schwanken.
  *
- * Rechnung: ~885 Ergebnisseiten bundesweit, bei IMMOWELT_VERZOEGERUNG_MS = 5 s
- * sind das ~74 min fuer einen vollen Kreis. Mit 12 min pro Lauf nimmt jeder
- * Lauf eine begrenzte Scheibe, und der Kreis schliesst sich ueber mehrere
- * Laeufe (~74 / 12 ~ 6 Laeufe).
+ * GEMESSEN am 2026-09-08 (Lauf 34215003141), nicht gerechnet. Zeit je
+ * Ergebnisseite ueber sechs Regionen:
+ *
+ *   be  8,73 s | hh 8,91 s | mv 9,00 s | hb 9,50 s | th 10,81 s | nw 11,50 s
+ *
+ * Die Drossel ist davon 5 s; die restlichen ~3,8 s sind echte Ladezeit. Eine
+ * frueher hier stehende Rechnung setzte NUR die Drossel an und war damit um
+ * mehr als das Doppelte zu optimistisch.
+ *
+ * Dieses Budget verhindert NICHT, dass ein Lauf lange wird. Die Wache steht
+ * VOR dem Start einer Region, und eine begonnene Region wird immer zu Ende
+ * geblaettert -- ein halb erfasstes Bundesland waere eine Luege ueber die
+ * Abdeckung. Nordrhein-Westfalen allein braucht 173 Seiten und 33 min.
+ *
+ * Der schlimmste Fall ist deshalb: 11:59 min verbraucht, dann startet noch die
+ * groesste Region. Gemessen 12 + 33 = 45 min Sweep, plus Ruestzeit, ZVG und
+ * Bewertung -- der laengste echte Lauf lag bei 50 min gegen
+ * `timeout-minutes: 75`. Der Kill traefe VOR dem Abgleichs- und Loeschblock,
+ * die Marge ist also die Sicherheit dieses Projekts.
+ *
+ * NICHT GEMESSEN: `by` und `bw` sind bisher nie gesweept worden (siehe
+ * sweep_region_runs). Sind sie groesser als `nw`, schrumpft die Marge
+ * entsprechend. Wer das Budget anfasst, misst zuerst diese beiden.
  */
 const SWEEP_BUDGET_MS = 12 * 60 * 1000;
 /**

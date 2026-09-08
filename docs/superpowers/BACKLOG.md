@@ -358,7 +358,7 @@ drei Fälle, plausibel für die anderen beiden.
 („Nordrhein-Westfalen frisst das Budget") war die Oberflaeche. Darunter liegen
 zwei getrennte Befunde.
 
-### A7a — Die Budgetrechnung unterstellt 5 s je Seite, gemessen sind 9 bis 11,5 — OFFEN
+### A7a — Die Budgetrechnung unterstellt 5 s je Seite, gemessen sind 9 bis 11,5 — ERLEDIGT
 
 Zeit je Ergebnisseite, aus den Regionszeiten desselben Laufs:
 
@@ -383,6 +383,21 @@ rechnet nur die Drossel. Real sind es ~10 s je Seite.
 **Die Drossel ist NICHT der Hebel.** Sie ist die Hoeflichkeitsgrenze gegenueber
 Immowelt, und ein CAPTCHA misst genau die Abrufrate. Wer hier kuerzt, kauft
 Tempo mit dem Risiko, das der Rest des Projekts teuer vermeidet.
+
+**Erledigt: die Rechnung ist korrigiert, der Wert nicht.** Das Budget zu
+senken haette nichts gebracht — der beherrschende Term ist die eine grosse
+Region, die nach der Wache noch startet, nicht das Budget selbst. Gemessen
+gegen `timeout-minutes: 75`:
+
+```
+laengster echter Lauf   50,1 min   (34215003141)
+schlimmster Fall        12 min Budget + 33 min nw + Ruestzeit ~ 60 min
+```
+
+Die Marge haelt. **Sie ist aber nicht fuer alle Regionen gemessen:** `by` und
+`bw` wurden bisher nie gesweept. Sind sie groesser als `nw`, schrumpft sie.
+Wer das Budget anfasst, misst zuerst diese beiden. Steht so auch im Kommentar
+an `SWEEP_BUDGET_MS`, wo die falsche Rechnung stand.
 
 Dass `nw` das Budget um das Dreifache ueberzieht, ist dagegen **so gewollt**:
 die Budget-Wache steht vor dem Start einer Region, und eine begonnene Region
