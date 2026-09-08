@@ -352,13 +352,13 @@ Prüfung bei Zeile 296; `BETRAG_PATTERN` bei Zeile 123).
 *„es ist belegt, dass die Seite selbst keinen nennt"* — belegt für einen der
 drei Fälle, plausibel für die anderen beiden.
 
-## A7. Das Bewertungsfenster wandert 3 Kandidaten je Lauf — bei 600 Breite
+## A7. Das Bewertungsfenster wandert 3 Kandidaten je Lauf — A7b ERLEDIGT
 
 **Gemessen am 2026-09-08 aus Lauf `34215003141`.** Der erste Verdacht
 („Nordrhein-Westfalen frisst das Budget") war die Oberflaeche. Darunter liegen
 zwei getrennte Befunde.
 
-### A7a — Die Budgetrechnung unterstellt 5 s je Seite, gemessen sind 9 bis 11,5
+### A7a — Die Budgetrechnung unterstellt 5 s je Seite, gemessen sind 9 bis 11,5 — OFFEN
 
 Zeit je Ergebnisseite, aus den Regionszeiten desselben Laufs:
 
@@ -389,7 +389,7 @@ die Budget-Wache steht vor dem Start einer Region, und eine begonnene Region
 wird immer zu Ende geblaettert — „ein halb erfasstes Bundesland waere eine
 Luege ueber die Abdeckung". Das ist kein Fehler, sondern der bezahlte Preis.
 
-### A7b — Das Bewertungsfenster bewegt sich praktisch nicht
+### A7b — Das Bewertungsfenster bewegt sich praktisch nicht — ERLEDIGT
 
 `budgetiereDetailKandidaten` waehlt ueber `rotiereAuswahl` ein
 **zusammenhaengendes** Fenster von `MAX_BEWERTUNGEN_IMMOWELT` = 600 Eintraegen.
@@ -425,22 +425,86 @@ IDs. Die Vorhersage trifft.
 `scraper/lib/bestand.ts` (`rotiereAuswahl`), `scraper/scrapers/immowelt/index.ts`
 (`SWEEP_BUDGET_MS`, Regionsrotation).
 
-- [ ] **Schritt 1 — messen, ob wirklich ein Loch entsteht.** Ueber mehrere
-      Versatzwerte simulieren, welche Regionen ueber 8 aufeinanderfolgende
-      Laeufe je bewertet wuerden. Reine Rechnung, kein Abruf, gehoert in einen
-      Test.
-- [ ] **Schritt 2 — erst dann den Entwurf.** Naheliegend waere, das Fenster um
-      seine eigene Breite je Lauf weiterzuschieben statt um 1 je Stunde, oder
-      die Auswahl ueber die Regionen zu streuen statt zusammenhaengend zu
-      schneiden. Beides aendert das Meldeverhalten und braucht erst einen Test,
-      der das heutige Verhalten festhaelt.
-- [ ] **Schritt 3 — die RUECKSTAND-Meldung ehrlich machen.** Sie darf nicht
-      „auf spaetere Laeufe zurueckgestellt" behaupten, solange das nicht
-      gemessen ist.
+**Schritt 1 gemessen.** Das Loch entsteht, und es ist groesser als gedacht.
+Ohne Zeitmodell, nur Arithmetik: `nw` laeuft als erste Region, wenn
+`versatz % 16 == 0`, also alle 48 h; der Versatz waechst dann um 48, das
+Fenster ist 600 breit. Ueberlappung 92 %, Anteil je Lauf 8,7 %,
+**6895/48 = 144 nw-Laeufe = 287 Tage** fuer einen Durchlauf.
 
-**Abnahme:** Ein Test zeigt ueber mehrere Laeufe hinweg, welcher Anteil der
-gesehenen Objekte je bewertet wird, und die Log-Zeile sagt nichts, was dieser
-Test nicht deckt.
+**Schritt 2 und 3 umgesetzt** (`f80e5b5`, `c675822`). `streueAuswahl` in
+`lib/bestand.ts` waehlt jeden `n/budget`-ten Eintrag ueber die ganze Liste.
+Der Abstand ist ein BRUCH, nicht `floor` — ein fester Abstand deckte nur
+`budget * floor(n/budget)` Positionen ab und liess den Rest als ein
+zusammenhaengendes Loch (Hamburg fiel dadurch von ~28 auf 7 Plaetze). Gemessen
+am echten Band vom 2026-09-08:
+
+```
+Region   Auswahl   anteilig        Region   Auswahl   anteilig
+nw          439      438,6         hh           28       27,8
+th           55       55,2         be           25       25,6
+mv           40       39,8         hb           13       13,0
+```
+
+`rotiereAuswahl` bleibt unveraendert — der Sweep rotiert damit die 16
+Bundeslaender, und dort IST die zusammenhaengende Reihenfolge der Zweck.
+
+Die Log-Zeile ist ehrlich gemacht: Auswahl und Meldung sitzen jetzt gemeinsam
+in `budgetiereKandidaten` (`lib/bestand.ts`), wo sie unter Test stehen. In
+`main.ts` war beides nie testbar.
+
+**Noch nicht in Produktion bestaetigt.** Der naechste Cron-Lauf muss zeigen,
+dass die Bewertung ueber mehrere Regionen streut statt fast nur `nw` und `hb`
+zu treffen.
+
+---
+
+## A8. ZVG-Verkehrswert mit doppeltem Strich — ERLEDIGT (2026-09-08)
+
+Gefunden beim Messen von A6, nicht gesucht. `BETRAG_PATTERN` kannte `,-`, aber
+nicht `,--`. Bei `zvg_id=4198` (rp) tragen die Teilwerte `,00` und nur die
+Gesamtsumme `,--`:
+
+```
+Verkehrswert Flur 25 Nr. 24/1: 122.000,00 €
+Verkehrswert Flur 25 Nr. 295:  160.000,00 €
+Gesamtverkehrswert:            282.000,-- €   <- fiel aus dem Muster
+```
+
+Die Max-Regel waehlte deshalb einen Teilwert: gespeichert **160.000 statt
+282.000 €**, 43 % zu niedrig. Behoben in `5bc6d13`, Test zuerst.
+
+Der Bestand korrigiert sich selbst — `DETAIL_MAX_ALTER_TAGE` laesst das Objekt
+binnen 7 Tagen neu erfassen. Belegt: Dieselbe Mechanik hat am 2026-09-07 alle
+23 Objekte des frueheren Ziffernklebe-Fehlers korrigiert (Werte bis
+25.375.912.190.000 €); kein einziger absurder Wert ist heute noch aktuell.
+
+## A9. Falsche Top-Treffer durch fehlende Untergrenze — ERLEDIGT (2026-09-08)
+
+**Das war der teuerste Befund dieser Sitzung**, weil er den Nutzer erreicht
+hat. 19 der 186 gemeldeten Objekte tragen einen Wert unter 25.000 €. Zwei
+gingen am 2026-09-07 als `top_treffer` raus:
+
+```
+listing 2f41102f   2.840 € / 198,8 m²   Faktor 0,175   Bruttorendite 571 %
+listing ac2165d8   6.200 € / 195   m²   Faktor 0,279   Bruttorendite 359 %
+```
+
+Die Rechnung war fehlerfrei. Die Preise kamen aus dem alten
+Immowelt-Detailparser und waren falsch — und `topTreffer` prueft den
+Kaufpreisfaktor nur nach OBEN (`<= 15`). **Je kaputter die Zahl, desto besser
+sah das Objekt aus.**
+
+Behoben in `64de963`: `MIN_PLAUSIBLER_KAUFPREISFAKTOR = 3`, bewusst weit unter
+jedem Marktniveau — selbst stark sanierungsbeduerftige Mehrfamilienhaeuser
+wechseln nicht unter dem Sechs- bis Achtfachen der Jahreskaltmiete den
+Besitzer. Die Schwelle erkennt kaputte Eingaben, sie urteilt nicht ueber die
+Guete eines Angebots. Dazu die Luecke `kaufpreis_unplausibel`, damit ein
+stilles `topTreffer = false` nicht verbirgt, dass die Zahl kaputt ist.
+
+**Offen daran:** Die beiden gemeldeten Objekte tragen den falschen Preis
+weiterhin im Bestand. Sie werden erst korrigiert, wenn die Listenbewertung sie
+erneut trifft. Ob eine bereits versandte Falschmeldung richtiggestellt gehoert,
+ist eine Entscheidung des Nutzers.
 
 ---
 

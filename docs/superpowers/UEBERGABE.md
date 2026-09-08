@@ -1,4 +1,4 @@
-# Übergabe — Stand 2026-09-08, 11:15 UTC
+# Übergabe — Stand 2026-09-08, 15:35 UTC
 
 > **Zuerst lesen:** dieses Dokument, dann [`BACKLOG.md`](BACKLOG.md) (ausführbare
 > Aufgaben) und [`TODO.md`](TODO.md) (Statuslandkarte).
@@ -8,7 +8,7 @@ hergeleitet werden muss.
 
 ## Wo wir stehen
 
-`main` = `5d2c8e9`, gepusht, Arbeitsverzeichnis sauber. **315 Tests grün**,
+`main` = `64de963`, **nicht gepusht**, Arbeitsverzeichnis sauber. **327 Tests grün**,
 `npx tsc --noEmit` sauber. Cron alle drei Stunden.
 
 Teilprojekt 1 (vollständige Erfassung & Bestandsführung) ist live. In dieser
@@ -129,42 +129,64 @@ Objekte mit angegebener Miete im ganzen Bestand, und in 442 ZVG-Texten steht
 
 ## Was als Erstes zu tun ist
 
-**Lauf `34215003141` ist geprüft und bestanden** (2026-09-08, 10:21–11:11 UTC).
-Der Listen-Umbau trägt in Produktion:
+**Den naechsten Cron-Lauf pruefen.** Vier Aenderungen dieser Sitzung sind noch
+nicht in Produktion bestaetigt. Erwartet wird:
 
+1. Die Bewertung streut ueber **alle** gesweepten Regionen statt fast nur
+   `nw` und `hb` zu treffen (A7b).
+2. Die Log-Zeile sagt `N von M Kandidaten in diesem Lauf bearbeitet, ueber die
+   Liste gestreut` — das Wort `RUECKSTAND` kommt nicht mehr vor.
+3. Kein Objekt mit einem Kaufpreisfaktor unter 3 wird als `top_treffer`
+   gemeldet; solche Objekte tragen die Luecke `kaufpreis_unplausibel` (A9).
+4. `zvg_id=4198` traegt binnen 7 Tagen 282.000 statt 160.000 EUR (A8).
+
+```sql
+select source, gesehene_objekte, vollstaendig, started_at
+from sweep_runs order by started_at desc limit 4;
+
+select l.fundort, count(*) from listings l
+where l.source = 'immowelt' and l.updated_at > now() - interval '4 hours'
+group by 1 order by 2 desc;
 ```
-Immowelt-Sweep: 9329 Kandidaten (7 von 16 Regionen)
-Immowelt: 597 von 9329 aus der Ergebnisliste bewertet, 3 ohne Preis
-Meldungen: 25 von hoechstens 25 gesendet, 293 zurueckgestellt
-listings immowelt 157 -> 754, davon 597 mit fundort (vorher 0)
-```
 
-Damit ist A1 geschlossen und die Sperre vor B1 gefallen — `fundort` wird
-geschrieben. **B1 bleibt trotzdem zu**, bis `sweep_region_runs` je Region drei
-vollständige Läufe zeigt; nach A7 dauert das länger als gedacht.
+## Was in dieser Sitzung geschlossen wurde
 
-**Zwei neue Punkte aus diesem Lauf**, beide in `BACKLOG.md`:
+**A1** — Lauf `34215003141` hat den Listen-Umbau bestaetigt: `listings` fuer
+Immowelt 157 → 754, `fundort` 0 → 597, `Meldungen: 25 von hoechstens 25`.
 
-- **A6** — Der ZVG-Verkehrswertparser liest bei 3 von 4 Gutachten Fließtext
-  statt einer Zahl (`"Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €"`).
-  Sieht nach falscher Zelle aus, nicht nach fehlendem Wert. Erst die Quote im
-  Bestand messen, dann reparieren.
-- **A7** — gemessen und praeziser gefasst: Das Bewertungsfenster ist 600
-  Eintraege breit und wandert 1 Eintrag je Stunde, beim Drei-Stunden-Cron also
-  3 je Lauf — 597 von 600 sind im Folgelauf dieselben. Rechnerisch belegt: der
-  Fensterstart 2470 sagt 41x `hb` + 559x `nw` voraus, gemessen wurden 37 und
-  560. Dass `nw` das Sweep-Budget ueberzieht, ist dagegen so gewollt (eine
-  begonnene Region wird immer zu Ende geblaettert). Nebenbefund: die Drossel
-  ist 5 s, die echte Zeit je Seite 9 bis 11,5 s — die Rechnung am
-  `SWEEP_BUDGET_MS` ist um mehr als das Doppelte zu optimistisch.
+**A6** — der Verdacht ist **widerlegt**. Der Parser liest richtig; die Quelle
+nennt in 3 von 194 Faellen selbst keine Zahl. Beleg: Bei `Blatt 7803` hat das
+Amtsgericht den Betrag ausgelassen, waehrend die Schwesterbekanntmachungen
+desselben Gerichts dieselbe Schablone korrekt fuellen. Ueber acht Laeufe
+scheitern immer exakt dieselben drei IDs.
 
-**Danach:** `BACKLOG.md` Teil B. B2 (das Dashboard) ist der Punkt, an dem der
-Nutzer die Webseite erwartet — dort sind vier Entwurfsfragen offen, und die
-wichtigste ist unverändert: Nach den Messungen dieser Sitzung beruhen praktisch
-alle Mieten auf einer unvalidierten Handtabelle, über die Hälfte der Objekte
-trägt `wohnflaeche_fehlt`, und Immowelt trägt zusätzlich
-`miete_nur_bundeslandgenau`, weil die Suchseite keine PLZ nennt. Ein Ranking,
-das das nicht abbildet, sortiert Nichtwissen wie Wissen.
+**A7b** — das Bewertungsfenster war 600 breit und wanderte 1 Eintrag je
+Stunde. Nordrhein-Westfalen haette **287 Tage** gebraucht. `streueAuswahl`
+verteilt jetzt anteilig ueber alle Regionen.
+
+**A8** — `BETRAG_PATTERN` kannte `,-`, aber nicht `,--`: 160.000 statt
+282.000 EUR gespeichert, 43 % zu niedrig.
+
+**A9, der teuerste Befund** — `topTreffer` prueft den Kaufpreisfaktor nur nach
+OBEN. Zwei Objekte mit falschen Preisen (2.840 € auf 198,8 m²) gingen als
+`top_treffer` an den Nutzer, mit einer Bruttorendite von 571 %. **Je kaputter
+die Zahl, desto besser sah das Objekt aus.**
+
+## Was offen ist
+
+- **A7a** — die Rechnung an `SWEEP_BUDGET_MS` unterstellt 5 s je Seite,
+  gemessen sind 8,7 bis 11,5. Die Drossel ist NICHT der Hebel; sie ist die
+  Hoeflichkeitsgrenze, und ein CAPTCHA misst genau die Abrufrate.
+- **A6 Schritt 3** — Umgang mit dem fehlenden Verkehrswert: Ist so ein Objekt
+  bewertbar? Das Verwerfen darf nicht als `Fehler, uebersprungen` erscheinen.
+  Und der Phantomwert 78.031 EUR zu `zvg_id=13233` steht weiter im Bestand.
+- **A9 Rest** — die beiden falsch gemeldeten Objekte tragen den falschen Preis
+  weiterhin. Ob eine versandte Falschmeldung richtiggestellt gehoert, ist eine
+  Entscheidung des Nutzers.
+- **Teil B** — B1 (regionsgenaues Loeschen) braucht drei vollstaendige Laeufe
+  je Region; sieben Bundeslaender (`by`, `bw`, `ni`, `rp`, `he`, `sn`, `sh`)
+  haben seit Einfuehrung von `sweep_region_runs` noch keinen einzigen. B2 ist
+  das Dashboard, das der Nutzer erwartet.
 
 ## Fallen, die schon zugeschnappt sind
 

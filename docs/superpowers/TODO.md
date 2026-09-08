@@ -120,15 +120,22 @@ Meldungen: 25 von hoechstens 25 gesendet, 293 zurueckgestellt.
 `listings` für Immowelt 157 → **754**, `fundort` 0 → **597**. Die Meldebremse
 aus `782d0da` greift: 25 statt 318 Nachrichten.
 
-**Zwei neue Punkte aus demselben Lauf**, beide in
-[`BACKLOG.md`](BACKLOG.md): **A6** — gemessen und entschärft: 3 von 194
-ZVG-Bekanntmachungen nennen im Verkehrswertfeld selbst keine Zahl (1,5 %,
-immer dieselben drei). Kein Parserfehler, sondern eine Eigenschaft der
-Quelle — offen bleibt der Umgang mit dem Fehlen. **A7** — das
-Bewertungsfenster ist 600 Eintraege breit und wandert nur 1 Eintrag je Stunde,
-beim Drei-Stunden-Cron also 3 je Lauf. Deshalb trifft die Bewertung faktisch
-nur `nw` (560) und `hb` (37), und die Zeile `RUECKSTAND 8729 auf spaetere
-Laeufe zurueckgestellt` behauptet etwas, das so nicht eintritt.
+## Was die Prüfung von A1 ausgelöst hat
+
+Vier weitere Punkte, drei davon inzwischen behoben. Einzelheiten in
+[`BACKLOG.md`](BACKLOG.md):
+
+| Punkt | Befund | Stand |
+|---|---|---|
+| A6 | Der ZVG-Parser liest richtig — die **Quelle** nennt in 3 von 194 Fällen (1,5 %) keine Zahl, immer dieselben drei | widerlegt; Umgang mit dem Fehlen offen |
+| A7a | `SWEEP_BUDGET_MS` rechnet mit 5 s je Seite, gemessen sind 8,7–11,5 | offen |
+| A7b | Bewertungsfenster 600 breit, wanderte 3 je Lauf → `nw` bräuchte **287 Tage** | behoben |
+| A8 | `,--` fiel aus `BETRAG_PATTERN`: 160.000 statt 282.000 € gespeichert | behoben |
+| A9 | `topTreffer` prüfte nur nach oben — zwei Falschmeldungen mit 571 % Rendite | behoben |
+
+**A9 ist der Punkt, der den Nutzer erreicht hat.** 19 der 186 gemeldeten
+Objekte tragen einen Wert unter 25.000 €; zwei gingen mit falschen Preisen als
+`top_treffer` raus. Je kaputter die Zahl, desto besser sah das Objekt aus.
 
 ## Warnung: der Anschluss ist am 2026-09-08 erneut ausgefallen
 
