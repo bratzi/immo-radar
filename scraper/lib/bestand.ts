@@ -226,14 +226,20 @@ export function budgetiereKandidaten(
 export function streueAuswahl(kandidaten: string[], budget: number, versatz: number): string[] {
   if (kandidaten.length <= budget) return kandidaten;
   const n = kandidaten.length;
-  // Abstand zwischen zwei gewaehlten Eintraegen. `Math.floor` haelt
-  // `budget * schritt <= n`, und genau das macht die Indizes unten
-  // garantiert verschieden -- sie laufen nie ein zweites Mal um.
-  const schritt = Math.floor(n / budget);
   const start = ((versatz % n) + n) % n;
   const auswahl: string[] = [];
   for (let i = 0; i < budget; i += 1) {
-    auswahl.push(kandidaten[(start + i * schritt) % n]);
+    // Der Abstand ist n/budget als BRUCH, nicht als abgerundete ganze Zahl.
+    // Ein fester Abstand floor(n/budget) deckt nur budget*floor(n/budget)
+    // Positionen ab und laesst den Rest als ein zusammenhaengendes Loch: beim
+    // Band vom 2026-09-08 waren das 9000 von 9334 Positionen, und Hamburg fiel
+    // von ~28 anteiligen Plaetzen auf 7. Mit dem Bruch liegt der letzte Index
+    // bei n - ceil(n/budget), das Fenster umspannt also den ganzen Ring.
+    //
+    // Verschieden sind die Indizes weiterhin: n > budget ist oben schon
+    // sichergestellt, also waechst floor(i * n / budget) mit jedem Schritt um
+    // mindestens 1.
+    auswahl.push(kandidaten[(start + Math.floor((i * n) / budget)) % n]);
   }
   return auswahl;
 }

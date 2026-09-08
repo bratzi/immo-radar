@@ -247,6 +247,27 @@ describe("streueAuswahl", () => {
     expect(erreicht.size).toBe(1000);
   });
 
+  it("vertritt jede Region ungefaehr ihrem Anteil entsprechend", () => {
+    // Echtes Kandidatenband aus Lauf 34215003141, Groessen aus
+    // sweep_region_runs. Ein fester Abstand floor(n/budget) laesst hier ein
+    // Loch: 600 * 15 = 9000 der 9334 Positionen, die fehlenden 334 am Stueck.
+    // Hamburg fiel dadurch auf 7 von ~28 anteiligen Plaetzen.
+    const groessen: [string, number][] = [
+      ["th", 858], ["mv", 619], ["be", 399],
+      ["hh", 433], ["hb", 202], ["nw", 6823],
+    ];
+    const band = groessen.flatMap(([code, n]) =>
+      Array.from({ length: n }, (_, i) => `${code}-${i}`)
+    );
+    const auswahl = streueAuswahl(band, 600, 496907);
+    for (const [code, n] of groessen) {
+      const erwartet = (600 * n) / band.length;
+      const tatsaechlich = auswahl.filter((id) => id.startsWith(`${code}-`)).length;
+      expect(tatsaechlich).toBeGreaterThan(erwartet * 0.7);
+      expect(tatsaechlich).toBeLessThan(erwartet * 1.3);
+    }
+  });
+
   it("liefert genau Budget-viele verschiedene Eintraege", () => {
     const liste = Array.from({ length: 1000 }, (_, i) => `id-${i}`);
     const auswahl = streueAuswahl(liste, 300, 77);
