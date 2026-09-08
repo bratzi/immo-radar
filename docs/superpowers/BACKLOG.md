@@ -51,6 +51,30 @@ damit still.
 **Dateien:** `scraper/scrapers/immowelt/index.ts` (`erfasseImmoweltDetails`),
 `scraper/main.ts` (Auswahl der Detailkandidaten).
 
+**Stand 2026-09-08, nach Messung:**
+
+- Das Actions-Log zeigt **alle 144** Abrufe mit derselben Parser-Meldung
+  „`__UFRN_LIFECYCLE_SERVERREQUEST__` nicht gefunden — Seitenstruktur hat sich
+  vermutlich geändert". Das gilt für **jeden** CI-Lauf seit dem 2026-09-07
+  20:51 UTC.
+- Dieselben URLs liefern **lokal HTTP 200 mit vollständigem Datenmodell**
+  (drei Abrufe am 2026-09-08: Suchseite 1.147.419 Zeichen, zwei Exposés mit
+  655.563 und 668.095 Zeichen). **Die Seitenstruktur ist nicht das Problem.**
+- Der letzte erfolgreiche Detailabruf (2026-09-07 17:41 UTC) stammt aus einem
+  **lokalen** Lauf — zwischen 03:34 und 20:51 UTC lief kein Cron. In CI ist
+  die Immowelt-Detailerfassung möglicherweise **nie** gelungen.
+- Das Aufwärmen greift: Im CI-Log steht `Consent-Banner bestaetigt` unmittelbar
+  vor der Detailphase.
+- **Behoben wurde bereits die Diagnose, nicht die Ursache:**
+  `beurteileDetailAntwort` wertet jetzt den HTTP-Status aus und trennt Sperre,
+  Soft-Block und echte Strukturänderung. Lauf #15 liefert damit die Antwort,
+  die das Log bisher schuldig blieb.
+
+**Nächster Schritt:** Log von Lauf #15 lesen. Steht dort `HTTP 403` oder
+„Hülle statt der Seite", ist es eine Sperre der CI-IP — dann ist die Antwort
+Drosselung oder ein anderer Weg, **nicht** Umgehung. Steht dort „volle Seite
+ohne Datenmodell", ist der Parser dran.
+
 - [ ] **Schritt 1: Im Actions-Log nachsehen, nicht raten.** Lauf 14 über die
       Weboberfläche öffnen und nach diesen Zeilen suchen:
       `Immowelt-Detailseite ... Fehler, übersprungen` sowie der Zeile, die die
@@ -71,7 +95,7 @@ damit still.
 **Abnahme:** Nach einem Produktionslauf steigt `listings` für Immowelt, und
 `select count(*) from listings where fundort is not null` ist größer als 0.
 
-## A2. Abgelaufenes GitHub-Token aus `.env` entfernen
+## A2. Abgelaufenes GitHub-Token entfernen — TEILWEISE ERLEDIGT
 
 **Warum:** `GH_TOKEN` in `scraper/.env` wird von der GitHub-API mit **401 Bad
 credentials** abgewiesen — wirkungslos und trotzdem ein Geheimnis in einer
@@ -86,9 +110,16 @@ Sitzungsprotokoll ausgegeben.
 - [ ] **Schritt 3:** Den Nutzer bitten, das Token auf GitHub zu widerrufen
       (Settings → Developer settings → Personal access tokens).
 
-**Abnahme:** `.env` ohne `GH_TOKEN`; Widerruf vom Nutzer bestätigt.
+**Ergebnis 2026-09-08:** `GH_TOKEN` steht **nicht** in `.env` und wird
+nirgends im Code gelesen (geprüft). Es ist eine **Windows-Benutzer-Umgebungs-
+variable** (93 Zeichen). Das ist Rechnerkonfiguration, kein Projektcode —
+deshalb nicht ungefragt entfernt.
 
-## A3. Einweg-Diagnoseskript entfernen
+**Offen:** Der Nutzer widerruft das Token auf GitHub und löscht die
+Umgebungsvariable (`[Environment]::SetEnvironmentVariable('GH_TOKEN', $null,
+'User')`).
+
+## A3. Einweg-Diagnoseskript entfernen — ERLEDIGT
 
 **Warum:** `scraper/scripts/diagnose-consent.mts` hat seinen Zweck erfüllt;
 sein Befund steht vollständig im Kopf von `scrapers/consent.ts`.
@@ -99,9 +130,10 @@ das blockierende Element, das wird wieder gebraucht.
 - [ ] **Schritt 2:** `npx tsc --noEmit` — Erwartung: sauber.
 - [ ] **Schritt 3:** Commit `chore(scraper): Einweg-Diagnoseskript entfernen`.
 
-**Abnahme:** `tsc` sauber, `vitest` unverändert grün.
+**Ergebnis 2026-09-08:** `diagnose-consent.mts` entfernt, `tsc` sauber,
+285 Tests grün. Neu hinzugekommen ist `diagnose-detail.mts` für A1.
 
-## A4. Einen ZVG-Lauf mit `vollstaendig: false` aufklären
+## A4. Einen ZVG-Lauf mit `vollstaendig: false` aufklären — ERLEDIGT
 
 **Warum:** Am 2026-09-07 um 17:42 UTC meldete ZVG `vollstaendig: false`,
 während alle anderen Läufe `true` melden und durchgehend 188–189 Objekte
@@ -121,10 +153,14 @@ from sweep_runs where source = 'zvg-portal' group by vollstaendig;
 - [ ] **Schritt 3:** Ergebnis in `TODO.md` festhalten. **Keine Änderung an der
       Löschlogik ohne eigenen Entwurf.**
 
-**Abnahme:** Häufigkeit dokumentiert; Ursache benannt oder als „einmalig,
-weiter beobachten" vermerkt.
+**Ergebnis 2026-09-08:** Ein Fall von neun. Der Lauf sah **dieselben 188
+Objekte** und dieselben 11 Regionen wie die erfolgreichen — die Menge war nicht
+das Problem. Er stammt aus einem lokalen Lauf vor Commit `96bdba1`
+(„ZVG-Nullausfall systemisch prüfen statt pro Bundesland"), also unter der
+Logik, die leere Bundesländer noch als Quellenausfall wertete. Alle acht Läufe
+seither sind vollständig. **Kein Handlungsbedarf.**
 
-## A5. Immowelt-Wohnflächen gegenprüfen
+## A5. Immowelt-Wohnflächen gegenprüfen — ERLEDIGT
 
 **Warum:** Die Wohnflächen-Ernte vom 2026-09-08 betraf nur ZVG-Gutachten. Für
 Immowelt ist der Anteil fehlender Flächen nie gemessen worden.
@@ -142,7 +178,21 @@ where l.source = 'immowelt';
       Darüber — Fixture `scraper/test/fixtures/immowelt-expose-mehrfamilienhaus.html`
       prüfen, scheiternden Test schreiben, dann beheben.
 
-**Abnahme:** Anteil dokumentiert; bei Bedarf Test und Fix nach TDD.
+**Ergebnis 2026-09-08:**
+
+| Quelle | Versionen | ohne Wohnfläche | ohne PLZ | Einheiten unsicher |
+|---|---|---|---|---|
+| immowelt | 77 | 11 (14 %) | 0 (0 %) | 63 (**82 %**) |
+| zvg-portal | 923 | 678 (73 %) | 10 (1 %) | 504 (55 %) |
+
+Der Parser ist in Ordnung: Die Fixture liefert `livingAreaM2: 265`. Die
+fehlenden 14 % sind Seiten **ohne `livingSpace`-Faktum** — fehlende Quelldaten,
+kein Parser-Fehler. Seit dem 2026-09-08 tragen sie `wohnflaeche_fehlt` und sind
+damit korrekt als nicht beurteilbar markiert. **Kein Fix nötig.**
+
+**Nebenbefund für B4:** Immowelt weist für Mehrfamilienhäuser **gar keine**
+Einheitenzahl aus (auch in der Fixture `units: null`), daher die 82 %. Das ist
+ein schlechteres Verhältnis als bei ZVG.
 
 ---
 
