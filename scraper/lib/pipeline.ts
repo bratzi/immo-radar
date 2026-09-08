@@ -316,6 +316,11 @@ export async function processCandidate(
     url: candidate.url,
     city: candidate.city,
     zipCode: candidate.zipCode,
+    // Das Bundesland gehoert in JEDE Meldung -- Anforderung des Nutzers vom
+    // 2026-09-08. Es ist die einzige Ortsangabe, die bei Immowelt
+    // zuverlaessig da ist: von 1.862 Objekten haben 1.862 ein Bundesland,
+    // aber nur 157 eine PLZ, und die stammen alle aus dem alten Detailpfad.
+    bundesland,
     priceCents: candidate.priceCents,
     units: candidate.units,
     dataGaps: [...dataGaps],

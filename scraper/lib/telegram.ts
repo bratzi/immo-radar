@@ -10,6 +10,9 @@ export interface ListingSummary {
   url: string;
   city: string;
   zipCode: string;
+  /** Bundesland, aus dem Fundort bzw. der PLZ abgeleitet. Gehoert in JEDE
+   *  Meldung -- ausdrueckliche Anforderung des Nutzers vom 2026-09-08. */
+  bundesland?: string | null;
   priceCents: number;
   units: number | null;
   dataGaps?: string[];
@@ -33,12 +36,24 @@ const DATA_GAP_LABELS: Record<string, string> = {
   units_unconfirmed: "Einheiten nicht bestätigt",
   location_unconfirmed: "Lage (PLZ/Ort) nicht bestätigt",
   rent_estimate_unreliable: "Miete nicht belastbar schätzbar — Faktor und DSCR unsicher",
+  // Diese drei fehlten und standen deshalb als roher Maschinencode in der
+  // Nachricht -- ausgerechnet in der Zeile, die dem Empfaenger sagen soll,
+  // wie belastbar die Zahlen sind. Alle 25 Meldungen des Laufs 34261364448
+  // trugen "miete_nur_bundeslandgenau" im Klartext.
+  miete_nur_bundeslandgenau: "Miete nur bundeslandweit geschätzt",
+  wohnflaeche_fehlt: "Wohnfläche fehlt",
+  preis_miete_unvereinbar: "Preis und Miete unvereinbar — eine der beiden Zahlen stimmt nicht",
+  plz_fehlt: "PLZ fehlt (Immowelt nennt sie in der Ergebnisliste nicht)",
 };
 
 const MIET_QUELLE_LABELS: Record<string, string> = {
   angegeben: "angegeben",
   geschaetzt_regional: "geschätzt (Region)",
   geschaetzt_bundesweit: "geschätzt (Bundesschnitt)",
+  // Der im Betrieb HAEUFIGSTE Wert fehlte hier: alle 42 Treffer des Laufs
+  // vom 2026-09-08 trugen "geschaetzt_bundesland", und genau dieser rohe
+  // Code stand dann in der Nachricht.
+  geschaetzt_bundesland: "geschätzt (Bundesland)",
 };
 
 /** Ueberschrift und Zusatzhinweis je Meldeklasse. */
@@ -69,9 +84,40 @@ function formatZahl(wert: number, nachkommastellen: number): string {
   });
 }
 
-function formatDataGapsLine(dataGaps: string[] | undefined): string | null {
-  if (!dataGaps || dataGaps.length === 0) return null;
-  const texte = dataGaps.map((code) => DATA_GAP_LABELS[code] ?? code);
+/**
+ * Haengt die Ortszeile an den Kopfblock -- oder nichts, wenn nichts bekannt
+ * ist. Als Suffix statt als eigener Block, damit sie ohne Leerzeile direkt
+ * unter dem Titel steht, so wie vorher auch.
+ */
+function ortSuffix(listing: ListingSummary): string {
+  const zeile = ortZeile(listing);
+  return zeile === null ? "" : `
+${zeile}`;
+}
+
+/**
+ * Ortszeile. Setzt zusammen, was bekannt ist, und laesst weg, was fehlt --
+ * ohne Leerstellen zu hinterlassen. Vorher lautete sie bei jedem
+ * Immowelt-Objekt "📍  Jungingen" mit doppeltem Leerzeichen, weil die PLZ
+ * unbesehen davorgeklebt wurde.
+ */
+function ortZeile(listing: ListingSummary): string | null {
+  const ort = [listing.zipCode, listing.city].map((t) => (t ?? "").trim()).filter(Boolean).join(" ");
+  const teile = [ort, (listing.bundesland ?? "").trim()].filter(Boolean);
+  if (teile.length === 0) return null;
+  return `📍 ${esc(teile.join(" · "))}`;
+}
+
+/**
+ * Zeile mit den Datenluecken. Nimmt das ganze Listing statt nur der Codes,
+ * weil eine fehlende PLZ keine gespeicherte Luecke ist, sondern hier erst
+ * auffaellt -- und sie darf nicht stillschweigend verschwinden.
+ */
+function formatDataGapsLine(listing: ListingSummary): string | null {
+  const codes = [...(listing.dataGaps ?? [])];
+  if (!(listing.zipCode ?? "").trim()) codes.push("plz_fehlt");
+  if (codes.length === 0) return null;
+  const texte = codes.map((code) => DATA_GAP_LABELS[code] ?? code);
   return `⚠️ <i>Fehlende Angaben: ${esc(texte.join(", "))}</i>`;
 }
 
@@ -148,15 +194,22 @@ function formatNoticeBlock(rawNoticeText: string | null | undefined): string | n
 }
 
 /** Karten-Link zur Adresse -- funktioniert im Gegensatz zum zvg-portal-Direktlink. */
-function kartenLink(listing: ListingSummary): string {
-  const adresse = `${listing.zipCode} ${listing.city}`.trim();
+function kartenLink(listing: ListingSummary): string | null {
+  // Ohne Adresse kein Kartenlink. Vorher entstand eine Google-Maps-Suche auf
+  // den leeren String -- ein Link, der garantiert nichts findet.
+  const adresse = [listing.zipCode, listing.city, listing.bundesland]
+    .map((t) => (t ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+  if (adresse === "") return null;
   const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`;
   return `<a href="${url}">🗺 Karte</a>`;
 }
 
 /** Fusszeile mit den anklickbaren Links. */
 function formatLinkZeile(listing: ListingSummary): string {
-  const links = [kartenLink(listing)];
+  const karte = kartenLink(listing);
+  const links = karte === null ? [] : [karte];
   if (listing.url.includes("zvg-portal.de")) {
     links.push(`<a href="${ZVG_SUCHE_URL}">🔎 ZVG-Suche</a>`);
   } else {
@@ -178,11 +231,10 @@ export function formatTopTrefferMessage(
   const kopf = KLASSEN_KOPF[klasse];
   return baueNachricht([
     `${kopf.titel}
-🏠 ${esc(listing.title)}
-📍 ${esc(`${listing.zipCode} ${listing.city}`)}`,
+🏠 ${esc(listing.title)}${ortSuffix(listing)}`,
     formatKennzahlenBlock(listing, k, "Kaufpreis"),
     kopf.hinweis,
-    formatDataGapsLine(listing.dataGaps),
+    formatDataGapsLine(listing),
     formatLinkZeile(listing),
   ]);
 }
@@ -203,7 +255,7 @@ export function formatZvgTopTrefferMessage(
       `📋 Az. ${esc(listing.caseNumber)}`,
     ].join("\n"),
     kopf.hinweis,
-    formatDataGapsLine(listing.dataGaps),
+    formatDataGapsLine(listing),
     formatNoticeBlock(listing.rawNoticeText),
     formatLinkZeile(listing),
   ]);
@@ -216,10 +268,9 @@ export function formatPreisaenderungMessage(
 ): string {
   return baueNachricht([
     `💶 <b>PREISÄNDERUNG</b>
-🏠 ${esc(listing.title)}
-📍 ${esc(`${listing.zipCode} ${listing.city}`)}`,
+🏠 ${esc(listing.title)}${ortSuffix(listing)}`,
     `<s>${formatEuro(altPreisCents)} €</s>  →  <b>${formatEuro(neuPreisCents)} €</b>`,
-    formatDataGapsLine(listing.dataGaps),
+    formatDataGapsLine(listing),
     formatLinkZeile(listing),
   ]);
 }
@@ -232,8 +283,7 @@ export function formatPreisaenderungMessage(
 export function formatAbgangMessage(listing: ListingSummary): string {
   return baueNachricht([
     `❌ <b>NICHT MEHR VERFÜGBAR</b>
-🏠 ${esc(listing.title)}
-📍 ${esc(`${listing.zipCode} ${listing.city}`)}`,
+🏠 ${esc(listing.title)}${ortSuffix(listing)}`,
     `<i>Das Objekt ist aus dem Angebot verschwunden — vermutlich verkauft, ` +
       `versteigert oder zurückgezogen. Es wird nach 2 Tagen aus dem Bestand ` +
       `entfernt.</i>`,

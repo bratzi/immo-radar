@@ -327,3 +327,115 @@ describe("formatSweepWarnungMessage", () => {
     expect(text).not.toContain("null");
   });
 });
+
+/**
+ * Alle 25 Meldungen des Laufs 34261364448 (2026-09-08) trugen
+ * mietQuelle "geschaetzt_bundesland" und die Luecke
+ * "miete_nur_bundeslandgenau". Fuer beide fehlte die Uebersetzung, also
+ * stand der rohe Maschinencode in der Nachricht -- genau in der Zeile, die
+ * dem Empfaenger sagen soll, wie belastbar die Miete ist.
+ */
+describe("Klartext fuer die Codes, die im Betrieb wirklich vorkommen", () => {
+  const k = { kaufpreisfaktor: 9.3, geschaetzterDscr: 1.3, mietQuelle: "geschaetzt_bundesland" };
+
+  it("uebersetzt die Mietquelle geschaetzt_bundesland", () => {
+    const text = formatTopTrefferMessage(listing, k, "pruefkandidat");
+    expect(text).not.toContain("geschaetzt_bundesland");
+    expect(text).toContain("Miete geschätzt (Bundesland)");
+  });
+
+  it("uebersetzt miete_nur_bundeslandgenau", () => {
+    const text = formatTopTrefferMessage(
+      { ...listing, dataGaps: ["miete_nur_bundeslandgenau"] },
+      k,
+      "pruefkandidat"
+    );
+    expect(text).not.toContain("miete_nur_bundeslandgenau");
+    expect(text).toContain("Miete nur bundeslandweit geschätzt");
+  });
+
+  it("uebersetzt wohnflaeche_fehlt", () => {
+    const text = formatTopTrefferMessage({ ...listing, dataGaps: ["wohnflaeche_fehlt"] }, k);
+    expect(text).not.toContain("wohnflaeche_fehlt");
+    expect(text).toContain("Wohnfläche fehlt");
+  });
+
+  it("uebersetzt preis_miete_unvereinbar", () => {
+    const text = formatTopTrefferMessage({ ...listing, dataGaps: ["preis_miete_unvereinbar"] }, k);
+    expect(text).not.toContain("preis_miete_unvereinbar");
+    expect(text).toContain("Preis und Miete unvereinbar");
+  });
+});
+
+/**
+ * Immowelt-Objekte haben seit dem Listen-Umbau grundsaetzlich keine PLZ --
+ * die Ergebnisliste nennt keine. Die Ortszeile lautete deshalb in jeder
+ * dieser Meldungen "📍  Jungingen" mit doppeltem Leerzeichen.
+ */
+describe("Ortszeile ohne PLZ", () => {
+  const k = { kaufpreisfaktor: 9.3, geschaetzterDscr: 1.3, mietQuelle: "angegeben" };
+
+  it("setzt kein fuehrendes Leerzeichen, wenn die PLZ fehlt", () => {
+    const text = formatTopTrefferMessage({ ...listing, zipCode: "" }, k);
+    expect(text).toContain("📍 Leipzig");
+    expect(text).not.toContain("📍  ");
+  });
+
+  it("laesst die Ortszeile ganz weg, wenn weder PLZ noch Ort bekannt sind", () => {
+    const text = formatTopTrefferMessage({ ...listing, zipCode: "", city: "" }, k);
+    expect(text).not.toContain("📍");
+  });
+
+  it("gibt bei der Abgangsmeldung ebenfalls kein doppeltes Leerzeichen aus", () => {
+    const text = formatAbgangMessage({ ...listing, zipCode: "" });
+    expect(text).toContain("📍 Leipzig");
+    expect(text).not.toContain("📍  ");
+  });
+});
+
+describe("Kartenlink", () => {
+  const k = { kaufpreisfaktor: 9.3, geschaetzterDscr: 1.3, mietQuelle: "angegeben" };
+
+  it("laesst den Kartenlink weg, wenn es gar keine Adresse gibt", () => {
+    const text = formatTopTrefferMessage({ ...listing, zipCode: "", city: "" }, k);
+    expect(text).not.toContain("google.com/maps");
+    expect(text).toContain("🔗 Zum Inserat");
+  });
+});
+
+/**
+ * Anforderung des Nutzers vom 2026-09-08: "bei allen immer Postleitzahl und
+ * Bundesland mit angeben" -- fuer Pruefkandidat wie Top-Treffer.
+ *
+ * Gemessen ist die PLZ dabei fuer Immowelt strukturell nicht verfuegbar
+ * (157 von 1862 Objekten, und die stammen alle aus dem alten Detailpfad).
+ * Das Bundesland dagegen ist ueberall da. Es darf deshalb nicht still
+ * fehlen, und eine fehlende PLZ muss sichtbar bleiben statt weggelassen zu
+ * werden.
+ */
+describe("Bundesland und PLZ in jeder Meldung", () => {
+  const k = { kaufpreisfaktor: 9.3, geschaetzterDscr: 1.3, mietQuelle: "angegeben" };
+
+  it("nennt das Bundesland beim Top-Treffer", () => {
+    const text = formatTopTrefferMessage({ ...listing, bundesland: "Sachsen" }, k);
+    expect(text).toContain("Sachsen");
+  });
+
+  it("nennt das Bundesland beim Pruefkandidaten", () => {
+    const text = formatTopTrefferMessage({ ...listing, bundesland: "Sachsen" }, k, "pruefkandidat");
+    expect(text).toContain("Sachsen");
+  });
+
+  it("macht eine fehlende PLZ sichtbar, statt sie zu verschweigen", () => {
+    const text = formatTopTrefferMessage(
+      { ...listing, zipCode: "", bundesland: "Baden-Württemberg" },
+      k
+    );
+    expect(text).toContain("PLZ fehlt");
+  });
+
+  it("meldet keine fehlende PLZ, wenn eine da ist", () => {
+    const text = formatTopTrefferMessage({ ...listing, bundesland: "Sachsen" }, k);
+    expect(text).not.toContain("PLZ fehlt");
+  });
+});
