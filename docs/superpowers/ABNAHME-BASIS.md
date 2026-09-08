@@ -26,7 +26,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 | A-1 | Läuft ohne Ausnahme durch, endet mit `Lauf abgeschlossen` | **erfüllt** (34261364448) |
 | A-2 | Keine Meldung im Log behauptet eine Ursache, die nicht gemessen ist | **erfüllt** seit `ea68fbf` |
 | A-3 | Der Cron liefert verlässlich Läufe | **offen** — 43 % der Termine fallen aus (A10) |
-| A-4 | Kein Objekt fällt still aus dem Radar | **offen** — 39 von 600 ohne Preis, stiller `continue` |
+| A-4 | Kein Objekt fällt still aus dem Radar | **offen** — der stille `continue` bleibt; die Ursache ist aber vermessen: „Preis auf Anfrage" der Quelle, kein Parserfehler, und die Quote misst die Region (A13) |
 
 ## B — Abdeckung und Bestand
 

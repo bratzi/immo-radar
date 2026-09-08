@@ -682,6 +682,102 @@ schiefging, nicht dass ein Fehlschlag richtig behandelt wuerde.
 
 ---
 
+## A13. „39 von 600 ohne Preis" ist die Quelle, nicht der Parser
+
+**Untersucht am 2026-09-08** für Abnahmekriterium A-4. Der Verdacht lautete
+Parserfehler in der Titelzeile. **Er ist stark entkraeftet, aber nicht
+abschliessend bewiesen** — und der Grund dafuer ist genau der A-4-Verstoss:
+Die 39 Titelzeilen sind nirgends gespeichert. Der `continue` steht vor jedem
+Schreibzugriff, `sweep_runs` haelt nur Zaehlwerte.
+
+**Der Parser liest 1758 von 1758 echten Listentiteln richtig.** Alle
+Listentitel aus drei Produktionslaeufen (`listing_versions.title`, 08.09.
+11:05–18:34) gegen `werteAusTitelzeile` geprueft:
+
+```
+Parser liefert null, obwohl Preis gespeichert: 0
+Parser weicht vom gespeicherten Preis ab:      0
+```
+
+Das Preissegment hat genau ein Format — `999.999 €` mit Tausenderpunkt, in
+**1758 von 1758** Faellen mit geschuetztem Leerzeichen (U+00A0) vor dem Euro,
+das `\s*` in `PREIS` (`scrapers/immowelt/titelzeile.ts:44`) deckt es ab. Kein
+`,-`, kein `EUR`, kein Preis von 0 Cent.
+
+**Die Schwankung 0,5 %–6,5 % ist ein Regionseffekt, kein Qualitaetssprung:**
+
+| Lauf | gesweepte Regionen | Fundorte der Scheibe | ohne Preis |
+|---|---|---|---|
+| `34215003141` | th, be, hb, hh, mv, nw, sl | nw 560, hb 37 | 3 = **0,5 %** |
+| `34230052647` | hb, be, hh, nw | nw 600 | 0 = **0 %** |
+| `34261364448` | **nur bw** | bw 561 | 39 = **6,5 %** |
+
+Die Scheibe ist immer exakt `MAX_BEWERTUNGEN_IMMOWELT = 600` (`main.ts:130`),
+die Quote haengt also nicht an der Zahl der bewerteten Objekte, nicht an der
+Ergebnisseite und nicht an einem A/B-Layout, sondern daran, **welches
+Bundesland die Scheibe trifft**. Dieselben 561 bw-Titel desselben Laufs wurden
+fehlerfrei geparst — ein Parserfehler kann nicht regionsselektiv sein.
+`streueAuswahl` (`lib/bestand.ts:226`) kann daran nichts aendern: Schafft der
+Sweep nur eine Region, besteht die ganze Kandidatenliste aus dieser Region.
+
+**Was eine preislose Karte wirklich enthaelt.** In der echten Fixture
+`test/fixtures/immowelt-suche-haus.html` hat das Preiselement genau zwei
+Auspraegungen: 39× einen Betrag, 1× `Preis auf Anfrage`. Der Titel derselben
+Karte spiegelt das Preisfeld 1:1:
+
+```
+"Einfamilienhaus zum Kauf - Amberg - Preis auf Anfrage - 6 Zimmer, 196 m², 1.331 m² Grundstück"
+```
+
+Der Parser gibt dafuer korrekt `null` zurueck, ein Test haelt das fest
+(`scrapers/immowelt/titelzeile.test.ts:65`). Quote auf dieser Seite: 1 von 40
+= 2,5 %, mitten im beobachteten Band.
+
+**Latentes Risiko, bewusst nicht repariert:** `75000 €` ohne Tausenderpunkt
+ergaebe **0 Cent** statt `null` — das Muster griffe die letzten drei Ziffern.
+Ein still falscher Preis waere schlimmer als eine Fehlanzeige. In den 1758
+echten Titeln kommt das Format **nicht** vor (kein einziger Preis von 0 Cent),
+deshalb ist das eine Haertung, kein Bugfix — ohne belegte Ursache wird hier
+nicht geaendert.
+
+**Die Stelle:** `main.ts:350–358`. Gezaehlt wird (`main.ts:340`, Ausgabe
+`:386–389`), festgehalten nichts — keine `listings`-Zeile, keine external_id,
+kein Titel. Strukturell geht es heute auch nicht:
+`listing_versions.price_cents` ist `bigint **not null**` (`schema.sql:35`) und
+`PipelineCandidate.priceCents: number` (`lib/pipeline.ts:144`).
+
+- [ ] **Schritt 1 (Voraussetzung fuer alles Weitere):** Im `null`-Zweig die
+      Titelzeile mitloggen. Eine Zeile, kostet nichts, und nach einem Lauf
+      liegen die echten Zeilen im Actions-Log — dann ist die Klassifikation
+      bewiesen statt begruendet. Das ist die A6-Lehre: messen statt behaupten.
+- [ ] **Schritt 2 — Entscheidung des Nutzers, wie A-4 dauerhaft erfuellt wird:**
+      **(a)** eine `listings`-Zeile ohne `listing_versions`-Zeile anlegen —
+      ohne Schemaaenderung, das Objekt bleibt sichtbar und taucht im Abgleich
+      auf, wird aber nicht bewertet. Beruehrt `bestandDb.ts` und damit die
+      Loeschwachen. **(b)** `price_cents` nullbar machen plus Lueckencode
+      `preis_auf_anfrage` analog zu `wohnflaeche_fehlt` — sauber, aber eine
+      **Migration auf Produktionsdaten** und sie beruehrt jede Metrik, die
+      `priceCents / 100` rechnet (`pipeline.ts:270`).
+- [ ] **Schritt 3:** Zwei Lueckencodes statt einem — `preis_auf_anfrage`
+      (Quelle nennt keinen Preis) und `preis_unlesbar` (Titel enthaelt `€`,
+      Muster greift nicht). Nur so verraet eine steigende Quote kuenftig
+      sofort, ob es Markt oder Regression ist.
+- [ ] **Schritt 4:** Das Laufprotokoll (`main.ts:386–389`) um die
+      Fundort-Aufschluesselung ergaenzen („39 ohne Preisangabe, davon bw 39").
+      Sonst liest sich jeder bw-Lauf wie eine Verschlechterung.
+- [ ] **Schritt 5 (optional, TDD):** `75000 €` darf nicht 0 ergeben.
+
+**Bemerkung zu A-3/B-1:** Solange ein Lauf nur 1 von 16 Regionen schafft, ist
+„39 von 600" ueberhaupt keine stabile Kennzahl — jede Quote misst dann die
+Region, nicht die Datenqualitaet.
+
+**Abnahme:** Nach Schritt 1 zeigt ein Lauf die echten Titelzeilen, und die
+Klassifikation „Quelle nennt keinen Preis" gegen „Parser hat versagt" steht
+mit Zahlen fest. A-4 gilt erst mit Schritt 2 als erfuellt: Ein Objekt ohne
+Preis ist nach dem Lauf noch auffindbar.
+
+---
+
 # Teil B — Braucht erst einen Entwurf
 
 Nicht direkt implementieren. Reihenfolge: `superpowers:brainstorming` → Spec
