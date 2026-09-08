@@ -40,12 +40,12 @@ const kandidaten = karten.filter((k) => istMehrfamilienhausKandidat(k.titleLine)
 console.log(`Karten: ${karten.length}, davon Mehrfamilienhaus-Kandidaten: ${kandidaten.length}`);
 console.log(`Beispiel-Titelzeile: ${JSON.stringify(kandidaten[0]?.titleLine ?? null)}`);
 
-console.log("
-=== Titelzeilen (was schon heute erfasst wird) ===");
+console.log("");
+console.log("=== Titelzeilen (was schon heute erfasst wird) ===");
 for (const k of kandidaten.slice(0, 6)) console.log(`  ${JSON.stringify(k.titleLine)}`);
 
-console.log("
-=== Woher koennte die PLZ kommen? ===");
+console.log("");
+console.log("=== Woher koennte die PLZ kommen? ===");
 // 1) Steht eine PLZ ueberhaupt im Karten-Markup?
 const plzImHtml = [...new Set(html.match(/\d{5}/g) ?? [])].slice(0, 12);
 console.log(`  Fuenfstellige Zahlen im Seiten-HTML: ${plzImHtml.join(", ") || "keine"}`);
