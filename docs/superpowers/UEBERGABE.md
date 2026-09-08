@@ -169,10 +169,19 @@ verteilt jetzt anteilig ueber alle Regionen.
 **A8** — `BETRAG_PATTERN` kannte `,-`, aber nicht `,--`: 160.000 statt
 282.000 EUR gespeichert, 43 % zu niedrig.
 
-**A9, der teuerste Befund** — `topTreffer` prueft den Kaufpreisfaktor nur nach
-OBEN. Zwei Objekte mit falschen Preisen (2.840 € auf 198,8 m²) gingen als
-`top_treffer` an den Nutzer, mit einer Bruttorendite von 571 %. **Je kaputter
-die Zahl, desto besser sah das Objekt aus.**
+**A9** — `topTreffer` prueft den Kaufpreisfaktor nur nach OBEN. Zwei Objekte
+mit falschen Preisen (2.840 € auf 198,8 m²) wurden an den Nutzer gemeldet, mit
+einer Bruttorendite von 571 %. **Je kaputter die Zahl, desto besser sah das
+Objekt aus.** Richtigstellung nach dem Nachmessen: Sie gingen als
+`pruefkandidat` raus, nicht als `top_treffer` — `bestimmeMeldeklasse` stuft
+geschaetzte Mieten ohnehin herunter. Das Feld `topTreffer` ist die
+Schwellenpruefung, nicht die Meldeklasse.
+
+**Nebenbefund, der fuer B2 zaehlt:** Seit dem 2026-09-07 um 05:43 ist kein
+einziger `top_treffer` mehr versandt worden. Alle 42 Treffer des Laufs vom
+2026-09-08 18:29 beruhen auf geschaetzter Miete; im ganzen Bestand tragen nur
+zwei Objekte eine belegte. Die hoechste Meldeklasse ist damit praktisch
+unerreichbar.
 
 **A7a** — die Rechnung an `SWEEP_BUDGET_MS` setzte nur die Drossel von 5 s je
 Seite an; gemessen sind 8,7 bis 11,5. Der Wert bleibt bei 12 min: Der

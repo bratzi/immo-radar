@@ -70,11 +70,17 @@ export function berechneKennzahlen(
   const geschaetzterDscr = noi / ((input.kaufpreis + kaufnebenkosten) * KAPITALDIENST_SATZ);
   const geschaetzterBeleihungswert = noi / KAPITALDIENST_SATZ;
   const finanzierungsrisiko = input.kaufpreis > geschaetzterBeleihungswert * 1.1;
-  // Nach OBEN pruefen reicht nicht. Am 2026-09-07 ging listing 2f41102f als
-  // top_treffer raus: 2.840 € fuer 198,8 m², Kaufpreisfaktor 0,175,
+  // Nach OBEN pruefen reicht nicht. Am 2026-09-07 passierte listing 2f41102f
+  // diese Schwellen: 2.840 € fuer 198,8 m², Kaufpreisfaktor 0,175,
   // Bruttomietrendite 571 %. Die Rechnung war fehlerfrei -- der Preis kam aus
   // dem alten Immowelt-Detailparser und war falsch. `<= 15` erfuellt so ein
   // Wert muehelos, und je kaputter die Zahl, desto besser sah das Objekt aus.
+  //
+  // Zur Einordnung: Die Meldung ging als `pruefkandidat` raus, nicht als
+  // `top_treffer` -- `bestimmeMeldeklasse` stuft geschaetzte Mieten ohnehin
+  // herunter (lib/meldung.ts). Dieses Feld ist die Schwellenpruefung, nicht
+  // die Meldeklasse. Der Nutzer bekam also eine falsche Nachricht, aber nicht
+  // die hoechste Stufe.
   const kaufpreisfaktorUnplausibel = kaufpreisfaktor < MIN_PLAUSIBLER_KAUFPREISFAKTOR;
   const topTreffer =
     !kaufpreisfaktorUnplausibel &&

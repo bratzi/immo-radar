@@ -76,19 +76,26 @@ export function bewerteMietschaetzung(mietQuelle: string, bruttomietrendite: num
 }
 
 /**
- * Haelt fest, dass ein Kaufpreis zur Miete in keinem moeglichen Verhaeltnis
- * steht -- dass also die ZAHL kaputt ist und nicht das Angebot schlecht.
+ * Haelt fest, dass Kaufpreis und Miete in keinem moeglichen Verhaeltnis
+ * zueinander stehen.
  *
- * `berechneKennzahlen` verweigert solchen Objekten bereits den Top-Treffer.
- * Ohne diese Luecke waere das aber unsichtbar: Das Objekt saehe aus wie
- * geprueft und durchgefallen. Dieselbe Unterscheidung wie bei
- * `wohnflaeche_fehlt`.
+ * DER NAME SAGT BEWUSST NICHT, WELCHE SEITE FALSCH IST. Das laesst sich hier
+ * nicht entscheiden, und die erste Fassung hiess `kaufpreis_unplausibel` --
+ * eine Behauptung, die die Messung nicht deckt. Gemessen am 2026-09-08 traf
+ * die Luecke zwei Objekte in Baden-Wuerttemberg (124.000 € auf 300 m²,
+ * 595.000 € auf 2.062 m²); beide tragen `miete_nur_bundeslandgenau`, ihre
+ * Miete stammt also aus einer Handtabelle ueber ein ganzes Bundesland. Der
+ * Preis kann stimmen und die Schaetzung daneben liegen.
+ *
+ * `berechneKennzahlen` verweigert solchen Objekten bereits die Schwellen.
+ * Ohne diese Luecke waere das unsichtbar: Das Objekt saehe aus wie geprueft
+ * und durchgefallen. Dieselbe Unterscheidung wie bei `wohnflaeche_fehlt`.
  *
  * Die Schwelle kommt aus metrics.ts und wird hier NICHT wiederholt -- eine
  * zweite Kopie derselben Zahl war in diesem Projekt schon einmal der Fehler.
  */
 export function bewertePreisplausibilitaet(kaufpreisfaktor: number): string[] {
-  return kaufpreisfaktor < MIN_PLAUSIBLER_KAUFPREISFAKTOR ? ["kaufpreis_unplausibel"] : [];
+  return kaufpreisfaktor < MIN_PLAUSIBLER_KAUFPREISFAKTOR ? ["preis_miete_unvereinbar"] : [];
 }
 
 /**

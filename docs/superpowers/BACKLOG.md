@@ -503,9 +503,8 @@ binnen 7 Tagen neu erfassen. Belegt: Dieselbe Mechanik hat am 2026-09-07 alle
 
 ## A9. Falsche Top-Treffer durch fehlende Untergrenze — ERLEDIGT (2026-09-08)
 
-**Das war der teuerste Befund dieser Sitzung**, weil er den Nutzer erreicht
-hat. 19 der 186 gemeldeten Objekte tragen einen Wert unter 25.000 €. Zwei
-gingen am 2026-09-07 als `top_treffer` raus:
+**Er hat den Nutzer erreicht.** 19 der 186 gemeldeten Objekte tragen einen
+Wert unter 25.000 €. Zwei davon wurden am 2026-09-07 gemeldet:
 
 ```
 listing 2f41102f   2.840 € / 198,8 m²   Faktor 0,175   Bruttorendite 571 %
@@ -517,12 +516,39 @@ Immowelt-Detailparser und waren falsch — und `topTreffer` prueft den
 Kaufpreisfaktor nur nach OBEN (`<= 15`). **Je kaputter die Zahl, desto besser
 sah das Objekt aus.**
 
+**Richtigstellung (2026-09-08, nachgemessen):** Beide gingen als
+`pruefkandidat` raus, **nicht** als `top_treffer` — `bestimmeMeldeklasse`
+stuft geschätzte Mieten ohnehin herunter (`lib/meldung.ts`). Das Feld
+`topTreffer` in den Kennzahlen ist die Schwellenprüfung, nicht die
+Meldeklasse; die erste Fassung dieses Eintrags hat beides verwechselt. Der
+Nutzer bekam also zwei falsche Nachrichten, aber nicht in der höchsten Stufe.
+Seit dem 2026-09-07 um 05:43 ist überhaupt kein `top_treffer` mehr versandt
+worden — alle 42 Treffer des Laufs vom 18:29 beruhen auf geschätzter Miete,
+und im ganzen Bestand tragen nur zwei Objekte eine belegte.
+
 Behoben in `64de963`: `MIN_PLAUSIBLER_KAUFPREISFAKTOR = 3`, bewusst weit unter
 jedem Marktniveau — selbst stark sanierungsbeduerftige Mehrfamilienhaeuser
 wechseln nicht unter dem Sechs- bis Achtfachen der Jahreskaltmiete den
 Besitzer. Die Schwelle erkennt kaputte Eingaben, sie urteilt nicht ueber die
-Guete eines Angebots. Dazu die Luecke `kaufpreis_unplausibel`, damit ein
-stilles `topTreffer = false` nicht verbirgt, dass die Zahl kaputt ist.
+Guete eines Angebots. Dazu die Luecke `preis_miete_unvereinbar`, damit ein
+stilles `topTreffer = false` nicht verbirgt, dass die Zahlen nicht
+zusammenpassen.
+
+**Der Lückenname hiess zuerst `kaufpreis_unplausibel` und war damit eine
+Behauptung, die die Messung nicht deckt.** In Produktion traf die Wache zwei
+Objekte in Baden-Württemberg (124.000 € auf 300 m², 595.000 € auf 2.062 m²).
+Beide tragen `miete_nur_bundeslandgenau` — ihre Miete kommt aus einer
+Handtabelle über ein ganzes Bundesland. Der Preis kann stimmen und die
+Schätzung daneben liegen; welche Seite falsch ist, lässt sich hier nicht
+entscheiden. Umbenannt in `preis_miete_unvereinbar`.
+
+**Bewusst NICHT gemacht:** `rent_estimate_unreliable` zu einer Sperre machen.
+Die Lücke gibt es schon (Rendite über 20 % bei geschätzter Miete) und sie war
+bei beiden Objekten gesetzt — sie hat nur keine Wirkung. Gemessen träfe eine
+Sperre 2 von 42 Treffern. Da die Meldeklasse solcher Objekte ohnehin nur
+`pruefkandidat` ist — also „sieh dir das an" —, ist das Versenden vertretbar.
+Die Entscheidung gehört in den Dashboard-Entwurf (B2), nicht in eine
+Aufräumarbeit.
 
 **Offen daran:** Die beiden gemeldeten Objekte tragen den falschen Preis
 weiterhin im Bestand. Sie werden erst korrigiert, wenn die Listenbewertung sie

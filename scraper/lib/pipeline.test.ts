@@ -213,7 +213,7 @@ describe("bewertePreisplausibilitaet", () => {
     // Kaufpreisfaktor 0,175. Ohne diese Luecke faellt so ein Objekt nur
     // lautlos durch die Schwellen -- und niemand sieht, dass die ZAHL kaputt
     // ist und nicht das Angebot schlecht.
-    expect(bewertePreisplausibilitaet(0.175)).toEqual(["kaufpreis_unplausibel"]);
+    expect(bewertePreisplausibilitaet(0.175)).toEqual(["preis_miete_unvereinbar"]);
   });
 
   it("laesst einen echten Kaufpreisfaktor unangetastet", () => {
