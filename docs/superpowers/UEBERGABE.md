@@ -1,4 +1,4 @@
-# Übergabe — Stand 2026-09-08, 15:35 UTC
+# Übergabe — Stand 2026-09-08, 20:30 UTC
 
 > **Zuerst lesen:** dieses Dokument, dann [`BACKLOG.md`](BACKLOG.md) (ausführbare
 > Aufgaben) und [`TODO.md`](TODO.md) (Statuslandkarte).
@@ -8,7 +8,7 @@ hergeleitet werden muss.
 
 ## Wo wir stehen
 
-`main` = `64de963`, **nicht gepusht**, Arbeitsverzeichnis sauber. **327 Tests grün**,
+`main` = `d6c4cc1`, gepusht, Arbeitsverzeichnis sauber. **342 Tests grün**,
 `npx tsc --noEmit` sauber. Cron ist auf drei Stunden gestellt, laeuft
 aber gemessen nur **alle rund fuenf** — 10 von 23 Soll-Terminen sind ganz
 ausgefallen, die uebrigen 8 bis 171 min zu spaet. Siehe `BACKLOG.md` A10.
@@ -131,27 +131,60 @@ Objekte mit angegebener Miete im ganzen Bestand, und in 442 ZVG-Texten steht
 
 ## Was als Erstes zu tun ist
 
-**Den naechsten Cron-Lauf pruefen.** Vier Aenderungen dieser Sitzung sind noch
-nicht in Produktion bestaetigt. Erwartet wird:
+**Der Nutzer hat die Reihenfolge festgelegt** (2026-09-08): *„Die Basis muss
+vorher stehen, bevor die Webseite und Dashboard aufgebaut wird. Ich möchte
+einen sauberen Lauf sehen inklusive Telegram Nachrichten. […] Auch die
+Plausibilität bezüglich Miete und so weiter muss auch geprüft werden. Wenn das
+alles steht das dashboard."* Kein Frontend-Code, bevor
+[`ABNAHME-BASIS.md`](ABNAHME-BASIS.md) durch ist.
 
-1. Die Bewertung streut ueber **alle** gesweepten Regionen statt fast nur
-   `nw` und `hb` zu treffen (A7b).
-2. Die Log-Zeile sagt `N von M Kandidaten in diesem Lauf bearbeitet, ueber die
-   Liste gestreut` — das Wort `RUECKSTAND` kommt nicht mehr vor.
-3. Kein Objekt mit einem Kaufpreisfaktor unter 3 wird als `top_treffer`
-   gemeldet; solche Objekte tragen die Luecke `kaufpreis_unplausibel` (A9).
-4. `zvg_id=4198` traegt binnen 7 Tagen 282.000 statt 160.000 EUR (A8).
+Zweite Anweisung: **mit Superpowers-Skills und parallelen Subagenten
+arbeiten**, je Aufgabe die passende Skill.
 
-```sql
-select source, gesehene_objekte, vollstaendig, started_at
-from sweep_runs order by started_at desc limit 4;
+### Vier Untersuchungen sind NICHT gelaufen — neu beauftragen
 
-select l.fundort, count(*) from listings l
-where l.source = 'immowelt' and l.updated_at > now() - interval '4 hours'
-group by 1 order by 2 desc;
-```
+Am 2026-09-08 gegen 20:40 UTC wurden vier Subagenten parallel losgeschickt.
+**Alle vier starben am Sitzungslimit, keiner hat berichtet.** Ihre Aufträge
+stehen noch aus und sind unabhängig voneinander — sie gehören wieder parallel
+losgeschickt:
+
+| # | Auftrag | Skill | Kernfrage |
+|---|---|---|---|
+| 1 | **Mietschätzung prüfen** | — | Woher kommen die Werte in `lib/rentEstimate.ts`, sind sie gegen eine öffentliche Quelle belegbar, und wie viele Treffer wechseln bei ±30 % die Schwelle `kaufpreisfaktor <= 15`? Ergebnis als **A11** ins Backlog. |
+| 2 | **Telegram-Zustellung** | `verification-before-completion` | Beweist eine Zeile in `notifications` überhaupt, dass Telegram die Nachricht angenommen hat? Wird der HTTP-Status geprüft? Wird die Zeile vor oder nach dem Versand geschrieben? (Kriterium D-1.) |
+| 3 | **Abdeckung & Löschhoheit** | `brainstorming` | Warum hat **kein einziges** der 754 Immowelt-Objekte je `disappeared_at`? Trägt B1 bei der gemessenen Lauffrequenz überhaupt? Optionen mit Kosten und Risiken. |
+| 4 | **39 von 600 ohne Preis** | `systematic-debugging` | Parserfehler in der Titelzeile oder echt „Preis auf Anfrage"? Quote schwankte zwischen 0,5 % und 6,5 % je Lauf. |
+
+Auftrag 2 ist teilweise erledigt: Die Formatierung wurde geprüft und repariert
+(siehe unten), **die Zustellung selbst aber nicht**. Der Rest von Auftrag 2 ist
+genau noch Frage 1 der Tabelle.
+
+**Wichtig für die Beauftragung:** Jeder Agent bekommt die Anweisung, NICHT
+`docs/superpowers/BACKLOG.md` zu bearbeiten — sonst kollidieren sie. Die Doku
+führt der Koordinator zusammen.
+
+### Danach: ein Lauf, an dem die Abnahme durchgeht
+
+`ABNAHME-BASIS.md` hat 15 Kriterien. Stand: 8 erfüllt, 7 offen. Die harten
+sind B-1 (alle 16 Bundesländer je erfasst), B-2 (Immowelt-Abgänge werden
+erkannt) und C-1/C-2 (Miete belegt).
 
 ## Was in dieser Sitzung geschlossen wurde
+
+**Telegram-Meldungen** (`d6c4cc1`) — vier Fehler, die in JEDER der 25 Meldungen
+standen: `MIET_QUELLE_LABELS` kannte den haeufigsten Wert
+(`geschaetzt_bundesland`) nicht, drei Lueckencodes fehlten ebenfalls, die
+Ortszeile klebte eine leere PLZ davor (`📍  Jungingen`), und der Kartenlink
+wurde auch ohne Adresse gebaut. Dazu die Anforderung des Nutzers, in JEDER
+Meldung Bundesland und PLZ zu nennen. Gemessen: Bundesland ist ueberall da
+(1.862/1.862 bei Immowelt), die PLZ fast nie (157/1.862, alle aus dem alten
+Detailpfad). Eine fehlende PLZ wird deshalb als Luecke sichtbar gemacht statt
+verschwiegen. **Bewusst nicht gebaut:** die PLZ aus dem Ortsnamen herleiten --
+Ortsnamen sind mehrdeutig, eine falsche PLZ ergaebe eine falsche
+Mietschaetzung. Das ist eine Entscheidung des Nutzers und haette als Nebeneffekt
+den groessten offenen Punkt entschaerft (PLZ-genaue statt bundeslandgenaue
+Miete).
+
 
 **A1** — Lauf `34215003141` hat den Listen-Umbau bestaetigt: `listings` fuer
 Immowelt 157 → 754, `fundort` 0 → 597, `Meldungen: 25 von hoechstens 25`.

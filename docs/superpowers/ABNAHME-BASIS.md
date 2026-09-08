@@ -49,10 +49,36 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| D-1 | Belegt, dass Telegram die Nachrichten angenommen hat | **in Prüfung** |
-| D-2 | Der Nachrichtentext nennt die Datenlücken, auf denen er beruht | **in Prüfung** |
-| D-3 | Die Formatierung bricht nicht bei fehlenden Feldern | **in Prüfung** |
-| D-4 | Das Meldebudget ist nicht dauerhaft ausgeschöpft | **offen** — `25 von hoechstens 25` in beiden Läufen |
+| D-1 | Belegt, dass Telegram die Nachrichten angenommen hat | **offen** — noch nicht geprüft |
+| D-2 | Der Nachrichtentext nennt die Datenlücken im Klartext | **erfüllt** seit `d6c4cc1` |
+| D-3 | Die Formatierung bricht nicht bei fehlenden Feldern | **erfüllt** seit `d6c4cc1` |
+| D-4 | Jede Meldung nennt Bundesland und Ort; fehlende PLZ ist sichtbar | **erfüllt** seit `d6c4cc1` |
+| D-5 | Das Meldebudget ist nicht dauerhaft ausgeschöpft | **offen** — `25 von hoechstens 25` in beiden Läufen |
+
+### So sieht eine Meldung seit `d6c4cc1` aus
+
+Aus echten Daten des Laufs `34261364448` nachgebaut:
+
+```
+🔍 PRÜFKANDIDAT
+🏠 Mehrfamilienhaus zum Kauf - Jungingen - 364.000 € - 7,5 Zimmer, 260,9 m², 763,3 m² Grundstück
+📍 Jungingen · Baden-Württemberg
+
+💰 Kaufpreis 364.000 €
+📊 Faktor 9,3 · DSCR 1,30
+🔑 Einheiten unbekannt · Miete geschätzt (Bundesland)
+
+Faktor und DSCR beruhen auf einer geschätzten Miete — vor einer Entscheidung selbst prüfen.
+
+⚠️ Fehlende Angaben: Einheiten nicht bestätigt, Miete nur bundeslandweit
+   geschätzt, PLZ fehlt (Immowelt nennt sie in der Ergebnisliste nicht)
+
+🗺 Karte  ·  🔗 Zum Inserat
+```
+
+Vorher stand dort `📍  Jungingen` mit doppeltem Leerzeichen, kein Bundesland,
+und in der Lückenzeile roher Maschinencode (`miete_nur_bundeslandgenau`,
+`geschaetzt_bundesland`).
 
 ---
 
