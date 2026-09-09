@@ -41,8 +41,16 @@ function deutscheZahl(text: string): number | null {
  * Preis in Cent. Verlangt das Eurozeichen -- "Preis auf Anfrage" ergibt null.
  * Ein erfundener Preis waere schlimmer als gar keiner: Er ginge unmittelbar in
  * den Kaufpreisfaktor ein.
+ *
+ * Das `(?<!\d)` vorn ist Pflicht, kein Zierrat: Ohne die Lookbehind-Sperre
+ * greift das Muster bei einer Zahl ohne Tausenderpunkt ("75000 €") an einer
+ * beliebigen Stelle mitten in der Ziffernfolge und liest nur die letzten drei
+ * Ziffern -- "000" statt "75000". Ergebnis war 0 Cent statt Fehlanzeige, ein
+ * erfundener Preis. In den 1758 gemessenen echten Titeln kommt dieses Format
+ * nicht vor (A13); die Sperre stellt sicher, dass es dort landet, wo es
+ * hingehoert: null statt eines stillen Fehlwerts.
  */
-const PREIS = /(\d{1,3}(?:\.\d{3})*(?:,\d+)?)\s*€/;
+const PREIS = /(?<!\d)(\d{1,3}(?:\.\d{3})*(?:,\d+)?)\s*€/;
 
 /**
  * Wohnflaeche und Grundstueck stehen beide als "N m²" da und unterscheiden
@@ -96,14 +104,51 @@ export function werteAusTitelzeile(titleLine: string): TitelzeilenWerte {
 }
 
 /**
- * Fasst die Objekte zusammen, die ohne Preis uebersprungen wurden -- nach
- * Fundort aufgeschluesselt.
+ * Zwei Lueckencodes statt einem, analog zu `wohnflaeche_fehlt` in
+ * lib/pipeline.ts: derselbe Sprachgebrauch (deutscher Code, Unterstriche),
+ * dieselbe Idee -- ein unbeurteilbarer Zustand bekommt einen eigenen Namen
+ * statt in einem allgemeinen "fehlt" unterzugehen.
  *
- * Warum die Aufschluesselung: Die Quote schwankte zwischen 0,5 % und 6,5 %
- * je Lauf. Gemessen ist das ein Regionseffekt und keine Verschlechterung --
- * der 6,5-%-Lauf zog seine ganze Bewertungsscheibe aus Baden-Wuerttemberg,
- * die 0-%-Laeufe aus Nordrhein-Westfalen. Ohne diese Zeile liest sich jeder
- * bw-Lauf wie ein Rueckschritt (Backlog A13).
+ * `preis_auf_anfrage`: die Quelle nennt schlicht keinen Preis (kein € im
+ * Titel). Das ist Markt, keine Regression.
+ *
+ * `preis_unlesbar`: der Titel enthaelt ein €, aber PREIS greift nicht. Genau
+ * das war der A13-Fall "75000 €" ohne Tausenderpunkt -- eine steigende Quote
+ * hier zeigt einen kaputten Parser an, keinen Markttrend.
+ */
+export type LueckencodeOhnePreis = "preis_auf_anfrage" | "preis_unlesbar";
+
+export function ermittleLueckencodeOhnePreis(titleLine: string): LueckencodeOhnePreis {
+  return titleLine.includes("€") ? "preis_unlesbar" : "preis_auf_anfrage";
+}
+
+/** Baut "fundort anzahl, fundort anzahl" -- groesste Region zuerst, sonst alphabetisch. */
+function aufschluesselnJeFundort(faelle: { fundort: string | null }[]): string {
+  const jeFundort = new Map<string, number>();
+  for (const fall of faelle) {
+    const schluessel = fall.fundort ?? "ohne Fundort";
+    jeFundort.set(schluessel, (jeFundort.get(schluessel) ?? 0) + 1);
+  }
+  return [...jeFundort.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([fundort, anzahl]) => `${fundort} ${anzahl}`)
+    .join(", ");
+}
+
+/**
+ * Fasst die Objekte zusammen, die ohne Preis uebersprungen wurden -- nach
+ * Fundort UND nach Lueckencode aufgeschluesselt.
+ *
+ * Warum die Fundort-Aufschluesselung: Die Quote schwankte zwischen 0,5 % und
+ * 6,5 % je Lauf. Gemessen ist das ein Regionseffekt und keine
+ * Verschlechterung -- der 6,5-%-Lauf zog seine ganze Bewertungsscheibe aus
+ * Baden-Wuerttemberg, die 0-%-Laeufe aus Nordrhein-Westfalen. Ohne diese
+ * Zeile liest sich jeder bw-Lauf wie ein Rueckschritt (Backlog A13).
+ *
+ * Warum die Code-Aufschluesselung: Ohne sie sehen "die Quelle nennt keinen
+ * Preis" und "der Parser hat versagt" in der Diagnose gleich aus. Nur der
+ * zweite Fall (`preis_unlesbar`) ist eine Regression; eine steigende Quote
+ * beim ersten (`preis_auf_anfrage`) ist Markt.
  *
  * Ein fehlender Fundort wird ausdruecklich als "ohne Fundort" ausgewiesen,
  * nicht weggelassen: Ein unbekannter Zustand ist in diesem Projekt nie
@@ -114,16 +159,18 @@ export function fasseOhnePreisZusammen(
 ): string {
   if (faelle.length === 0) return "0 ohne Preisangabe uebersprungen.";
 
-  const jeFundort = new Map<string, number>();
+  const jeCode = new Map<LueckencodeOhnePreis, { fundort: string | null }[]>([
+    ["preis_auf_anfrage", []],
+    ["preis_unlesbar", []],
+  ]);
   for (const fall of faelle) {
-    const schluessel = fall.fundort ?? "ohne Fundort";
-    jeFundort.set(schluessel, (jeFundort.get(schluessel) ?? 0) + 1);
+    jeCode.get(ermittleLueckencodeOhnePreis(fall.titleLine))!.push(fall);
   }
 
-  const aufschluesselung = [...jeFundort.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([fundort, anzahl]) => `${fundort} ${anzahl}`)
-    .join(", ");
+  const teile = [...jeCode.entries()].map(([code, gruppe]) => {
+    const aufschluesselung = gruppe.length === 0 ? "" : ` (${aufschluesselnJeFundort(gruppe)})`;
+    return `${code} ${gruppe.length}${aufschluesselung}`;
+  });
 
-  return `${faelle.length} ohne Preisangabe uebersprungen (${aufschluesselung}).`;
+  return `${faelle.length} ohne Preisangabe uebersprungen: ${teile.join(", ")}.`;
 }
