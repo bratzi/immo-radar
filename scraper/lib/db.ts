@@ -188,11 +188,24 @@ export function versandBeleg(
   return { telegramMessageId, runId: runId ?? null };
 }
 
+/**
+ * `logNotification` wird in ALLEN drei Aufrufern (pipeline.ts zweimal,
+ * main.ts einmal) ausschliesslich NACH einem bestaetigten Versand erreicht --
+ * ein Wurf aus `sendTelegramMessage` verlaesst die Funktion vorher (siehe
+ * Reihenfolgetests oben). Die Erfolgszeile hier statt an jedem Aufrufer
+ * einzeln zu bauen, deckt automatisch alle drei ab und kann nicht an einer
+ * Stelle vergessen werden -- `sendTelegramMessage` selbst kaeme dafuer nicht
+ * infrage, die kennt nur die message_id, nicht das Objekt.
+ *
+ * Kein personenbezogener Inhalt, keine ganze Nachricht: Das Actions-Log ist
+ * oeffentlich einsehbar, sobald jemand Zugriff auf die Actions hat.
+ */
 export async function logNotification(
   supabase: SupabaseClient,
   listingId: string,
   kind: "top_treffer" | "pruefkandidat" | "preisaenderung" | "verschwunden",
-  detail: Record<string, unknown>
+  detail: Record<string, unknown>,
+  objektKennung: string
 ): Promise<void> {
   const { error } = await supabase.from("notifications").insert({
     listing_id: listingId,
@@ -200,6 +213,8 @@ export async function logNotification(
     detail,
   });
   if (error) throw error;
+  const messageId = (detail as { telegramMessageId?: number | null }).telegramMessageId ?? null;
+  console.log(`Telegram gesendet [${kind}] message_id=${messageId ?? "unbekannt"} ${objektKennung}`);
 }
 
 /**
