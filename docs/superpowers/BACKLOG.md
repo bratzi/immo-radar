@@ -803,7 +803,16 @@ funktioniert nur, weil sich die Laufzeitfenster zufaellig nicht ueberlappen.
       Vorgaengerpreis, und der Kandidat traegt einen Preis, der die
       Schwellen wirklich passiert.
 - [x] **Schritt 3:** `process.env.GITHUB_RUN_ID` als `runId` ins `detail`.
-- [ ] **Schritt 4:** Eine Erfolgszeile je Versand ins Log.
+- [x] **Schritt 4:** Eine Erfolgszeile je Versand ins Log. **Erledigt
+      (2026-09-09).** Sie entsteht in `logNotification` statt an jedem
+      Aufrufer einzeln und deckt damit alle drei Aufrufer ab, ohne an einer
+      Stelle vergessen werden zu koennen. Sie ruht auf der von Telegram
+      bestaetigten `message_id`: Fehlt die, gibt es keine Erfolgsmeldung.
+      Sich stattdessen darauf zu stuetzen, dass alle Aufrufer erst nach
+      geglücktem Versand protokollieren, waere eine Annahme ueber Code in
+      einer anderen Datei -- heute wahr und von einem kuenftigen vierten
+      Aufrufer still zu brechen. Kein personenbezogener Inhalt, keine ganze
+      Nachricht: Quelle, externalId, Meldeklasse, `message_id`.
 
 **Bewusst nicht vorgeschlagen:** eine eigene Spalte `telegram_message_id` oder
 `status`. Das `detail`-jsonb leistet dasselbe ohne Migration; eine Spalte lohnt
@@ -908,15 +917,26 @@ kein Titel. Strukturell geht es heute auch nicht:
       `preis_auf_anfrage` analog zu `wohnflaeche_fehlt` — sauber, aber eine
       **Migration auf Produktionsdaten** und sie beruehrt jede Metrik, die
       `priceCents / 100` rechnet (`pipeline.ts:270`).
-- [ ] **Schritt 3:** Zwei Lueckencodes statt einem — `preis_auf_anfrage`
+- [x] **Schritt 3:** Zwei Lueckencodes statt einem — `preis_auf_anfrage`
       (Quelle nennt keinen Preis) und `preis_unlesbar` (Titel enthaelt `€`,
-      Muster greift nicht). Nur so verraet eine steigende Quote kuenftig
-      sofort, ob es Markt oder Regression ist.
+      Muster greift nicht). **Erledigt (2026-09-09).** Die Trennschaerfe ist
+      nicht Heuristik, sondern folgt aus der Regex-Semantik: Das Preismuster
+      endet zwingend auf `€` und durchsucht die ganze Zeile. Ein Titel ohne
+      `€` kann im `null`-Zweig nur `preis_auf_anfrage` sein, einer mit `€`
+      nur `preis_unlesbar`. Die Schlusszeile des Laufs weist beide Codes
+      getrennt aus, weiterhin nach Fundort aufgeschluesselt.
 - [x] **Schritt 4:** Das Laufprotokoll um die Fundort-Aufschluesselung
       ergaenzen. **Erledigt:** `fasseOhnePreisZusammen` in
       `scrapers/immowelt/titelzeile.ts`, vier Tests. Ein fehlender Fundort
       erscheint ausdruecklich als „ohne Fundort" statt zu fehlen.
-- [ ] **Schritt 5 (optional, TDD):** `75000 €` darf nicht 0 ergeben.
+- [x] **Schritt 5:** `75000 €` darf nicht 0 ergeben. **Erledigt
+      (2026-09-09)**, und die Pruefung fand denselben Fehler eine Stelle
+      weiter: Der Lookbehind sperrte nur eine Ziffer davor, nicht den Punkt.
+      `5.00 €` — eine unvollstaendige Dreiergruppe — ergab damit erneut
+      0 Cent, weil `00` plus Eurozeichen fuer sich genommen matcht. Gemessen,
+      nicht vermutet: Der Test war rot mit `expected +0 to be null`. Beide
+      Sperren sind Haertung, kein Bugfix — in den 1758 echten Titeln kommt
+      keines der Formate vor.
 
 **Bemerkung zu A-3/B-1:** Solange ein Lauf nur 1 von 16 Regionen schafft, ist
 „39 von 600" ueberhaupt keine stabile Kennzahl — jede Quote misst dann die

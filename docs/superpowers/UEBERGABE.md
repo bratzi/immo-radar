@@ -6,18 +6,71 @@
 
 ## Wo wir stehen
 
-`main` = `3300e28`, gepusht, Arbeitsverzeichnis sauber. Letzter Lauf:
-**`34355619597`** (2026-09-09, 13:12 UTC, `conclusion=success`). **378 Tests
+`main` = `1b94092`, gepusht, Arbeitsverzeichnis sauber. Letzter Produktionslauf:
+**`34355619597`** (2026-09-09, 13:12 UTC, `conclusion=success`). **395 Tests
 grün** (Sitzungsbeginn: 374, davon 2 rot), `npx tsc --noEmit` sauber.
 
-**Alle drei Fail-open-Stellen aus dem B-2-Entwurf sind geschlossen.** Damit ist
-die Vorarbeit für Option 3 abgeschlossen; was fehlt, ist der Messauftrag A15
-und Option 3 selbst.
+**Was diese Sitzung geschlossen hat:** Option 1 des B-2-Entwurfs
+(Fortsetzungsrotation, fail-closed bei fehlender Trefferzahl), alle drei
+Fail-open-Stellen, A12 Schritt 4, A13 Schritte 3 und 5, und die Partition aus
+dem gespeicherten Fundort. Dazu ist **A15 beantwortet** — mit einem Befund, der
+alle drei Vermutungen widerlegt und die neue Aufgabe **A16** nach sich zieht.
 
-**Option 1 aus dem B-2-Entwurf ist umgesetzt** — Fortsetzungsrotation und
-fail-closed bei fehlender Trefferzahl. Damit sind Option 0 und 1 der
-empfohlenen Reihenfolge 0 → 1 → 3 erledigt; als Nächstes steht **Option 3**
-an (markieren ohne löschen), davor aber der Messauftrag **A15**.
+**Als Nächstes:** A16 (ein zweiter Vollständigkeitsmaßstab), danach Option 3
+(markieren ohne löschen). A16 ist Voraussetzung, seit feststeht, dass die drei
+größten Regionen ihre Trefferzahl nie nennen.
+
+### A15 ist beantwortet, und keine der drei Vermutungen stimmte
+
+Zwei Prüfläufe gegen `nw`, ein dritter gegen `bw`, je **eine** Ergebnisseite
+über `pruefung.yml`.
+
+| Was | Ergebnis |
+|---|---|
+| Titel, den `regionErfassen` liest | `Mehrfamilienhaus kaufen in Nordrhein-Westfalen \| immowelt` |
+| Titel am Ende des Laufs | `Häuser zum Kauf in Nordrhein-Westfalen` |
+| Trefferzahl aus beiden | `null` |
+| Zahl-plus-Mengenwort im Seitentext | **keins gefunden** |
+
+Zum Vergleich der Fall, der funktioniert:
+`Mehrfamilienhaus kaufen in Bremen - 209 Angebote | immowelt`.
+
+**Diese Regionen weisen ihre Trefferzahl nirgends aus.** Kein Parserfehler,
+kein Formatwechsel, kein Timing. In `nw` und `bw` unabhängig reproduziert.
+
+**Und es liegt nicht an der Größe**, der naheliegendsten Erklärung: Bayern
+(5.083) nennt seine Zahl, Baden-Württemberg (~4.847) nicht;
+Mecklenburg-Vorpommern (~623) nennt sie nicht, Bremen (204) schon.
+
+**Die Folge wiegt schwerer als der Befund.** `istRegionVollstaendig` kann für
+diese Regionen nie `true` liefern. Die Fail-closed-Entscheidung von heute früh
+ist damit dauerhaft richtig — und blockiert zugleich B1 für die größten
+Regionen. Die Antwort ist kein neues Muster, sondern **A16**: ein zweiter
+Maßstab aus der eigenen Regionshistorie. `nw` lieferte 6.823, 6.895, 6.965 —
+ein Soft-Block mit 40 Karten fiele sofort auf.
+
+### Die Partition kommt aus dem gespeicherten Fundort
+
+`partitionAusExternalId` konnte das Bundesland nur für ZVG lesen, dessen
+Kennung es trägt. Immowelts externalId ist eine nackte UUID, also war dort die
+Partition immer `null` — und `null` heißt fail-closed „nie ein Abgang". Der
+Fundort steht längst in `listings`; `ladeBekannteListings` liest ihn jetzt mit.
+
+**Die Reihenfolge ist eine Entscheidung.** Der gespeicherte Fundort geht vor,
+weil er die Beobachtung eines Laufs ist, während die externalId eine Ableitung
+aus einer Kennung ist. Widersprechen sie sich, gilt die Beobachtung. Der
+Rückfall auf die externalId bleibt nötig: ZVG hat historisch keinen Fundort
+gesetzt, und ohne ihn verlöre ausgerechnet die einzige Quelle ihre Partition,
+die heute wirklich löscht.
+
+**Das gibt keine Löschung frei.** `vollstaendig` ist für Immowelt weiterhin
+hart `false`, und ein eigener Test hält fest, dass ein unvollständiger Sweep
+null Abgänge liefert. **Fällt dieser Test, ist versehentlich die Löschhoheit
+für Immowelt eingeschaltet worden.** Die 157 Objekte ohne Fundort bleiben unter
+jeder regionsgenauen Regel unantastbar.
+
+Zwei Sabotageproben: Wird ein fehlender Fundort zu `"nw"`, fallen zwei Tests;
+wird der Rückfall auf die externalId entfernt, fallen drei.
 
 ### Die zwei restlichen Fail-open-Stellen sind gefallen
 
@@ -161,9 +214,12 @@ Referenzläufe für Option 3 zählt, muss diese Zeilen ausschließen** — entwe
 
 ## Was als Nächstes zu tun ist
 
-1. **A15 — den echten Titel aus dem Log lesen** und danach
-   `trefferzahlAusTitel` mit einem scheiternden Test erweitern. Kleinster
-   Schritt, größte Hebelwirkung: Ohne ihn stehen `nw`, `bw` und `mv` still.
+1. **A16 — ein zweiter Vollständigkeitsmaßstab.** Voraussetzung für alles
+   Weitere an B1. Braucht erst einen Entwurf, weil es die Löschwachen berührt:
+   Ab wie vielen eigenen Läufen ist die Regionshistorie ein belastbarer
+   Maßstab? Welche Toleranz? Was gilt beim allerersten Lauf einer Region
+   (Antwort: unvollständig)? Zählt eine abgeschnittene Region je als
+   vollständig (Antwort: nein)?
 2. **Option 3 — markieren ohne löschen.** `disappeared_at` regionsgenau setzen,
    die harte Löschung für `source='immowelt'` unterbinden. Erfüllt B-2
    wörtlich („wird als verschwunden **erkannt**", nicht: gelöscht) und liefert
@@ -227,6 +283,24 @@ bricht `npm run scrape` und jedes Prüfskript ohne `CI` ab. Der Anschluss des
 Nutzers ist zweimal ausgefallen. Prüfungen laufen über
 [`pruefung.yml`](../../.github/workflows/pruefung.yml), volle Läufe über
 `gh workflow run scrape.yml --ref main`.
+
+**Ein Prüflauf gegen EINE Region kostet fast nichts und beantwortet mehr als
+jede Vermutung.** `gh workflow run pruefung.yml -f skript=pruefe-region
+-f region=nw -f max_seiten=1` ist ein einziger Seitenabruf auf GitHubs
+Rechnern. Drei solche Läufe haben A15 entschieden, nachdem drei Sitzungen
+darüber spekuliert hatten.
+
+**Subagenten in Worktrees brauchen `node_modules` — und `npm ci` ist dafür der
+falsche Weg.** Am 2026-09-09 haben drei Agenten ihn gleichzeitig genommen und
+den Anschluss des Nutzers belastet: nicht die Datenmenge, sondern hunderte
+gleichzeitige Verbindungen. Der richtige Weg steht in
+[`scripts/worktree-node-modules.sh`](../../scripts/worktree-node-modules.sh) —
+Verzeichnis-Junction, Symlink, notfalls lokale Kopie, kein Netz. Ein
+Agentenauftrag verbietet Netzkommandos ausdrücklich.
+
+**`printf` und das Prozentzeichen.** Eine Commit-Nachricht mit `8,2 %` bricht
+mitten im Satz ab, weil `printf` das `%` als Formatanweisung liest. Längere
+Nachrichten über eine Datei und `git commit -F` schreiben.
 
 **Ein Test, der am Kalender hängt, ist eine Zeitbombe.** Diese Sitzung ist mit
 zwei roten Tests gestartet, die niemand kaputtgemacht hatte: Ein fest
