@@ -296,9 +296,23 @@ describe("processCandidate — Reihenfolge von Versand und Protokoll", () => {
     text: async () => JSON.stringify(koerper),
   });
 
-  /** Preis so, dass Kaufpreisfaktor und DSCR die Schwellen passieren --
-   *  sonst ist die Meldeklasse "keine" und es wird gar nicht gesendet. */
-  const MELDEWUERDIG: PipelineCandidate = { ...BASIS_KANDIDAT, priceCents: 150_000_00 };
+  /**
+   * Preis so, dass Kaufpreisfaktor und DSCR die Schwellen passieren -- sonst
+   * ist die Meldeklasse "keine" und es wird gar nicht gesendet.
+   *
+   * Und der Termin MUSS in der Zukunft liegen, relativ zur echten Uhr:
+   * `bestimmeMeldeklasse` gibt bei einem gelaufenen Termin "keine" zurueck,
+   * und `processCandidate` liest `jetzt` aus `new Date()`. Der feste Termin
+   * aus BASIS_KANDIDAT (2026-09-09T08:00Z) lief am 2026-09-09 um 08:00 UTC
+   * ab -- beide Tests dieser Gruppe wurden an diesem Vormittag rot, ohne dass
+   * jemand Produktionscode angefasst hatte. Ein Test, der am Kalender haengt,
+   * meldet einen Fehler, den es nicht gibt, und verdeckt den, den es gibt.
+   */
+  const MELDEWUERDIG: PipelineCandidate = {
+    ...BASIS_KANDIDAT,
+    priceCents: 150_000_00,
+    auctionAt: new Date(Date.now() + 30 * 24 * 3_600_000).toISOString(),
+  };
 
   it("schreibt KEINE Zeile, wenn Telegram den Versand ablehnt", async () => {
     vi.stubGlobal(
