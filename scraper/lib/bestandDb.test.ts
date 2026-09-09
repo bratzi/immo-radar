@@ -61,6 +61,7 @@ type InAufruf = { tabelle: string; art: "update" | "delete"; ids: string[] };
 
 function fakeSupabase(optionen: { fehlerBeimAufruf?: number; zeilen?: unknown[] } = {}) {
   const aufrufe: InAufruf[] = [];
+  const gefragteQuellen: string[][] = [];
   const zeilen = optionen.zeilen ?? [];
   let nummer = 0;
 
@@ -80,16 +81,27 @@ function fakeSupabase(optionen: { fehlerBeimAufruf?: number; zeilen?: unknown[] 
         update: (_werte: unknown) => antwort(tabelle, "update"),
         delete: () => antwort(tabelle, "delete"),
         select: (_spalten: string) => ({
-          not: (_spalte: string, _pruef: string, _wert: unknown) => ({
-            range: (von: number, bis: number) =>
-              Promise.resolve({ data: zeilen.slice(von, bis + 1), error: null }),
-          }),
+          // Bildet den source-Filter der echten Abfrage nach: Zeilen fremder
+          // Quellen kommen gar nicht erst zurueck.
+          in: (_spalte: string, quellen: string[]) => {
+            gefragteQuellen.push([...quellen]);
+            const erlaubt = zeilen.filter(
+              (z) => (z as { source?: string }).source === undefined ||
+                quellen.includes((z as { source: string }).source)
+            );
+            return {
+              not: (_s: string, _p: string, _w: unknown) => ({
+                range: (von: number, bis: number) =>
+                  Promise.resolve({ data: erlaubt.slice(von, bis + 1), error: null }),
+              }),
+            };
+          },
         }),
       };
     },
   };
 
-  return { client: client as unknown as SupabaseClient, aufrufe };
+  return { client: client as unknown as SupabaseClient, aufrufe, gefragteQuellen };
 }
 
 const ids = (anzahl: number) =>
@@ -154,6 +166,38 @@ describe("Stueckelung der .in()-Listen", () => {
     expect(Math.max(...loeschAufrufe.map((aufruf) => aufruf.ids.length))).toBeLessThanOrEqual(
       HOECHSTE_BLOCKGROESSE
     );
+  });
+
+  /**
+   * Die dritte der drei Fail-open-Stellen aus dem B-2-Entwurf. `loescheAbgelaufene`
+   * filterte NICHT nach `source` und loeschte damit alles, was irgendwo eine
+   * abgelaufene Karenz trug. Solange nur ZVG markiert, faellt das nicht auf --
+   * gemessen am 2026-09-09 trugen genau 2 Objekte `disappeared_at`, beide von
+   * ZVG. Sobald Immowelt regionsgenau markiert (Option 3), loescht dieselbe
+   * Funktion die Markierten zwei Tage spaeter hart mit weg. Genau das soll
+   * Option 3 aber gerade NICHT tun.
+   */
+  it("loescht nur Quellen mit Loeschhoheit -- eine Immowelt-Markierung ueberlebt", async () => {
+    const alt = new Date("2026-08-01T00:00:00Z").toISOString();
+    const { client, aufrufe } = fakeSupabase({
+      zeilen: [
+        { id: "zvg-1", source: "zvg-portal", disappeared_at: alt, last_seen: alt },
+        { id: "iw-1", source: "immowelt", disappeared_at: alt, last_seen: alt },
+      ],
+    });
+
+    const geloescht = await loescheAbgelaufene(client, new Date("2026-09-08T18:00:00Z"));
+
+    expect(geloescht).toBe(1);
+    expect(aufrufe.filter((a) => a.art === "delete").flatMap((a) => a.ids)).toEqual(["zvg-1"]);
+  });
+
+  it("fragt ausdruecklich nur die Quellen mit Loeschhoheit ab", async () => {
+    // Erlaubnisliste statt Ausschlussliste: Eine neue, unbekannte Quelle wird
+    // dadurch nie hart geloescht, bis jemand sie bewusst eintraegt.
+    const { client, gefragteQuellen } = fakeSupabase({ zeilen: [] });
+    await loescheAbgelaufene(client, new Date("2026-09-08T18:00:00Z"));
+    expect(gefragteQuellen).toEqual([["zvg-portal"]]);
   });
 
   it("schickt bei leerer Liste gar keine Anfrage", async () => {

@@ -67,15 +67,26 @@ export function partitionAusExternalId(source: string, externalId: string): stri
 /**
  * Liegt das Objekt in dem, was dieser Lauf tatsaechlich gesehen hat?
  *
- * Eine unlesbare Partition (ZVG-externalId ohne Bundesland-Praefix) heisst
- * "nicht zuzuordnen" und damit NIE ein Abgang. Frueher galt sie als
- * unpartitioniert und war damit loeschbar -- ein Fail-open in
- * Loeschrichtung. Der leere Geltungsbereich weiter oben bleibt davon
- * unberuehrt: er bedeutet "Quelle ohne Partitionierung" (Immowelt) und wird
- * ohnehin nur erreicht, wenn `vollstaendig` bereits true ist.
+ * Zwei Faelle, beide fail-closed:
+ *
+ * - **Leerer Geltungsbereich -> false.** Bis zum 2026-09-09 stand hier
+ *   `true`, gelesen als "Quelle ohne Partitionierung". Das war die erste der
+ *   drei Fail-open-Stellen aus dem B-2-Entwurf: Ein Lauf, in dem keine
+ *   einzige Region vollstaendig durchlief, gab damit den GANZEN Bestand zum
+ *   Abgleich frei und haette alles geloescht, was er nicht gesehen hat. "Kein
+ *   Land belegt" heisst nicht "alle Laender belegt", es heisst "nichts
+ *   belegt".
+ *
+ *   Gemessen kostet das heute nichts: ZVG hatte in 18 vollstaendigen Laeufen
+ *   nie einen leeren Geltungsbereich (immer 11 oder 16 Laender), und fuer
+ *   Immowelt ist `vollstaendig` ohnehin hart false. Es ist Vorbereitung fuer
+ *   die regionsgenaue Markierung, nicht eine Verhaltensaenderung von heute.
+ *
+ * - **Unlesbare Partition -> false.** Eine ZVG-externalId ohne
+ *   Bundesland-Praefix heisst "nicht zuzuordnen" und damit NIE ein Abgang.
  */
 function imGeltungsbereich(sweep: SweepErgebnis, listing: BekanntesListing): boolean {
-  if (sweep.geltungsbereich.length === 0) return true;
+  if (sweep.geltungsbereich.length === 0) return false;
   const partition = partitionAusExternalId(sweep.source, listing.externalId);
   if (partition === null) return false;
   return sweep.geltungsbereich.includes(partition);
@@ -89,11 +100,16 @@ export function ermittleAbgaenge(
   sweep: SweepErgebnis,
   bekannte: BekanntesListing[]
 ): BekanntesListing[] {
-  // Beide Quellen fahren alles oder nichts: Immowelt liefert einen leeren
-  // `geltungsbereich`, und ZVG setzt bei jedem stolpernden Bundesland
-  // `vollstaendig` auf false. Diese Wache beendet die Abgangserkennung
-  // deshalb bereits hier, bevor `geltungsbereich` ueberhaupt befragt wird --
-  // die regionsgenaue Verengung laeuft in der Praxis nie.
+  // Beide Quellen fahren heute alles oder nichts: Immowelt setzt
+  // `vollstaendig` hart auf false, und ZVG setzt es bei jedem stolpernden
+  // Bundesland auf false. Diese Wache beendet die Abgangserkennung deshalb
+  // bereits hier, bevor `geltungsbereich` ueberhaupt befragt wird -- die
+  // regionsgenaue Verengung laeuft in der Praxis nie.
+  //
+  // (Immowelt FUELLT `geltungsbereich` sehr wohl, mit den Regionen, die in
+  // diesem Lauf vollstaendig durchliefen. Es ist als Beleg protokolliert,
+  // nicht als Loeschfilter -- ein frueherer Kommentar behauptete hier, die
+  // Liste sei leer.)
   //
   // Das ist Absicht, nicht Versehen: Die Verengung passt nicht zur
   // quellenweiten Median-Pruefung in `plausibilitaet.ts`. Nimmt man ein

@@ -155,12 +155,32 @@ export async function aktualisiereLastSeen(
 }
 
 /**
+ * Quellen, deren Objekte hart geloescht werden duerfen.
+ *
+ * ERLAUBNISLISTE, nicht Ausschlussliste: Eine neue oder unbekannte Quelle
+ * wird dadurch nie geloescht, bis jemand sie hier bewusst eintraegt. Das ist
+ * die dritte der drei Fail-open-Stellen aus dem B-2-Entwurf --
+ * `loescheAbgelaufene` filterte gar nicht nach `source` und loeschte alles,
+ * was irgendwo eine abgelaufene Karenz trug.
+ *
+ * Warum das bisher nicht aufgefallen ist: Nur ZVG markiert ueberhaupt etwas.
+ * Gemessen am 2026-09-09 trugen genau 2 Objekte `disappeared_at`, beide von
+ * ZVG. Sobald Immowelt regionsgenau markiert (Option 3), loescht dieselbe
+ * Funktion die Markierten zwei Tage spaeter hart mit weg -- und genau das
+ * soll Option 3 gerade nicht tun. Wer Immowelt hier eintraegt, gibt die
+ * harte Loeschung frei; das ist eine bewusste Entscheidung, keine
+ * Nebenwirkung.
+ */
+const QUELLEN_MIT_LOESCHHOHEIT = ["zvg-portal"];
+
+/**
  * Loescht Objekte, deren Karenz abgelaufen ist. listing_versions und
  * notifications folgen per `on delete cascade`. Kommt ein Objekt spaeter
  * zurueck, legt der naechste Lauf es schlicht neu an.
  *
- * Zwei unabhaengige Bedingungen muessen zutreffen (siehe `istHartLoeschbar`):
- * altes `disappeared_at` UND altes `last_seen`. Was dieser Lauf gesehen hat,
+ * Drei unabhaengige Bedingungen muessen zutreffen: eine Quelle mit
+ * Loeschhoheit (siehe QUELLEN_MIT_LOESCHHOHEIT), altes `disappeared_at` UND
+ * altes `last_seen` (siehe `istHartLoeschbar`). Was dieser Lauf gesehen hat,
  * kann damit nicht geloescht werden -- unabhaengig davon, was weiter oben in
  * der Kette schiefging.
  */
@@ -177,6 +197,10 @@ export async function loescheAbgelaufene(
       supabase
         .from("listings")
         .select("id, disappeared_at, last_seen")
+        // Der Filter gehoert in die Abfrage, nicht hinter sie: Sonst laedt
+        // diese Funktion bei einer markierenden Immowelt-Quelle tausende
+        // Zeilen, nur um sie zu verwerfen.
+        .in("source", QUELLEN_MIT_LOESCHHOHEIT)
         .not("disappeared_at", "is", null)
         .range(von, bis),
     "listings"

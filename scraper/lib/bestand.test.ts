@@ -78,12 +78,22 @@ describe("ermittleAbgaenge", () => {
     expect(abgaenge).toEqual([]);
   });
 
-  it("prueft bei leerem Geltungsbereich alle Objekte (Quelle ohne Partitionierung)", () => {
+  it("meldet bei leerem Geltungsbereich NICHTS -- kein Land belegt heisst nicht alle", () => {
+    // Fail-closed (2026-09-09). Vorher galt ein leerer Geltungsbereich als
+    // "Quelle ohne Partitionierung" und gab damit den GANZEN Bestand zum
+    // Abgleich frei -- ein Lauf ohne eine einzige vollstaendige Region haette
+    // alles geloescht, was er nicht gesehen hat. Das ist die erste der drei
+    // Fail-open-Stellen aus dem B-2-Entwurf und muss fallen, bevor Immowelt
+    // regionsgenau markieren darf.
+    //
+    // Heute kostet es nichts: ZVG hatte in 18 vollstaendigen Laeufen nie
+    // einen leeren Geltungsbereich (gemessen 2026-09-09: immer 11 oder 16
+    // Laender), und fuer Immowelt ist `vollstaendig` ohnehin hart false.
     const abgaenge = ermittleAbgaenge(
       sweep({ source: "immowelt", geltungsbereich: [], gesehene: new Set(["a"]) }),
       [listing("a"), listing("b")]
     );
-    expect(abgaenge.map((l) => l.externalId)).toEqual(["b"]);
+    expect(abgaenge).toEqual([]);
   });
 
   it("laesst ein ZVG-Objekt mit unlesbarer Partition unangetastet", () => {
