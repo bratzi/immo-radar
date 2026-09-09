@@ -6,7 +6,9 @@
 
 **Architecture:** Neues Scraper-Modul `scraper/scrapers/zvg-portal/` (Playwright-getrieben, analog zu `scrapers/immowelt/`) liefert Kandidaten in einer quellen-neutralen Form an eine neue gemeinsame Pipeline-Funktion (`scraper/lib/pipeline.ts`), die Kennzahlenberechnung, Upsert und Telegram-Benachrichtigung für BEIDE Quellen übernimmt. `main.ts` wird zur reinen Orchestrierung (zwei Quellen abrufen, in die gemeinsame Form mappen, Pipeline aufrufen).
 
-**Tech Stack:** TypeScript (ESM, `strict: true`), `tsx`, `vitest`, `cheerio` (HTML-Parsing), `playwright` (neu, für ZVG-Portal-Formular-Navigation), `@supabase/supabase-js`. GitHub Actions Cron (bestehender 3h-Workflow, kein neuer).
+**Tech Stack:** TypeScript (ESM, `strict: true`), `tsx`, `vitest`, `cheerio` (HTML-Parsing), `playwright` (neu, für ZVG-Portal-Formular-Navigation), `@supabase/supabase-js`. GitHub Actions Cron (bestehender 3h-Workflow, kein neuer — **Nachtrag
+2026-09-09:** „3h" ist der Cron-Ausdruck, gemessen läuft er rund alle fünf
+Stunden, 43 % der Soll-Termine fallen aus).
 
 **Spec:** `docs/superpowers/specs/2026-09-06-plan2-zvg-portal-design.md` (siehe auch `2026-09-06-plan2-zvg-portal-notes.md` für die volle Recherche-Historie)
 

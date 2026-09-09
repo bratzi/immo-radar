@@ -1831,7 +1831,7 @@ git commit -m "feat(scraper): ZVG-Sweep ueber alle Bundeslaender getrennt von de
 
 **Grundlage: das Spike-Ergebnis aus Task 1.** Immowelt deckelt jede Ergebnisliste bei 250 Seiten à 40 Treffern. Bundesweit sind das nur 10.000 von 35.415 Mehrfamilienhäusern. Aufgeteilt nach Bundesland liegt jedoch **jedes einzelne Land unter dem Deckel** — das größte, Nordrhein-Westfalen, bei 188 von 250 Seiten. Die 16 Länder summieren sich auf 35.398 und zerlegen den Bestand damit lückenlos.
 
-**Geltungsbereich bleibt leer — bewusst.** Anders als bei ZVG steckt bei Immowelt kein Bundesland in der `externalId` (Immowelt vergibt UUIDs). Eine partitionsgenaue Löschung wäre nur über eine zusätzliche Spalte zu haben. Stattdessen gilt hier **alles oder nichts**: Scheitert auch nur eine Region, ist `vollstaendig` für die ganze Quelle `false` und in diesem Lauf wird für Immowelt nicht gelöscht. Beim 3-Stunden-Takt ist das folgenlos, und der Fehlermodus bleibt sicher.
+**Geltungsbereich bleibt leer — bewusst.** Anders als bei ZVG steckt bei Immowelt kein Bundesland in der `externalId` (Immowelt vergibt UUIDs). Eine partitionsgenaue Löschung wäre nur über eine zusätzliche Spalte zu haben. Stattdessen gilt hier **alles oder nichts**: Scheitert auch nur eine Region, ist `vollstaendig` für die ganze Quelle `false` und in diesem Lauf wird für Immowelt nicht gelöscht. Beim 3-Stunden-Takt ist das folgenlos, und der Fehlermodus bleibt sicher. **Nachtrag 2026-09-09:** Der Takt ist gemessen rund fünf Stunden, nicht drei — 13 von 23 Soll-Terminen (2026-09-05 bis 2026-09-08), 43 % Ausfall. Der Fehlermodus bleibt sicher, ist aber entsprechend träger.
 
 **Geo-Ids sind zwingend.** Pfade ohne sie (`/suche/kaufen/haus/mehrfamilienhaus/bayern`) liefern HTTP 410. Ändert Immowelt die Ids, bricht die Menge ein — die Plausibilitätsprüfung aus Task 5 schlägt dann an, warnt und löscht nicht.
 
@@ -2582,6 +2582,8 @@ docs/superpowers/      Specs und Implementierungspläne
 ## Betrieb
 
 Ein Lauf alle 3 Stunden über GitHub Actions (`.github/workflows/scrape.yml`).
+(**Nachtrag 2026-09-09:** Soll alle drei Stunden, gemessen rund alle fünf —
+43 % der Soll-Termine fielen aus. Der aktuelle Wortlaut steht im README.)
 
 Lokal:
 

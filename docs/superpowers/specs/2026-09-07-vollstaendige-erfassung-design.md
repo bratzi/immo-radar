@@ -97,6 +97,17 @@ liefert —, ist `vollstaendig` für die ganze Quelle `false` und es findet in
 diesem Lauf keine Abgangserkennung statt. Beim 3-Stunden-Takt ist das
 folgenlos, und der Fehlermodus bleibt sicher.
 
+> **Nachtrag 2026-09-09:** Die drei Stunden sind das *Soll*, nicht das Ist.
+> Gemessen sind über 23 Soll-Termine (2026-09-05 bis 2026-09-08) 13 gelaufene
+> und 10 ausgefallene Läufe — 43 % Ausfall, Verspätung 8 bis 171 min, Median
+> rund 100 —, also real **ein Lauf je rund fünf Stunden**. GitHub führt
+> geplante Läufe ausdrücklich nur nach bestem Bemühen aus. Was hier aus dem
+> Takt abgeleitet ist, gilt entsprechend gedehnt. Siehe README, „Betrieb".
+>
+> Für diese Stelle heißt das: Ein ausgefallener Abgleich kostet nicht drei,
+> sondern im Schnitt rund fünf Stunden. Der Fehlermodus bleibt sicher — er
+> ist nur träger als hier angenommen.
+
 - **Immowelt** kennt keine Partitionierung (UUID-`externalId` ohne
   Bundesland) und liefert einen leeren `geltungsbereich`.
 - **ZVG** ist zwar nach Bundesland partitioniert (`sn-40908`) und füllt
@@ -487,3 +498,7 @@ verkraftbar und einmalig.
   eine Oberfläche. Auf Datenebene ist `disappeared_at` die Grundlage dafür.
 - **Retry mit Backoff** innerhalb eines Laufs. Der 3-Stunden-Cron ist das
   Wiederholungsintervall.
+  <br>**Nachtrag 2026-09-09:** Gemessen beträgt dieses Wiederholungsintervall
+  rund fünf Stunden, nicht drei (13 von 23 Soll-Terminen, 2026-09-05 bis
+  2026-09-08). Ob das als Retry noch reicht, ist damit eine offene Frage und
+  keine erledigte.
