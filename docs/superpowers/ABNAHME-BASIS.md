@@ -23,7 +23,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| A-1 | Läuft ohne Ausnahme durch, endet mit `Lauf abgeschlossen` | **erfüllt** (34261364448) |
+| A-1 | Läuft ohne Ausnahme durch, endet mit `Lauf abgeschlossen` | **erfüllt** — zuletzt `34278399926` (2026-09-08, 21:03–21:29 UTC, 25 min, `conclusion=success`) |
 | A-2 | Keine Meldung im Log behauptet eine Ursache, die nicht gemessen ist | **erfüllt** seit `ea68fbf` |
 | A-3 | Der Cron liefert verlässlich Läufe | **offen** — 43 % der Termine fallen aus (A10) |
 | A-4 | Kein Objekt fällt still aus dem Radar | **offen** — der stille `continue` bleibt; die Ursache ist aber vermessen: „Preis auf Anfrage" der Quelle, kein Parserfehler, und die Quote misst die Region (A13) |
@@ -32,7 +32,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| B-1 | Jedes der 16 Bundesländer war mindestens einmal erfasst | **offen** — zuletzt fehlten 6; gerechnet: mit der heutigen Uhr-Rotation 13 Tage bis zur vollen Abdeckung, mit einer Fortsetzungsrotation 5,7 — ohne zusätzliche Abrufe |
+| B-1 | Jedes der 16 Bundesländer war mindestens einmal erfasst | **offen** — `34278399926` schaffte nur `he` und `sn` (2 von 16); gerechnet: mit der heutigen Uhr-Rotation 13 Tage bis zur vollen Abdeckung, mit einer Fortsetzungsrotation 5,7 — ohne zusätzliche Abrufe |
 | B-2 | Ein verschwundenes Immowelt-Objekt wird als verschwunden erkannt | **offen** — 0 von inzwischen 1.915 haben `disappeared_at`; fünf Sperren stehen davor, die erste ist der Fehler A14. Entwurf mit Optionen liegt vor (`specs/2026-09-08-immowelt-abgaenge-optionen.md`) |
 | B-3 | Die Löschwachen bleiben fail-closed | **erfüllt**, muss bei jeder Änderung erneut gelten |
 
@@ -49,11 +49,11 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| D-1 | Belegt, dass Telegram die Nachrichten angenommen hat | **code-seitig erfüllt** seit `be00d09` — die Zeile trägt jetzt die bestätigte `message_id` und die `runId`, sechs Tests schützen die Reihenfolge, zwei Sabotageproben belegen, dass sie greifen. **Fehlt nur noch der Beleg an einem echten Lauf** (A12) |
+| D-1 | Belegt, dass Telegram die Nachrichten angenommen hat | **erfüllt** — Lauf `34278399926`: 25 Zeilen mit `runId`, **0 ohne `telegramMessageId`**, IDs 1796–1820 lückenlos, deckungsgleich mit `Meldungen: 25 von hoechstens 25`. Sechs Tests, zwei Sabotageproben (A12) |
 | D-2 | Der Nachrichtentext nennt die Datenlücken im Klartext | **erfüllt** seit `d6c4cc1` |
 | D-3 | Die Formatierung bricht nicht bei fehlenden Feldern | **erfüllt** seit `d6c4cc1` |
 | D-4 | Jede Meldung nennt Bundesland und Ort; fehlende PLZ ist sichtbar | **erfüllt** seit `d6c4cc1` |
-| D-5 | Das Meldebudget ist nicht dauerhaft ausgeschöpft | **offen** — `25 von hoechstens 25` in beiden Läufen |
+| D-5 | Das Meldebudget ist nicht dauerhaft ausgeschöpft | **offen** — auch `34278399926`: `25 von hoechstens 25`, 117 zurückgestellt. Der Rückstand hängt an A11 Schritt 4 (dürfen bundeslandgenaue Schätzungen überhaupt melden?) |
 
 ### So sieht eine Meldung seit `d6c4cc1` aus
 

@@ -811,7 +811,15 @@ erst, wenn darauf gefiltert oder indiziert wird. Und keine Testnachricht an den
 Chat des Nutzers — nach Schritt 1 belegt der naechste regulaere Lauf dasselbe
 von allein.
 
-**Abnahme:** An **einem** Produktionslauf gilt gleichzeitig: (1)
+**Abnahme bestanden am Lauf `34278399926`:** 25 Zeilen tragen
+`runId=34278399926`, davon **0 ohne `telegramMessageId`**; die
+`message_id` laufen luekenlos von 1796 bis 1820 — genau die 25, die das Log
+als `Meldungen: 25 von hoechstens 25 gesendet` meldet. Punkt 4 (Verhalten bei
+einem Fehlschlag) traegt dieser Lauf nicht, weil er keinen enthielt; er ist
+durch den Test `schreibt KEINE Zeile, wenn Telegram den Versand ablehnt`
+und durch die Daten des Laufs `34230052647` belegt.
+
+**Urspruengliche Abnahmebedingung:** An **einem** Produktionslauf gilt gleichzeitig: (1)
 `select count(*) from notifications where detail->>'telegramMessageId' is null
 and detail->>'runId' = '<id>'` ergibt 0; (2) die Zahl stimmt per `runId` mit
 der Logzeile ueberein; (3) die Transporttests sind gruen und der
@@ -969,8 +977,11 @@ abstuerzte, ist aus den Daten nicht zu trennen.
       **Fail-closed:** Scheitert ein Block, wirft die Funktion sofort — ein
       Teilerfolg geht nie als Erfolg durch. Ein eigener Test haelt das fest.
       348 Tests gruen (vorher 342), `tsc --noEmit` sauber.
-- [ ] **Schritt 3 (offen, braucht einen Lauf):** Die Abnahme unten an einem
-      Produktionslauf belegen.
+- [x] **Schritt 3:** Abnahme belegt an Lauf `34278399926` (2026-09-08,
+      21:03–21:29 UTC): **null** Vorkommen von `Bestandsabgleich
+      fehlgeschlagen` in 487 Logzeilen, `Lauf abgeschlossen`,
+      `conclusion=success`. Zum Vergleich: Der Lauf `34230052647` mit rund
+      1.300 IDs war genau daran gescheitert.
 
 **Abnahme:** Ein Produktionslauf mit mehr als 1.000 Immowelt-Objekten
 protokolliert keinen `Bestandsabgleich fehlgeschlagen` mehr, und die Zahl der
