@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   partitionAusExternalId,
+  partitionEinesListings,
   ermittleAbgaenge,
   ermittleRueckkehrer,
   istKarenzAbgelaufen,
@@ -27,7 +28,7 @@ function sweep(overrides: Partial<SweepErgebnis> = {}): SweepErgebnis {
 }
 
 function listing(externalId: string, disappearedAt: string | null = null): BekanntesListing {
-  return { id: `id-${externalId}`, externalId, disappearedAt };
+  return { id: `id-${externalId}`, externalId, disappearedAt, fundort: null };
 }
 
 describe("partitionAusExternalId", () => {
@@ -367,5 +368,115 @@ describe("sweepStartVersatz", () => {
 
   it("liefert bei leerer Regionsliste 0", () => {
     expect(sweepStartVersatz([], new Map(), jetzt)).toBe(0);
+  });
+});
+
+/**
+ * Warum es diese Funktion gibt: `partitionAusExternalId` liest das Bundesland
+ * aus der externalId und kann das nur fuer ZVG. Immowelts externalId ist eine
+ * nackte UUID und verraet nichts ueber die Region -- deshalb war fuer jedes
+ * Immowelt-Objekt die Partition `null`, und ein `null` heisst fail-closed
+ * "nie ein Abgang". Die Information liegt laengst in der Datenbank: Der Sweep
+ * schreibt seit dem Umbau auf die Ergebnisliste den Fundort mit.
+ */
+describe("partitionEinesListings", () => {
+  it("nimmt den gespeicherten Fundort, wo er vorhanden ist", () => {
+    expect(
+      partitionEinesListings("immowelt", {
+        id: "id-1",
+        externalId: "e71353e6-4ef9-4162-8a4f-e680c3951de4",
+        disappearedAt: null,
+        fundort: "nw",
+      })
+    ).toBe("nw");
+  });
+
+  it("liefert null fuer ein Objekt ohne Fundort -- auch bei Immowelt", () => {
+    // 157 Objekte (8,2 %) tragen `fundort is null`: Altbestand aus der Zeit,
+    // als Immowelt ueber Detailseiten erfasst wurde. Sie sind unter keiner
+    // regionsgenauen Regel je zuzuordnen, und "nicht zuzuordnen" heisst hier
+    // "nie ein Abgang".
+    expect(
+      partitionEinesListings("immowelt", {
+        id: "id-2",
+        externalId: "e71353e6-4ef9-4162-8a4f-e680c3951de4",
+        disappearedAt: null,
+        fundort: null,
+      })
+    ).toBeNull();
+  });
+
+  it("faellt ohne Fundort auf die externalId zurueck, wo die sie traegt", () => {
+    // ZVG traegt das Bundesland in der externalId und hat historisch keinen
+    // Fundort gesetzt. Ohne diesen Rueckfall verloere ZVG seine Partition --
+    // und damit die einzige Quelle, die heute ueberhaupt loescht.
+    expect(
+      partitionEinesListings("zvg-portal", {
+        id: "id-3",
+        externalId: "sn-40908",
+        disappearedAt: null,
+        fundort: null,
+      })
+    ).toBe("sn");
+  });
+
+  it("zieht den Fundort der externalId vor, wenn beide etwas sagen", () => {
+    // Der Fundort ist die Beobachtung dieses Laufs, die externalId eine
+    // Ableitung aus einer Kennung. Widersprechen sie sich, gilt die
+    // Beobachtung.
+    expect(
+      partitionEinesListings("zvg-portal", {
+        id: "id-4",
+        externalId: "sn-40908",
+        disappearedAt: null,
+        fundort: "th",
+      })
+    ).toBe("th");
+  });
+});
+
+describe("ermittleAbgaenge mit Fundort", () => {
+  const immoweltSweep = (overrides: Partial<SweepErgebnis> = {}) =>
+    sweep({ source: "immowelt", geltungsbereich: ["nw"], vollstaendig: true, ...overrides });
+
+  const iwListing = (externalId: string, fundort: string | null): BekanntesListing => ({
+    id: `id-${externalId}`,
+    externalId,
+    disappearedAt: null,
+    fundort,
+  });
+
+  it("erkennt ein Immowelt-Objekt im Geltungsbereich als Abgang", () => {
+    const abgaenge = ermittleAbgaenge(immoweltSweep({ gesehene: new Set(["uuid-a"]) }), [
+      iwListing("uuid-a", "nw"),
+      iwListing("uuid-b", "nw"),
+    ]);
+    expect(abgaenge.map((l) => l.externalId)).toEqual(["uuid-b"]);
+  });
+
+  it("laesst ein Objekt ohne Fundort unangetastet", () => {
+    const abgaenge = ermittleAbgaenge(immoweltSweep({ gesehene: new Set() }), [
+      iwListing("uuid-alt", null),
+    ]);
+    expect(abgaenge).toEqual([]);
+  });
+
+  it("laesst ein Objekt aus einer anderen Region unangetastet", () => {
+    const abgaenge = ermittleAbgaenge(immoweltSweep({ gesehene: new Set() }), [
+      iwListing("uuid-by", "by"),
+    ]);
+    expect(abgaenge).toEqual([]);
+  });
+
+  it("meldet NICHTS, solange der Immowelt-Sweep unvollstaendig ist", () => {
+    // Die Sperre, die heute im Betrieb greift: `vollstaendig` ist im
+    // Immowelt-Sweep-Ergebnis hart false. Der Fundort macht die Partition
+    // lesbar, er gibt keine Loeschung frei. Faellt dieser Test, ist versehentlich
+    // die Loeschhoheit fuer Immowelt eingeschaltet worden.
+    const abgaenge = ermittleAbgaenge(
+      immoweltSweep({ vollstaendig: false, gesehene: new Set() }),
+      [iwListing("uuid-a", "nw"), iwListing("uuid-b", "nw")]
+    );
+    expect(abgaenge).toEqual([]);
   });
 });

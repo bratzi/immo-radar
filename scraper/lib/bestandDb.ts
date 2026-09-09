@@ -56,11 +56,16 @@ export async function ladeBekannteListings(
     id: string;
     external_id: string;
     disappeared_at: string | null;
+    fundort: string | null;
   }>(
     async (von, bis) =>
       supabase
         .from("listings")
-        .select("id, external_id, disappeared_at")
+        // `fundort` haelt fest, auf welcher Regionsliste das Objekt gefunden
+        // wurde. Ohne diese Spalte hat ein Immowelt-Objekt keine lesbare
+        // Partition, denn seine externalId ist eine nackte UUID -- siehe
+        // `partitionEinesListings`.
+        .select("id, external_id, disappeared_at, fundort")
         .eq("source", source)
         .range(von, bis),
     "listings"
@@ -69,6 +74,7 @@ export async function ladeBekannteListings(
     id: zeile.id,
     externalId: zeile.external_id,
     disappearedAt: zeile.disappeared_at,
+    fundort: zeile.fundort,
   }));
 }
 

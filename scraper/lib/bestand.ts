@@ -51,6 +51,13 @@ export interface BekanntesListing {
   externalId: string;
   /** ISO-Zeitpunkt oder null, wenn das Objekt regulaer im Angebot ist. */
   disappearedAt: string | null;
+  /**
+   * Auf welcher Regionsliste dieses Objekt gefunden wurde -- `listings.fundort`.
+   * `null` heisst "nicht zuzuordnen", nicht "gehoert ueberall hin": 157 Objekte
+   * (8,2 %, gemessen 2026-09-08) tragen ihn nicht, Altbestand aus der Zeit, als
+   * Immowelt ueber Detailseiten erfasst wurde.
+   */
+  fundort: string | null;
 }
 
 /**
@@ -62,6 +69,36 @@ export function partitionAusExternalId(source: string, externalId: string): stri
   if (source !== "zvg-portal") return null;
   const treffer = externalId.match(ZVG_PARTITION_PATTERN);
   return treffer === null ? null : treffer[1];
+}
+
+/**
+ * Die Partition eines bekannten Objekts -- das Bundesland, dem es zugerechnet
+ * wird -- oder `null`, wenn es sich nicht zuordnen laesst.
+ *
+ * WARUM ES DIESE FUNKTION ZUSAETZLICH ZU `partitionAusExternalId` GIBT:
+ * Letztere liest das Bundesland aus der externalId und kann das nur fuer ZVG,
+ * dessen Kennung es traegt (`sn-40908`). Immowelts externalId ist eine nackte
+ * UUID. Fuer jedes Immowelt-Objekt war die Partition damit `null`, und `null`
+ * heisst fail-closed "nie ein Abgang" -- eine der Sperren, die verhindern,
+ * dass fuer Immowelt ueberhaupt je etwas als verschwunden erkannt wird.
+ *
+ * Die Information liegt laengst in der Datenbank: Seit dem Umbau auf die
+ * Ergebnisliste schreibt der Sweep zu jedem Objekt den Fundort mit.
+ *
+ * REIHENFOLGE, und sie ist eine Entscheidung: Der gespeicherte Fundort geht
+ * vor. Er ist die Beobachtung eines Laufs -- "dieses Objekt stand auf der
+ * Ergebnisliste dieser Region" --, waehrend die externalId eine Ableitung aus
+ * einer Kennung ist. Widersprechen sich beide, gilt die Beobachtung. Der
+ * Rueckfall auf die externalId bleibt trotzdem noetig: ZVG hat historisch
+ * keinen Fundort gesetzt, und ohne ihn verloere ausgerechnet die einzige
+ * Quelle ihre Partition, die heute wirklich loescht.
+ *
+ * Kein Fundort und keine lesbare externalId heisst `null`. Diese Objekte sind
+ * unter keiner regionsgenauen Regel je zuzuordnen -- und damit nie ein Abgang.
+ */
+export function partitionEinesListings(source: string, listing: BekanntesListing): string | null {
+  if (listing.fundort !== null && listing.fundort !== "") return listing.fundort;
+  return partitionAusExternalId(source, listing.externalId);
 }
 
 /**
@@ -87,7 +124,7 @@ export function partitionAusExternalId(source: string, externalId: string): stri
  */
 function imGeltungsbereich(sweep: SweepErgebnis, listing: BekanntesListing): boolean {
   if (sweep.geltungsbereich.length === 0) return false;
-  const partition = partitionAusExternalId(sweep.source, listing.externalId);
+  const partition = partitionEinesListings(sweep.source, listing);
   if (partition === null) return false;
   return sweep.geltungsbereich.includes(partition);
 }
