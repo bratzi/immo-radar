@@ -391,11 +391,17 @@ export async function processCandidate(
           err
         );
       }
-      await logNotification(supabase, diff.listingId, klasse, {
-        ...kennzahlenSummary,
-        priceCents: candidate.priceCents,
-        ...versandBeleg(messageId, process.env.GITHUB_RUN_ID),
-      });
+      await logNotification(
+        supabase,
+        diff.listingId,
+        klasse,
+        {
+          ...kennzahlenSummary,
+          priceCents: candidate.priceCents,
+          ...versandBeleg(messageId, process.env.GITHUB_RUN_ID),
+        },
+        `${candidate.source} · ${candidate.externalId}`
+      );
       meldebudget?.verbuchen();
     }
   }
@@ -412,11 +418,17 @@ export async function processCandidate(
       telegramConfig,
       formatPreisaenderungMessage(listingSummary, diff.previousPriceCents, candidate.priceCents)
     );
-    await logNotification(supabase, diff.listingId, "preisaenderung", {
-      altPreisCents: diff.previousPriceCents,
-      neuPreisCents: candidate.priceCents,
-      ...versandBeleg(preisMessageId, process.env.GITHUB_RUN_ID),
-    });
+    await logNotification(
+      supabase,
+      diff.listingId,
+      "preisaenderung",
+      {
+        altPreisCents: diff.previousPriceCents,
+        neuPreisCents: candidate.priceCents,
+        ...versandBeleg(preisMessageId, process.env.GITHUB_RUN_ID),
+      },
+      `${candidate.source} · ${candidate.externalId}`
+    );
     meldebudget?.verbuchen();
   }
 }

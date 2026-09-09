@@ -275,10 +275,16 @@ async function gleicheBestandAb(
           units: (data.units as number | null) ?? null,
         })
       );
-      await logNotification(sb, abgang.id, "verschwunden", {
-        externalId: abgang.externalId,
-        ...versandBeleg(abgangMessageId, process.env.GITHUB_RUN_ID),
-      });
+      await logNotification(
+        sb,
+        abgang.id,
+        "verschwunden",
+        {
+          externalId: abgang.externalId,
+          ...versandBeleg(abgangMessageId, process.env.GITHUB_RUN_ID),
+        },
+        `${sweep.source} · ${abgang.externalId}`
+      );
     } catch (err) {
       console.error(`Abgangsmeldung fehlgeschlagen [${abgang.externalId}]:`, err);
     }

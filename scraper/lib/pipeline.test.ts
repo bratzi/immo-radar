@@ -343,4 +343,50 @@ describe("processCandidate — Reihenfolge von Versand und Protokoll", () => {
     expect(protokoll[0].kind).toBe("pruefkandidat");
     expect(protokoll[0].detail).toMatchObject({ telegramMessageId: 4711 });
   });
+
+  /**
+   * Bis hierhin sah man im Actions-Log nur die Schlusszeile ueber die Anzahl
+   * gesendeter Meldungen -- bricht ein Lauf mittendrin ab, ist nicht
+   * erkennbar, welche Meldungen noch durchgingen. Die Erfolgszeile muss die
+   * message_id, die Meldeklasse und eine Kennung des Objekts tragen, damit
+   * sie sich im Log einer Telegram-Nachricht zuordnen laesst.
+   */
+  it("schreibt eine Erfolgszeile ins Log, wenn der Versand glueckt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => telegramAntwort(200, { ok: true, result: { message_id: 4711 } }))
+    );
+    const protokoll: Record<string, unknown>[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await processCandidate(meldeAttrappe(protokoll), TELEGRAM_ATTRAPPE, MELDEWUERDIG);
+
+    const erfolgszeilen = logSpy.mock.calls
+      .map((args) => String(args[0]))
+      .filter((zeile) => zeile.includes("4711"));
+    expect(erfolgszeilen).toHaveLength(1);
+    expect(erfolgszeilen[0]).toContain("pruefkandidat");
+    expect(erfolgszeilen[0]).toContain(MELDEWUERDIG.externalId);
+
+    logSpy.mockRestore();
+  });
+
+  it("schreibt KEINE Erfolgszeile ins Log, wenn Telegram den Versand ablehnt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => telegramAntwort(403, { ok: false, description: "bot blocked" }))
+    );
+    const protokoll: Record<string, unknown>[] = [];
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await expect(
+      processCandidate(meldeAttrappe(protokoll), TELEGRAM_ATTRAPPE, MELDEWUERDIG)
+    ).rejects.toThrow("HTTP 403");
+
+    expect(logSpy.mock.calls.some((args) => String(args[0]).includes(MELDEWUERDIG.externalId))).toBe(
+      false
+    );
+
+    logSpy.mockRestore();
+  });
 });
