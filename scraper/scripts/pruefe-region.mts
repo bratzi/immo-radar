@@ -83,9 +83,33 @@ try {
   console.log("\n=== Antworten ===");
   for (const a of antworten) console.log(`  ${a.status}  ${a.url}`);
 
+  // A15: Warum liefert `trefferzahlAusTitel` fuer nw, bw und mv null?
+  //
+  // Zwei Hypothesen, und dieser Vergleich trennt sie. `regionErfassen` liest
+  // den Titel unmittelbar nach `domcontentloaded` -- das ist der Zeitpunkt, den
+  // die Produktion sieht. Hier wird er danach ein zweites Mal gelesen, nach der
+  // ganzen Parse- und Blaetterarbeit.
+  //
+  //   beide ohne Zahl, gleicher Wortlaut -> FORMATWECHSEL, das Muster ist zu eng
+  //   erster ohne, zweiter mit Zahl      -> TIMING, der Titel steht erst spaeter
+  //
+  // Nicht raten: erst diesen Vergleich lesen, dann einen scheiternden Test mit
+  // genau diesem Titel schreiben.
+  const titelSpaeter = await page.title();
   console.log("\n=== Ergebnis ===");
-  console.log(`Titel der letzten Seite: ${await page.title()}`);
-  console.log(`Trefferzahl daraus:      ${trefferzahlAusTitel(await page.title()) ?? "null"}`);
+  console.log(`Titel, den regionErfassen las: ${ergebnis?.titel ?? "(Ausnahme, kein Titel)"}`);
+  console.log(
+    `  Trefferzahl daraus:          ${ergebnis === null ? "-" : (trefferzahlAusTitel(ergebnis.titel) ?? "null")}`
+  );
+  console.log(`Titel am Ende des Laufs:       ${titelSpaeter}`);
+  console.log(`  Trefferzahl daraus:          ${trefferzahlAusTitel(titelSpaeter) ?? "null"}`);
+  if (ergebnis !== null) {
+    console.log(
+      ergebnis.titel === titelSpaeter
+        ? "  -> Beide Titel sind IDENTISCH. Timing scheidet damit aus."
+        : "  -> Die Titel UNTERSCHEIDEN sich. Der Lesezeitpunkt ist beteiligt."
+    );
+  }
   if (fehler !== null) {
     console.log(`\nAUSNAHME (im Produktivlauf still verschluckt):`);
     console.log(fehler instanceof Error ? `  ${fehler.name}: ${fehler.message.split("\n")[0]}` : `  ${String(fehler)}`);
