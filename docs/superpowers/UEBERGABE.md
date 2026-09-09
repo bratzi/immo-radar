@@ -6,15 +6,43 @@
 
 ## Wo wir stehen
 
-`main` = `ed46f36` plus dieser Dokumentationsstand, gepusht, Arbeitsverzeichnis
-sauber. Letzter Lauf: **`34329204906`** (2026-09-09, 08:27–08:55 UTC,
-`conclusion=success`). **376 Tests grün**
-(Sitzungsbeginn: 374, davon 2 rot), `npx tsc --noEmit` sauber.
+`main` = `3300e28`, gepusht, Arbeitsverzeichnis sauber. Letzter Lauf:
+**`34355619597`** (2026-09-09, 13:12 UTC, `conclusion=success`). **378 Tests
+grün** (Sitzungsbeginn: 374, davon 2 rot), `npx tsc --noEmit` sauber.
+
+**Alle drei Fail-open-Stellen aus dem B-2-Entwurf sind geschlossen.** Damit ist
+die Vorarbeit für Option 3 abgeschlossen; was fehlt, ist der Messauftrag A15
+und Option 3 selbst.
 
 **Option 1 aus dem B-2-Entwurf ist umgesetzt** — Fortsetzungsrotation und
 fail-closed bei fehlender Trefferzahl. Damit sind Option 0 und 1 der
 empfohlenen Reihenfolge 0 → 1 → 3 erledigt; als Nächstes steht **Option 3**
 an (markieren ohne löschen), davor aber der Messauftrag **A15**.
+
+### Die zwei restlichen Fail-open-Stellen sind gefallen
+
+Beide waren gemessen wirkungslos — und genau deshalb war jetzt der Zeitpunkt,
+sie zu schließen, und nicht erst, wenn Immowelt markiert.
+
+**`imGeltungsbereich`:** Ein leerer `geltungsbereich` galt als „Quelle ohne
+Partitionierung" und gab damit den **ganzen** Bestand zum Abgleich frei. Ein
+Lauf, in dem keine einzige Region vollständig durchlief, hätte alles gelöscht,
+was er nicht gesehen hat. „Kein Land belegt" heißt nicht „alle Länder belegt".
+Gemessen: ZVG hatte in **18 vollständigen Läufen nie** einen leeren
+Geltungsbereich, immer 11 oder 16 Länder.
+
+**`loescheAbgelaufene`:** filterte nicht nach `source`. Gemessen tragen genau
+**2 Objekte** `disappeared_at`, beide von ZVG — deshalb fiel es nie auf. Sobald
+Immowelt regionsgenau markiert, löscht dieselbe Funktion die Markierten zwei
+Tage später hart mit weg, also genau das, was Option 3 verhindern soll. Jetzt
+steht dort eine **Erlaubnisliste**, keine Ausschlussliste: Eine unbekannte
+Quelle wird nie gelöscht, bis jemand sie bewusst einträgt. Wer Immowelt dort
+einträgt, gibt die harte Löschung frei — bewusst, nicht als Nebenwirkung.
+
+**Ein falscher Kommentar ist dabei mit gefallen.** In `ermittleAbgaenge` stand,
+Immowelt liefere einen leeren `geltungsbereich`. Tut es nicht: Es füllt ihn mit
+den Regionen, die vollständig durchliefen. Der Grund, warum `ermittleAbgaenge`
+für Immowelt nie läuft, ist `vollstaendig=false`.
 
 ## Was diese Sitzung gebracht hat
 
@@ -71,9 +99,15 @@ zweitgrößte Region und war von 15 der 16 Uhr-Startindizes aus unerreichbar.
 Beim ersten Lauf mit der neuen Rotation lieferte es **4.692 von gemeldet 5.083
 Objekten** (92,3 %) über 119 Seiten, `vollstaendig=true`.
 
-**Prüfbare Vorhersage für den nächsten Lauf:** Startpunkt ist `ni`, Ringindex 3
-— die erste Region, die noch **nie** gesweept wurde. Danach `rp`. Trifft das
-nicht zu, stimmt das Modell nicht, und dann ist zuerst das zu klären.
+**Die Vorhersage ist eingetroffen.** Angekündigt war: Der nächste Lauf startet
+bei `ni`, Ringindex 3, der ersten noch nie gesweepten Region. Lauf
+`34355619597` (2026-09-09, 13:12 UTC) startete bei `ni` und lieferte **3.020
+von gemeldet 3.282** Objekten über 76 Seiten. Damit ist das Modell nicht nur
+gerechnet, sondern zweimal vorhergesagt und zweimal getroffen.
+
+**Nächste Vorhersage:** `rp`, Ringindex 4 — die letzte nie gesweepte Region.
+Danach greift die Ältestenregel, und die führt über die Stadtstaaten zurück
+Richtung `nw`.
 
 **Zwei Fallen, die dabei umgangen sind.** Erstens: Alle Regionszeilen eines
 Laufs werden in **einem** Insert geschrieben und tragen deshalb denselben
@@ -135,10 +169,9 @@ Referenzläufe für Option 3 zählt, muss diese Zeilen ausschließen** — entwe
    wörtlich („wird als verschwunden **erkannt**", nicht: gelöscht) und liefert
    dem Dashboard, was B2 ohnehin verlangt. Ein Fehlurteil kostet ein paar Tage
    graue Darstellung statt tausender Zeilen.
-   **Zwei Fail-open-Stellen müssen vorher fallen:** `bestand.ts:78` (leerer
-   Geltungsbereich = voller Geltungsbereich) und `loescheAbgelaufene`
-   (`bestandDb.ts:155`, filtert **nicht** nach `source` — wer heute markiert,
-   löscht zwei Tage später mit).
+   **Die drei Fail-open-Stellen sind alle geschlossen** — das war die
+   Vorarbeit und ist erledigt. Was Option 3 noch braucht: `disappeared_at`
+   regionsgenau setzen, und das Dashboard muss markierte Objekte ausgrauen.
 3. **Option 2 — regionsgenaues Löschen — ist ausdrücklich nicht das Ziel.**
    Selbst mit reparierter Trefferzahl erlaubt die 25-%-Toleranz einen Lauf mit
    75 % Ausbeute, also bis zu **1.724** echte Objekte in einem Zug.
@@ -223,8 +256,10 @@ gibt es keine PLZ und die Miete ist bundeslandgenau.
 
 **Fail-open in den Löschwachen ist der teuerste Fehler.** In `bestand.ts`,
 `plausibilitaet.ts` und `bestandDb.ts` gilt: ein unbekannter Zustand ist
-`null`/`false`, nie „in Ordnung". Von den drei bekannten Stellen ist eine
-geschlossen, zwei sind offen.
+`null`/`false`, nie „in Ordnung". Alle drei bekannten Stellen sind seit dem
+2026-09-09 geschlossen. Wer eine vierte findet, schließt sie sofort — sie
+kosten nichts, solange sie unerreicht sind, und alles, sobald sie erreicht
+werden.
 
 **Die `\n`-Falle beim Schreiben von Dateien.** Bei größeren Dateien das
 Write-Werkzeug nehmen, nicht ein Heredoc.

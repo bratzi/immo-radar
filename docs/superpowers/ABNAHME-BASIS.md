@@ -34,7 +34,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 |---|---|---|
 | B-1 | Jedes der 16 Bundesländer war mindestens einmal erfasst | **offen, aber jetzt planbar** — die Fortsetzungsrotation ist seit 2026-09-09 im Code: Startpunkt ist die am längsten nicht gesweepte Region statt der Wanduhr. Gerechnet Median 5,7 statt 13,1 Tage, 90. Perzentil 7,6 statt 20,2, ohne einen zusätzlichen Abruf. Belegt in `34329204906`: Start bei `by` statt bei `nw`, das die Uhr gewählt hätte und das 39 min vorher schon gesweept war. `by` hatte in 33 Regionsläufen zuvor **keinen** Eintrag |
 | B-2 | Ein verschwundenes Immowelt-Objekt wird als verschwunden erkannt | **offen** — 0 haben `disappeared_at`. Von den fünf Sperren sind die Vorarbeiten Option 0 (A14) und Option 1 (Rotation, fail-closed) erledigt; als Nächstes Option 3, markieren ohne löschen (`specs/2026-09-08-immowelt-abgaenge-optionen.md`) |
-| B-3 | Die Löschwachen bleiben fail-closed | **erfüllt** — seit 2026-09-09 eine Stelle mehr: `istRegionVollstaendig` liest eine fehlende Trefferzahl nicht mehr als „vollständig". Zwei bekannte Fail-open-Stellen bleiben offen (`bestand.ts:78`, `loescheAbgelaufene` ohne `source`-Filter); beide greifen erst, wenn Immowelt löschen darf. Muss bei jeder Änderung erneut gelten |
+| B-3 | Die Löschwachen bleiben fail-closed | **erfüllt** — alle drei bekannten Fail-open-Stellen sind seit 2026-09-09 geschlossen: fehlende Trefferzahl heißt unvollständig, leerer Geltungsbereich gibt nichts frei, harte Löschung nur für Quellen aus einer Erlaubnisliste. Muss bei jeder Änderung erneut gelten |
 
 ## C — Die Zahlen
 

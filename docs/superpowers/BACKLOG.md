@@ -1057,13 +1057,13 @@ unter `docs/superpowers/specs/` → `superpowers:writing-plans` → Umsetzung.
 > Ausbeute — **bis zu 1.724** echte Objekte in einem Zug. Gelöschte Zeilen sind
 > weg, ausgegraute nicht.
 >
-> **Von den drei Fail-open-Stellen ist eine geschlossen.** Offen bleiben
-> `bestand.ts:78` (leerer Geltungsbereich = voller Geltungsbereich) und
-> `loescheAbgelaufene` (`bestandDb.ts:155`, filtert **nicht** nach `source` —
-> wer heute markiert, löscht zwei Tage später mit). Geschlossen ist
-> `istRegionVollstaendig`: `null` heißt jetzt **unvollständig**. Die Folge
-> steht in **A15** — `nw`, `bw` und `mv` sammeln keine Referenzläufe mehr an,
-> solange ihr Titel nicht parst.
+> **Alle drei Fail-open-Stellen sind geschlossen** (2026-09-09).
+> `istRegionVollstaendig`: `null` heißt jetzt **unvollständig** — die Folge
+> steht in **A15**. `imGeltungsbereich`: ein leerer Geltungsbereich gibt nicht
+> mehr den ganzen Bestand frei. `loescheAbgelaufene`: löscht nur noch Quellen
+> aus einer ausdrücklichen Erlaubnisliste, heute allein `zvg-portal`. Wer
+> Immowelt dort einträgt, gibt die harte Löschung frei — das ist die
+> Entscheidung, die Option 3 gerade **nicht** treffen soll.
 
 **Harte Voraussetzung:** `sweep_region_runs` muss je Region **drei**
 vollständige Läufe zeigen. Vorher ist die Aufgabe wirkungslos.
