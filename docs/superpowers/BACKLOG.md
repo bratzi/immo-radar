@@ -1013,22 +1013,101 @@ Zwei Hypothesen, beide unbelegt:
 **Nicht raten.** Erst den Titel aus dem Log lesen, dann einen scheiternden Test
 mit genau diesem Titel schreiben, dann das Muster erweitern.
 
-- [ ] **Schritt 1:** Im Log des nächsten Laufs nach `Titel war:` suchen und die
-      Titel für `nw`, `bw` und `mv` notieren.
-- [ ] **Schritt 2:** Test in `scrapers/immowelt/index.test.ts` mit dem echten
-      Titel, rot sehen, dann `trefferzahlAusTitel` erweitern.
-- [ ] **Schritt 3:** Nach einem Lauf prüfen, dass die drei Regionen
-      `vollstaendig=true` in `sweep_region_runs` schreiben.
+- [x] **Schritt 1:** Titel messen. **Erledigt**, Läufe `34387028565` und
+      `34388541806`. Der Befund steht oben.
+- [ ] **Schritt 2 — ENTFÄLLT.** Es gibt kein Muster zu erweitern, die Zahl
+      steht nicht da.
+- [ ] **Schritt 3 — verschoben nach A16.** Die drei Regionen können
+      `vollstaendig=true` erst schreiben, wenn es einen zweiten Maßstab gibt.
 
-**Abnahme:** `select partition, gemeldete_treffer from sweep_region_runs where
-source='immowelt' and partition in ('nw','bw','mv') order by started_at desc`
-liefert Zahlen statt `null`.
+**Abnahme:** erfüllt — die Frage ist beantwortet. Sie liefert weiterhin `null`,
+und jetzt ist belegt, dass das an der Quelle liegt und nicht am Code.
 
-**Stand nach Lauf `34329204906` (2026-09-09):** noch nicht gemessen. Der Lauf
-sweepte nur `by`, und dort parst der Titel (`4692` von gemeldet `5083`). Es
-steht keine einzige `Titel war:`-Zeile im Log. Die Messung kommt, sobald die
-Rotation `nw`, `bw` oder `mv` erreicht — nach der Fortsetzungsrotation sind
-zuerst `ni` und `rp` an der Reihe, die noch nie gesweept wurden.
+---
+
+## A16. Ein zweiter Vollständigkeitsmaßstab für Regionen ohne ausgewiesene Menge
+
+**Entsteht aus dem A15-Befund** und ist die Voraussetzung für B1, seit
+feststeht, dass `nw`, `bw` und `mv` ihre Trefferzahl nie nennen.
+
+**Das Problem:** `istRegionVollstaendig` misst die eingesammelte Menge gegen
+die vom Portal gemeldete. Nennt das Portal keine, ist die Region fail-closed
+unvollständig — richtig, aber dauerhaft. Die drei größten Regionen sammeln so
+nie Referenzläufe an.
+
+**Der naheliegende zweite Maßstab: die eigene Historie derselben Region.**
+`sweep_region_runs` sammelt sie bereits. Für `nw` steht dort 6823, 6895, 6965 —
+eine sehr stabile Reihe. Ein Soft-Block, der 40 Karten liefert, fiele sofort
+auf; genau das ist der Fall, den die Wache abfangen muss.
+
+**Was ein Entwurf beantworten muss, bevor Code entsteht:**
+
+- Ab wie vielen eigenen Läufen ist die Historie ein belastbarer Maßstab? Die
+  quellenweite Prüfung verlangt `MIN_REFERENZLAEUFE = 3`; für eine Region gilt
+  das nicht automatisch.
+- Welche Toleranz? Die quellenweiten 25 % erlauben bei `nw` einen Fehlbetrag
+  von rund 1.700 Objekten. Eine Region, die dreimal um 1 % schwankte, verdient
+  eine engere Grenze.
+- Was gilt beim allerersten Lauf einer Region, wenn es noch keine Historie
+  gibt? Fail-closed heißt hier: unvollständig, und das ist die einzige
+  vertretbare Antwort.
+- Zählt eine Region, die mit `abgeschnitten=true` endete, überhaupt je als
+  vollständig? Nein — der Seitendeckel ist ein Beleg für das Gegenteil.
+
+**Reihenfolge:** `superpowers:brainstorming` → Entwurf unter
+`docs/superpowers/specs/` → `superpowers:writing-plans` → Umsetzung.
+
+**Warum es gefährlich ist:** Diese Wache entscheidet, ob eine Region als
+vollständig gilt, und daran hängt später die regionsgenaue Löschhoheit. Ein
+Fail-open hier kostet bei `nw` bis zu 6.900 Objekte.
+
+## GEMESSEN am 2026-09-09 — und es ist keine der drei Vermutungen
+
+Zwei Prüfläufe gegen `nw` über `pruefung.yml`, je **eine** Ergebnisseite.
+
+**Lauf `34387028565` — die beiden Titel:**
+
+```
+Titel, den regionErfassen las: Mehrfamilienhaus kaufen in Nordrhein-Westfalen | immowelt
+  Trefferzahl daraus:          null
+Titel am Ende des Laufs:       Häuser zum Kauf in Nordrhein-Westfalen
+  Trefferzahl daraus:          null
+```
+
+Zum Vergleich der Fall, der funktioniert:
+`Mehrfamilienhaus kaufen in Bremen - 209 Angebote | immowelt`.
+
+Die Titel **unterscheiden** sich, der Lesezeitpunkt ist also beteiligt — aber
+**keiner von beiden nennt eine Zahl**. Damit sind beide Hypothesen erledigt:
+Ein anderes Muster hilft nicht, und später lesen auch nicht.
+
+**Lauf `34388541806` — die Suche im Seitentext:**
+
+```
+=== Trefferzahl im Seitentext? ===
+  KEIN Zahl-plus-Mengenwort im Seitentext gefunden.
+```
+
+Gesucht wurde nach Zahl plus `Angebote`, `Immobilien`, `Ergebnisse`,
+`Treffer`, `Objekte` oder `Inserate`, im Text ohne Markup.
+
+### Der Befund
+
+**Nordrhein-Westfalen weist seine Trefferzahl nirgends aus.** Kein
+Parserfehler, kein Formatwechsel, kein Timing — das Portal nennt für diese
+Region schlicht keine Menge.
+
+**Die Folge wiegt schwer.** `istRegionVollstaendig` kann für `nw` nie `true`
+liefern. Die Fail-closed-Entscheidung vom 2026-09-09 ist damit dauerhaft
+richtig — und sie bedeutet zugleich, dass `nw`, `bw` und `mv` **nie**
+Referenzläufe sammeln, solange die gemeldete Trefferzahl der einzige Maßstab
+ist. Das blockiert B1 für die größten Regionen dauerhaft.
+
+**Die Antwort ist kein neues Titelmuster**, sondern ein zweiter
+Vollständigkeitsmaßstab für Regionen ohne ausgewiesene Menge — siehe A16.
+
+**Schritt 2 und 3 dieser Aufgabe entfallen damit.** Es gibt kein Muster zu
+erweitern.
 
 # Teil B — Braucht erst einen Entwurf
 
