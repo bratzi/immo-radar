@@ -263,3 +263,47 @@ export async function ladeSweepHistorie(
   if (error) throw error;
   return (data ?? []).map((zeile) => Number(zeile.gesehene_objekte));
 }
+
+/**
+ * Wie viele Regionszeilen fuer den Rotations-Startpunkt gelesen werden. 16
+ * Bundeslaender, ein paar Laeufe Reserve -- mehr als das aendert am Ergebnis
+ * nichts, weil ohnehin nur der juengste Zeitpunkt je Region zaehlt. Faellt
+ * eine Region aus diesem Fenster, ist sie besonders lange nicht gesweept
+ * worden und wird dadurch bevorzugt gestartet: die Ungenauigkeit zeigt in die
+ * ungefaehrliche Richtung.
+ */
+const REGIONS_HISTORIE_ZEILEN = 200;
+
+/**
+ * Wann jede Region zuletzt gesweept wurde -- Grundlage der
+ * Fortsetzungsrotation (`sweepStartVersatz` in `bestand.ts`).
+ *
+ * Der Rueckgabewert unterscheidet zwei Faelle, die nicht verwechselt werden
+ * duerfen: Eine leere Map heisst "noch nie gesweept" und startet den Lauf an
+ * der ersten Region. `null` heisst "Historie nicht lesbar" und laesst den
+ * Aufrufer auf die Uhr zurueckfallen -- sonst friere die Abdeckung bei der
+ * ersten Region ein, sobald diese Abfrage einmal scheitert.
+ */
+export async function ladeLetzteRegionsSweeps(
+  supabase: SupabaseClient,
+  source: string
+): Promise<Map<string, number> | null> {
+  const { data, error } = await supabase
+    .from("sweep_region_runs")
+    .select("partition, started_at")
+    .eq("source", source)
+    .order("started_at", { ascending: false })
+    .limit(REGIONS_HISTORIE_ZEILEN);
+  if (error !== null || data === null) {
+    console.warn("sweep_region_runs: Historie nicht lesbar, Rotation faellt auf die Uhr zurueck", error);
+    return null;
+  }
+  const letzte = new Map<string, number>();
+  for (const zeile of data as { partition: string; started_at: string }[]) {
+    const zeitpunkt = Date.parse(zeile.started_at);
+    if (!Number.isFinite(zeitpunkt)) continue;
+    const bisher = letzte.get(zeile.partition);
+    if (bisher === undefined || zeitpunkt > bisher) letzte.set(zeile.partition, zeitpunkt);
+  }
+  return letzte;
+}

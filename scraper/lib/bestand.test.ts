@@ -9,6 +9,7 @@ import {
   rotiereAuswahl,
   streueAuswahl,
   budgetiereKandidaten,
+  sweepStartVersatz,
   type SweepErgebnis,
   type BekanntesListing,
 } from "./bestand.js";
@@ -292,5 +293,69 @@ describe("budgetiereKandidaten", () => {
     // falsche Richtung geschickt.
     const { meldung } = budgetiereKandidaten("Immowelt-Bewertung", 600, viele, 0);
     expect(meldung).not.toMatch(/zurueckgestellt|spaetere Laeufe|RUECKSTAND/);
+  });
+});
+
+/**
+ * Warum diese Funktion existiert: Der Startindex der Regionsrotation war die
+ * Wanduhr (`Math.floor(Date.now() / 3_600_000)`). Weil das Zeitbudget eines
+ * Laufs nur fuer eine grosse Region reicht, war jede grosse Region praktisch
+ * von genau EINEM der 16 Startindizes aus erreichbar -- die Abdeckung hing am
+ * Zufall der Cron-Uhrzeit. Monte-Carlo ueber 3.000 Durchlaeufe (Entwurf
+ * 2026-09-08): volle Abdeckung in 5,7 statt 13,1 Tagen, ohne einen einzigen
+ * zusaetzlichen Abruf.
+ *
+ * Die Fortsetzung wird NICHT als Zaehler gefuehrt, sondern aus der Historie
+ * abgeleitet: Startpunkt ist die Region, die am laengsten nicht gesweept
+ * wurde. Bei Gleichstand entscheidet die Listenreihenfolge. Fuer
+ * zusammenhaengende Rotationsfenster ist das exakt "weitermachen, wo der
+ * letzte Lauf aufhoerte" -- aber es heilt sich selbst, wenn eine Region
+ * ausfaellt oder ein Lauf gar nicht startet.
+ */
+describe("sweepStartVersatz", () => {
+  const codes = ["nw", "by", "bw", "ni"];
+  const jetzt = Date.parse("2026-09-09T12:00:00Z");
+
+  it("faellt ohne lesbare Historie auf die Uhr zurueck", () => {
+    // null heisst "nicht gelesen" (Abfrage gescheitert), nicht "leer". Dann
+    // ist das alte Verhalten besser als ein fester Start bei nw, der die
+    // Abdeckung auf die erste Region einfrieren wuerde.
+    expect(sweepStartVersatz(codes, null, jetzt)).toBe(Math.floor(jetzt / 3_600_000));
+  });
+
+  it("beginnt bei leerer Historie an der ersten Region", () => {
+    expect(sweepStartVersatz(codes, new Map(), jetzt)).toBe(0);
+  });
+
+  it("beginnt hinter der zuletzt gesweepten Region, solange Regionen fehlen", () => {
+    const historie = new Map([["nw", Date.parse("2026-09-09T09:00:00Z")]]);
+    expect(sweepStartVersatz(codes, historie, jetzt)).toBe(1);
+  });
+
+  it("beginnt bei vollstaendiger Historie an der aeltesten Region", () => {
+    const historie = new Map([
+      ["nw", Date.parse("2026-09-09T06:00:00Z")],
+      ["by", Date.parse("2026-09-09T09:00:00Z")],
+      ["bw", Date.parse("2026-09-08T23:00:00Z")],
+      ["ni", Date.parse("2026-09-09T11:00:00Z")],
+    ]);
+    expect(sweepStartVersatz(codes, historie, jetzt)).toBe(2);
+  });
+
+  it("ignoriert Regionen, die es in der Liste nicht mehr gibt", () => {
+    // Ein abgeschaffter Regionscode in der Historie darf den Start nicht
+    // auf einen Index ausserhalb der Liste schieben.
+    const historie = new Map([
+      ["xx", Date.parse("2026-01-01T00:00:00Z")],
+      ["nw", Date.parse("2026-09-09T09:00:00Z")],
+      ["by", Date.parse("2026-09-09T10:00:00Z")],
+      ["bw", Date.parse("2026-09-09T11:00:00Z")],
+      ["ni", Date.parse("2026-09-09T08:00:00Z")],
+    ]);
+    expect(sweepStartVersatz(codes, historie, jetzt)).toBe(3);
+  });
+
+  it("liefert bei leerer Regionsliste 0", () => {
+    expect(sweepStartVersatz([], new Map(), jetzt)).toBe(0);
   });
 });

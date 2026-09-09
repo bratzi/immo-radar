@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   trefferzahlAusTitel,
   istRegionVollstaendig,
+  regionUnvollstaendigMeldung,
   IMMOWELT_REGIONEN,
   gemeldeteTrefferSumme,
   blaettereWeiter,
@@ -32,10 +33,20 @@ describe("istRegionVollstaendig", () => {
     expect(istRegionVollstaendig(0, null)).toBe(false);
   });
 
-  it("gilt als vollstaendig, wenn nur der Titel nicht parste, aber Objekte ankamen", () => {
-    // Echte Seite, bloss ein geaenderter Titel -- daraus laesst sich nichts
-    // gegen die Region ableiten, es bleibt bei der Seitendeckel-Pruefung.
-    expect(istRegionVollstaendig(41, null)).toBe(true);
+  it("gilt als unvollstaendig, wenn die Trefferzahl fehlt -- auch mit Objekten", () => {
+    // Fail-closed statt fail-open (2026-09-09). Ohne Trefferzahl gibt es
+    // keinen Massstab, an dem sich die eingesammelte Menge messen liesse --
+    // und ausgerechnet fuer `nw`, `bw` und `mv` parst der Titel nicht, also
+    // fuer die beiden groessten Regionen. Vorher ruhte deren
+    // Vollstaendigkeit auf "mehr als null Karten"; ein soft-geblockter Lauf
+    // mit einer einzigen Karte haette `nw` als vollstaendig ausgewiesen und
+    // damit spaeter 1.160 echte Objekte zu Abgaengen erklaert.
+    //
+    // Warum das heute nichts kostet: Fuer Immowelt ist `vollstaendig` im
+    // Sweep-Ergebnis ohnehin hart `false`, es wird nichts geloescht. Es
+    // verhindert nur, dass unbelegte Regionen als Referenzlaeufe zaehlen --
+    // genau das, was der spaetere regionsgenaue Abgleich braucht.
+    expect(istRegionVollstaendig(41, null)).toBe(false);
   });
 
   it("ist unvollstaendig, wenn nichts eingesammelt wurde -- selbst bei 0 gemeldeten Treffern", () => {
@@ -250,5 +261,43 @@ describe("beurteileDetailAntwort", () => {
   it("behandelt eine fehlende Antwort als nicht beurteilbar, nicht als in Ordnung", () => {
     // page.goto kann null liefern. Das ist kein Beleg fuer eine heile Seite.
     expect(beurteileDetailAntwort(null, 0, false)).not.toBeNull();
+  });
+});
+
+/**
+ * Warum der Titel WOERTLICH ins Log gehoert: Fuer `nw`, `bw` und `mv` liefert
+ * `trefferzahlAusTitel` null, und WARUM ist bis heute nicht gemessen. Timing
+ * ist eine Hypothese (der Titel wird unmittelbar nach `domcontentloaded`
+ * gelesen), ein Formatwechsel eine zweite. Ein geratenes neues Muster waere
+ * genau die Sorte Reparatur, die dieses Projekt schon dreimal teuer bezahlt
+ * hat. Ein einziger Lauf mit dem echten Titel im Log entscheidet die Frage.
+ */
+describe("regionUnvollstaendigMeldung", () => {
+  it("gibt den echten Seitentitel wieder, wenn die Trefferzahl fehlt", () => {
+    const meldung = regionUnvollstaendigMeldung(
+      "nw",
+      1160,
+      null,
+      "Mehrfamilienhaus kaufen in Nordrhein-Westfalen | immowelt"
+    );
+    expect(meldung).toContain("nw");
+    expect(meldung).toContain("Mehrfamilienhaus kaufen in Nordrhein-Westfalen | immowelt");
+    expect(meldung).toContain("1160");
+  });
+
+  it("nennt bei zu kleiner Menge beide Zahlen", () => {
+    const meldung = regionUnvollstaendigMeldung("be", 40, 420, "... - 420 Angebote | immowelt");
+    expect(meldung).toContain("40");
+    expect(meldung).toContain("420");
+  });
+
+  it("benennt den Soft-Block-Verdacht, wenn weder Titel noch Karte ankamen", () => {
+    const meldung = regionUnvollstaendigMeldung("mv", 0, null, "");
+    expect(meldung).toContain("Soft-Block");
+  });
+
+  it("kuerzt einen ueberlangen Titel, statt das Log zu fluten", () => {
+    const meldung = regionUnvollstaendigMeldung("bw", 500, null, "x".repeat(400));
+    expect(meldung.length).toBeLessThan(300);
   });
 });

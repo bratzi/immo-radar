@@ -25,6 +25,7 @@ import {
   loescheAbgelaufene,
   speichereSweepLauf,
   speichereRegionsLaeufe,
+  ladeLetzteRegionsSweeps,
   ladeSweepHistorie,
 } from "./lib/bestandDb.js";
 import { hoechsteGemeldeteKlasse, logNotification, versandBeleg } from "./lib/db.js";
@@ -308,8 +309,14 @@ async function main() {
   const detailVersatz = Math.floor(Date.now() / 3_600_000);
 
   // --- Immowelt ---------------------------------------------------------
+  // Wo der letzte Lauf aufgehoert hat. Der Sweep setzt dort fort, statt seinen
+  // Startpunkt aus der Wanduhr zu ziehen -- der billigste Hebel gegen die
+  // langsame Abdeckung (5,7 statt 13,1 Tage, ohne einen zusaetzlichen Abruf;
+  // Herleitung bei `sweepStartVersatz`). Scheitert die Abfrage, liefert sie
+  // null und der Sweep faellt auf das alte Uhr-Verhalten zurueck.
+  const letzteRegionsSweeps = await ladeLetzteRegionsSweeps(sb, "immowelt");
   console.log("Immowelt: Sweep gestartet...");
-  const immowelt = await sweepImmowelt();
+  const immowelt = await sweepImmowelt(letzteRegionsSweeps);
   await speichereSweepLauf(sb, immowelt.sweep);
   // Mengenhistorie je Region. Aendert am Loeschverhalten nichts -- sie sammelt
   // die Referenzlaeufe, die eine spaetere regionsgenaue Loeschhoheit braucht.

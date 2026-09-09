@@ -6,6 +6,7 @@ import {
   markiereVerschwunden,
   hebeVerschwundenAuf,
   loescheAbgelaufene,
+  ladeLetzteRegionsSweeps,
 } from "./bestandDb.js";
 
 /**
@@ -159,5 +160,69 @@ describe("Stueckelung der .in()-Listen", () => {
     const { client, aufrufe } = fakeSupabase();
     await aktualisiereLastSeen(client, [], new Date("2026-09-08T18:00:00Z"));
     expect(aufrufe).toEqual([]);
+  });
+});
+
+/**
+ * Der Startindex der Regionsrotation kommt seit 2026-09-09 aus dieser
+ * Abfrage statt aus der Wanduhr (siehe `sweepStartVersatz` in `bestand.ts`).
+ * Entscheidend ist die Fehlerbehandlung: Ein `null` bedeutet "nicht gelesen"
+ * und laesst den Aufrufer auf die Uhr zurueckfallen. Eine leere Map dagegen
+ * bedeutet "noch nie gesweept" und startet an der ersten Region. Wer beides
+ * verwechselt, friert die Abdeckung bei der ersten Region ein, sobald die
+ * Abfrage einmal scheitert.
+ */
+function fakeRegionsHistorie(optionen: { zeilen?: unknown[]; fehler?: boolean } = {}) {
+  const abfragen: { tabelle: string; source: unknown }[] = [];
+  const client = {
+    from(tabelle: string) {
+      return {
+        select: (_spalten: string) => ({
+          eq: (_spalte: string, wert: unknown) => {
+            abfragen.push({ tabelle, source: wert });
+            return {
+              order: (_spalte2: string, _opt: unknown) => ({
+                limit: (_n: number) =>
+                  Promise.resolve({
+                    data: optionen.fehler === true ? null : (optionen.zeilen ?? []),
+                    error: optionen.fehler === true ? { message: "Bad Request" } : null,
+                  }),
+              }),
+            };
+          },
+        }),
+      };
+    },
+  };
+  return { client: client as unknown as SupabaseClient, abfragen };
+}
+
+describe("ladeLetzteRegionsSweeps", () => {
+  it("liefert je Region den juengsten Sweep-Zeitpunkt", async () => {
+    const { client, abfragen } = fakeRegionsHistorie({
+      zeilen: [
+        { partition: "by", started_at: "2026-09-09T09:00:00Z" },
+        { partition: "nw", started_at: "2026-09-09T06:00:00Z" },
+        { partition: "nw", started_at: "2026-09-07T06:00:00Z" },
+      ],
+    });
+
+    const historie = await ladeLetzteRegionsSweeps(client, "immowelt");
+
+    expect(historie).not.toBeNull();
+    expect(historie!.get("nw")).toBe(Date.parse("2026-09-09T06:00:00Z"));
+    expect(historie!.get("by")).toBe(Date.parse("2026-09-09T09:00:00Z"));
+    expect(abfragen).toEqual([{ tabelle: "sweep_region_runs", source: "immowelt" }]);
+  });
+
+  it("liefert eine leere Map, wenn noch nie gesweept wurde", async () => {
+    const { client } = fakeRegionsHistorie({ zeilen: [] });
+    const historie = await ladeLetzteRegionsSweeps(client, "immowelt");
+    expect(historie).toEqual(new Map());
+  });
+
+  it("liefert null, wenn die Abfrage scheitert -- nicht eine leere Map", async () => {
+    const { client } = fakeRegionsHistorie({ fehler: true });
+    expect(await ladeLetzteRegionsSweeps(client, "immowelt")).toBeNull();
   });
 });

@@ -5,7 +5,12 @@ import {
   type ImmoweltListSummary,
 } from "./list.js";
 import { parseImmoweltDetailPage, type ImmoweltDetailData } from "./detail.js";
-import { rotiereAuswahl, type RegionLauf, type SweepErgebnis } from "../../lib/bestand.js";
+import {
+  rotiereAuswahl,
+  sweepStartVersatz,
+  type RegionLauf,
+  type SweepErgebnis,
+} from "../../lib/bestand.js";
 import { bestaetigeConsentBanner } from "../consent.js";
 import { schliesseStoerendeUeberlagerung } from "../overlays.js";
 
@@ -135,17 +140,71 @@ const REGION_FEHLBETRAG_TOLERANZ = 0.25;
  * - `gemeldet > 0` und `gesammelt > 0`: normale Mengenpruefung. Bleibt die
  *   eingesammelte Menge um mehr als REGION_FEHLBETRAG_TOLERANZ zurueck ->
  *   `false`.
- * - `gemeldet === null`, aber `gesammelt > 0`: `true`. Eine echte Seite, deren
- *   Titel nur nicht parste (Formatwechsel). Daraus laesst sich nichts gegen
- *   die Region ableiten; es bleibt bei der Seitendeckel-Pruefung
- *   (`abgeschnitten`) und der quellenweiten Mengenpruefung in
- *   `lib/plausibilitaet.ts`.
+ * - `gemeldet === null`: immer `false`, seit 2026-09-09 auch bei
+ *   `gesammelt > 0`. Vorher stand hier `true`, und das war die zweite der
+ *   drei Fail-open-Stellen aus dem B-2-Entwurf. Ohne Trefferzahl gibt es
+ *   keinen Massstab, an dem sich die eingesammelte Menge messen liesse, und
+ *   der Titel parst ausgerechnet fuer `nw`, `bw` und `mv` nicht -- 5 von 21
+ *   Regionslaeufen, darunter die beiden groessten Regionen. Deren
+ *   Vollstaendigkeit ruhte damit auf "mehr als null Karten": Ein Lauf, der
+ *   `nw` soft-geblockt mit einer einzigen Karte einsammelt, galt als
+ *   vollstaendig -- und haette bei regionsgenauer Loeschhoheit 1.160 echte
+ *   Objekte zu Abgaengen erklaert (am Saettigungspunkt ~6.900).
+ *
+ *   Was das heute kostet: nichts an den Daten. `vollstaendig` ist im
+ *   Immowelt-Sweep-Ergebnis ohnehin hart `false`, es wird nichts geloescht.
+ *   Es verhindert nur, dass unbelegte Regionen als Referenzlaeufe zaehlen --
+ *   und macht damit sichtbar, dass die Trefferzahl fuer diese drei Regionen
+ *   erst gemessen werden muss. WARUM der Titel dort nicht parst, ist bis
+ *   heute nicht gemessen; deshalb wird das Muster hier auch nicht geraten
+ *   angepasst, sondern der echte Titel protokolliert (siehe
+ *   `regionUnvollstaendigMeldung`).
  */
 export function istRegionVollstaendig(gesammelt: number, gemeldet: number | null): boolean {
   if (gesammelt === 0) return false;
-  if (gemeldet === null) return true;
+  if (gemeldet === null) return false;
   if (gemeldet === 0) return true;
   return gesammelt >= gemeldet * (1 - REGION_FEHLBETRAG_TOLERANZ);
+}
+
+/** Wie viel vom Seitentitel ins Log darf. Genug, um Format und Sprache zu
+ *  erkennen, zu wenig, um 21 Regionszeilen je Lauf unlesbar zu machen. */
+const TITEL_LOG_LAENGE = 140;
+
+/**
+ * Die Logzeile einer Region, die nicht als vollstaendig gilt.
+ *
+ * Eigene Funktion, damit sie unter Test steht -- der wichtigste Fall ist die
+ * FEHLENDE Trefferzahl, und der ist heute ein Messauftrag, keine Diagnose:
+ * Fuer `nw`, `bw` und `mv` liefert `trefferzahlAusTitel` null, und warum, ist
+ * nicht gemessen. Timing ist eine Hypothese (der Titel wird unmittelbar nach
+ * `domcontentloaded` gelesen, siehe `regionErfassen`), ein Formatwechsel eine
+ * zweite. Deshalb steht der Titel hier WOERTLICH im Log: Ein einziger Lauf
+ * entscheidet die Frage, ohne dass jemand ein neues Muster raten muss.
+ */
+export function regionUnvollstaendigMeldung(
+  code: string,
+  gesammelt: number,
+  gemeldet: number | null,
+  titel: string
+): string {
+  const gekuerzt = titel.length > TITEL_LOG_LAENGE ? `${titel.slice(0, TITEL_LOG_LAENGE)}...` : titel;
+  if (gemeldet !== null) {
+    return (
+      `Immowelt-Sweep ${code}: nur ${gesammelt} von gemeldet ${gemeldet} Objekten ` +
+      `eingesammelt -- Region unvollstaendig.`
+    );
+  }
+  if (gesammelt === 0) {
+    return (
+      `Immowelt-Sweep ${code}: weder Trefferzahl im Titel noch eine einzige Karte -- ` +
+      `sieht nach Soft-Block aus. Titel war: "${gekuerzt}"`
+    );
+  }
+  return (
+    `Immowelt-Sweep ${code}: ${gesammelt} Objekte eingesammelt, aber keine Trefferzahl ` +
+    `im Titel -- Region zaehlt fail-closed als unvollstaendig. Titel war: "${gekuerzt}"`
+  );
 }
 
 /**
@@ -297,14 +356,18 @@ export async function regionErfassen(
    * bleibt es beim Seitendeckel des Portals.
    */
   maxSeiten: number = SEITEN_DECKEL
-): Promise<{ gemeldet: number | null; abgeschnitten: boolean; gesammelt: number }> {
+): Promise<{ gemeldet: number | null; abgeschnitten: boolean; gesammelt: number; titel: string }> {
   await page.goto(`${BASIS}${region.pfad}`, { waitUntil: "domcontentloaded" });
   // Einmal pro Browser-Context, direkt nach der ersten Navigation: das
   // Usercentrics-Overlay wegklicken. Ohne das laeuft jeder "naechste
   // Seite"-Klick unten in einen 30-s-Timeout und der Sweep sammelt still nur
   // Seite 1 pro Region ein (siehe scrapers/consent.ts).
   if (!consentBereitsBestaetigt) await bestaetigeConsentBanner(page);
-  const gemeldet = trefferzahlAusTitel(await page.title());
+  // Der Titel wird auch dann festgehalten, wenn er nicht parst -- er ist der
+  // einzige Weg, die offene Frage zu `nw`, `bw` und `mv` zu messen statt sie
+  // zu raten (siehe `regionUnvollstaendigMeldung`).
+  const titel = await page.title();
+  const gemeldet = trefferzahlAusTitel(titel);
 
   // Nur die IDs DIESER Region -- `ziel` wird ueber alle Laender geteilt und
   // taugt daher nicht zum Zaehlen, was ein einzelnes Land geliefert hat.
@@ -354,7 +417,7 @@ export async function regionErfassen(
   console.log(
     `Immowelt-Sweep ${region.code}: ${seite} Seiten, ${regionIds.size} Karten, gemeldet ${gemeldet ?? "?"}.`
   );
-  return { gemeldet, abgeschnitten: seite > SEITEN_DECKEL, gesammelt: regionIds.size };
+  return { gemeldet, abgeschnitten: seite > SEITEN_DECKEL, gesammelt: regionIds.size, titel };
 }
 
 /**
@@ -369,7 +432,15 @@ export async function regionErfassen(
  * `vollstaendig` ist fuer Immowelt grundsaetzlich `false` (siehe Rueckgabe).
  * Volle Abdeckung sammelt sich ueber mehrere Laeufe an.
  */
-export async function sweepImmowelt(): Promise<{
+export async function sweepImmowelt(
+  /**
+   * Wann jede Region zuletzt gesweept wurde, aus `sweep_region_runs`. Bestimmt
+   * den Startpunkt der Rotation (`sweepStartVersatz`). `null` heisst "Historie
+   * nicht lesbar" und faellt auf die Uhr zurueck; eine leere Map heisst "noch
+   * nie gesweept" und startet an der ersten Region.
+   */
+  letzteRegionsSweeps: Map<string, number> | null = null
+): Promise<{
   sweep: SweepErgebnis;
   zusammenfassungen: Map<string, ImmoweltListSummary>;
   /** Mengenhistorie je Region -- Vorbereitung der regionsgenauen Loeschhoheit. */
@@ -400,16 +471,15 @@ export async function sweepImmowelt(): Promise<{
 
   // Die volle Regionsliste in Rotationsreihenfolge. `rotiereAuswahl` (aus
   // lib/bestand.js, unit-getestet) liefert bei Budget == Listenlaenge die
-  // ganze Liste, aber am wandernden Startpunkt aufgeschnitten; der Versatz ist
-  // -- wie bei der Detail-Rotation in main.ts -- die Stundenzahl seit Epoche,
-  // sodass Folgelaeufe an spaeteren Regionen beginnen. Wie weit ein Lauf durch
-  // diese Reihenfolge kommt, entscheidet allein SWEEP_BUDGET_MS.
-  const versatz = Math.floor(Date.now() / 3_600_000);
-  const rotierteCodes = rotiereAuswahl(
-    IMMOWELT_REGIONEN.map((r) => r.code),
-    IMMOWELT_REGIONEN.length,
-    versatz
-  );
+  // ganze Liste, aber am wandernden Startpunkt aufgeschnitten. Wie weit ein
+  // Lauf durch diese Reihenfolge kommt, entscheidet allein SWEEP_BUDGET_MS --
+  // und weil das fuer genau eine grosse Region reicht, ist der Startpunkt die
+  // eigentliche Stellschraube der Abdeckung. Er kommt seit 2026-09-09 aus der
+  // Historie statt aus der Wanduhr; die Herleitung steht bei
+  // `sweepStartVersatz`.
+  const codes = IMMOWELT_REGIONEN.map((r) => r.code);
+  const versatz = sweepStartVersatz(codes, letzteRegionsSweeps, Date.now());
+  const rotierteCodes = rotiereAuswahl(codes, IMMOWELT_REGIONEN.length, versatz);
   const regionen = rotierteCodes.map(
     (code) => IMMOWELT_REGIONEN.find((r) => r.code === code)!
   );
@@ -431,7 +501,7 @@ export async function sweepImmowelt(): Promise<{
       abgearbeitet += 1;
       await sleep(IMMOWELT_VERZOEGERUNG_MS);
       try {
-        const { gemeldet, abgeschnitten, gesammelt } = await regionErfassen(
+        const { gemeldet, abgeschnitten, gesammelt, titel } = await regionErfassen(
           page,
           region,
           zusammenfassungen,
@@ -446,13 +516,7 @@ export async function sweepImmowelt(): Promise<{
         // fuer Immowelt ohnehin immer false), sie haelt nur das Log ehrlich:
         // sie faengt eine soft-geblockte Region ab, die lautlos [] liefert.
         if (!istRegionVollstaendig(gesammelt, gemeldet)) {
-          console.warn(
-            gemeldet === null
-              ? `Immowelt-Sweep ${region.code}: weder Trefferzahl im Titel noch eine einzige ` +
-                  `Karte -- sieht nach Soft-Block aus.`
-              : `Immowelt-Sweep ${region.code}: nur ${gesammelt} von gemeldet ${gemeldet} Objekten ` +
-                  `eingesammelt -- Region unvollstaendig.`
-          );
+          console.warn(regionUnvollstaendigMeldung(region.code, gesammelt, gemeldet, titel));
         }
         ausgaenge.push({ art: "erfasst", gemeldet });
         regionLaeufe.push({
