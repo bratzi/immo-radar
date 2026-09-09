@@ -40,6 +40,10 @@ Quellen (6 Plattformen, HTML-Scraping)
   2.000 Freiminuten/Monat — bei reinem Listen-Scraping (kein durchgängiges
   Playwright-Rendering nötig, außer ggf. für Cloudflare-geschützte Seiten)
   ausreichend Puffer.
+  <br>**Nachtrag 2026-09-09:** ~8 Läufe/Tag sind Soll. Gemessen sind 13 von 23
+  Soll-Terminen (2026-09-05 bis 2026-09-08), 43 % Ausfall — also **rund 5
+  Läufe/Tag**. Der Puffer wird dadurch größer, nicht kleiner; jede andere
+  Ableitung aus „8 Läufe/Tag" ist zu korrigieren.
 - **DB:** neues Supabase-Projekt (Free Tier), gleiches Muster wie Margn
   (`SUPABASE_SERVICE_KEY` nur im Scraper, `NEXT_PUBLIC_SUPABASE_ANON_KEY` +
   RLS im Frontend).

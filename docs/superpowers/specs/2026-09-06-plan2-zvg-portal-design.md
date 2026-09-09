@@ -211,6 +211,12 @@ Läuft im bestehenden 3h-GitHub-Actions-Workflow mit (kein eigener
 Zeitplan) — Nutzerentscheidung trotz seltenerer Änderungsfrequenz von
 ZVG-Terminen, zugunsten weniger Infrastruktur.
 
+**Nachtrag 2026-09-09:** „3h" ist der eingetragene Cron, nicht der gemessene
+Takt. Real läuft der Workflow rund alle fünf Stunden (13 von 23 Soll-Terminen
+zwischen 2026-09-05 und 2026-09-08, 43 % Ausfall). Für ZVG mit seiner
+seltenen Änderungsfrequenz ist das unkritisch — die Zahl stimmt trotzdem nur
+als Soll.
+
 ## Testing
 
 Wie Plan 1: `list.test.ts`/`detail.test.ts` gegen lokal gespeicherte

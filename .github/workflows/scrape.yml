@@ -5,6 +5,21 @@ on:
   # Bestandsfuehrung" (2026-09-07). Waehrend des Umbaus war der Zeitplan
   # pausiert, weil die Schema-Migration listings.is_active entfernt hatte und
   # der damalige Code auf main das neue Schema noch nicht kannte.
+  #
+  # DREI STUNDEN SIND DAS SOLL, NICHT DAS IST. Gemessen ueber 23
+  # Soll-Termine (2026-09-05 bis 2026-09-08): 13 gelaufen, 10 ausgefallen --
+  # 43 % Ausfall; die gelaufenen kamen 8 bis 171 min zu spaet, Median rund
+  # 100. Real ist das ein Lauf je rund FUENF Stunden. Das ist kein Fehler
+  # dieses Projekts: GitHub fuehrt geplante Laeufe ausdruecklich nur nach
+  # bestem Bemuehen aus ("scheduled workflows ... best effort"). Dieselbe
+  # Groessenordnung unabhaengig gemessen in
+  # docs/superpowers/specs/2026-09-08-immowelt-abgaenge-optionen.md:
+  # 14 Laeufe in 70,1 h = 5,4 h je Lauf.
+  #
+  # Wer aus diesem Takt etwas ableitet -- Abdeckung je Tag, Abtragen von
+  # Rueckstaenden, "bis zum naechsten Lauf ist das folgenlos" -- rechnet mit
+  # fuenf Stunden. Ob dichter getaktet wird, ist eine offene Entscheidung des
+  # Nutzers; der Wert unten ist bewusst unveraendert.
   schedule:
     - cron: "0 */3 * * *"
   workflow_dispatch: {}

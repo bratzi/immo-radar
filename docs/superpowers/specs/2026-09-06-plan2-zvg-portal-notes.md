@@ -157,7 +157,9 @@ Diese Fragen wurden noch NICHT gestellt/beantwortet:
    Nutzer final abgestimmt, nur die generelle Richtung ("minimal, nur
    Kaufentscheidungs-relevant") ist klar.
 4. **Cron-Verhältnis zu Immowelt:** Eigener Workflow/eigener Zeitplan, oder
-   in denselben 3h-Lauf integriert? ZVG-Termine ändern sich vermutlich
+   in denselben 3h-Lauf integriert? (**Nachtrag 2026-09-09:** der Lauf ist
+   mit „3h" nur als Soll beschrieben; gemessen sind es rund fünf Stunden bei
+   43 % Ausfall.) ZVG-Termine ändern sich vermutlich
    seltener als Verkaufsinserate (neue Termine werden typischerweise
    Wochen im Voraus veröffentlicht) — evtl. reicht ein selteneres Intervall
    (z.B. täglich), was auch das GitHub-Actions-Minutenbudget schont.

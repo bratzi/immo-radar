@@ -1,8 +1,13 @@
 # Immowelt: vollständige Erfassung über die Sitemap — Befund
 
 **Stand:** 2026-09-07
-**Status:** Rechercheergebnis, noch kein Design. Ausgangspunkt für ein eigenes
-Teilprojekt, sobald Teilprojekt 1 gemerged ist.
+**Status:** ÜBERHOLT seit 2026-09-08 — historisch, kein offenes Arbeitspaket.
+Der Umbau auf die Sitemap ist **nicht nötig**: Das Blättern funktioniert
+(`blaettereWeiter` in `scraper/scrapers/immowelt/index.ts`, im Betrieb
+verwendet), der hier beschriebene Befund war eine Fehldiagnose der
+Overlay-Blockade. Vermerkt in `docs/superpowers/TODO.md` („Der Sitemap-Umbau
+ist nicht nötig") und `docs/superpowers/BACKLOG.md` („Am 2026-09-08
+hinfällig"). Was folgt, bleibt als Recherchestand stehen.
 
 ## Warum es diesen Befund gibt
 
@@ -63,7 +68,9 @@ je Ort ist das, was funktioniert.
   Lauf neu holen.
 - **Rotation mit Geltungsbereich.** 8.901 Abrufe à 1 s sind rund 2,5 Stunden —
   bei einem 3-Stunden-Takt wären das ~71.000 Anfragen täglich und damit genau
-  das Sperr-Risiko, das wir meiden. Stattdessen je Lauf ein Bruchteil der Orte,
+  das Sperr-Risiko, das wir meiden. (Der Takt ist gemessen keine drei, sondern
+  rund fünf Stunden — ~43.000 statt ~71.000 Anfragen. Am Schluss ändert das
+  nichts.) Stattdessen je Lauf ein Bruchteil der Orte,
   voller Umlauf über einen Tag, und gelöscht wird nur innerhalb der Orte, die
   der Lauf tatsächlich gesehen hat. Das ist derselbe Mechanismus, den ZVG über
   `geltungsbereich` schon nutzt.

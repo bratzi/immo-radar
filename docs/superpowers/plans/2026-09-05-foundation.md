@@ -1624,6 +1624,11 @@ git commit -m "feat(scraper): main.ts Pipeline (Scrape -> Kennzahlen -> Speicher
 
 ## Task 11: GitHub Actions Workflow (Cron alle 3h)
 
+> **Nachtrag 2026-09-09:** „Alle 3h" ist der eingetragene Cron-Ausdruck. Der
+> gemessene Takt beträgt rund fünf Stunden — 13 von 23 Soll-Terminen
+> (2026-09-05 bis 2026-09-08), 43 % Ausfall. Wer aus diesem Task eine
+> Laufhäufigkeit ableitet, rechnet mit fünf Stunden.
+
 **Files:**
 - Create: `C:\immo-radar\.github\workflows\scrape.yml`
 
