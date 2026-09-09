@@ -6,8 +6,8 @@
 
 ## Wo wir stehen
 
-`main` = `1b94092`, gepusht, Arbeitsverzeichnis sauber. Letzter Produktionslauf:
-**`34355619597`** (2026-09-09, 13:12 UTC, `conclusion=success`). **395 Tests
+`main` = `3ffea5f`, gepusht, Arbeitsverzeichnis sauber. Letzter Produktionslauf:
+**`34355619597`** (2026-09-09, 13:12 UTC, `conclusion=success`). **397 Tests
 grün** (Sitzungsbeginn: 374, davon 2 rot), `npx tsc --noEmit` sauber.
 
 **Was diese Sitzung geschlossen hat:** Option 1 des B-2-Entwurfs
@@ -71,6 +71,17 @@ jeder regionsgenauen Regel unantastbar.
 
 Zwei Sabotageproben: Wird ein fehlender Fundort zu `"nw"`, fallen zwei Tests;
 wird der Rückfall auf die externalId entfernt, fallen drei.
+
+**Ein abgebrochener Subagent hat dabei einen Fehler erspart.** Drei Agenten
+liefen parallel in eigenen Worktrees, ein Sitzungslimit brach alle drei ab.
+Zwei hatten fertig committet, der dritte an derselben Aufgabe gesessen, die
+danach von Hand entstand — sein Worktree überlebte. Seine Tests für
+`ladeBekannteListings` deckten in der eigenen Fassung eine Lücke auf: Fehlt die
+Spalte in der Antwort, kam `undefined` statt `null` heraus. Das rutscht durch
+die Prüfung `fundort !== null` glatt hindurch und wäre als Partition
+zurückgegeben worden — ein gebrochener Typvertrag unmittelbar vor einer
+Löschwache. **Ein abgebrochener Agent ist deshalb nicht wertlos: erst in seinen
+Worktree sehen, dann neu anfangen.**
 
 ### Die zwei restlichen Fail-open-Stellen sind gefallen
 
