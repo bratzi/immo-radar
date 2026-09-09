@@ -3,6 +3,7 @@ import {
   partitionAusExternalId,
   partitionEinesListings,
   ermittleAbgaenge,
+  ermittleMarkierungen,
   ermittleRueckkehrer,
   istKarenzAbgelaufen,
   istHartLoeschbar,
@@ -478,5 +479,106 @@ describe("ermittleAbgaenge mit Fundort", () => {
       [iwListing("uuid-a", "nw"), iwListing("uuid-b", "nw")]
     );
     expect(abgaenge).toEqual([]);
+  });
+});
+
+describe("ermittleMarkierungen", () => {
+  // Immowelt: keine Loeschhoheit, und die quellenweite Pruefung faellt jeden
+  // Lauf durch (`vollstaendig` ist hart false). Genau hier soll das Markieren
+  // trotzdem laufen -- es ist reversibel und vernichtet nichts.
+  const ohneLoeschhoheit = { hatLoeschhoheit: false, quellenPruefungBestanden: false };
+  const mitLoeschhoheit = { hatLoeschhoheit: true, quellenPruefungBestanden: true };
+
+  const immoweltSweep = (overrides: Partial<SweepErgebnis> = {}) =>
+    sweep({
+      source: "immowelt",
+      vollstaendig: false,
+      strukturellTeilweise: true,
+      geltungsbereich: ["nw"],
+      ...overrides,
+    });
+
+  const iwListing = (
+    externalId: string,
+    fundort: string | null,
+    disappearedAt: string | null = null
+  ): BekanntesListing => ({ id: `id-${externalId}`, externalId, disappearedAt, fundort });
+
+  it("markiert ein Objekt einer vollstaendig durchlaufenen Region trotz unvollstaendigem Sweep", () => {
+    const markierungen = ermittleMarkierungen(
+      immoweltSweep({ gesehene: new Set(["uuid-a"]) }),
+      [iwListing("uuid-a", "nw"), iwListing("uuid-b", "nw")],
+      ohneLoeschhoheit
+    );
+    expect(markierungen.map((l) => l.externalId)).toEqual(["uuid-b"]);
+  });
+
+  it("markiert ein Objekt ohne Fundort nie -- nicht zuzuordnen heisst nicht verschwunden", () => {
+    const markierungen = ermittleMarkierungen(
+      immoweltSweep({ gesehene: new Set() }),
+      [iwListing("uuid-alt", null)],
+      ohneLoeschhoheit
+    );
+    expect(markierungen).toEqual([]);
+  });
+
+  it("markiert ein Objekt einer Region, die in diesem Lauf nicht vorkam, nie", () => {
+    const markierungen = ermittleMarkierungen(
+      immoweltSweep({ gesehene: new Set() }),
+      [iwListing("uuid-by", "by")],
+      ohneLoeschhoheit
+    );
+    expect(markierungen).toEqual([]);
+  });
+
+  it("markiert bei leerem Geltungsbereich nichts -- auch ohne Loeschhoheit", () => {
+    // Der Lauf, in dem KEINE Region ihre Vollstaendigkeit belegt hat, etwa
+    // weil alle soft-geblockt wurden: dann ist nichts belegt, nicht alles.
+    const markierungen = ermittleMarkierungen(
+      immoweltSweep({ geltungsbereich: [], gesehene: new Set() }),
+      [iwListing("uuid-a", "nw"), iwListing("uuid-b", "by")],
+      ohneLoeschhoheit
+    );
+    expect(markierungen).toEqual([]);
+  });
+
+  it("markiert ein bereits markiertes Objekt nicht erneut", () => {
+    const markierungen = ermittleMarkierungen(
+      immoweltSweep({ gesehene: new Set() }),
+      [iwListing("uuid-a", "nw", "2026-09-08T10:00:00Z")],
+      ohneLoeschhoheit
+    );
+    expect(markierungen).toEqual([]);
+  });
+
+  it("markiert nichts, wenn eine Quelle MIT Loeschhoheit die quellenweite Pruefung nicht bestand", () => {
+    // Bei ZVG ist die Markierung der erste Schritt der Loeschung. Sie braucht
+    // deshalb weiterhin die volle quellenweite Beweislast.
+    const markierungen = ermittleMarkierungen(
+      sweep({ gesehene: new Set(["sn-1"]) }),
+      [listing("sn-1"), listing("sn-2")],
+      { hatLoeschhoheit: true, quellenPruefungBestanden: false }
+    );
+    expect(markierungen).toEqual([]);
+  });
+
+  it("verlangt von einer Quelle MIT Loeschhoheit weiterhin den vollstaendigen Sweep", () => {
+    const markierungen = ermittleMarkierungen(
+      sweep({ vollstaendig: false, gesehene: new Set(["sn-1"]) }),
+      [listing("sn-1"), listing("sn-2")],
+      mitLoeschhoheit
+    );
+    expect(markierungen).toEqual([]);
+  });
+
+  it("verhaelt sich bei einer Quelle MIT Loeschhoheit wie ermittleAbgaenge", () => {
+    const zvg = sweep({ gesehene: new Set(["sn-1"]) });
+    const bekannte = [listing("sn-1"), listing("sn-2")];
+    expect(ermittleMarkierungen(zvg, bekannte, mitLoeschhoheit)).toEqual(
+      ermittleAbgaenge(zvg, bekannte)
+    );
+    expect(
+      ermittleMarkierungen(zvg, bekannte, mitLoeschhoheit).map((l) => l.externalId)
+    ).toEqual(["sn-2"]);
   });
 });

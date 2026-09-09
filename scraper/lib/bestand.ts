@@ -156,12 +156,97 @@ export function ermittleAbgaenge(
   // und in `sweep_runs` protokolliert -- als Beleg darueber, WELCHE Regionen
   // sauber liefen, nicht als Loeschfilter.
   if (!sweep.vollstaendig) return [];
+  return nichtMehrGesehen(sweep, bekannte);
+}
+
+/**
+ * Der regionsgenaue Filter, den `ermittleAbgaenge` und `ermittleMarkierungen`
+ * teilen: noch nicht markiert, in einer Region, die dieser Lauf VOLLSTAENDIG
+ * erfasst hat, und dort nicht mehr aufgetaucht.
+ *
+ * Die drei Bedingungen sind alle fail-closed. `imGeltungsbereich` gibt bei
+ * leerem Geltungsbereich und bei unlesbarer Partition `false` zurueck -- ein
+ * Objekt ohne Fundort (157 Stueck, Altbestand aus der Detailseiten-Aera) ist
+ * damit unter keiner regionsgenauen Regel je ein Abgang.
+ */
+function nichtMehrGesehen(
+  sweep: SweepErgebnis,
+  bekannte: BekanntesListing[]
+): BekanntesListing[] {
   return bekannte.filter(
     (listing) =>
       listing.disappearedAt === null &&
       imGeltungsbereich(sweep, listing) &&
       !sweep.gesehene.has(listing.externalId)
   );
+}
+
+/**
+ * Welche Beweislast eine Quelle fuer das MARKIEREN tragen muss.
+ *
+ * Der Unterschied haengt an genau einer Frage: Darf diese Quelle hart
+ * loeschen? Beantwortet wird sie von der Erlaubnisliste
+ * `QUELLEN_MIT_LOESCHHOHEIT` in `bestandDb.ts` -- der einzigen Stelle im
+ * Projekt, die ueber Loeschhoheit entscheidet.
+ */
+export interface Markierbefugnis {
+  /** Steht die Quelle in `QUELLEN_MIT_LOESCHHOHEIT`? */
+  hatLoeschhoheit: boolean;
+  /** Ergebnis von `pruefeMengenplausibilitaet` fuer diesen Lauf. */
+  quellenPruefungBestanden: boolean;
+}
+
+/**
+ * Objekte, die neu als verschwunden zu MARKIEREN sind -- die Umsetzung von
+ * Option 3 ("markieren ohne loeschen", Abnahmekriterium B-2).
+ *
+ * WARUM ES DIESE FUNKTION NEBEN `ermittleAbgaenge` GIBT: `vollstaendig`
+ * beschreibt die QUELLENWEITE Beweislast, die eine LOESCHUNG verlangt. Fuer
+ * Immowelt ist der Wert aus gutem Grund hart `false` -- ein Lauf, der nur so
+ * viele Bundeslaender abgrast, wie ins Zeitbudget passen, kann die Quelle als
+ * ganze nie belegen. Fuer eine REVERSIBLE Markierung ist diese Beweislast
+ * falsch bemessen: Sie kann dort nie erbracht werden, und sie muss es auch
+ * nicht. Der Schaden eines Fehlurteils ist ein paar Tage graue Darstellung,
+ * zurueckgenommen beim naechsten Auftauchen (`ermittleRueckkehrer` braucht
+ * dafuer ausdruecklich keinen vollstaendigen Sweep) -- nicht Datenverlust.
+ *
+ * Die drei Faelle:
+ *
+ * - **Loeschhoheit, quellenweite Pruefung nicht bestanden -> nichts.** Bei
+ *   einer Quelle mit Loeschhoheit ist die Markierung der ERSTE SCHRITT DER
+ *   LOESCHUNG: Nach `KARENZ_TAGE` raeumt `loescheAbgelaufene` sie hart weg.
+ *   Sie traegt deshalb dieselbe Beweislast wie die Loeschung selbst.
+ * - **Loeschhoheit, Pruefung bestanden -> `ermittleAbgaenge`,** also
+ *   einschliesslich der `vollstaendig`-Wache. Fuer ZVG aendert sich nichts.
+ * - **Keine Loeschhoheit -> der Regionsbeweis genuegt.** Markiert wird nur,
+ *   wessen Fundort eine Region ist, die in DIESEM Lauf ihre Vollstaendigkeit
+ *   gegen die vom Portal ausgewiesene Trefferzahl belegt hat
+ *   (`istRegionVollstaendig` -> `geltungsbereich`). Das ist ein Vergleich
+ *   gegen eine Live-Wahrheit, nicht gegen einen historischen Median -- die
+ *   quellenweite Mengenpruefung misst bei einer rotierend erfassten Quelle
+ *   ohnehin nur die Rotation (gemessen 3.361 bis 9.329 Objekte je Lauf,
+ *   Faktor 2,8) und waere dort ein permanentes Nein.
+ *
+ * Was dadurch NICHT freigegeben wird: die harte Loeschung. Sie haengt allein
+ * an `QUELLEN_MIT_LOESCHHOHEIT`, und dort steht `immowelt` nicht.
+ *
+ * BEWUSSTE LUECKE: `nw`, `bw` und `mv` nennen ihre Trefferzahl nirgends
+ * (gemessen 2026-09-09, weder im Titel noch im Seitentext). Sie erreichen
+ * `vollstaendig` und damit den Geltungsbereich nie, also wird dort auch nie
+ * etwas markiert. Der zweite Vollstaendigkeitsmassstab dafuer ist
+ * zurueckgestellt (A16); solange er fehlt, ist Nichtstun die richtige
+ * Antwort -- `nw` allein ist 21,2 % des Bestands.
+ */
+export function ermittleMarkierungen(
+  sweep: SweepErgebnis,
+  bekannte: BekanntesListing[],
+  befugnis: Markierbefugnis
+): BekanntesListing[] {
+  if (befugnis.hatLoeschhoheit) {
+    if (!befugnis.quellenPruefungBestanden) return [];
+    return ermittleAbgaenge(sweep, bekannte);
+  }
+  return nichtMehrGesehen(sweep, bekannte);
 }
 
 /**
