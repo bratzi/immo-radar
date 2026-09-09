@@ -11,18 +11,22 @@ scraper/
   main.ts              Orchestrierung: Sweep -> Details -> Abgleich -> Löschung
   lib/
     metrics.ts         Kennzahlen (NOI, Faktor, DSCR, Beleihungswert)
-    rentEstimate.ts    Jahreskaltmiete: angegeben / regional / bundesweit
+    rentEstimate.ts    Jahreskaltmiete: angegeben / regional (PLZ) /
+                       bundeslandgenau (Immowelt) / bundesweit
     grunderwerbsteuer.ts  Steuersatz + Bundesland je PLZ
     meldung.ts         Meldeklassen top_treffer / pruefkandidat + Rangfolge
     bestand.ts         Abgleichlogik: Abgänge, Rückkehrer, Karenz
     plausibilitaet.ts  Tor vor der Löschung (Mengenprüfung)
     pipeline.ts        Ein Kandidat: bewerten, speichern, ggf. melden
     db.ts              listings / listing_versions / notifications
-    bestandDb.ts       Bestandsführung + sweep_runs
+    bestandDb.ts       Bestandsführung + sweep_runs / sweep_region_runs
+    meldebudget.ts     Obergrenze für Telegram-Meldungen je Lauf
+    nurInCi.ts         Sperre gegen Live-Läufe am privaten Anschluss
     telegram.ts        Nachrichtenformate und Versand
     karte.ts           Lagekarte als PNG
   scrapers/
-    immowelt/          list / detail / index (Playwright)
+    immowelt/          list / index / titelzeile (Playwright);
+                       detail.ts liegt still, siehe unten
     zvg-portal/        list / detail / index (Playwright)
 schema.sql             Datenbankschema (Supabase/Postgres)
 docs/superpowers/      Specs und Implementierungspläne
@@ -30,9 +34,23 @@ docs/superpowers/      Specs und Implementierungspläne
 
 ## Betrieb
 
-Ein Lauf alle 3 Stunden über GitHub Actions (`.github/workflows/scrape.yml`), **aktiv**.
-Während des Umbaus „vollständige Erfassung & Bestandsführung" war der Zeitplan pausiert;
-seit dessen Merge am 2026-09-07 läuft er wieder.
+Der Zeitplan **läuft**: `cron "0 */3 * * *"` in
+[`scrape.yml`](.github/workflows/scrape.yml), letzter Produktionslauf
+`34355619597` am 2026-09-09 um 13:12 UTC mit `conclusion=success`.
+
+**Der Takt steht auf drei Stunden — gemessen sind rund fünf.** Über 23
+Soll-Termine (2026-09-05 bis 2026-09-08) sind 13 gelaufen und 10 ausgefallen:
+**43 % Ausfall**. Die gelaufenen kamen 8 bis 171 Minuten zu spät, im Median
+rund 100. Das ist kein Fehler dieses Projekts — GitHub führt geplante Läufe
+ausdrücklich nur nach bestem Bemühen aus. Wer aus dem Takt etwas ableitet
+(Abdeckung je Tag, Abtragen von Rückständen, „bis zum nächsten Lauf ist das
+folgenlos"), rechnet mit **einem Lauf je rund fünf Stunden**, nicht mit acht
+am Tag. Dieselbe Größenordnung steht unabhängig gemessen in
+[`specs/2026-09-08-immowelt-abgaenge-optionen.md`](docs/superpowers/specs/2026-09-08-immowelt-abgaenge-optionen.md):
+14 Läufe in 70,1 h = 5,4 h je Lauf.
+
+Der Crontakt selbst ist unverändert. Ob dichter getaktet wird, ist eine
+offene Entscheidung des Nutzers.
 
 ### Live-Läufe gehören auf GitHubs Rechner, nicht auf deinen
 
@@ -47,8 +65,9 @@ nicht. Beim ersten Mal war es ein bundesweiter Lauf, beim zweiten Mal sechs
 einzelne Regionsläufe kurz hintereinander: jeder für sich regelkonform, in der
 Summe derselbe Schaden.
 
-Der volle Lauf läuft alle drei Stunden über
-[`scrape.yml`](.github/workflows/scrape.yml). Einzelne Prüfungen startest du
+Der volle Lauf läuft über
+[`scrape.yml`](.github/workflows/scrape.yml) — Soll alle drei Stunden,
+gemessen rund alle fünf (siehe oben). Einzelne Prüfungen startest du
 über [`pruefung.yml`](.github/workflows/pruefung.yml):
 
 ```bash
@@ -99,8 +118,16 @@ Tests: `cd scraper && npm test`
 
 1. **Sweep** je Quelle — nur Ergebnislisten, liefert die vollständige Ist-Menge
    aller `externalId`s. Wird in `sweep_runs` protokolliert.
-2. **Detailerfassung** — nur für neue Objekte und solche, deren letzte
-   Erfassung über 7 Tage her ist.
+2. **Detailerfassung — nur ZVG.** Dort für neue Objekte und solche, deren
+   letzte Erfassung über 7 Tage her ist. **Immowelt hat seit dem 2026-09-08
+   keine Detailphase mehr:** seine `/expose/`-Seiten antworten von
+   Rechenzentrums-Adressen mit HTTP 403 und DataDome-CAPTCHA, während
+   `/suche/` im selben Lauf HTTP 200 liefert. Bewertet wird dort aus der
+   Titelzeile der Ergebniskarte (`scrapers/immowelt/titelzeile.ts`) — das
+   kostet keinen zusätzlichen Abruf, dafür fehlt die Postleitzahl und die
+   Mietschätzung wird bundeslandgenau statt PLZ-genau. `main.ts` ruft
+   deshalb nur noch `erfasseZvgDetails` auf; `erfasseImmoweltDetails` in
+   `scrapers/immowelt/index.ts` hat keine Aufrufstelle mehr.
 3. **Bewertung und Meldung** — gesendet wird, wenn die Meldeklasse eines
    Objekts steigt. Die `notifications`-Zeile entsteht erst nach bestätigtem
    Versand, damit ein fehlgeschlagener Versand im nächsten Lauf nachgeholt wird.
@@ -144,15 +171,25 @@ passen — rotierend über die Stundenzahl seit Epoche, gleiche Mechanik wie die
 Detail-Rotation. Wie viele Länder das sind, schwankt mit den Ländern, die in
 der Rotation gerade an der Reihe sind (Nordrhein-Westfalen allein füllt das
 Budget schon fast). Ein vollständiger Durchlauf über alle 16 Länder sammelt
-sich so über den Tag an, nicht in einem Lauf.
+sich über viele Läufe an, nicht in einem — und **nicht über einen Tag.**
+Gemessen fängt ein Lauf, der auf einer großen Region startet, genau diese
+eine ab (`nw` allein ~173 Seiten ≈ 33 min gegen 12 min Budget), der
+Startindex ist die Uhrzeit und nicht ein Fortschrittszeiger, und der Cron
+läuft real nur alle ~5 h. Die Monte-Carlo-Rechnung in
+[`specs/2026-09-08-immowelt-abgaenge-optionen.md`](docs/superpowers/specs/2026-09-08-immowelt-abgaenge-optionen.md)
+kommt damit auf einen **Median von 13,1 Tagen**, bis jede Region drei
+Referenzläufe hat.
 
 Ein Teil-Sweep über wenige Länder ist per Definition nie vollständig: Immowelt
 meldet daher **immer `vollstaendig=false`**. Es trägt weiter Kandidaten bei
 (Hinzufügen ist nie an `vollstaendig` gebunden), **autorisiert aber keine
-Löschung**. Die Löschhoheit zurückzuholen hieße, pro Fundort zu verengen —
-dazu bräuchte es eine Spalte, die festhält, wo jedes Listing gefunden wurde;
-ein eigenes Arbeitspaket. Bis dahin ist **das ZVG-Portal die einzige Quelle,
-die löscht** (klein, partitioniert nach Bundesland, unauffällig).
+Löschung**. Die Löschhoheit zurückzuholen hieße, pro Fundort zu verengen.
+Die dafür nötige Spalte gibt es inzwischen — `listings.fundort` in
+[`schema.sql`](schema.sql), gefüllt aus dem Sweep —, und `sweep_region_runs`
+sammelt die Mengenhistorie je Region. **Am Löschverhalten ändert beides
+heute nichts** (so steht es auch im Schema-Kommentar): **das ZVG-Portal ist
+weiterhin die einzige Quelle, die löscht** (klein, partitioniert nach
+Bundesland, unauffällig).
 
 Der Fenstermodus bleibt zwingend — kein Spoofing, kein Stealth-Plugin, siehe
 die Begründung in `scraper/scrapers/immowelt/index.ts`. **Nicht auf headless
