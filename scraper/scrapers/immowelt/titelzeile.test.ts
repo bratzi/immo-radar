@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { werteAusTitelzeile, fasseOhnePreisZusammen } from "./titelzeile.js";
+import { werteAusTitelzeile, fasseOhnePreisZusammen, ermittleLueckencodeOhnePreis } from "./titelzeile.js";
 
 /**
  * Alle Zeichenketten hier stammen WOERTLICH aus einer echten Immowelt-
@@ -66,6 +66,46 @@ describe("werteAusTitelzeile", () => {
     expect(w.preisCents).toBeNull();
     expect(w.wohnflaecheM2).toBe(140);
   });
+
+  it("liest '75000 €' ohne Tausenderpunkt als null statt als 0 Cent", () => {
+    // Unbelegt in den 1758 echten Titeln (A13). Vor dem Fix griff PREIS die
+    // letzten drei Ziffern ("000") und ergab still 0 Cent -- ein erfundener
+    // Preis, der unmittelbar in den Kaufpreisfaktor eingegangen waere. Ein
+    // still falscher Preis ist schlimmer als eine Fehlanzeige.
+    const w = werteAusTitelzeile("Mehrfamilienhaus zum Kauf - West - 75000 € - 3 Zimmer, 90 m²");
+    expect(w.preisCents).toBeNull();
+
+    // Die beiden Formate, die in den 1758 echten Titeln tatsaechlich
+    // vorkommen, duerfen der Fix nicht anfassen.
+    expect(werteAusTitelzeile("Mehrfamilienhaus zum Kauf - Mitte - 750.000 € - 5 Zimmer").preisCents).toBe(
+      75_000_000
+    );
+    expect(werteAusTitelzeile("Mehrfamilienhaus zum Kauf - Mitte - 1.234.567 € - 5 Zimmer").preisCents).toBe(
+      123_456_700
+    );
+  });
+});
+
+/**
+ * Zwei Lueckencodes statt einem (A13): "die Quelle nennt keinen Preis" ist
+ * Markt, "der Titel enthaelt ein € aber das Muster greift nicht" ist eine
+ * Regression im Parser. Ohne die Unterscheidung sehen beide Faelle in der
+ * Diagnose gleich aus, dabei bedeutet nur der zweite, dass etwas kaputt ist.
+ */
+describe("ermittleLueckencodeOhnePreis", () => {
+  it("erkennt 'Preis auf Anfrage' -- kein € im Titel -- als preis_auf_anfrage", () => {
+    expect(
+      ermittleLueckencodeOhnePreis("Mehrfamilienhaus zum Kauf - West - Preis auf Anfrage - 6 Zimmer")
+    ).toBe("preis_auf_anfrage");
+  });
+
+  it("erkennt ein vorhandenes € mit nicht greifendem Muster als preis_unlesbar", () => {
+    // Genau der A13-Fall: "75000 €" ohne Tausenderpunkt. Das Muster greift
+    // nicht, aber die Quelle NENNT einen Preis -- das ist der Regressionsfall.
+    expect(ermittleLueckencodeOhnePreis("Mehrfamilienhaus zum Kauf - West - 75000 € - 6 Zimmer")).toBe(
+      "preis_unlesbar"
+    );
+  });
 });
 
 /**
@@ -87,8 +127,23 @@ describe("fasseOhnePreisZusammen", () => {
       { fundort: "bw", titleLine: "b" },
       { fundort: "nw", titleLine: "c" },
     ];
+    // "a", "b", "c" enthalten kein € -- alle drei zaehlen als
+    // preis_auf_anfrage, die Fundort-Aufschluesselung bleibt erhalten.
     expect(fasseOhnePreisZusammen(faelle)).toBe(
-      "3 ohne Preisangabe uebersprungen (bw 2, nw 1)."
+      "3 ohne Preisangabe uebersprungen: preis_auf_anfrage 3 (bw 2, nw 1), preis_unlesbar 0."
+    );
+  });
+
+  it("weist preis_auf_anfrage und preis_unlesbar getrennt aus -- je nach Fundort", () => {
+    // Genau die Unterscheidung aus A13: eine steigende preis_unlesbar-Quote
+    // zeigt eine Regression, eine steigende preis_auf_anfrage-Quote ist Markt.
+    const faelle = [
+      { fundort: "bw", titleLine: "Haus - West - Preis auf Anfrage - 3 Zimmer" },
+      { fundort: "bw", titleLine: "Haus - West - 75000 € - 3 Zimmer" },
+      { fundort: "nw", titleLine: "Haus - Ost - Preis auf Anfrage - 2 Zimmer" },
+    ];
+    expect(fasseOhnePreisZusammen(faelle)).toBe(
+      "3 ohne Preisangabe uebersprungen: preis_auf_anfrage 2 (bw 1, nw 1), preis_unlesbar 1 (bw 1)."
     );
   });
 
@@ -103,7 +158,7 @@ describe("fasseOhnePreisZusammen", () => {
 
   it("macht einen fehlenden Fundort sichtbar statt ihn zu verschweigen", () => {
     expect(fasseOhnePreisZusammen([{ fundort: null, titleLine: "a" }])).toBe(
-      "1 ohne Preisangabe uebersprungen (ohne Fundort 1)."
+      "1 ohne Preisangabe uebersprungen: preis_auf_anfrage 1 (ohne Fundort 1), preis_unlesbar 0."
     );
   });
 });
