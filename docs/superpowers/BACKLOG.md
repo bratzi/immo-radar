@@ -1286,7 +1286,7 @@ Aus früheren Entwürfen, mit Begründung. Nur auf ausdrücklichen Wunsch.
 | **Ertragswertverfahren nach ImmoWertV** statt der 6-%-Näherung | Braucht Bodenrichtwerte. Die laufen je Bundesland über ein eigenes BORIS-Portal, uneinheitlich, meist ohne API. 16 Anbindungen lohnen erst, wenn sich die Näherung als zu ungenau erweist. |
 | **Konfigurierbare Schwellen** (heute fest 15 / 1,3) | Gehört zur Bewertungslogik, nicht zur Bestandsführung. |
 | **„Wieder da"-Meldung** bei Rückkehr in der Karenz | Die Meldehistorie verhindert Doppelmeldungen ohnehin; zusätzliche Nachrichten wären Rauschen. |
-| **Retry mit Backoff** innerhalb eines Laufs | Der 3-Stunden-Cron ist das Wiederholungsintervall. |
+| **Retry mit Backoff** innerhalb eines Laufs | Der Cron ist das Wiederholungsintervall — nominell alle drei Stunden, gemessen alle ~5 h (43 % der Termine fallen aus, A10). Das verlängert die Wiederholung, ersetzt sie aber nicht. |
 | **Rückwirkendes Nacherfassen** übersprungener Immowelt-Objekte | Der `data_gaps`-Retrofit wirkt nur auf künftige Scans. |
 | **Gebots-Schätzformel** (Verkehrswert × Annahmefaktor) für ZVG | Erfundene Zahl auf erfundener Zahl. |
 | **PDF-Extraktion** der amtlichen Bekanntmachung | Die HTML-Detailseite liefert dieselben Kerninhalte als Text. |

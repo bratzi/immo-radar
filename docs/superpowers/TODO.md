@@ -58,8 +58,13 @@ Die letzten Sweeps:
 
 Drei Dinge lassen sich daraus direkt ablesen:
 
-- **Der Cron arbeitet zuverlässig.** Läufe im 3-Stunden-Takt, der letzte vor
-  wenigen Minuten.
+- **Der Cron arbeitet — aber nicht im 3-Stunden-Takt.** Diese Momentaufnahme
+  vom 2026-09-08 sah so aus; über 23 Soll-Termine gemessen sind es **13
+  gelaufene und 10 ausgefallene**, also 43 % Ausfall und real ein Lauf je rund
+  **fünf** Stunden (A10). Das ist kein Fehler dieses Projekts: GitHub führt
+  geplante Läufe ausdrücklich nur nach bestem Bemühen aus. Seit der
+  Fortsetzungsrotation kostet ein ausgefallener Termin Zeit, aber **keine
+  Abdeckung** — der nächste Lauf holt genau das nach, was liegenblieb.
 - **ZVG ist deterministisch.** Fünf Läufe hintereinander exakt 188 Objekte.
   Das ist der Nachweis, den offener Punkt 2 der Übergabe verlangt hat — für
   ZVG ist er damit erbracht.
