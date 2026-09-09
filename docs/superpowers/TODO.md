@@ -1,7 +1,9 @@
 # immo-radar — Überblick und To-do-Liste
 
-**Stand:** 2026-09-08, 11:15 UTC. Belegt durch Abfrage der Produktionsdatenbank
-und `git log`, nicht aus dem Gedächtnis.
+**Stand:** 2026-09-09, 11:00 UTC. Belegt durch Abfrage der Produktionsdatenbank
+und `git log`, nicht aus dem Gedächtnis. Die Zahlen im Abschnitt „Belegter
+Ist-Zustand" stammen weiterhin vom 2026-09-08 und sind als solche
+gekennzeichnet.
 
 > **Ausfuehrbare Aufgabenliste:** [BACKLOG.md](BACKLOG.md) - Teil A ist so
 > geschnitten, dass Subagenten es ohne Vorwissen abarbeiten koennen.
@@ -159,6 +161,24 @@ die SPA feuert pro Seite Dutzende XHRs.
 **einen** Lauf, nicht in mehrere.
 
 ## Die To-do-Liste, in dieser Reihenfolge
+
+### 0. Immowelt-Abgänge, Option 1 — ERLEDIGT (2026-09-09)
+
+Die Regionsrotation setzt fort, statt ihren Startpunkt aus der Wanduhr zu
+ziehen: Startpunkt ist die Region, die am längsten nicht gesweept wurde,
+gelesen aus `sweep_region_runs`. Gerechnet halbiert das die Zeit bis zur
+vollen Abdeckung — Median 5,7 statt 13,1 Tage — **ohne einen zusätzlichen
+Abruf**.
+
+Zugleich ist eine der drei Fail-open-Stellen geschlossen:
+`istRegionVollstaendig` liest eine fehlende Trefferzahl nicht mehr als
+„vollständig". Folge und nächster Schritt stehen in **A15** — `nw`, `bw` und
+`mv` sammeln keine Referenzläufe mehr an, solange ihr Seitentitel nicht parst,
+und **warum** er nicht parst, ist bis heute nicht gemessen. Der echte Titel
+steht jetzt im Log.
+
+Als Nächstes: A15, danach Option 3 (markieren ohne löschen).
+
 
 ### 1. Immowelt-Pagination — GELÖST und live bestätigt
 

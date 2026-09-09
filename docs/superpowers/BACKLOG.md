@@ -989,6 +989,47 @@ aktualisierten `last_seen`-Zeilen entspricht der Zahl der gesehenen Objekte.
 
 ---
 
+## A15. Warum die Trefferzahl fuer `nw`, `bw` und `mv` nicht parst — MESSEN
+
+**Das Fail-open ist geschlossen** (2026-09-09, Option 1). `istRegionVollstaendig`
+gibt bei fehlender Trefferzahl jetzt `false` statt `true`. Damit zählen `nw`,
+`bw` und `mv` **nicht mehr als Referenzläufe** — und genau das macht diese
+Messung zur Voraussetzung für B1: Solange der Titel dort nicht parst, sammeln
+die drei größten Regionen keine vollständigen Läufe an.
+
+**Was gemessen wird, statt geraten:** `regionUnvollstaendigMeldung`
+(`scrapers/immowelt/index.ts`) schreibt den echten Seitentitel wörtlich ins
+Log, gekürzt auf 140 Zeichen. Ein Produktionslauf genügt.
+
+Zwei Hypothesen, beide unbelegt:
+
+1. **Timing.** Der Titel wird unmittelbar nach `domcontentloaded` gelesen
+   (`regionErfassen`). Steht dort ein Platzhalter oder ein Titel ohne Zahl, ist
+   es das — Antwort wäre, den Titel erst nach dem Laden der Liste zu lesen.
+2. **Formatwechsel.** Steht dort eine echte Zahl in anderer Schreibweise
+   (`7505 Angebote`, `über 7.500 Angebote`, `7.505 Immobilien`), ist das Muster
+   `/([\d.]+)\s+Angebote/` in `trefferzahlAusTitel` zu eng.
+
+**Nicht raten.** Erst den Titel aus dem Log lesen, dann einen scheiternden Test
+mit genau diesem Titel schreiben, dann das Muster erweitern.
+
+- [ ] **Schritt 1:** Im Log des nächsten Laufs nach `Titel war:` suchen und die
+      Titel für `nw`, `bw` und `mv` notieren.
+- [ ] **Schritt 2:** Test in `scrapers/immowelt/index.test.ts` mit dem echten
+      Titel, rot sehen, dann `trefferzahlAusTitel` erweitern.
+- [ ] **Schritt 3:** Nach einem Lauf prüfen, dass die drei Regionen
+      `vollstaendig=true` in `sweep_region_runs` schreiben.
+
+**Abnahme:** `select partition, gemeldete_treffer from sweep_region_runs where
+source='immowelt' and partition in ('nw','bw','mv') order by started_at desc`
+liefert Zahlen statt `null`.
+
+**Stand nach Lauf `34329204906` (2026-09-09):** noch nicht gemessen. Der Lauf
+sweepte nur `by`, und dort parst der Titel (`4692` von gemeldet `5083`). Es
+steht keine einzige `Titel war:`-Zeile im Log. Die Messung kommt, sobald die
+Rotation `nw`, `bw` oder `mv` erreicht — nach der Fortsetzungsrotation sind
+zuerst `ni` und `rp` an der Reihe, die noch nie gesweept wurden.
+
 # Teil B — Braucht erst einen Entwurf
 
 Nicht direkt implementieren. Reihenfolge: `superpowers:brainstorming` → Spec
@@ -1005,20 +1046,24 @@ unter `docs/superpowers/specs/` → `superpowers:writing-plans` → Umsetzung.
 > (90. Perzentil 20) — mit einer **Fortsetzungsrotation statt der Uhr in 5,7
 > Tagen, ohne einen einzigen zusätzlichen Abruf**. B1 ist also erreichbar.
 >
-> **Empfohlen wird trotzdem nicht B1, sondern Markieren ohne Löschen** —
-> derselbe Code mit abgeschaltetem letztem Schritt. Grund: Ein Lauf, der `nw`
-> soft-geblockt mit einer Karte einsammelt, gilt heute als vollständig, weil
-> `istRegionVollstaendig` bei fehlender Trefferzahl `true` liefert — und die
-> Trefferzahl fehlt ausgerechnet für `nw`, `bw` und `mv`. Das wären heute
-> **1.160**, am Sättigungspunkt **~6.900** fälschlich gelöschte Objekte.
-> Selbst mit reparierter Trefferzahl erlaubt die 25-%-Toleranz **bis zu 1.724**
-> in einem Zug.
+> **Option 0 und Option 1 sind erledigt.** Option 0 war A14
+> (`.in()`-Stückelung, 2026-09-08). Option 1 ist seit 2026-09-09 im Code:
+> Fortsetzungsrotation und fail-closed bei fehlender Trefferzahl. Als Nächstes
+> steht **Option 3** an — markieren ohne löschen.
 >
-> **Drei Fail-open-Stellen** müssen vorher fallen: `bestand.ts:78` (leerer
-> Geltungsbereich = voller Geltungsbereich), `istRegionVollstaendig`
-> (`immowelt/index.ts:146`, `null` = vollständig) und `loescheAbgelaufene`
-> (`bestandDb.ts:155`, filtert **nicht** nach `source` — wer heute markiert,
-> löscht zwei Tage später mit).
+> **Empfohlen wird weiterhin nicht B1, sondern Markieren ohne Löschen** —
+> derselbe Code mit abgeschaltetem letztem Schritt. Grund: Selbst mit
+> reparierter Trefferzahl erlaubt die 25-%-Toleranz einen Lauf mit 75 %
+> Ausbeute — **bis zu 1.724** echte Objekte in einem Zug. Gelöschte Zeilen sind
+> weg, ausgegraute nicht.
+>
+> **Von den drei Fail-open-Stellen ist eine geschlossen.** Offen bleiben
+> `bestand.ts:78` (leerer Geltungsbereich = voller Geltungsbereich) und
+> `loescheAbgelaufene` (`bestandDb.ts:155`, filtert **nicht** nach `source` —
+> wer heute markiert, löscht zwei Tage später mit). Geschlossen ist
+> `istRegionVollstaendig`: `null` heißt jetzt **unvollständig**. Die Folge
+> steht in **A15** — `nw`, `bw` und `mv` sammeln keine Referenzläufe mehr an,
+> solange ihr Titel nicht parst.
 
 **Harte Voraussetzung:** `sweep_region_runs` muss je Region **drei**
 vollständige Läufe zeigen. Vorher ist die Aufgabe wirkungslos.
@@ -1026,12 +1071,23 @@ vollständige Läufe zeigen. Vorher ist die Aufgabe wirkungslos.
 ```sql
 select partition, count(*) filter (where vollstaendig) as referenzlaeufe
 from sweep_region_runs where source = 'immowelt'
+  and gemeldete_treffer is not null   -- siehe Warnung unten
 group by partition order by referenzlaeufe desc;
 ```
 
+**Der Filter ist nicht optional.** Gemessen am 2026-09-09 stehen in
+`sweep_region_runs` **8 Zeilen mit `vollstaendig=true`, obwohl ihre
+Trefferzahl `null` ist** — Altbestand aus der Fail-open-Zeit vor dem
+2026-09-09, verteilt auf `nw` (3), `mv` (3), `bw`, `sh`, `th`, `sl`. Ohne den
+Filter behauptet die Abfrage Referenzläufe, für die nie ein Mengenmaßstab
+existierte, und zwar ausgerechnet für die größte Region. `started_at >=
+'2026-09-09'` täte es genauso.
+
 Stand 2026-09-08: vier Regionen mit je einem Lauf (`br`, `st`, `th`, `sl`).
-**Zusätzlich blockiert durch A1** — ohne Detailerfassung bleibt
-`listings.fundort` leer, und ohne Fundort ist keine Verengung möglich.
+Die Fortsetzungsrotation lässt diese Zahl seit 2026-09-09 planbar wachsen —
+Median 5,7 statt 13,1 Tage bis drei Referenzläufe je Region. **A15 ist
+Voraussetzung:** `nw`, `bw` und `mv` zählen erst wieder mit, wenn ihre
+Trefferzahl parst.
 
 **Zu entwerfen:** Die Mengenplausibilität ist heute quellenweit
 (`lib/plausibilitaet.ts`, Median aus `sweep_runs`). Für regionsgenaues Löschen

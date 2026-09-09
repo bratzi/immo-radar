@@ -23,7 +23,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| A-1 | Läuft ohne Ausnahme durch, endet mit `Lauf abgeschlossen` | **erfüllt** — zuletzt `34278399926` (2026-09-08, 21:03–21:29 UTC, 25 min, `conclusion=success`) |
+| A-1 | Läuft ohne Ausnahme durch, endet mit `Lauf abgeschlossen` | **erfüllt** — zuletzt `34329204906` (2026-09-09, 08:27–08:55 UTC, 28 min, `conclusion=success`) |
 | A-2 | Keine Meldung im Log behauptet eine Ursache, die nicht gemessen ist | **erfüllt** seit `ea68fbf` |
 | A-3 | Der Cron liefert verlässlich Läufe | **offen** — 43 % der Termine fallen aus (A10) |
 | A-4 | Kein Objekt fällt still aus dem Radar | **offen** — der stille `continue` bleibt; die Ursache ist aber vermessen: „Preis auf Anfrage" der Quelle, kein Parserfehler, und die Quote misst die Region (A13) |
@@ -32,9 +32,9 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 
 | # | Kriterium | Stand |
 |---|---|---|
-| B-1 | Jedes der 16 Bundesländer war mindestens einmal erfasst | **offen** — `34278399926` schaffte nur `he` und `sn` (2 von 16); gerechnet: mit der heutigen Uhr-Rotation 13 Tage bis zur vollen Abdeckung, mit einer Fortsetzungsrotation 5,7 — ohne zusätzliche Abrufe |
-| B-2 | Ein verschwundenes Immowelt-Objekt wird als verschwunden erkannt | **offen** — 0 von inzwischen 1.915 haben `disappeared_at`; fünf Sperren stehen davor, die erste ist der Fehler A14. Entwurf mit Optionen liegt vor (`specs/2026-09-08-immowelt-abgaenge-optionen.md`) |
-| B-3 | Die Löschwachen bleiben fail-closed | **erfüllt**, muss bei jeder Änderung erneut gelten |
+| B-1 | Jedes der 16 Bundesländer war mindestens einmal erfasst | **offen, aber jetzt planbar** — die Fortsetzungsrotation ist seit 2026-09-09 im Code: Startpunkt ist die am längsten nicht gesweepte Region statt der Wanduhr. Gerechnet Median 5,7 statt 13,1 Tage, 90. Perzentil 7,6 statt 20,2, ohne einen zusätzlichen Abruf. Belegt in `34329204906`: Start bei `by` statt bei `nw`, das die Uhr gewählt hätte und das 39 min vorher schon gesweept war. `by` hatte in 33 Regionsläufen zuvor **keinen** Eintrag |
+| B-2 | Ein verschwundenes Immowelt-Objekt wird als verschwunden erkannt | **offen** — 0 haben `disappeared_at`. Von den fünf Sperren sind die Vorarbeiten Option 0 (A14) und Option 1 (Rotation, fail-closed) erledigt; als Nächstes Option 3, markieren ohne löschen (`specs/2026-09-08-immowelt-abgaenge-optionen.md`) |
+| B-3 | Die Löschwachen bleiben fail-closed | **erfüllt** — seit 2026-09-09 eine Stelle mehr: `istRegionVollstaendig` liest eine fehlende Trefferzahl nicht mehr als „vollständig". Zwei bekannte Fail-open-Stellen bleiben offen (`bestand.ts:78`, `loescheAbgelaufene` ohne `source`-Filter); beide greifen erst, wenn Immowelt löschen darf. Muss bei jeder Änderung erneut gelten |
 
 ## C — Die Zahlen
 
