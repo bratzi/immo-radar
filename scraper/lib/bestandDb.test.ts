@@ -7,6 +7,7 @@ import {
   markiereVerschwunden,
   hebeVerschwundenAuf,
   loescheAbgelaufene,
+  quelleHatLoeschhoheit,
   ladeLetzteRegionsSweeps,
 } from "./bestandDb.js";
 
@@ -340,5 +341,27 @@ describe("ladeBekannteListings", () => {
     const bekannte = await ladeBekannteListings(client, "zvg-portal");
 
     expect(bekannte[0].fundort).toBeNull();
+  });
+});
+
+/**
+ * Der benannte Begriff hinter der Erlaubnisliste. `ermittleMarkierungen`
+ * (lib/bestand.ts) entscheidet an ihm, wieviel Beweislast eine Markierung
+ * tragen muss -- deshalb muss die Liste von aussen lesbar sein, ohne dass
+ * jemand sie ein zweites Mal abschreibt. Zwei Listen, die auseinanderlaufen,
+ * waeren genau die Bauart, die dieses Projekt schon einmal teuer bezahlt hat.
+ */
+describe("quelleHatLoeschhoheit", () => {
+  it("gibt zvg-portal die Loeschhoheit", () => {
+    expect(quelleHatLoeschhoheit("zvg-portal")).toBe(true);
+  });
+
+  it("gibt immowelt KEINE Loeschhoheit -- Option 3 markiert, sie loescht nicht", () => {
+    expect(quelleHatLoeschhoheit("immowelt")).toBe(false);
+  });
+
+  it("gibt einer unbekannten Quelle keine Loeschhoheit", () => {
+    // Erlaubnisliste, nicht Ausschlussliste.
+    expect(quelleHatLoeschhoheit("irgendein-neues-portal")).toBe(false);
   });
 });
