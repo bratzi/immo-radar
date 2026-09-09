@@ -74,7 +74,12 @@ export async function ladeBekannteListings(
     id: zeile.id,
     externalId: zeile.external_id,
     disappearedAt: zeile.disappeared_at,
-    fundort: zeile.fundort,
+    // `?? null` ist nicht kosmetisch: Fehlt die Spalte in der Antwort, kaeme
+    // `undefined` heraus. Das rutscht durch die Pruefung `fundort !== null` in
+    // `partitionEinesListings` glatt hindurch und wuerde als Partition
+    // zurueckgegeben -- ein gebrochener Typvertrag unmittelbar vor einer
+    // Loeschwache.
+    fundort: zeile.fundort ?? null,
   }));
 }
 

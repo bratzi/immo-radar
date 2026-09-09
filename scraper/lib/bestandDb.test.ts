@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  ladeBekannteListings,
   regionsLaufZeile,
   aktualisiereLastSeen,
   markiereVerschwunden,
@@ -268,5 +269,76 @@ describe("ladeLetzteRegionsSweeps", () => {
   it("liefert null, wenn die Abfrage scheitert -- nicht eine leere Map", async () => {
     const { client } = fakeRegionsHistorie({ fehler: true });
     expect(await ladeLetzteRegionsSweeps(client, "immowelt")).toBeNull();
+  });
+});
+
+/**
+ * Der Fundort muss MITGELESEN werden, sonst ist er fuer die
+ * Abgangsermittlung nicht da: `partitionEinesListings` (bestand.ts)
+ * beantwortet damit die Frage, ob ein Sweep ein Objekt ueberhaupt abgedeckt
+ * hat. Fehlt die Spalte in der Auswahl, kaeme fuer jedes Immowelt-Objekt
+ * wieder null heraus -- Immowelts externalId ist eine nackte UUID und traegt
+ * die Region nicht.
+ */
+function fakeListings(zeilen: unknown[]) {
+  const auswahlen: string[] = [];
+  const client = {
+    from(_tabelle: string) {
+      return {
+        select: (spalten: string) => {
+          auswahlen.push(spalten);
+          return {
+            eq: (_spalte: string, _wert: unknown) => ({
+              range: (von: number, bis: number) =>
+                Promise.resolve({ data: zeilen.slice(von, bis + 1), error: null }),
+            }),
+          };
+        },
+      };
+    },
+  };
+  return { client: client as unknown as SupabaseClient, auswahlen };
+}
+
+describe("ladeBekannteListings", () => {
+  it("liest den gespeicherten Fundort mit", async () => {
+    const { client, auswahlen } = fakeListings([
+      {
+        id: "iw-1",
+        external_id: "e71353e6-4ef9-4162-8a4f-e680c3951de4",
+        disappeared_at: null,
+        fundort: "he",
+      },
+    ]);
+
+    const bekannte = await ladeBekannteListings(client, "immowelt");
+
+    expect(bekannte).toEqual([
+      {
+        id: "iw-1",
+        externalId: "e71353e6-4ef9-4162-8a4f-e680c3951de4",
+        disappearedAt: null,
+        fundort: "he",
+      },
+    ]);
+    // Ohne die Spalte in der Auswahl liefert Supabase sie nicht -- der
+    // Abgleich saehe dann jedes Objekt als nicht zuzuordnen.
+    expect(auswahlen[0]).toContain("fundort");
+  });
+
+  it("macht aus einer fehlenden Spalte null, nicht undefined", async () => {
+    // Fail-closed und typtreu zugleich: `BekanntesListing.fundort` ist
+    // `string | null`. Ein `undefined` kaeme durch die Pruefung
+    // `fundort !== null` glatt hindurch und wuerde als Partition
+    // zurueckgegeben -- ein gebrochener Vertrag unmittelbar vor einer
+    // Loeschwache, und genau die Sorte Ueberraschung, die dieses Projekt
+    // teuer bezahlt hat.
+    const { client } = fakeListings([
+      { id: "zvg-1", external_id: "sn-40908", disappeared_at: null },
+    ]);
+
+    const bekannte = await ladeBekannteListings(client, "zvg-portal");
+
+    expect(bekannte[0].fundort).toBeNull();
   });
 });
