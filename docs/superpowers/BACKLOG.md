@@ -1091,11 +1091,37 @@ Ein anderes Muster hilft nicht, und später lesen auch nicht.
 Gesucht wurde nach Zahl plus `Angebote`, `Immobilien`, `Ergebnisse`,
 `Treffer`, `Objekte` oder `Inserate`, im Text ohne Markup.
 
+**Lauf `34388892360` — Gegenprobe mit `bw`, dasselbe Bild:**
+
+```
+Titel, den regionErfassen las: Mehrfamilienhaus kaufen in Baden-Württemberg | immowelt
+Titel am Ende des Laufs:       Häuser zum Kauf in Baden-Württemberg
+  Trefferzahl daraus:          null   (beide)
+  KEIN Zahl-plus-Mengenwort im Seitentext gefunden.
+```
+
 ### Der Befund
 
-**Nordrhein-Westfalen weist seine Trefferzahl nirgends aus.** Kein
-Parserfehler, kein Formatwechsel, kein Timing — das Portal nennt für diese
-Region schlicht keine Menge.
+**Diese Regionen weisen ihre Trefferzahl nirgends aus.** Kein Parserfehler,
+kein Formatwechsel, kein Timing — das Portal nennt für sie schlicht keine
+Menge. In zwei Regionen unabhängig reproduziert.
+
+**Und es liegt nicht an der Größe**, die naheliegendste Erklärung. Gemessen
+aus `sweep_region_runs`:
+
+| Region | Objekte | Trefferzahl im Titel |
+|---|---|---|
+| `nw` | ~6.965 | **nein** |
+| `by` | 5.083 | ja |
+| `bw` | ~4.847 | **nein** |
+| `ni` | 3.282 | ja |
+| `he` | 2.698 | ja |
+| `mv` | ~623 | **nein** |
+| `hb` | 204 | ja |
+
+Bayern ist größer als Baden-Württemberg und nennt seine Zahl;
+Mecklenburg-Vorpommern ist klein und nennt sie nicht. Woran es stattdessen
+liegt, ist offen — und für die Lösung auch gleichgültig.
 
 **Die Folge wiegt schwer.** `istRegionVollstaendig` kann für `nw` nie `true`
 liefern. Die Fail-closed-Entscheidung vom 2026-09-09 ist damit dauerhaft
