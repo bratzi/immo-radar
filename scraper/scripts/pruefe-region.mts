@@ -110,6 +110,38 @@ try {
         : "  -> Die Titel UNTERSCHEIDEN sich. Der Lesezeitpunkt ist beteiligt."
     );
   }
+
+  // A15, zweite Stufe. Der erste Messlauf (nw, 2026-09-09) hat BEIDE
+  // Hypothesen widerlegt: Der Titel lautete "Mehrfamilienhaus kaufen in
+  // Nordrhein-Westfalen | immowelt" und am Ende "Haeuser zum Kauf in
+  // Nordrhein-Westfalen" -- verschieden, aber KEINER von beiden nennt eine
+  // Zahl. Ein weiteres Titelmuster hilft also nicht; die Zahl steht dort
+  // schlicht nicht.
+  //
+  // Bleibt die Frage, ob das Portal sie ueberhaupt irgendwo ausweist. Deshalb
+  // durchsucht diese Stufe den SEITENTEXT nach Zahl-plus-Mengenwort. Findet
+  // sie etwas, gibt es eine zweite Quelle fuer die Trefferzahl und die
+  // Vollstaendigkeitspruefung kann darauf umziehen. Findet sie nichts, ist
+  // belegt, dass diese Region ihre Menge nicht ausweist -- und dann bleibt es
+  // fail-closed dabei, dass sie nie als vollstaendig gilt.
+  console.log("\n=== Trefferzahl im Seitentext? ===");
+  const inhalt = await page.content();
+  // Ohne Tags suchen: Die Zahl und ihr Mengenwort stehen sonst oft durch
+  // Markup getrennt.
+  const text = inhalt.replace(/<[^>]*>/g, " ").replace(/&nbsp;| /g, " ");
+  const muster = /([\d][\d.\s]{0,12})\s*(Angebote|Immobilien|Ergebnisse|Treffer|Objekte|Inserate)/gi;
+  const funde = new Map<string, number>();
+  for (const t of text.matchAll(muster)) {
+    const schluessel = `${t[1].trim()} ${t[2]}`;
+    funde.set(schluessel, (funde.get(schluessel) ?? 0) + 1);
+  }
+  if (funde.size === 0) {
+    console.log("  KEIN Zahl-plus-Mengenwort im Seitentext gefunden.");
+  } else {
+    for (const [wortlaut, anzahl] of [...funde].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+      console.log(`  ${anzahl}x  "${wortlaut}"`);
+    }
+  }
   if (fehler !== null) {
     console.log(`\nAUSNAHME (im Produktivlauf still verschluckt):`);
     console.log(fehler instanceof Error ? `  ${fehler.name}: ${fehler.message.split("\n")[0]}` : `  ${String(fehler)}`);
