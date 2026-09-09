@@ -213,8 +213,16 @@ export async function logNotification(
     detail,
   });
   if (error) throw error;
+  // Fail-closed: Die Zeile behauptet "gesendet", also muss der Versand belegt
+  // sein. Belegt ist er allein durch die von Telegram bestaetigte message_id.
+  // Sich stattdessen darauf zu stuetzen, dass alle Aufrufer erst nach einem
+  // geglueckten Versand hierherkommen, waere eine Annahme ueber Code in einer
+  // anderen Datei -- heute wahr, und von einem kuenftigen vierten Aufrufer
+  // still zu brechen. Frueher stand hier "message_id=unbekannt": eine
+  // Erfolgsmeldung ohne Erfolg.
   const messageId = (detail as { telegramMessageId?: number | null }).telegramMessageId ?? null;
-  console.log(`Telegram gesendet [${kind}] message_id=${messageId ?? "unbekannt"} ${objektKennung}`);
+  if (messageId === null) return;
+  console.log(`Telegram gesendet [${kind}] message_id=${messageId} ${objektKennung}`);
 }
 
 /**

@@ -84,6 +84,22 @@ describe("werteAusTitelzeile", () => {
       123_456_700
     );
   });
+
+  it("liest '5.00 €' mit unvollstaendiger Dreiergruppe als null statt als 0 Cent", () => {
+    // Derselbe Fehler wie "75000 €", nur eine Stelle weiter: Der Lookbehind
+    // vor PREIS sperrte nur eine Ziffer davor, nicht den Punkt. Damit durfte
+    // hinter dem Punkt ein NEUER Preis anfangen -- "00" plus Euro-Zeichen,
+    // also wieder 0 Cent. Auch dieser Titel muss eine Fehlanzeige ergeben und
+    // faellt damit unter `preis_unlesbar`.
+    expect(
+      werteAusTitelzeile("Mehrfamilienhaus zum Kauf - West - 5.00 € - 3 Zimmer, 90 m²").preisCents
+    ).toBeNull();
+
+    // Das Komma-Format bleibt unangetastet.
+    expect(
+      werteAusTitelzeile("Mehrfamilienhaus zum Kauf - Mitte - 1.500,50 € - 5 Zimmer").preisCents
+    ).toBe(150_050);
+  });
 });
 
 /**

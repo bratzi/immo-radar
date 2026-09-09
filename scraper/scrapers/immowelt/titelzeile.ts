@@ -42,15 +42,25 @@ function deutscheZahl(text: string): number | null {
  * Ein erfundener Preis waere schlimmer als gar keiner: Er ginge unmittelbar in
  * den Kaufpreisfaktor ein.
  *
- * Das `(?<!\d)` vorn ist Pflicht, kein Zierrat: Ohne die Lookbehind-Sperre
+ * Das `(?<![\d.,])` vorn ist Pflicht, kein Zierrat. Ohne die Lookbehind-Sperre
  * greift das Muster bei einer Zahl ohne Tausenderpunkt ("75000 €") an einer
  * beliebigen Stelle mitten in der Ziffernfolge und liest nur die letzten drei
  * Ziffern -- "000" statt "75000". Ergebnis war 0 Cent statt Fehlanzeige, ein
- * erfundener Preis. In den 1758 gemessenen echten Titeln kommt dieses Format
- * nicht vor (A13); die Sperre stellt sicher, dass es dort landet, wo es
- * hingehoert: null statt eines stillen Fehlwerts.
+ * erfundener Preis.
+ *
+ * Punkt und Komma stehen aus demselben Grund in der Sperre, und sie sind
+ * NACHTRAEGLICH dazugekommen: Mit `(?<!\d)` allein durfte hinter einem Punkt
+ * ein neuer Preis anfangen. "5.00 €" -- eine unvollstaendige Dreiergruppe --
+ * ergab damit erneut 0 Cent, weil "00" plus Eurozeichen fuer sich genommen
+ * matcht. Derselbe Fehler eine Stelle weiter. Wer die Sperre kuerzt, holt ihn
+ * zurueck.
+ *
+ * In den 1758 gemessenen echten Titeln kommt keines dieser Formate vor (A13);
+ * beide Sperren sind Haertung, kein Bugfix. Sie stellen sicher, dass ein
+ * unlesbarer Preis dort landet, wo er hingehoert: null statt eines stillen
+ * Fehlwerts, und damit unter `preis_unlesbar`.
  */
-const PREIS = /(?<!\d)(\d{1,3}(?:\.\d{3})*(?:,\d+)?)\s*€/;
+const PREIS = /(?<![\d.,])(\d{1,3}(?:\.\d{3})*(?:,\d+)?)\s*€/;
 
 /**
  * Wohnflaeche und Grundstueck stehen beide als "N m²" da und unterscheiden
@@ -159,15 +169,19 @@ export function fasseOhnePreisZusammen(
 ): string {
   if (faelle.length === 0) return "0 ohne Preisangabe uebersprungen.";
 
-  const jeCode = new Map<LueckencodeOhnePreis, { fundort: string | null }[]>([
-    ["preis_auf_anfrage", []],
-    ["preis_unlesbar", []],
-  ]);
+  // Ein Record statt einer Map: Beide Schluessel sind vom Typ her Pflicht,
+  // also braucht der Zugriff unten keine Non-null-Zusicherung. Kommt je ein
+  // dritter Lueckencode dazu, meldet der Typpruefer die fehlende Gruppe --
+  // statt dass sie erst zur Laufzeit auffiele.
+  const jeCode: Record<LueckencodeOhnePreis, { fundort: string | null }[]> = {
+    preis_auf_anfrage: [],
+    preis_unlesbar: [],
+  };
   for (const fall of faelle) {
-    jeCode.get(ermittleLueckencodeOhnePreis(fall.titleLine))!.push(fall);
+    jeCode[ermittleLueckencodeOhnePreis(fall.titleLine)].push(fall);
   }
 
-  const teile = [...jeCode.entries()].map(([code, gruppe]) => {
+  const teile = Object.entries(jeCode).map(([code, gruppe]) => {
     const aufschluesselung = gruppe.length === 0 ? "" : ` (${aufschluesselnJeFundort(gruppe)})`;
     return `${code} ${gruppe.length}${aufschluesselung}`;
   });

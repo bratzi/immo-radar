@@ -1,6 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Kennzahlen } from "./metrics.js";
-import { diffVersion, versionInsertZeile, listingUpsertZeile, versandBeleg } from "./db.js";
+import {
+  diffVersion,
+  versionInsertZeile,
+  listingUpsertZeile,
+  versandBeleg,
+  logNotification,
+} from "./db.js";
 
 describe("diffVersion", () => {
   it("meldet changed=true und priceDropped=false für die allererste Version", () => {
@@ -133,5 +140,62 @@ describe("versandBeleg", () => {
 
   it("traegt null als Lauf-ID ausserhalb von GitHub Actions", () => {
     expect(versandBeleg(4711, undefined)).toMatchObject({ runId: null });
+  });
+});
+
+/**
+ * Die Erfolgszeile im Log behauptet "Telegram gesendet". Sie darf sich nicht
+ * darauf stuetzen, dass alle Aufrufer `logNotification` erst nach einem
+ * bestaetigten Versand rufen -- das ist heute wahr, steht aber in einer
+ * anderen Datei und kann von einem kuenftigen vierten Aufrufer gebrochen
+ * werden. Belegt ist der Versand allein durch die von Telegram bestaetigte
+ * `message_id` im `detail`. Fehlt sie, gibt es keine Erfolgsmeldung.
+ *
+ * Das ist dieselbe Regel wie in den Loeschwachen: Ein unbekannter Zustand ist
+ * nie "in Ordnung".
+ */
+describe("logNotification — die Erfolgszeile ruht auf der bestaetigten message_id", () => {
+  function protokollAttrappe(): SupabaseClient {
+    return {
+      from: () => ({ insert: () => Promise.resolve({ error: null }) }),
+    } as unknown as SupabaseClient;
+  }
+
+  it("schreibt die Erfolgszeile, wenn eine bestaetigte message_id vorliegt", async () => {
+    const zeilen: string[] = [];
+    const spion = vi.spyOn(console, "log").mockImplementation((...args) => {
+      zeilen.push(String(args[0]));
+    });
+
+    await logNotification(
+      protokollAttrappe(),
+      "listing-1",
+      "pruefkandidat",
+      { telegramMessageId: 4711, runId: "42" },
+      "zvg-portal · sn-40908"
+    );
+
+    spion.mockRestore();
+    expect(zeilen.filter((z) => z.includes("4711"))).toHaveLength(1);
+  });
+
+  it("schreibt KEINE Erfolgszeile, wenn die message_id fehlt", async () => {
+    const zeilen: string[] = [];
+    const spion = vi.spyOn(console, "log").mockImplementation((...args) => {
+      zeilen.push(String(args[0]));
+    });
+
+    await logNotification(
+      protokollAttrappe(),
+      "listing-1",
+      "pruefkandidat",
+      { telegramMessageId: null, runId: "42" },
+      "zvg-portal · sn-40908"
+    );
+
+    spion.mockRestore();
+    // Kein "gesendet" ohne Beleg. Frueher stand hier "message_id=unbekannt",
+    // also eine Erfolgsmeldung ohne Erfolg.
+    expect(zeilen.filter((z) => z.includes("sn-40908"))).toEqual([]);
   });
 });
