@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import {
   trefferzahlAusTitel,
   istRegionVollstaendig,
@@ -30,7 +30,7 @@ describe("istRegionVollstaendig", () => {
     // Signatur eines DataDome-Soft-Blocks: HTTP 200, aber leere Huelle --
     // kein parsebarer Titel, keine Karte. Ein echtes Bundesland hat weder
     // null Mehrfamilienhaeuser noch einen unlesbaren Titel.
-    expect(istRegionVollstaendig(0, null)).toBe(false);
+    expect(istRegionVollstaendig(0, null, false)).toBe(false);
   });
 
   it("gilt als unvollstaendig, wenn die Trefferzahl fehlt -- auch mit Objekten", () => {
@@ -46,32 +46,49 @@ describe("istRegionVollstaendig", () => {
     // Sweep-Ergebnis ohnehin hart `false`, es wird nichts geloescht. Es
     // verhindert nur, dass unbelegte Regionen als Referenzlaeufe zaehlen --
     // genau das, was der spaetere regionsgenaue Abgleich braucht.
-    expect(istRegionVollstaendig(41, null)).toBe(false);
+    expect(istRegionVollstaendig(41, null, false)).toBe(false);
   });
 
   it("ist unvollstaendig, wenn nichts eingesammelt wurde -- selbst bei 0 gemeldeten Treffern", () => {
     // 0/0 ist zwar in sich stimmig, aber null eingesammelte Objekte sind nie
     // ein Beleg fuer Vollstaendigkeit: eine geblockte Huelle kann einen Titel
     // tragen, der zu null Treffern parst. Null gesammelt -> immer false.
-    expect(istRegionVollstaendig(0, 0)).toBe(false);
+    expect(istRegionVollstaendig(0, 0, false)).toBe(false);
   });
 
   it("ist unvollstaendig, wenn nichts eingesammelt wurde, obwohl Treffer gemeldet sind", () => {
-    expect(istRegionVollstaendig(0, 120)).toBe(false);
+    expect(istRegionVollstaendig(0, 120, false)).toBe(false);
   });
 
   it("ist unvollstaendig, wenn die Menge weit unter der gemeldeten Zahl liegt", () => {
     // Bremen im Smoke-Test: 41 von 209 eingesammelt (nur Seite 1).
-    expect(istRegionVollstaendig(41, 209)).toBe(false);
+    expect(istRegionVollstaendig(41, 209, false)).toBe(false);
   });
 
   it("ist vollstaendig, wenn die Menge innerhalb der 25-%-Toleranz bleibt", () => {
     // 160 von 209 -> Fehlbetrag 23 %, noch im Rahmen.
-    expect(istRegionVollstaendig(160, 209)).toBe(true);
+    expect(istRegionVollstaendig(160, 209, false)).toBe(true);
   });
 
   it("ist vollstaendig, wenn mehr eingesammelt als gemeldet wurde", () => {
-    expect(istRegionVollstaendig(250, 209)).toBe(true);
+    expect(istRegionVollstaendig(250, 209, false)).toBe(true);
+  });
+
+  it("ist NIE vollstaendig, wenn die Blaetterung am Seitendeckel abgeschnitten wurde", () => {
+    // Die vierte Fail-open-Stelle, gefunden beim Umbau auf Option 3
+    // (2026-09-09). `regionErfassen` meldet `abgeschnitten`, wenn die Region
+    // am Seitendeckel des Portals endet -- sie ist dann NACHWEISLICH
+    // unvollstaendig erfasst. Bisher wurde dieser Befund nur geloggt.
+    //
+    // Solange nichts markiert wurde, kostete das nichts. Mit Option 3 waere es
+    // ein Loch: Der Deckel liegt bei rund 10.000 Objekten; meldet das Portal
+    // 10.000 bis 13.333, landet die abgeschnittene Menge zufaellig innerhalb
+    // der 25-%-Toleranz, die Region kaeme in den Geltungsbereich, und die
+    // abgeschnittenen Objekte waeren Abgaenge. Ein BEKANNTER
+    // Unvollstaendigkeitsbefund darf nie in eine Vollstaendigkeitsaussage
+    // muenden -- er schlaegt vor jeder Mengenrechnung durch.
+    expect(istRegionVollstaendig(160, 209, true)).toBe(false);
+    expect(istRegionVollstaendig(250, 209, true)).toBe(false);
   });
 });
 
@@ -245,7 +262,7 @@ describe("beurteileDetailAntwort", () => {
   it("erkennt den Soft-Block: HTTP 200 mit leerer Huelle", () => {
     // DataDome antwortet auch mit 200 und ~1,5 kB Huelle statt der Seite.
     const urteil = beurteileDetailAntwort(200, 1500, false);
-    expect(urteil).toMatch(/Huelle|Hülle/);
+    expect(urteil).toMatch(/Huelle|HÃ¼lle/);
     expect(urteil).not.toMatch(/Struktur/i);
   });
 
