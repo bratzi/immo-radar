@@ -458,6 +458,11 @@ async function main() {
     }, meldebudget);
   }
 
+  // Jetzt steht fest, wie viele besser belegte Kandidaten es in diesem Lauf
+  // gab: freie Plaetze gehen an die zurueckgestellten, nur landesweit
+  // geschaetzten Meldungen. Sonst verfiele Durchsatz (lib/meldebudget.ts).
+  await meldebudget.holeNach();
+
   // --- Bestandsfuehrung -------------------------------------------------
   console.log(
     `Meldungen: ${meldebudget.verbraucht()} von hoechstens ${MAX_MELDUNGEN_JE_LAUF} gesendet` +

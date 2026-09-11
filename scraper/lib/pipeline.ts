@@ -9,7 +9,7 @@ import { ermittleJahreskaltmiete, bundeslandFuerRegionscode } from "./rentEstima
 import { bestimmeMeldeklasse, istHoeher, type Meldeklasse } from "./meldung.js";
 import { upsertListingAndVersion, logNotification, hoechsteGemeldeteKlasse, versandBeleg } from "./db.js";
 import { kartePngFuerPlz } from "./karte.js";
-import type { Meldebudget } from "./meldebudget.js";
+import { mietstufeFuerQuelle, type Meldebudget } from "./meldebudget.js";
 import {
   sendTelegramMessage,
   sendTelegramPhotos,
@@ -345,9 +345,13 @@ export async function processCandidate(
     // KEIN vorzeitiges `return` an dieser Stelle: die Preisaenderungs-Meldung
     // weiter unten haengt nicht an der Meldeklasse und muesste sonst
     // mitausfallen.
-    if (meldenNoetig && meldebudget !== undefined && !meldebudget.darfSenden()) {
-      meldebudget.zurueckstellen();
-    } else if (meldenNoetig) {
+    //
+    // Die Stufe kommt aus der MIETQUELLE, nicht aus den dataGaps: die
+    // Datenluecke `miete_nur_bundeslandgenau` ist nur deren Ableitung und
+    // liegt in einem Set mit den Luecken, die der jeweilige Scraper
+    // beisteuert (Begruendung bei `mietstufeFuerQuelle`).
+    const mietstufe = mietstufeFuerQuelle(miete.quelle);
+    const sendeMeldung = async (): Promise<void> => {
       const kennzahlenSummary = {
         kaufpreisfaktor: kennzahlen.kaufpreisfaktor,
         geschaetzterDscr: kennzahlen.geschaetzterDscr,
@@ -402,7 +406,18 @@ export async function processCandidate(
         },
         `${candidate.source} · ${candidate.externalId}`
       );
-      meldebudget?.verbuchen();
+      meldebudget?.verbuchen(mietstufe);
+    };
+
+    if (meldenNoetig && meldebudget !== undefined && !meldebudget.darfSenden(mietstufe)) {
+      // Auf die Nachholliste kommt NUR die landesweite Stufe: sie ist die
+      // einzige, die am eigenen Kontingent scheitern kann, waehrend das
+      // Gesamtbudget noch Plaetze hat. Eine besser belegte Meldung, die hier
+      // ankommt, ist am Gesamtbudget gescheitert -- fuer die waere am Ende
+      // des Laufs erst recht kein Platz.
+      meldebudget.zurueckstellen(mietstufe === "nur_landesweit" ? sendeMeldung : undefined);
+    } else if (meldenNoetig) {
+      await sendeMeldung();
     }
   }
 
