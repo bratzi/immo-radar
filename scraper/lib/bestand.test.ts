@@ -4,6 +4,8 @@ import {
   partitionEinesListings,
   ermittleAbgaenge,
   ermittleMarkierungen,
+  budgetiereAbgangsmeldungen,
+  MAX_ABGANGSMELDUNGEN_JE_LAUF,
   ermittleRueckkehrer,
   istKarenzAbgelaufen,
   istHartLoeschbar,
@@ -580,5 +582,31 @@ describe("ermittleMarkierungen", () => {
     expect(
       ermittleMarkierungen(zvg, bekannte, mitLoeschhoheit).map((l) => l.externalId)
     ).toEqual(["sn-2"]);
+  });
+});
+
+describe("budgetiereAbgangsmeldungen", () => {
+  const abgaenge = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `x${i}` }));
+
+  it("laesst alle durch, solange die Obergrenze nicht erreicht ist", () => {
+    const { melden, verschwiegen } = budgetiereAbgangsmeldungen(abgaenge(4));
+    expect(melden).toHaveLength(4);
+    expect(verschwiegen).toBe(0);
+  });
+
+  it("deckelt bei der Obergrenze und zaehlt den Rest", () => {
+    const { melden, verschwiegen } = budgetiereAbgangsmeldungen(
+      abgaenge(MAX_ABGANGSMELDUNGEN_JE_LAUF + 7)
+    );
+    expect(melden).toHaveLength(MAX_ABGANGSMELDUNGEN_JE_LAUF);
+    expect(verschwiegen).toBe(7);
+  });
+
+  it("meldet bei genau der Obergrenze nichts als verschwiegen", () => {
+    const { melden, verschwiegen } = budgetiereAbgangsmeldungen(
+      abgaenge(MAX_ABGANGSMELDUNGEN_JE_LAUF)
+    );
+    expect(melden).toHaveLength(MAX_ABGANGSMELDUNGEN_JE_LAUF);
+    expect(verschwiegen).toBe(0);
   });
 });

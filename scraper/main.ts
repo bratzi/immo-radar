@@ -9,7 +9,9 @@ import {
 } from "./scrapers/zvg-portal/index.js";
 import { processCandidate, type PipelineCandidate } from "./lib/pipeline.js";
 import {
-  ermittleAbgaenge,
+  ermittleMarkierungen,
+  budgetiereAbgangsmeldungen,
+  MAX_ABGANGSMELDUNGEN_JE_LAUF,
   ermittleRueckkehrer,
   waehleDetailKandidaten,
   budgetiereKandidaten,
@@ -19,6 +21,7 @@ import { pruefeMengenplausibilitaet } from "./lib/plausibilitaet.js";
 import {
   ladeBekannteListings,
   ladeVeralteteExternalIds,
+  quelleHatLoeschhoheit,
   markiereVerschwunden,
   hebeVerschwundenAuf,
   aktualisiereLastSeen,
@@ -216,41 +219,65 @@ async function gleicheBestandAb(
     vollstaendig: sweep.vollstaendig,
   });
 
+  // Wieviel Beweislast eine Markierung traegt, haengt an genau einer Frage:
+  // Darf diese Quelle hart loeschen? Wo ja, ist die Markierung der erste
+  // Schritt der Loeschung und traegt deren volle Beweislast. Wo nein, ist sie
+  // ein reversibler Endzustand und der Regionsbeweis genuegt. Geurteilt wird
+  // in `ermittleMarkierungen`; hier wird nur weitergereicht.
+  const befugnis = {
+    hatLoeschhoheit: quelleHatLoeschhoheit(sweep.source),
+    quellenPruefungBestanden: pruefung.loeschenErlaubt,
+  };
+
   if (!pruefung.loeschenErlaubt) {
     // Eine strukturell nur teilweise erfasste Quelle (Immowelt: Ratenlimit
     // erzwingt eine rotierende Scheibe) verfehlt das Plausibilitaetstor JEDEN
     // Lauf -- das ist so gebaut, keine Anomalie. Eine Telegram-Warnung alle
     // drei Stunden waere Dauerfeuer und wuerde den Kanal abstumpfen lassen.
-    // Also: eine leise Logzeile, keine Meldung. Geloescht wird ohnehin nicht.
+    // Also: eine leise Logzeile, keine Meldung.
     if (sweep.strukturellTeilweise) {
       console.log(
         `${sweep.source}: Loeschung ausgesetzt (strukturell teilweise, erwartet) — ${pruefung.grund}`
       );
-      return;
+    } else {
+      console.warn(`${sweep.source}: Loeschung ausgesetzt — ${pruefung.grund}`);
+      await schlafe(TELEGRAM_SENDEABSTAND_MS);
+      await sendTelegramMessage(
+        telegramConfig,
+        formatSweepWarnungMessage(
+          sweep.source,
+          sweep.gesehene.size,
+          pruefung.erwartet,
+          pruefung.grund ?? ""
+        )
+      );
     }
-    console.warn(`${sweep.source}: Loeschung ausgesetzt — ${pruefung.grund}`);
-    await schlafe(TELEGRAM_SENDEABSTAND_MS);
-    await sendTelegramMessage(
-      telegramConfig,
-      formatSweepWarnungMessage(
-        sweep.source,
-        sweep.gesehene.size,
-        pruefung.erwartet,
-        pruefung.grund ?? ""
-      )
-    );
-    return;
+    // Nur eine Quelle MIT Loeschhoheit bricht hier ab. Fuer sie waere die
+    // Markierung der Beginn einer Loeschung, die diese Pruefung gerade
+    // untersagt hat. Ohne Loeschhoheit laeuft es weiter -- das Tor misst bei
+    // einer rotierend erfassten Quelle ohnehin nur die Rotation und waere
+    // dort ein permanentes Nein, also nie eine Markierung (Kriterium B-2).
+    if (befugnis.hatLoeschhoheit) return;
   }
 
-  const abgaenge = ermittleAbgaenge(sweep, bekannte);
+  const abgaenge = ermittleMarkierungen(sweep, bekannte, befugnis);
   if (abgaenge.length === 0) return;
 
   await markiereVerschwunden(sb, abgaenge.map((l) => l.id), jetzt);
   console.log(`${sweep.source}: ${abgaenge.length} Objekte als verschwunden markiert.`);
 
   // Abgangsmeldung nur fuer Objekte, die es frueher in den Chat geschafft
-  // haben. Alles andere waere bei mehreren hundert Objekten Dauerfeuer.
-  for (const abgang of abgaenge) {
+  // haben. Alles andere waere bei mehreren hundert Objekten Dauerfeuer --
+  // und weil auch das noch zu viele sein koennen, deckelt
+  // `budgetiereAbgangsmeldungen` die Zahl zusaetzlich (siehe dort).
+  const { melden, verschwiegen } = budgetiereAbgangsmeldungen(abgaenge);
+  if (verschwiegen > 0) {
+    console.log(
+      `${sweep.source}: ${verschwiegen} weitere Abgaenge sind markiert, aber nicht gemeldet ` +
+        `(Deckel ${MAX_ABGANGSMELDUNGEN_JE_LAUF}). Sie stehen mit disappeared_at im Bestand.`
+    );
+  }
+  for (const abgang of melden) {
     try {
       const gemeldet = await hoechsteGemeldeteKlasse(sb, abgang.id);
       if (gemeldet === "keine") continue;

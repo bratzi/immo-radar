@@ -441,3 +441,44 @@ export function sweepStartVersatz(
   }
   return bester;
 }
+
+/**
+ * Wie viele Abgangsmeldungen ein Lauf hoechstens verschickt.
+ *
+ * WARUM ES DIESE GRENZE BRAUCHT: Bis zum 2026-09-09 markierte allein ZVG,
+ * und dort sind es ein bis zwei Objekte je Lauf -- die Meldeschleife lief
+ * ungedeckelt, und das fiel nie auf. Mit Option 3 markiert auch Immowelt,
+ * und der erste Lauf danach holt einen Rueckstand auf, der sich seit dem
+ * Projektbeginn aufgestaut hat: Jedes Objekt, das je in den Chat kam und
+ * inzwischen weg ist, wuerde in EINEM Lauf gemeldet.
+ *
+ * Dieses Projekt hat den Nutzer schon einmal geflutet -- 318 Meldungen in
+ * einem Lauf, weswegen es `MAX_MELDUNGEN_JE_LAUF` ueberhaupt gibt. Eine
+ * Markierung freizugeben, ohne die Meldeseite zu deckeln, waere derselbe
+ * Fehler an der Nachbarstelle.
+ *
+ * WAS DER DECKEL KOSTET, und warum es vertretbar ist: Die ueberzaehligen
+ * Abgaenge werden NICHT nachgeholt. Sie sind bereits markiert, tauchen im
+ * naechsten Lauf also nicht erneut als neuer Abgang auf. Ihr Verschwinden
+ * bleibt damit unbemeldet -- aber nicht unbemerkt: `disappeared_at` steht in
+ * der Datenbank, und genau daraus lebt die ausgegraute Darstellung im
+ * Dashboard. Der Deckel kostet eine Chat-Nachricht, keine Information.
+ */
+export const MAX_ABGANGSMELDUNGEN_JE_LAUF = 10;
+
+/**
+ * Schneidet die Abgangsliste auf das, was ein Lauf melden darf.
+ *
+ * Bewusst ohne Auswahlregel: Die Reihenfolge ist die des Bestandsabgleichs.
+ * Eine Rangfolge zu erfinden ("die teuersten zuerst") waere eine Behauptung
+ * darueber, welcher Abgang wichtiger ist -- und die ist nicht gemessen.
+ */
+export function budgetiereAbgangsmeldungen<T>(abgaenge: T[]): {
+  melden: T[];
+  verschwiegen: number;
+} {
+  return {
+    melden: abgaenge.slice(0, MAX_ABGANGSMELDUNGEN_JE_LAUF),
+    verschwiegen: Math.max(0, abgaenge.length - MAX_ABGANGSMELDUNGEN_JE_LAUF),
+  };
+}
