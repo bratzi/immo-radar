@@ -21,7 +21,7 @@ dran ist. Die Detailbegründungen und die Fallen stehen in
 | **Betrieb** (Scraper, Cron, Telegram) | **läuft**, aber der Cron fällt zu 43 % aus — gemessen ein Lauf je ~5 h statt alle 3 h (A10) |
 | **Teilprojekt 1** — Vollständige Erfassung & Bestandsführung | **gemergt und live**, in Produktion bestätigt (Lauf `34215003141`) |
 | **Teilprojekt 2** — Mietqualität | **nicht begonnen**, Tabelle `rent_estimates` ist leer und wird von keinem Code gelesen |
-| **Teilprojekt 3** — Dashboard / Webseite | **nicht begonnen**, kein einziges Frontend-File im Repo |
+| **Teilprojekt 3** — Dashboard / Webseite | **Entwurf steht** (`specs/2026-09-09-dashboard-entwurf.md`), weiterhin kein Frontend-File — die Reihenfolge „Basis vor Dashboard" gilt |
 
 Die Webseite steht also nicht — und sie hat auch noch nie angefangen. Es gibt
 bisher nur den Scraper und Telegram als Ausgabe.
@@ -164,6 +164,42 @@ die SPA feuert pro Seite Dutzende XHRs.
 
 **Regel:** ein Live-Lauf, dann auswerten. Mehrere Hypothesen gehören in
 **einen** Lauf, nicht in mehrere.
+
+## Neupriorisiert am 2026-09-11
+
+**Der Befund, der die Reihenfolge geändert hat:** Von fünf offenen
+Abnahmekriterien hingen **drei an einer Entscheidung**, eines nur an **Zeit**,
+und nur B-2 war echte Arbeit. Die Basis liess sich durch Programmieren fast
+nicht weiter voranbringen.
+
+Dazu kam eine Schieflage im Aufwand: Vier Sitzungen hatten 66 KB
+Rückstandskatalog zu einer einzigen Frage erzeugt — wann ein Immowelt-Objekt
+als verschwunden gelten darf — während das Produkt, nach dem der Nutzer gefragt
+hat, null Zeilen Code hatte. Drei Aufgaben kauften dabei mehr Genauigkeit, als
+das Ergebnis trägt:
+
+- **A16** war Voraussetzung für **B1** — und B1 ist im eigenen Entwurf
+  verworfen. Es blockierte also etwas, das niemand will.
+- **A11 Schritt 3 / B3** wollten 95 PLZ-Werte von Hand Referenzkreisen
+  zuordnen, obwohl die Tabelle mit n = 23 geprüft ist (Median −11,4 %) und eine
+  falsche Schätzung gemessen **nie** einen Top-Treffer erzeugen kann.
+- **A6 und A13** sind ausermittelt; übrig ist je eine Entscheidung.
+
+**Die neue Reihenfolge, und was daraus wurde:**
+
+| Rang | Aufgabe | Stand |
+|---|---|---|
+| 1 | Option 3 — markieren ohne löschen | **gebaut** (2026-09-11), Produktionsbeleg fehlt |
+| 2 | Meldereihenfolge (D-5) | **gebaut**, Produktionsbeleg fehlt |
+| 3 | Dashboard-Entwurf, ohne Frontend-Code | **fertig** (`specs/2026-09-09-dashboard-entwurf.md`) |
+| 4 | Kleine echte Fehler, Doku gegen Code | **erledigt** |
+| 5 | Objekt ohne Preis speichern (A-4) | offen, **Entscheidung des Nutzers** |
+| — | A16, B1, A11/3, B3, B4 | **zurückgestellt**, Begründung in `specs/2026-09-09-offene-entscheidungen.md` |
+
+**Als Nächstes:** ein Produktionslauf, der Option 3 und D-5 belegt. Dieses
+Projekt belegt Abnahmen an echten Läufen, nicht an Tests.
+
+---
 
 ## Die To-do-Liste, in dieser Reihenfolge
 

@@ -25,7 +25,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 |---|---|---|
 | A-1 | Läuft ohne Ausnahme durch, endet mit `Lauf abgeschlossen` | **erfüllt** — zuletzt `34329204906` (2026-09-09, 08:27–08:55 UTC, 28 min, `conclusion=success`) |
 | A-2 | Keine Meldung im Log behauptet eine Ursache, die nicht gemessen ist | **erfüllt** seit `ea68fbf` |
-| A-3 | Der Cron liefert verlässlich Läufe | **offen** — 43 % der Termine fallen aus (A10) |
+| A-3 | Der Cron liefert verlässlich Läufe | **entschärft, bleibt offen** — 43 % der Termine fallen aus, das ist GitHub-seitig und nicht behebbar. Seit der Fortsetzungsrotation kostet ein ausgefallener Termin aber **Zeit, keine Abdeckung**: Der Startpunkt zeigt auf die am längsten nicht gesweepte Region. Entscheidung vom 2026-09-09: Takt bleibt bei drei Stunden (`specs/2026-09-09-offene-entscheidungen.md`) |
 | A-4 | Kein Objekt fällt still aus dem Radar | **offen** — der stille `continue` bleibt; die Ursache ist aber vermessen: „Preis auf Anfrage" der Quelle, kein Parserfehler, und die Quote misst die Region (A13) |
 
 ## B — Abdeckung und Bestand
@@ -33,8 +33,8 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 | # | Kriterium | Stand |
 |---|---|---|
 | B-1 | Jedes der 16 Bundesländer war mindestens einmal erfasst | **offen, aber jetzt planbar** — die Fortsetzungsrotation ist seit 2026-09-09 im Code: Startpunkt ist die am längsten nicht gesweepte Region statt der Wanduhr. Gerechnet Median 5,7 statt 13,1 Tage, 90. Perzentil 7,6 statt 20,2, ohne einen zusätzlichen Abruf. Belegt in `34329204906`: Start bei `by` statt bei `nw`, das die Uhr gewählt hätte und das 39 min vorher schon gesweept war. `by` hatte in 33 Regionsläufen zuvor **keinen** Eintrag |
-| B-2 | Ein verschwundenes Immowelt-Objekt wird als verschwunden erkannt | **offen** — 0 haben `disappeared_at`. Von den fünf Sperren sind die Vorarbeiten Option 0 (A14) und Option 1 (Rotation, fail-closed) erledigt; als Nächstes Option 3, markieren ohne löschen (`specs/2026-09-08-immowelt-abgaenge-optionen.md`) |
-| B-3 | Die Löschwachen bleiben fail-closed | **erfüllt** — alle drei bekannten Fail-open-Stellen sind seit 2026-09-09 geschlossen: fehlende Trefferzahl heißt unvollständig, leerer Geltungsbereich gibt nichts frei, harte Löschung nur für Quellen aus einer Erlaubnisliste. Muss bei jeder Änderung erneut gelten |
+| B-2 | Ein verschwundenes Immowelt-Objekt wird als verschwunden erkannt | **Code steht, Beleg fehlt** — Option 3 ist seit 2026-09-11 gebaut und verdrahtet: `ermittleMarkierungen` markiert regionsgenau, die harte Löschung bleibt an `QUELLEN_MIT_LOESCHHOHEIT` gesperrt, in der `immowelt` nicht steht. Dieses Projekt belegt Abnahmen an echten Läufen, nicht an Tests: Erfüllt ist B-2 erst, wenn ein Produktionslauf Immowelt-Objekte mit `disappeared_at` zeigt und die Zahl plausibel bleibt. **Bewusste Lücke:** `nw`, `bw` und `mv` nennen ihre Trefferzahl nie und werden deshalb nie markiert |
+| B-3 | Die Löschwachen bleiben fail-closed | **erfüllt** — inzwischen sind **vier** Stellen geschlossen. Die vierte fiel erst auf, als Option 3 sie erreichbar machte: Ein am Seitendeckel abgeschnittener Blätterlauf wurde nur geloggt und floss nicht in `istRegionVollstaendig` ein. Ein bekannter Unvollständigkeitsbefund darf nie in eine Vollständigkeitsaussage münden. Muss bei jeder Änderung erneut gelten |
 
 ## C — Die Zahlen
 
@@ -53,7 +53,7 @@ geschätzten Miete. Fehlerfreiheit ist nicht Belastbarkeit.
 | D-2 | Der Nachrichtentext nennt die Datenlücken im Klartext | **erfüllt** seit `d6c4cc1` |
 | D-3 | Die Formatierung bricht nicht bei fehlenden Feldern | **erfüllt** seit `d6c4cc1` |
 | D-4 | Jede Meldung nennt Bundesland und Ort; fehlende PLZ ist sichtbar | **erfüllt** seit `d6c4cc1` |
-| D-5 | Das Meldebudget ist nicht dauerhaft ausgeschöpft | **offen** — auch `34278399926`: `25 von hoechstens 25`, 117 zurückgestellt. Der Rückstand hängt an A11 Schritt 4 (dürfen bundeslandgenaue Schätzungen überhaupt melden?) |
+| D-5 | Das Meldebudget ist nicht dauerhaft ausgeschöpft | **Code steht, Beleg fehlt** — die Ursache war nicht die Menge, sondern die Reihenfolge: Die nur landesweit geschätzte Mietstufe stellte 339 von 409 Kandidaten und beherrschte die Liste durch ihre Masse. Sie hat seit 2026-09-11 ein eigenes Kontingent von 5 der 25 Plätze; freie Plätze gehen am Laufende über `holeNach` doch an sie, der Durchsatz sinkt also nicht. Erfüllt, wenn ein Produktionslauf weniger Zurückgestellte zeigt **und** besser belegte Objekte unter den Gesendeten |
 
 ### So sieht eine Meldung seit `d6c4cc1` aus
 
