@@ -132,6 +132,17 @@ const REGION_FEHLBETRAG_TOLERANZ = 0.25;
  *
  * Wie sie ausfaellt und warum:
  *
+ * - `abgeschnitten`: immer `false`, und zwar VOR jeder Mengenrechnung. Die
+ *   vierte Fail-open-Stelle, gefunden beim Umbau auf Option 3 (2026-09-09):
+ *   `regionErfassen` weiss, wenn die Blaetterung am Seitendeckel des Portals
+ *   endet -- die Region ist dann NACHWEISLICH unvollstaendig erfasst --, und
+ *   dieser Befund wurde bisher nur geloggt. Solange nichts markiert wurde,
+ *   kostete das nichts. Mit Option 3 waere es ein Loch: Der Deckel liegt bei
+ *   rund 10.000 Objekten; meldet das Portal 10.000 bis 13.333, landet die
+ *   abgeschnittene Menge zufaellig innerhalb der 25-%-Toleranz, die Region
+ *   kaeme in den Geltungsbereich, und die abgeschnittenen Objekte waeren
+ *   Abgaenge. Ein BEKANNTER Unvollstaendigkeitsbefund darf nie in eine
+ *   Vollstaendigkeitsaussage muenden.
  * - `gesammelt === 0`: immer `false` -- ganz gleich, was der Titel sagt. Null
  *   eingesammelte Objekte sind nie ein Beleg fuer Vollstaendigkeit. Selbst
  *   `gemeldet === 0` (Portal weist ausdruecklich null Angebote aus) rettet
@@ -160,7 +171,17 @@ const REGION_FEHLBETRAG_TOLERANZ = 0.25;
  *   angepasst, sondern der echte Titel protokolliert (siehe
  *   `regionUnvollstaendigMeldung`).
  */
-export function istRegionVollstaendig(gesammelt: number, gemeldet: number | null): boolean {
+export function istRegionVollstaendig(
+  gesammelt: number,
+  gemeldet: number | null,
+  /**
+   * Endete die Blaetterung am Seitendeckel des Portals? Verpflichtend und
+   * ohne Vorgabewert: Ein drittes Argument mit stillem `false` waere genau
+   * die Sorte Vorgabe, die einen unbekannten Zustand als "in Ordnung" liest.
+   */
+  abgeschnitten: boolean
+): boolean {
+  if (abgeschnitten) return false;
   if (gesammelt === 0) return false;
   if (gemeldet === null) return false;
   if (gemeldet === 0) return true;
@@ -512,10 +533,14 @@ export async function sweepImmowelt(
           console.warn(`Immowelt-Sweep ${region.code}: Seitendeckel erreicht, Menge abgeschnitten.`);
         }
         // Die gesehenen Objekte sind echt und bleiben in `zusammenfassungen`.
-        // Diese Pruefung entscheidet NICHT mehr ueber `vollstaendig` (das ist
-        // fuer Immowelt ohnehin immer false), sie haelt nur das Log ehrlich:
-        // sie faengt eine soft-geblockte Region ab, die lautlos [] liefert.
-        if (!istRegionVollstaendig(gesammelt, gemeldet)) {
+        // Diese Pruefung entscheidet nicht ueber die quellenweite
+        // `vollstaendig`-Flagge (die ist fuer Immowelt hart false), wohl aber
+        // ueber den `geltungsbereich` -- und der ist seit Option 3 die einzige
+        // Freigabe fuer eine Markierung. Sie faengt zwei Faelle ab: die
+        // soft-geblockte Region, die lautlos [] liefert, und die am
+        // Seitendeckel abgeschnittene.
+        const regionVollstaendig = istRegionVollstaendig(gesammelt, gemeldet, abgeschnitten);
+        if (!regionVollstaendig) {
           console.warn(regionUnvollstaendigMeldung(region.code, gesammelt, gemeldet, titel));
         }
         ausgaenge.push({ art: "erfasst", gemeldet });
@@ -523,7 +548,7 @@ export async function sweepImmowelt(
           partition: region.code,
           gesehene: gesammelt,
           gemeldeteTreffer: gemeldet,
-          vollstaendig: istRegionVollstaendig(gesammelt, gemeldet),
+          vollstaendig: regionVollstaendig,
         });
       } catch (err) {
         // Eine abgebrochene Region ist NICHT "null gemeldete Treffer". Sie ist

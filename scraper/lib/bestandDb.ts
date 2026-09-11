@@ -185,6 +185,25 @@ export async function aktualisiereLastSeen(
 const QUELLEN_MIT_LOESCHHOHEIT = ["zvg-portal"];
 
 /**
+ * Darf diese Quelle hart geloescht werden?
+ *
+ * Die Erlaubnisliste ist damit von aussen lesbar, statt nur still in einer
+ * Abfrage zu stecken. `ermittleMarkierungen` (lib/bestand.ts) entscheidet an
+ * dieser Antwort, wieviel Beweislast eine Markierung tragen muss: Wo geloescht
+ * werden darf, ist die Markierung der erste Schritt der Loeschung und braucht
+ * den quellenweiten Vollstaendigkeitsbeweis; wo nicht, genuegt der
+ * Regionsbeweis, weil eine Markierung dort ein reversibler Endzustand ist.
+ *
+ * Ein zweites Verzeichnis dafuer waere der falsche Weg -- zwei Listen, die
+ * auseinanderlaufen koennen, sind genau die Bauart, aus der die bisherigen
+ * Fail-open-Stellen entstanden sind. Es gibt EINE Stelle, die ueber
+ * Loeschhoheit entscheidet, und das ist die Konstante darueber.
+ */
+export function quelleHatLoeschhoheit(source: string): boolean {
+  return QUELLEN_MIT_LOESCHHOHEIT.includes(source);
+}
+
+/**
  * Loescht Objekte, deren Karenz abgelaufen ist. listing_versions und
  * notifications folgen per `on delete cascade`. Kommt ein Objekt spaeter
  * zurueck, legt der naechste Lauf es schlicht neu an.
