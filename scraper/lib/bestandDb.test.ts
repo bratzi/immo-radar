@@ -90,11 +90,27 @@ function fakeSupabase(optionen: { fehlerBeimAufruf?: number; zeilen?: unknown[] 
             const erlaubt = zeilen.filter(
               (z) => (z as { source?: string }).source === undefined ||
                 quellen.includes((z as { source: string }).source)
-            );
+            ) as { id: string }[];
             return {
               not: (_s: string, _p: string, _w: unknown) => ({
-                range: (von: number, bis: number) =>
-                  Promise.resolve({ data: erlaubt.slice(von, bis + 1), error: null }),
+                // Bildet Keyset-Blaetterung nach: `order` markiert nur die
+                // Sortierung, `gt` setzt den Einstieg, `limit` liefert.
+                order: (_spalte2: string, _opt: unknown) => {
+                  const sortiert = [...erlaubt].sort((a, b) => a.id.localeCompare(b.id));
+                  let nachId: string | null = null;
+                  const abfrage: any = {
+                    gt: (_s2: string, wert: string) => {
+                      nachId = wert;
+                      return abfrage;
+                    },
+                    limit: (n: number) => {
+                      const start = nachId === null ? 0 : sortiert.findIndex((z) => z.id > nachId!);
+                      const seite = start < 0 ? [] : sortiert.slice(start, start + n);
+                      return Promise.resolve({ data: seite, error: null });
+                    },
+                  };
+                  return abfrage;
+                },
               }),
             };
           },
@@ -283,6 +299,7 @@ describe("ladeLetzteRegionsSweeps", () => {
  */
 function fakeListings(zeilen: unknown[]) {
   const auswahlen: string[] = [];
+  const sortiert = [...(zeilen as { id: string }[])].sort((a, b) => a.id.localeCompare(b.id));
   const client = {
     from(_tabelle: string) {
       return {
@@ -290,8 +307,23 @@ function fakeListings(zeilen: unknown[]) {
           auswahlen.push(spalten);
           return {
             eq: (_spalte: string, _wert: unknown) => ({
-              range: (von: number, bis: number) =>
-                Promise.resolve({ data: zeilen.slice(von, bis + 1), error: null }),
+              // Bildet Keyset-Blaetterung nach: `order` markiert nur die
+              // Sortierung, `gt` setzt den Einstieg, `limit` liefert.
+              order: (_spalte2: string, _opt: unknown) => {
+                let nachId: string | null = null;
+                const abfrage: any = {
+                  gt: (_s: string, wert: string) => {
+                    nachId = wert;
+                    return abfrage;
+                  },
+                  limit: (n: number) => {
+                    const start = nachId === null ? 0 : sortiert.findIndex((z) => z.id > nachId!);
+                    const seite = start < 0 ? [] : sortiert.slice(start, start + n);
+                    return Promise.resolve({ data: seite, error: null });
+                  },
+                };
+                return abfrage;
+              },
             }),
           };
         },
@@ -363,5 +395,85 @@ describe("quelleHatLoeschhoheit", () => {
   it("gibt einer unbekannten Quelle keine Loeschhoheit", () => {
     // Erlaubnisliste, nicht Ausschlussliste.
     expect(quelleHatLoeschhoheit("irgendein-neues-portal")).toBe(false);
+  });
+});
+
+/**
+ * Warum dieser Test existiert: Lauf 34637349206 meldete 44 Markierungen,
+ * in der Datenbank standen 32. Gemessen ueber `listings`: 1.762 von 12.158
+ * Zeilen kamen doppelt, 1.762 nie. Ursache ist eine Blaetterung ohne
+ * Sortierung -- jede UPDATE im selben Lauf verschiebt Zeilen zwischen die
+ * Seiten. Was `bekannte` nicht enthaelt, kann nicht markiert und nicht
+ * entmarkiert werden.
+ */
+describe("ladeBekannteListings -- Blaetterung unter Zeilenbewegung", () => {
+  /**
+   * Bildet einen Heap nach, in dem eine Zeile je Seitenabruf ans Ende
+   * wandert. `order`/`gt` bekommen eine stabile Sortierung zu sehen,
+   * `range` nicht -- genau wie in Postgres.
+   */
+  function wanderderHeap(anzahl: number) {
+    const zeilen = Array.from({ length: anzahl }, (_, i) => ({
+      id: `id-${i.toString().padStart(5, "0")}`,
+      external_id: `ext-${i}`,
+      disappeared_at: null,
+      fundort: "th",
+    }));
+    let heap = [...zeilen];
+    let sortiert = false;
+    let nachId: string | null = null;
+    let grenze = 1000;
+
+    const abfrage: any = {
+      eq: () => abfrage,
+      order: () => {
+        sortiert = true;
+        return abfrage;
+      },
+      gt: (_spalte: string, wert: string) => {
+        nachId = wert;
+        return abfrage;
+      },
+      limit: (n: number) => {
+        grenze = n;
+        return liefere();
+      },
+      range: (von: number, bis: number) => {
+        const seite = heap.slice(von, bis + 1);
+        bewege();
+        return Promise.resolve({ data: seite, error: null });
+      },
+    };
+
+    function bewege() {
+      // Eine Zeile wird aktualisiert und liegt danach hinten.
+      const erste = heap.shift();
+      if (erste) heap.push(erste);
+    }
+
+    function liefere() {
+      const quelle = sortiert ? [...heap].sort((a, b) => a.id.localeCompare(b.id)) : heap;
+      const start = nachId === null ? 0 : quelle.findIndex((z) => z.id > nachId!);
+      const seite = start < 0 ? [] : quelle.slice(start, start + grenze);
+      bewege();
+      return Promise.resolve({ data: seite, error: null });
+    }
+
+    return {
+      client: {
+        from: () => ({ select: () => abfrage }),
+      } as unknown as SupabaseClient,
+      anzahl,
+    };
+  }
+
+  it("liefert jede Zeile genau einmal, auch wenn Zeilen waehrend des Lesens wandern", async () => {
+    const { client, anzahl } = wanderderHeap(2500);
+
+    const geladen = await ladeBekannteListings(client, "immowelt");
+
+    const verschiedene = new Set(geladen.map((z) => z.id));
+    expect(geladen.length).toBe(anzahl);
+    expect(verschiedene.size).toBe(anzahl);
   });
 });

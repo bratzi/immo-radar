@@ -8,41 +8,40 @@ import {
 import { HISTORIE_LAENGE } from "./plausibilitaet.js";
 
 /**
- * Supabase schneidet Ergebnisse stillschweigend ab, also unsichtbare Reihen
- * wuerden jeden Lauf neu abgerufen. Blattert stattdessen durch, bis eine
- * Seite kuerzer als die Seitengroesse ist. Absolute Decke 200_000 Reihen --
- * bei Ueberschuss wird deutlich geworfen, nie nur ein Teilergebnis zurueck.
+ * Blaettert per Keyset, nicht per Bereich.
+ *
+ * WARUM NICHT `.range(von, bis)`: Ohne `ORDER BY` liefert Postgres in
+ * physischer Reihenfolge, und jedes UPDATE im selben Lauf verschiebt eine
+ * Zeile ans Ende. Gemessen am 2026-09-12 ueber `listings`: 1.762 von 12.158
+ * Zeilen kamen doppelt, 1.762 gar nicht. Ein `ORDER BY id` allein reicht
+ * nicht -- ein gleichzeitiger Einschub verschiebt die Fenster weiterhin.
+ * Keyset ist gegen beides immun: die naechste Seite beginnt hinter einer
+ * konkreten id, nicht an einer gezaehlten Position.
+ *
+ * Absolute Decke 200_000 Zeilen -- bei Ueberschuss wird geworfen, nie ein
+ * Teilergebnis zurueckgegeben.
  */
-async function ladeSeitenweise<T>(
-  fetchSeite: (von: number, bis: number) => Promise<{ data: T[] | null; error: any }>,
+async function ladeSeitenweise<T extends { id: string }>(
+  fetchSeite: (nachId: string | null, grenze: number) => Promise<{ data: T[] | null; error: any }>,
   tableName: string
 ): Promise<T[]> {
   const alle: T[] = [];
   const seitenGroesse = 1000;
   const absoluteDecke = 200_000;
-  let seiteIndex = 0;
+  let nachId: string | null = null;
 
   while (true) {
-    const von = seiteIndex * seitenGroesse;
-    const bis = von + seitenGroesse - 1;
-
-    if (von >= absoluteDecke) {
-      throw new Error(
-        `Tabelle '${tableName}' uebersteigt Decke von ${absoluteDecke} Reihen`
-      );
+    if (alle.length >= absoluteDecke) {
+      throw new Error(`Tabelle '${tableName}' uebersteigt Decke von ${absoluteDecke} Reihen`);
     }
 
-    const { data, error } = await fetchSeite(von, bis);
+    const { data, error } = await fetchSeite(nachId, seitenGroesse);
     if (error) throw error;
 
     const seite = data ?? [];
     alle.push(...seite);
-
-    if (seite.length < seitenGroesse) {
-      break;
-    }
-
-    seiteIndex++;
+    if (seite.length < seitenGroesse) break;
+    nachId = seite[seite.length - 1].id;
   }
 
   return alle;
@@ -58,16 +57,19 @@ export async function ladeBekannteListings(
     disappeared_at: string | null;
     fundort: string | null;
   }>(
-    async (von, bis) =>
-      supabase
+    async (nachId, grenze) => {
+      // `fundort` haelt fest, auf welcher Regionsliste das Objekt gefunden
+      // wurde. Ohne diese Spalte hat ein Immowelt-Objekt keine lesbare
+      // Partition, denn seine externalId ist eine nackte UUID -- siehe
+      // `partitionEinesListings`.
+      let abfrage = supabase
         .from("listings")
-        // `fundort` haelt fest, auf welcher Regionsliste das Objekt gefunden
-        // wurde. Ohne diese Spalte hat ein Immowelt-Objekt keine lesbare
-        // Partition, denn seine externalId ist eine nackte UUID -- siehe
-        // `partitionEinesListings`.
         .select("id, external_id, disappeared_at, fundort")
         .eq("source", source)
-        .range(von, bis),
+        .order("id", { ascending: true });
+      if (nachId !== null) abfrage = abfrage.gt("id", nachId);
+      return abfrage.limit(grenze);
+    },
     "listings"
   );
   return zeilen.map((zeile) => ({
@@ -94,14 +96,17 @@ export async function ladeVeralteteExternalIds(
   source: string,
   grenze: Date
 ): Promise<string[]> {
-  const zeilen = await ladeSeitenweise<{ external_id: string }>(
-    async (von, bis) =>
-      supabase
+  const zeilen = await ladeSeitenweise<{ id: string; external_id: string }>(
+    async (nachId, seitenGrenze) => {
+      let abfrage = supabase
         .from("listings")
-        .select("external_id")
+        .select("id, external_id")
         .eq("source", source)
         .or(`last_detail_at.is.null,last_detail_at.lt.${grenze.toISOString()}`)
-        .range(von, bis),
+        .order("id", { ascending: true });
+      if (nachId !== null) abfrage = abfrage.gt("id", nachId);
+      return abfrage.limit(seitenGrenze);
+    },
     "listings"
   );
   return zeilen.map((zeile) => zeile.external_id);
@@ -223,8 +228,8 @@ export async function loescheAbgelaufene(
     disappeared_at: string;
     last_seen: string | null;
   }>(
-    async (von, bis) =>
-      supabase
+    async (nachId, grenze) => {
+      let abfrage = supabase
         .from("listings")
         .select("id, disappeared_at, last_seen")
         // Der Filter gehoert in die Abfrage, nicht hinter sie: Sonst laedt
@@ -232,7 +237,10 @@ export async function loescheAbgelaufene(
         // Zeilen, nur um sie zu verwerfen.
         .in("source", QUELLEN_MIT_LOESCHHOHEIT)
         .not("disappeared_at", "is", null)
-        .range(von, bis),
+        .order("id", { ascending: true });
+      if (nachId !== null) abfrage = abfrage.gt("id", nachId);
+      return abfrage.limit(grenze);
+    },
     "listings"
   );
 
