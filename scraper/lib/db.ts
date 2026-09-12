@@ -124,6 +124,32 @@ export function listingUpsertZeile(
   };
 }
 
+/**
+ * Ein Objekt festhalten, das die Quelle ohne Preis anbietet.
+ *
+ * "Preis auf Anfrage" ist bei Immowelt gemessen kein Parserfehler, sondern
+ * eine Aussage der Quelle (A13 Schritt 2); bei ZVG laesst gelegentlich das
+ * Gericht den Verkehrswert aus (A6). Ohne Preis ist nichts zu rechnen, und
+ * ein erfundener Preis waere schlimmer als gar keiner. Das Objekt bekommt
+ * deshalb eine listings-Zeile und KEINE listing_versions-Zeile: A-4 ist
+ * damit woertlich erfuellt, ohne Migration und ohne dass eine einzige
+ * Metrik eine Zeile ohne Preis zu sehen bekommt.
+ *
+ * `last_detail_at` bleibt leer: Es wurde keine Detailseite gelesen, und ein
+ * gesetzter Wert hielte das Objekt aus `ladeVeralteteExternalIds` heraus.
+ */
+export async function upsertListingOhneBewertung(
+  supabase: SupabaseClient,
+  daten: { source: string; externalId: string; url: string; fundort: string | null }
+): Promise<void> {
+  const jetzt = new Date().toISOString();
+  const { error } = await supabase.from("listings").upsert(
+    { ...listingUpsertZeile(daten, jetzt), last_detail_at: null },
+    { onConflict: "source,external_id" }
+  );
+  if (error) throw error;
+}
+
 export async function upsertListingAndVersion(
   supabase: SupabaseClient,
   data: ListingVersionData

@@ -7,6 +7,7 @@ import {
   listingUpsertZeile,
   versandBeleg,
   logNotification,
+  upsertListingOhneBewertung,
 } from "./db.js";
 
 describe("diffVersion", () => {
@@ -117,6 +118,65 @@ describe("listingUpsertZeile", () => {
     expect(zeile.disappeared_at).toBeNull();
     expect(zeile.last_seen).toBe(jetzt);
     expect(zeile.last_detail_at).toBe(jetzt);
+  });
+});
+
+/**
+ * Warum dieser Test existiert: Abnahmekriterium A-4 verlangt, dass kein
+ * Objekt still aus dem Radar faellt. "Preis auf Anfrage" ist bei Immowelt
+ * kein Parserfehler, sondern eine Aussage der Quelle -- das Objekt
+ * existiert, nur seine Bewertung nicht. Es bekommt deshalb eine
+ * listings-Zeile und KEINE listing_versions-Zeile: ein erfundener Preis
+ * ginge unmittelbar in den Kaufpreisfaktor ein, und ein nullbarer Preis
+ * verlangte eine Migration auf Produktionsdaten.
+ */
+describe("upsertListingOhneBewertung", () => {
+  it("schreibt eine listings-Zeile und keine listing_versions-Zeile", async () => {
+    const geschrieben: string[] = [];
+    const client = {
+      from(tabelle: string) {
+        geschrieben.push(tabelle);
+        return {
+          upsert: () => Promise.resolve({ data: null, error: null }),
+        };
+      },
+    } as unknown as SupabaseClient;
+
+    await upsertListingOhneBewertung(client, {
+      source: "immowelt",
+      externalId: "abc",
+      url: "https://example.invalid/expose/abc",
+      fundort: "th",
+    });
+
+    expect(geschrieben).toEqual(["listings"]);
+    expect(geschrieben).not.toContain("listing_versions");
+  });
+
+  it("behauptet keine Detailerfassung -- last_detail_at bleibt leer", async () => {
+    // Ein last_detail_at wuerde das Objekt aus `ladeVeralteteExternalIds`
+    // heraushalten: es gaelte als frisch im Detail erfasst, obwohl nie eine
+    // Detailseite gelesen wurde.
+    let zeile: Record<string, unknown> = {};
+    const client = {
+      from: () => ({
+        upsert: (werte: Record<string, unknown>) => {
+          zeile = werte;
+          return Promise.resolve({ data: null, error: null });
+        },
+      }),
+    } as unknown as SupabaseClient;
+
+    await upsertListingOhneBewertung(client, {
+      source: "immowelt",
+      externalId: "abc",
+      url: "https://example.invalid/expose/abc",
+      fundort: null,
+    });
+
+    expect(zeile.last_detail_at).toBeNull();
+    expect(zeile.disappeared_at).toBeNull();
+    expect(zeile.last_seen).toEqual(expect.any(String));
   });
 });
 

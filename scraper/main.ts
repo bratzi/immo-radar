@@ -31,7 +31,12 @@ import {
   ladeLetzteRegionsSweeps,
   ladeSweepHistorie,
 } from "./lib/bestandDb.js";
-import { bereitsGemeldeteListingIds, logNotification, versandBeleg } from "./lib/db.js";
+import {
+  bereitsGemeldeteListingIds,
+  logNotification,
+  versandBeleg,
+  upsertListingOhneBewertung,
+} from "./lib/db.js";
 import {
   sendTelegramMessage,
   formatAbgangMessage,
@@ -410,6 +415,12 @@ async function main() {
         `Immowelt ohne Preis [${zusammenfassung.fundort ?? "ohne Fundort"}]: ` +
           JSON.stringify(zusammenfassung.titleLine)
       );
+      await upsertListingOhneBewertung(sb, {
+        source: "immowelt",
+        externalId: zusammenfassung.externalId,
+        url: zusammenfassung.url,
+        fundort: zusammenfassung.fundort ?? null,
+      });
       continue;
     }
     immoweltBewertet += 1;
