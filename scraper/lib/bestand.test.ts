@@ -5,7 +5,6 @@ import {
   ermittleAbgaenge,
   ermittleMarkierungen,
   waehleAbgangsmeldungen,
-  MAX_ABGANGSMELDUNGEN_JE_LAUF,
   ermittleRueckkehrer,
   istKarenzAbgelaufen,
   istHartLoeschbar,
@@ -14,6 +13,7 @@ import {
   streueAuswahl,
   budgetiereKandidaten,
   sweepStartVersatz,
+  MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF,
   type SweepErgebnis,
   type BekanntesListing,
 } from "./bestand.js";
@@ -614,8 +614,8 @@ describe("waehleAbgangsmeldungen", () => {
 
     const { melden, verschwiegen } = waehleAbgangsmeldungen(abgaenge, () => true);
 
-    expect(melden).toHaveLength(MAX_ABGANGSMELDUNGEN_JE_LAUF);
-    expect(verschwiegen).toBe(25 - MAX_ABGANGSMELDUNGEN_JE_LAUF);
+    expect(melden).toHaveLength(MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF);
+    expect(verschwiegen).toBe(25 - MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF);
   });
 
   it("zaehlt nie gemeldete Objekte nicht als verschwiegen", () => {
@@ -628,5 +628,29 @@ describe("waehleAbgangsmeldungen", () => {
 
     expect(melden).toEqual([]);
     expect(verschwiegen).toBe(0);
+  });
+
+  /**
+   * Warum dieser Test existiert (Korrekturrunde 1, Aufgabe 2): Der Deckel
+   * gilt PRO AUFRUF, also pro Quelle -- `gleicheBestandAb` laeuft einmal fuer
+   * Immowelt und einmal fuer ZVG (main.ts), jede Quelle bekommt ihr eigenes
+   * frisches Budget. Ein Lauf mit zwei Quellen darf deshalb bis zu ZWEI MAL
+   * MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF verschicken, nicht nur einmal.
+   * Das ist Absicht: eine laute Quelle darf der anderen nicht die Plaetze
+   * wegnehmen (ZVG markiert ein bis zwei Objekte je Lauf, Immowelt haette
+   * sonst freie Bahn, dessen Budget mit aufzubrauchen).
+   */
+  it("gibt zwei Quellen je ihr eigenes Budget -- zusammen bis zu 2 mal MAX", () => {
+    const abgaengeImmowelt = Array.from({ length: 25 }, (_, i) => abgang(`iw-${i}`));
+    const abgaengeZvg = Array.from({ length: 25 }, (_, i) => abgang(`zvg-${i}`));
+
+    const immowelt = waehleAbgangsmeldungen(abgaengeImmowelt, () => true);
+    const zvg = waehleAbgangsmeldungen(abgaengeZvg, () => true);
+
+    expect(immowelt.melden).toHaveLength(MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF);
+    expect(zvg.melden).toHaveLength(MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF);
+    expect(immowelt.melden.length + zvg.melden.length).toBe(
+      2 * MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF
+    );
   });
 });

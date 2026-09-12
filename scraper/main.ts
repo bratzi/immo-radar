@@ -11,7 +11,7 @@ import { processCandidate, type PipelineCandidate } from "./lib/pipeline.js";
 import {
   ermittleMarkierungen,
   waehleAbgangsmeldungen,
-  MAX_ABGANGSMELDUNGEN_JE_LAUF,
+  MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF,
   ermittleRueckkehrer,
   waehleDetailKandidaten,
   budgetiereKandidaten,
@@ -275,7 +275,8 @@ async function gleicheBestandAb(
   if (verschwiegen > 0) {
     console.log(
       `${sweep.source}: ${verschwiegen} weitere meldefaehige Abgaenge sind markiert, aber nicht ` +
-        `gemeldet (Deckel ${MAX_ABGANGSMELDUNGEN_JE_LAUF}). Sie stehen mit disappeared_at im Bestand.`
+        `gemeldet (Deckel ${MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF} je Quelle). Sie stehen mit ` +
+        `disappeared_at im Bestand.`
     );
   }
   for (const abgang of melden) {

@@ -443,7 +443,26 @@ export function sweepStartVersatz(
 }
 
 /**
- * Wie viele Abgangsmeldungen ein Lauf hoechstens verschickt.
+ * Wie viele Abgangsmeldungen EINE QUELLE je Lauf hoechstens verschickt.
+ *
+ * NICHT "je Lauf insgesamt": `gleicheBestandAb` (main.ts) laeuft einmal fuer
+ * Immowelt und einmal fuer ZVG, und jeder Aufruf bekommt sein eigenes
+ * frisches Budget von `MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF`. Ein Lauf mit
+ * zwei Quellen kann also bis zu ZWEI MAL diese Zahl verschicken, nicht nur
+ * einmal. Das ist Absicht, keine Luecke: Eine laute Quelle darf die andere
+ * nicht verdraengen. ZVG markiert ein bis zwei Objekte je Lauf; teilten sich
+ * beide Quellen ein gemeinsames Budget, koennte ein einzelner grosser
+ * Immowelt-Abgangsschub dessen Plaetze restlos aufbrauchen.
+ *
+ * Bis zum 2026-09-12 stand hier "Wie viele Abgangsmeldungen ein Lauf
+ * hoechstens verschickt" (Name: `MAX_ABGANGSMELDUNGEN_JE_LAUF`) -- eine
+ * Zusage, die der Code nie eingehalten hat, weil er von Anfang an je
+ * Sweep-Aufruf zaehlte. Das fiel bis zur Korrektur von Aufgabe 2 nicht auf:
+ * Vor `waehleAbgangsmeldungen` fuellten sich die 10 Plaetze meist mit nicht
+ * meldefaehigen Objekten, und der nachgelagerte `continue` fing fast alles
+ * ab. Seit der Deckel HINTER den Meldefaehigkeits-Filter gewandert ist, sind
+ * alle 10 Plaetze je Quelle per Definition meldefaehig -- die falsche
+ * Zusage waere jetzt sichtbar geworden.
  *
  * WARUM ES DIESE GRENZE BRAUCHT: Bis zum 2026-09-09 markierte allein ZVG,
  * und dort sind es ein bis zwei Objekte je Lauf -- die Meldeschleife lief
@@ -464,10 +483,11 @@ export function sweepStartVersatz(
  * der Datenbank, und genau daraus lebt die ausgegraute Darstellung im
  * Dashboard. Der Deckel kostet eine Chat-Nachricht, keine Information.
  */
-export const MAX_ABGANGSMELDUNGEN_JE_LAUF = 10;
+export const MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF = 10;
 
 /**
- * Welche Abgaenge dieser Lauf meldet.
+ * Welche Abgaenge DIESER AUFRUF meldet -- ein Aufruf pro Quelle, siehe
+ * `MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF`.
  *
  * WARUM DIE REIHENFOLGE ZAEHLT: Bis zum 2026-09-12 lag der Deckel VOR dem
  * Filter "wurde dieses Objekt je gemeldet". Bei 671 Meldungen auf 12.158
@@ -486,7 +506,7 @@ export function waehleAbgangsmeldungen<T extends { id: string }>(
 ): { melden: T[]; verschwiegen: number } {
   const meldefaehig = abgaenge.filter((a) => warGemeldet(a.id));
   return {
-    melden: meldefaehig.slice(0, MAX_ABGANGSMELDUNGEN_JE_LAUF),
-    verschwiegen: Math.max(0, meldefaehig.length - MAX_ABGANGSMELDUNGEN_JE_LAUF),
+    melden: meldefaehig.slice(0, MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF),
+    verschwiegen: Math.max(0, meldefaehig.length - MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF),
   };
 }
