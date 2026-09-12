@@ -4,7 +4,7 @@ import {
   partitionEinesListings,
   ermittleAbgaenge,
   ermittleMarkierungen,
-  budgetiereAbgangsmeldungen,
+  waehleAbgangsmeldungen,
   MAX_ABGANGSMELDUNGEN_JE_LAUF,
   ermittleRueckkehrer,
   istKarenzAbgelaufen,
@@ -585,28 +585,48 @@ describe("ermittleMarkierungen", () => {
   });
 });
 
-describe("budgetiereAbgangsmeldungen", () => {
-  const abgaenge = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `x${i}` }));
+/**
+ * Warum dieser Test existiert: Im Lauf 34637349206 waren von 44 markierten
+ * Abgaengen 10 im Deckel -- und davon war genau EINER je gemeldet worden.
+ * Neun Plaetze gingen an Objekte, die gar keine Meldung ausloesen konnten,
+ * und die uebrigen 34 bleiben fuer immer stumm, weil sie markiert sind und
+ * nie wieder als neuer Abgang auftauchen. Der Deckel gehoert HINTER den
+ * Filter, nicht davor.
+ */
+describe("waehleAbgangsmeldungen", () => {
+  const abgang = (id: string) => ({ id, externalId: `ext-${id}` });
 
-  it("laesst alle durch, solange die Obergrenze nicht erreicht ist", () => {
-    const { melden, verschwiegen } = budgetiereAbgangsmeldungen(abgaenge(4));
-    expect(melden).toHaveLength(4);
+  it("fuellt den Deckel nur mit Objekten, die je gemeldet wurden", () => {
+    const abgaenge = [
+      ...Array.from({ length: 30 }, (_, i) => abgang(`nie-${i}`)),
+      ...Array.from({ length: 3 }, (_, i) => abgang(`gemeldet-${i}`)),
+    ];
+    const gemeldet = new Set(["gemeldet-0", "gemeldet-1", "gemeldet-2"]);
+
+    const { melden, verschwiegen } = waehleAbgangsmeldungen(abgaenge, (id) => gemeldet.has(id));
+
+    expect(melden.map((a) => a.id)).toEqual(["gemeldet-0", "gemeldet-1", "gemeldet-2"]);
     expect(verschwiegen).toBe(0);
   });
 
-  it("deckelt bei der Obergrenze und zaehlt den Rest", () => {
-    const { melden, verschwiegen } = budgetiereAbgangsmeldungen(
-      abgaenge(MAX_ABGANGSMELDUNGEN_JE_LAUF + 7)
-    );
+  it("deckelt bei mehr gemeldeten Abgaengen als Plaetzen", () => {
+    const abgaenge = Array.from({ length: 25 }, (_, i) => abgang(`g-${i}`));
+
+    const { melden, verschwiegen } = waehleAbgangsmeldungen(abgaenge, () => true);
+
     expect(melden).toHaveLength(MAX_ABGANGSMELDUNGEN_JE_LAUF);
-    expect(verschwiegen).toBe(7);
+    expect(verschwiegen).toBe(25 - MAX_ABGANGSMELDUNGEN_JE_LAUF);
   });
 
-  it("meldet bei genau der Obergrenze nichts als verschwiegen", () => {
-    const { melden, verschwiegen } = budgetiereAbgangsmeldungen(
-      abgaenge(MAX_ABGANGSMELDUNGEN_JE_LAUF)
-    );
-    expect(melden).toHaveLength(MAX_ABGANGSMELDUNGEN_JE_LAUF);
+  it("zaehlt nie gemeldete Objekte nicht als verschwiegen", () => {
+    // Sie sind kein Verlust: Sie haetten auch ohne Deckel keine Meldung
+    // erzeugt. Wer sie mitzaehlt, meldet dem Nutzer eine Zahl, die nichts
+    // bedeutet.
+    const abgaenge = Array.from({ length: 100 }, (_, i) => abgang(`nie-${i}`));
+
+    const { melden, verschwiegen } = waehleAbgangsmeldungen(abgaenge, () => false);
+
+    expect(melden).toEqual([]);
     expect(verschwiegen).toBe(0);
   });
 });

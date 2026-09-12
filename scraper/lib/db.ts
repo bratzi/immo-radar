@@ -243,3 +243,33 @@ export async function hoechsteGemeldeteKlasse(
   if (error) throw error;
   return hoechsteKlasse((data ?? []).map((zeile) => zeile.kind as string));
 }
+
+/**
+ * Welche dieser Objekte je eine Meldung ausgeloest haben.
+ *
+ * Blockweise, weil die URL-Laenge die Zahl der IDs in einem `.in()`
+ * begrenzt: gemessen am 2026-09-08 liefern 641 IDs HTTP 200 und 642
+ * HTTP 400. Dieselbe Grenze, an der schon der Bestandsabgleich zerbrochen
+ * ist.
+ */
+export async function bereitsGemeldeteListingIds(
+  supabase: SupabaseClient,
+  listingIds: string[]
+): Promise<Set<string>> {
+  const gefunden = new Set<string>();
+  const blockGroesse = 500;
+  for (let von = 0; von < listingIds.length; von += blockGroesse) {
+    const block = listingIds.slice(von, von + blockGroesse);
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("listing_id, kind")
+      .in("listing_id", block);
+    if (error) throw error;
+    for (const zeile of data ?? []) {
+      if (hoechsteKlasse([zeile.kind as string]) !== "keine") {
+        gefunden.add(zeile.listing_id as string);
+      }
+    }
+  }
+  return gefunden;
+}

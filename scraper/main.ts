@@ -10,7 +10,7 @@ import {
 import { processCandidate, type PipelineCandidate } from "./lib/pipeline.js";
 import {
   ermittleMarkierungen,
-  budgetiereAbgangsmeldungen,
+  waehleAbgangsmeldungen,
   MAX_ABGANGSMELDUNGEN_JE_LAUF,
   ermittleRueckkehrer,
   waehleDetailKandidaten,
@@ -31,7 +31,7 @@ import {
   ladeLetzteRegionsSweeps,
   ladeSweepHistorie,
 } from "./lib/bestandDb.js";
-import { hoechsteGemeldeteKlasse, logNotification, versandBeleg } from "./lib/db.js";
+import { bereitsGemeldeteListingIds, logNotification, versandBeleg } from "./lib/db.js";
 import {
   sendTelegramMessage,
   formatAbgangMessage,
@@ -269,18 +269,17 @@ async function gleicheBestandAb(
   // Abgangsmeldung nur fuer Objekte, die es frueher in den Chat geschafft
   // haben. Alles andere waere bei mehreren hundert Objekten Dauerfeuer --
   // und weil auch das noch zu viele sein koennen, deckelt
-  // `budgetiereAbgangsmeldungen` die Zahl zusaetzlich (siehe dort).
-  const { melden, verschwiegen } = budgetiereAbgangsmeldungen(abgaenge);
+  // `waehleAbgangsmeldungen` die Zahl zusaetzlich (siehe dort).
+  const gemeldeteIds = await bereitsGemeldeteListingIds(sb, abgaenge.map((l) => l.id));
+  const { melden, verschwiegen } = waehleAbgangsmeldungen(abgaenge, (id) => gemeldeteIds.has(id));
   if (verschwiegen > 0) {
     console.log(
-      `${sweep.source}: ${verschwiegen} weitere Abgaenge sind markiert, aber nicht gemeldet ` +
-        `(Deckel ${MAX_ABGANGSMELDUNGEN_JE_LAUF}). Sie stehen mit disappeared_at im Bestand.`
+      `${sweep.source}: ${verschwiegen} weitere meldefaehige Abgaenge sind markiert, aber nicht ` +
+        `gemeldet (Deckel ${MAX_ABGANGSMELDUNGEN_JE_LAUF}). Sie stehen mit disappeared_at im Bestand.`
     );
   }
   for (const abgang of melden) {
     try {
-      const gemeldet = await hoechsteGemeldeteKlasse(sb, abgang.id);
-      if (gemeldet === "keine") continue;
       const { data } = await sb
         .from("listing_versions")
         .select("title, city, zip_code, price_cents, units")

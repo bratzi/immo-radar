@@ -467,18 +467,26 @@ export function sweepStartVersatz(
 export const MAX_ABGANGSMELDUNGEN_JE_LAUF = 10;
 
 /**
- * Schneidet die Abgangsliste auf das, was ein Lauf melden darf.
+ * Welche Abgaenge dieser Lauf meldet.
  *
- * Bewusst ohne Auswahlregel: Die Reihenfolge ist die des Bestandsabgleichs.
- * Eine Rangfolge zu erfinden ("die teuersten zuerst") waere eine Behauptung
- * darueber, welcher Abgang wichtiger ist -- und die ist nicht gemessen.
+ * WARUM DIE REIHENFOLGE ZAEHLT: Bis zum 2026-09-12 lag der Deckel VOR dem
+ * Filter "wurde dieses Objekt je gemeldet". Bei 671 Meldungen auf 12.158
+ * Objekte sind die ersten zehn Markierungen fast nie gemeldete: Lauf
+ * 34637349206 deckelte auf 10 Kandidaten und verschickte davon EINE
+ * Meldung. Die uebrigen 34 bleiben fuer immer stumm, denn sie sind
+ * markiert und tauchen nie wieder als neuer Abgang auf.
+ *
+ * `verschwiegen` zaehlt deshalb nur, was der Deckel einem tatsaechlich
+ * meldefaehigen Objekt genommen hat -- alles andere waere eine Zahl ohne
+ * Bedeutung.
  */
-export function budgetiereAbgangsmeldungen<T>(abgaenge: T[]): {
-  melden: T[];
-  verschwiegen: number;
-} {
+export function waehleAbgangsmeldungen<T extends { id: string }>(
+  abgaenge: T[],
+  warGemeldet: (id: string) => boolean
+): { melden: T[]; verschwiegen: number } {
+  const meldefaehig = abgaenge.filter((a) => warGemeldet(a.id));
   return {
-    melden: abgaenge.slice(0, MAX_ABGANGSMELDUNGEN_JE_LAUF),
-    verschwiegen: Math.max(0, abgaenge.length - MAX_ABGANGSMELDUNGEN_JE_LAUF),
+    melden: meldefaehig.slice(0, MAX_ABGANGSMELDUNGEN_JE_LAUF),
+    verschwiegen: Math.max(0, meldefaehig.length - MAX_ABGANGSMELDUNGEN_JE_LAUF),
   };
 }
