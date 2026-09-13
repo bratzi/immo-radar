@@ -2,7 +2,11 @@
 
 **Stand:** 2026-09-09, **Nachtrag 2026-09-12** (Abschnitt 13: Schritt 0
 geschlossen, M1 bis M6 gemessen; 3.1, 3.3, 3.4, 3.6, 3.9, 4.3, 6.2 und 6.3
-sind daraufhin korrigiert)
+sind daraufhin korrigiert), **Korrekturrunde 2026-09-13** (Abschnitt 13.8:
+der Nachtrag trug an sechs Stellen zwei Stände nebeneinander; 2.4, 3.1, 3.2,
+3.3, 3.8, 4.3, 6.2, 6.3, 7, 10, 11, 12, 13.1, 13.4, 13.6 und 13.7 sind
+daraufhin vereinheitlicht — **ohne neue Messung**, die Rohzahlen des
+Nachtrags sind bestätigt)
 **Status:** Entwurf. **Kein Code, keine Zeile Frontend.** Der Nutzer hat am
 2026-09-08 festgelegt, dass die Basis steht, bevor Webseite und Dashboard
 gebaut werden ([`ABNAHME-BASIS.md`](../ABNAHME-BASIS.md)). Dieses Dokument
@@ -23,8 +27,16 @@ beantwortet die Fragen, die vor der ersten Zeile fallen müssen.
 > lesende** Datenbankabfragen beantwortet worden (kein Netzabruf, kein
 > Scraper-Lauf, kein Schreibzugriff). Die Antworten stehen in Abschnitt 13;
 > wo sie eine Entscheidung verschoben haben, ist der betroffene Abschnitt
-> **an Ort und Stelle korrigiert** und die Korrektur als solche markiert —
-> nirgends stehen zwei Stände nebeneinander.
+> **an Ort und Stelle korrigiert** und die Korrektur als solche markiert.
+>
+> **Korrekturrunde 2026-09-13:** Dieser Anspruch war nicht eingelöst. Eine
+> Nachprüfung hat die **Rohzahlen des Nachtrags durchweg reproduziert**, aber
+> sechs Stellen gefunden, an denen zwei Stände nebeneinanderstanden oder eine
+> Schlussfolgerung weiter trug als ihre Zahl. Sie sind vereinheitlicht; was
+> geändert wurde und was offen bleibt, steht in **13.8**. Auch diese Runde hat
+> **nichts gemessen** und keine Zeile Code geändert. Seither gilt: **Kein
+> Abschnitt trägt zwei Stände, und keine Zahl steht ohne Verfahren, Datum und
+> die Angabe, was sie nicht hergibt.**
 
 ---
 
@@ -230,7 +242,10 @@ sie wie belegte Objekte zu sortieren.
 Sortiert wird **lexikografisch**: zuerst die Sicherheitsstufe, dann innerhalb
 der Stufe die Rangzahl. Aber — und das ist der Kern — **die Stufen werden
 nicht zu einer Liste zusammengeschoben.** Jede Stufe ist ein eigener,
-beschrifteter Block mit eigener Rangliste.
+beschrifteter Block mit eigener Rangliste. (**Offen seit dem 2026-09-13:** ob
+das auch für S2 gilt, das nach der korrigierten Stufenregel nur noch 52
+Objekte trägt — siehe 3.3. Das Prinzip „getrennte Blöcke statt einer Liste"
+hängt nicht daran.)
 
 > **Auf die Frage des Nutzers — „rangiert ein Prüfkandidat mit geschätzter
 > Miete gleichberechtigt mit einem Top-Treffer mit belegter?" — lautet die
@@ -475,8 +490,16 @@ hält fest, dass Zwangsversteigerungen ohne Flächenangabe „oft trotzdem
 lohnend" sind. Sie sind nicht schlecht. Über sie ist nichts bekannt.
 
 **Verworfen — S0-Objekte ausblenden:** Vom Nutzer bereits abgelehnt
-(Mietqualitäts-Befund, „Was bewusst nicht gemacht wurde"). Über die Hälfte
-des Bestands verschwände, darunter der gesamte ZVG-Anteil.
+(Mietqualitäts-Befund, „Was bewusst nicht gemacht wurde").
+
+> **Korrigiert am 2026-09-13:** Hier stand als zweite Begründung „über die
+> Hälfte des Bestands verschwände, darunter der gesamte ZVG-Anteil". Das war
+> der Stand vom 2026-09-08. Gemessen am 2026-09-12 und nach der korrigierten
+> Stufenregel gezählt sind es **1.250 von 12.611 (9,9 %)** (3.3) — nicht die
+> Hälfte, und auch nicht der gesamte ZVG-Anteil, denn 39 ZVG-Objekte liegen
+> weiter in S2. **Die Ablehnung steht davon unberührt**, weil sie eine
+> Entscheidung des Nutzers ist und nicht an der Größe hängt. Der Größenbefund
+> ist als Begründung gestrichen.
 
 **Verworfen — S0-Objekte mit DSCR 0 unten anhängen:** Das ist der heutige
 Zustand innerhalb der Kennzahlen und exakt der Zustand, den der
@@ -927,6 +950,14 @@ M1 bis M6 aus Abschnitt 10 beantworten. Zwei davon (M1, M3) verschieben
 möglicherweise die Stufengrenzen aus 3.3; sie gehören vor die erste Zeile.
 *Ergebnis: ein Nachtrag zu diesem Dokument, keine Codeänderung.*
 
+> **Stand 2026-09-13: gemessen ja, geschlossen nein.** Alle sechs Fragen sind
+> am 2026-09-12 gemessen (Abschnitt 13). Die Korrekturrunde vom 2026-09-13 hat
+> drei Punkte daraus wieder **geöffnet** (13.8): die Schwelle für
+> „unbestätigt" (6.3), das kürzeste Zeitfenster (4.3) und die Frage, ob S2
+> einen eigenen Block trägt (3.3). Die ersten beiden brauchen **vier Wochen
+> mehr Historie** und blockieren Schritt 2 nicht; die dritte ist eine
+> Darstellungsfrage und gehört vor Schritt 4.
+
 **Schritt 1 — Entscheidungen einholen (kein Code).**
 E-1 bis E-8 aus Abschnitt 11. Besonders E-1 (Zugriffsweg) und E-4
 (bundeslandgenaue Meldungen) legen fest, was überhaupt gebaut wird.
@@ -950,8 +981,12 @@ Dashboards vollständig da, bevor eine einzige Zeile Oberfläche existiert —
 und prüfbar, indem man die Datei liest.
 
 **Schritt 4 — Die Rangliste.**
-Vier Blöcke (3.3), Schwellenlinie je Block (3.8), Band statt Punkt (3.4),
-Kopfzeile (3.9). Erste sichtbare Ausbaustufe.
+Blöcke nach Stufen (3.3), Schwellenlinie je Block (3.8), Band statt Punkt
+(3.4), Kopfzeile (3.9). Erste sichtbare Ausbaustufe.
+**Hier fällt die offene Blockfrage:** ob S2 mit seinen **52 Objekten (0,4 %)**
+einen eigenen beschrifteten Block bekommt oder mit S1 zusammengelegt wird und
+die PLZ-Genauigkeit als Merkmal am Objekt trägt (3.3). Die Frage berührt
+`ranking.ts` nicht — die Stufe wird dort in jedem Fall berechnet.
 
 **Schritt 5 — Die Veränderungsansicht.**
 Letzte N Änderungen (4.3), drei Arten unterschieden (4.2), Datum je Zeile.
@@ -961,6 +996,9 @@ Drei Verfügbarkeitszustände (6.3), Regionsstand am Filter (4.4), Abgänge-
 Bereich (6.4). **Setzt Option 3 im Scraper voraus** — bis dahin ist
 `disappeared_at` für Immowelt immer `null` und der Zustand „abgängig" tritt
 nie ein. Bis dahin trägt „unbestätigt" die ganze Aussage.
+**Und die Schwelle für „unbestätigt" ist offen** (6.3): Bis zur Nachmessung
+gilt die regionsindividuelle Definition; eine feste globale Tageszahl darf
+hier nicht hart verdrahtet werden.
 
 **Schritt 7 — Betriebsseite** (Abschnitt 8). Zuletzt, weil sie niemandem
 fehlt, der sie nicht kennt.
@@ -1259,7 +1297,10 @@ Schätztabelle**, nicht ein Konfidenzintervall der wirklichen Miete. Ein Band
 von 67,9 % heißt „innerhalb dieses Bundeslandes liegen die hinterlegten
 Mietwerte so weit auseinander", nicht „der wahre DSCR liegt mit 95 %
 Wahrscheinlichkeit darin". Für S2 sind es nur **52** auswertbare Objekte,
-weil 144 der 196 S2-Objekte keine Wohnfläche haben (siehe 13.1, Punkt 4).
+weil 144 der 196 S2-Objekte der **alten** Stufenregel keine Wohnfläche haben
+(siehe 13.1, Punkt 4). Nach der korrigierten Regel sind diese 144 nach S0
+gewandert; die 52 auswertbaren Objekte hier **sind** deshalb genau das
+korrigierte S2 aus 3.3.
 
 ---
 
@@ -1532,6 +1573,7 @@ ihre Zahl reicht.
 | M6 rankte eine andere Liste | 2.4, 10 (M6), 13.6 | Die gerankte Liste ist benannt: global über alle 12.157 **einschließlich S0**. 2.4 trägt den Vorbehalt aus n = 17. |
 | „54 statt 157" | 6.2, 6.3, 11 (E-7), 13.4 | Beide Größen stehen mit Namen nebeneinander (ohne `fundort` **250**, ohne zuordenbare Region **54**); die Ursache ist als **Vermutung** gekennzeichnet. |
 | Vier kleine Funde | 3.1, 3.2, 3.8, 7, 11 (E-4), 13.7 | „2 Objekte" → **1**; die 7,6 Tage sind als andere Größe gekennzeichnet; E-4 und 13.7 tragen dieselbe Ableitung; „6.408 von 11.308" hat ein Verfahren. |
+| Folgestellen beim Gegenlesen | Kopf des Dokuments, 3.2, 3.7, 9, 13.3 | Der Kopf nennt die Korrekturrunde; 3.2 und 9 (Schritt 4) tragen die offene Blockfrage; 3.7 verlor die Begründung „über die Hälfte des Bestands" (gemessen 9,9 %); 13.3 sagt jetzt, dass seine 52 auswertbaren S2-Objekte genau das korrigierte S2 sind. |
 
 **Was diese Runde nicht konnte, und das ist der wichtigste Satz hier.** Zwei
 Funde ließen die Wahl zwischen *nachmessen* und *kennzeichnen*. Nachgemessen
