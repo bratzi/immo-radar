@@ -718,29 +718,57 @@ wird alle 15 h geprüft, `ni` und `bw` alle rund 3 Tage (Abgänge-Spec). Eine
 gemeinsame Schwelle würde entweder `nw` zu spät oder `ni` dauerhaft als
 unbestätigt zeigen.
 
-> **Am 2026-09-12 gemessen (M4) — und die Begründung trägt heute nicht mehr.**
-> Über alle 12.611 Objekte: `last_seen`-Alter Median **0,83 Tage**, P90 **2,34
-> Tage**, **Maximum 4,78 Tage**. Kein einziges Objekt ist älter als fünf Tage.
-> Die Spreizung zwischen den Regionen, die die regionsindividuelle Schwelle
-> begründet hat, ist auf **0,13 bis 1,33 Tage im Median** geschrumpft (P90 je
-> Region höchstens 3,32 Tage, `nw`). Eine **globale** Schwelle von **3 Tagen**
-> trennt heute sauber: sie trifft 712 Objekte (5,6 %), keine Region dauerhaft,
-> und liegt über jedem Regions-P90.
+> **Am 2026-09-12 gemessen (M4), am 2026-09-13 nachkorrigiert: Die Schwelle
+> ist auf sieben Tagen Historie nicht entscheidbar.**
 >
-> **Entschieden: eine globale Schwelle von 3 Tagen**, nicht 2 × Regionsmedian.
-> Begründung: `sweep_region_runs` trägt 115 Zeilen aus sieben Tagen — für 16
-> Regionen ist das zu wenig für einen belastbaren Regionsmedian, und eine
-> Schwelle aus einem schwachen Median ist schlechter als eine gerade Zahl über
-> dem gemessenen Maximum aller Regionen. Sobald die Tabelle mehrere Wochen
-> trägt, ist die regionsindividuelle Schwelle nachzuziehen.
+> **Verfahren.** `last_seen`-Alter aller 12.611 Objekte gegen eine feste Uhr
+> (2026-09-12 16:00 UTC), Region über `partitionEinesListings`; Herleitung in
+> 13.4.
 >
-> **Was die Zahl nicht hergibt:** Der Bestand ist erst am 2026-09-05
-> entstanden. Die 4,78 Tage sind deshalb auch die Obergrenze dessen, was
-> überhaupt messbar war — ein längerer Rückstand *kann* an diesen Daten nicht
-> auftreten. Die Zahl belegt „die Kadenz hält aktuell", nicht „sie hält
-> dauerhaft". Die 43 % Cron-Ausfall aus A10 und die 5,7 Tage Regionsabstand
-> aus der Abgänge-Spec sind dadurch **nicht** widerlegt; sie sind an einem
-> älteren, kleineren Bestand gemessen worden.
+> | Größe | Wert |
+> |---|---|
+> | `last_seen`-Alter über den ganzen Bestand | Median **0,83 d**, P90 **2,34 d**, Maximum **4,78 d** |
+> | Regionsmediane | **0,13 bis 1,33 d** |
+> | höchstes Regions-P90 | `nw` **3,32 d**, `ni` **3,10 d** |
+> | ältestes `first_seen` | **6,92 d** |
+> | länger als 5 Tage im Bestand | **187 von 12.611 (1,5 %)** |
+>
+> **Der Nachtrag hatte hier eine globale Schwelle von 3 Tagen beschlossen. Sie
+> wird zurückgezogen**, weil ihre drei Begründungen an den eigenen Messwerten
+> scheitern:
+>
+> - „3 Tage liegen über jedem Regions-P90" — falsch: `nw` liegt bei 3,32 d.
+> - „eine gerade Zahl über dem gemessenen Maximum aller Regionen" — falsch:
+>   das Maximum ist 4,78 d.
+> - „trifft keine Region dauerhaft" — widerlegt: bei 3 Tagen stünden `ni`
+>   **217 von 853 (25,4 %)** und `nw` **337 von 3.163 (10,7 %)** dauerhaft als
+>   unbestätigt.
+>
+> **Und die Grundgesamtheit trägt eine 3-Tage-Aussage ohnehin nicht.** Der
+> Bestand ist am 2026-09-05 entstanden; nur 187 von 12.611 Objekten (1,5 %)
+> sind überhaupt länger als fünf Tage darin. Ein Objekt von gestern *kann*
+> kein Alter von 3 Tagen zeigen. Auf die Objekte eingeschränkt, die einen
+> solchen Rückstand überhaupt zeigen könnten, liegen **13,0 %** über 3 Tagen —
+> nicht die 5,6 %, die der Nachtrag über den ganzen Bestand gerechnet hat.
+>
+> **Entschieden: nicht entscheidbar.** Die Schwelle wird **in vier Wochen
+> nachgemessen**; bis dahin gilt die **regionsindividuelle** Definition aus
+> der Zustandstabelle oben. Das ist kein Aufschub aus Bequemlichkeit: Eine
+> globale Zahl aus diesen sieben Tagen wäre eine Schwelle mit schwacher
+> Begründung, und die ist in diesem Projekt schlechter als ein offener Punkt.
+>
+> **Was die Messung trotzdem hergibt:** Die Spreizung zwischen den Regionen,
+> die die regionsindividuelle Schwelle begründet hat, ist im Median auf 0,13
+> bis 1,33 Tage geschrumpft. Die Begründung der regionsindividuellen Schwelle
+> ist damit **schwächer geworden, aber nicht widerlegt** — sie steht bis zur
+> Nachmessung.
+>
+> **Was die Zahlen nicht hergeben:** Die 4,78 Tage sind zugleich die
+> Obergrenze dessen, was überhaupt messbar war — ein längerer Rückstand *kann*
+> in diesen Daten nicht vorkommen. Sie belegen „die Kadenz hält über die
+> letzten sieben Tage", nicht „sie hält dauerhaft". Die 43 % Cron-Ausfall aus
+> A10 und die 5,7 Tage Regionsabstand aus der Abgänge-Spec sind dadurch
+> **nicht** widerlegt; sie stammen von einem älteren, kleineren Bestand.
 
 ### 6.4 Die Karenz endet, das Grau nicht — was danach geschieht
 
@@ -1165,15 +1193,33 @@ Schwellenwirkung über den gesamten Bestand: älter als 1 d **4.342 (34,4 %)**,
 älter als 2 d 1.424 (11,3 %), älter als 3 d **712 (5,6 %)**, älter als 5 d
 **0**.
 
+> **Diese Prozentwerte haben einen falschen Nenner, und das ist am 2026-09-13
+> nachgetragen.** Der Bestand ist am 2026-09-05 entstanden; das älteste
+> `first_seen` liegt **6,92 Tage** zurück, und nur **187 von 12.611 Objekten
+> (1,5 %)** sind länger als fünf Tage darin. Ein Objekt, das seit gestern
+> bekannt ist, *kann* kein `last_seen`-Alter von 3 Tagen zeigen — es steht im
+> Nenner der 5,6 %, obwohl es zum Zähler gar nicht beitragen könnte. Auf die
+> Objekte eingeschränkt, die einen solchen Rückstand überhaupt zeigen könnten,
+> liegen **13,0 %** über 3 Tagen. Die 5,6 % sind deshalb keine Grundlage für
+> eine Schwelle.
+
 **Was das am Entwurf ändert.**
 
-1. **6.3 ist korrigiert: eine globale Schwelle von 3 Tagen** statt „2 × Median
-   des Regionsabstands". Die Spreizung, die die regionsindividuelle Schwelle
-   begründet hat (`nw` alle 15 h, `ni`/`bw` alle 3 Tage), ist auf 0,13 bis
-   1,33 Tage im Median geschrumpft; 3 Tage liegen über jedem Regions-P90 und
-   treffen 5,6 % des Bestands. `sweep_region_runs` trägt 115 Zeilen aus sieben
-   Tagen — zu wenig für 16 belastbare Regionsmediane. Eine gerade Zahl über
-   dem gemessenen Maximum aller Regionen ist die ehrlichere Schwelle.
+1. **6.3: die Schwelle ist auf diesen Daten nicht entscheidbar.** Der Nachtrag
+   hatte hier eine globale Schwelle von 3 Tagen beschlossen; sie ist am
+   2026-09-13 **zurückgezogen**, weil ihre Begründungen an den Zahlen dieser
+   Tabelle scheitern: `nw` hat ein P90 von **3,32 d** (die Schwelle liegt also
+   *nicht* über jedem Regions-P90), das Maximum aller Regionen ist **4,78 d**
+   (die Schwelle liegt also *nicht* darüber), und bei 3 Tagen stünden `ni`
+   **217 von 853 (25,4 %)** und `nw` **337 von 3.163 (10,7 %)** dauerhaft als
+   unbestätigt — „trifft keine Region dauerhaft" ist damit widerlegt. Es
+   bleibt: Die Spreizung, die die regionsindividuelle Schwelle begründet hat
+   (`nw` alle 15 h, `ni`/`bw` alle 3 Tage), ist im Median auf 0,13 bis 1,33
+   Tage geschrumpft, und `sweep_region_runs` trägt 115 Zeilen aus sieben Tagen
+   — zu wenig für 16 belastbare Regionsmediane. **Beide Schwellenformen sind
+   auf diesem Bestand also unbelegt.** Bis zur Nachmessung in vier Wochen gilt
+   die regionsindividuelle Definition aus der Zustandstabelle in 6.3, weil sie
+   der Stand vor der Messung war und nicht widerlegt wurde.
 2. **4.3 ist korrigiert: das kürzeste benannte Zeitfenster kann von 7 auf 3
    Tage.** Die Begründung „7,6 Tage sind das 90. Perzentil des
    Regionsabstands" trägt an diesem Bestand nicht mehr. Der 24-Stunden-Filter
@@ -1187,7 +1233,8 @@ die Obergrenze dessen, was überhaupt messbar war — ein längerer Rückstand
 über die letzten sieben Tage", nicht „sie hält dauerhaft". Die 43 %
 Cron-Ausfall aus A10 und die 5,7 Tage Regionsabstand aus der Abgänge-Spec
 sind dadurch **nicht widerlegt**; sie stammen von einem älteren, kleineren
-Bestand. Die 3-Tage-Schwelle ist nach vier Wochen Laufzeit nachzumessen.
+Bestand. Die Schwelle für „unbestätigt" ist nach vier Wochen Laufzeit zu
+messen — bis dahin ist sie offen, nicht auf 3 Tage festgelegt.
 
 ---
 
