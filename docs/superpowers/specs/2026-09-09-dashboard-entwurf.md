@@ -557,19 +557,48 @@ Streuung sichtbar bleibt, ohne sie zum Filter zu machen.
 **Zusätzliche Filter** mit *benannten* Fenstern (7 / 14 / 30 Tage) sind
 zulässig, aber **nicht Voreinstellung**. Neben ihnen steht die gemessene
 Regionskadenz, damit erkennbar ist, warum das kürzeste Fenster 7 Tage ist:
-7,6 Tage sind das 90. Perzentil des Regionsabstands. **Ein 24-Stunden-Fenster
-wird bewusst nicht angeboten**, und die Oberfläche sagt in einem Satz, warum.
+7,6 Tage sind das 90. Perzentil des Regionsabstands (Abgänge-Spec,
+Monte-Carlo — **nicht** dieselbe Größe wie das `last_seen`-Alter aus M4, siehe
+den Kasten unten). **Ein 24-Stunden-Fenster wird bewusst nicht angeboten**,
+und die Oberfläche sagt in einem Satz, warum.
 
-> **Am 2026-09-12 nachgemessen (M4).** Die Begründung des 7-Tage-Bodens — 7,6
-> Tage als 90. Perzentil des Regionsabstands — trägt am heutigen Bestand nicht
-> mehr: das gemessene `last_seen`-Alter liegt im Median bei 0,83 Tagen, im P90
-> bei 2,34 und im Maximum bei 4,78 Tagen. **Das kürzeste benannte Fenster kann
-> auf 3 Tage herunter**, ohne dass es scheinbar leer wird. Der
-> 24-Stunden-Filter bleibt trotzdem ausgeschlossen: 34,4 % aller Objekte sind
-> älter als einen Tag, ein Tagesfenster versteckt also ein Drittel des
-> Bestands. Die *Entscheidung*, nach Anzahl statt nach Zeit zu schneiden,
-> berührt das nicht — sie hängt nicht an der Kadenz, sondern daran, dass eine
-> Anzahl nie leer ist.
+> **Am 2026-09-12 gemessen (M4), am 2026-09-13 zurückgenommen: Es bleibt bei
+> 7 / 14 / 30 Tagen.** Der Nachtrag hatte das kürzeste benannte Fenster auf 3
+> Tage gesenkt. Die Senkung wird zurückgenommen, weil die Messung **eine
+> andere Größe misst als die Begründung, die sie ersetzen sollte**:
+>
+> | Größe | was sie beschreibt | Wert |
+> |---|---|---|
+> | **Regionsabstand** (alte Begründung, Abgänge-Spec) | Abstand, bis dieselbe Region wieder an der Reihe ist — die Kadenz des Laufs | Median 5,7 d, **P90 7,6 d** (Monte-Carlo über 3.000 Durchläufe) |
+> | **`last_seen`-Alter** (M4, 2026-09-12) | wie alt die jüngste Beobachtung je **Objekt** ist | Median 0,83 d, P90 2,34 d, max 4,78 d |
+>
+> Das eine ist ein Abstand zwischen zwei Läufen derselben Region, das andere
+> das Alter einer Objektbeobachtung. Eine niedrige Zahl bei der zweiten Größe
+> **widerlegt die erste nicht** — sie sagt nichts über sie. Der 7-Tage-Boden
+> steht deshalb weiter auf der Begründung, die er immer hatte.
+>
+> **Was zu tun wäre, und warum es nicht getan ist:** Die Frage wird erst
+> entschieden, wenn der **Regionsabstand selbst** aus `sweep_region_runs`
+> nachgemessen ist. Am 2026-09-13 war das nicht möglich: Das dafür
+> vorgesehene Skript
+> `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/messung-korrektur-regionsabstand.ts`
+> **existiert nicht mehr** — weder im Arbeitszweig noch im Hauptcheckout; das
+> Verzeichnis ist git-ignoriert und mit der Sitzung des Prüfers verloren
+> gegangen. Es ist also nicht gescheitert, sondern gar nicht erst vorhanden.
+> Ein neues Skript zu schreiben war in dieser Runde nicht zulässig (reine
+> Dokumentationsaufgabe, keine Zeile Code). **Damit ist der 3-Tage-Boden
+> unbelegt und die Frage offen**, nicht zugunsten von 7 Tagen entschieden:
+> Auch die 7,6 Tage stammen aus einer Simulation an einem älteren, kleineren
+> Bestand. Zusammen mit der Schwelle aus 6.3 ist das in vier Wochen zu messen.
+>
+> **Was die Messung sehr wohl hergibt:** Der 24-Stunden-Filter bleibt
+> ausgeschlossen, und jetzt mit einer gemessenen Begründung — **34,4 % aller
+> Objekte sind älter als einen Tag**, ein Tagesfenster versteckt also ein
+> Drittel des Bestands.
+>
+> Die *Entscheidung*, nach Anzahl statt nach Zeit zu schneiden, berührt das
+> alles nicht — sie hängt nicht an der Kadenz, sondern daran, dass eine Anzahl
+> nie leer ist.
 
 **Verworfen — „seit meinem letzten Besuch":** Verlangt Nutzerzustand und
 damit eine Schreibmöglichkeit aus dem Frontend heraus. Das ist genau die
@@ -892,7 +921,7 @@ Entwurf **nicht** ausgeführt.
 | **M1** | Wie stark verschiebt `units_unconfirmed` (Annahme `MIN_EINHEITEN = 3`) den DSCR? Nachrechnung über alle bewertbaren Objekte mit angenommener und alternativer Einheitenzahl, im Verfahren von A11. | Entscheidet, ob es Merkmal bleibt (3.3) oder eine eigene Stufe wird. Betrifft 567 von 1.000 Versionen. | **Merkmal, endgültig.** Der Hebel ist durch die 20-/35-%-Deckelung strukturell auf **−18,75 % … +23,08 %** begrenzt; bei der gemessenen Alternative (4 Einheiten) wechselt **0** von 12.126 Objekten die Schwelle, bei 6 Einheiten 21 (0,17 %). ±30 % Miete bewegen 11,6 %. |
 | **M2** | Wie breit ist das DSCR-Band je Objekt tatsächlich, wenn die Miete um die Landesspanne aus 3.4 skaliert wird? | Die Bandbreite ist nach 3.4 **nicht** proportional zur Miete. Ohne diese Messung ist die Sortierung nach unterer Kante (3.5) unkalibriert. | Band **67,9 % des Punktwerts im Median** (P95 101,9 %, max 126,5 %), S2 47,6 %. Die Nichtproportionalität gilt nur für **7,8 %** der Objekte (Median-Verstärkung 1,000). Sortierung nach unterer Kante verschiebt den Rang im Median um **713 Plätze**. |
 | **M3** | Wie verteilen sich die Objekte auf S3/S2/S1/S0? | 83 % S1 und „über die Hälfte `wohnflaeche_fehlt`" überschneiden sich unbekannt stark. Entscheidet, ob S2 überhaupt genug Objekte für einen eigenen Block hat. | **S3 1 · S2 52 · S1 11.308 · S0 1.250** von 12.611, gezählt nach der **korrigierten** S0-Regel (Nachkorrektur 2026-09-13; der Nachtrag zählte mit 196/11.312/1.102 noch nach der alten). 3.3 ist **korrigiert**, samt der Lücke in der S0-Bedingung (148 Objekte). **Die Blockfrage für S2 bleibt damit offen, nicht beantwortet:** 52 von 12.611 = 0,4 % tragen keinen eigenen beschrifteten Block; zu entscheiden vor Schritt 4 aus Abschnitt 9. *Was die Zahl nicht hergibt:* Momentaufnahme eines siebentägigen Bestands, Eigenschaft der Quellenmischung, nicht des Marktes. |
-| **M4** | Verteilung des `last_seen`-Alters je Region. | Kalibriert die Schwelle für „unbestätigt" (6.3). | Median **0,83 d**, P90 **2,34 d**, Maximum **4,78 d**; Regionsmediane 0,13 bis 1,33 d. **Globale Schwelle 3 Tage** statt regionsindividuell (6.3 korrigiert), kürzestes Zeitfenster in 4.3 von 7 auf 3 Tage. |
+| **M4** | Verteilung des `last_seen`-Alters je Region. | Kalibriert die Schwelle für „unbestätigt" (6.3). | Median **0,83 d**, P90 **2,34 d**, Maximum **4,78 d**; Regionsmediane 0,13 bis 1,33 d. **Die Schwelle bleibt offen** (Nachkorrektur 2026-09-13): Die im Nachtrag beschlossene globale 3-Tage-Schwelle ist zurückgezogen — `nw` hat ein P90 von 3,32 d, das Maximum ist 4,78 d, und bei 3 Tagen stünden `ni` 25,4 % und `nw` 10,7 % dauerhaft unbestätigt. Bis zur Nachmessung in vier Wochen gilt die regionsindividuelle Definition (6.3). Das kürzeste Zeitfenster in 4.3 bleibt bei **7 Tagen**, weil M4 das `last_seen`-Alter misst und nicht den Regionsabstand. *Was die Zahl nicht hergibt:* Der Bestand ist erst 6,92 Tage alt; ein längerer Rückstand konnte gar nicht auftreten. |
 | **M5** | Wie viele Objekte sind Schwellenwechsler nach 3.6 — und deckt sich die Zahl mit A11s 558? | Prüft, ob die Objekt-Sicht dieselbe Größe misst wie die Bestands-Sicht. Weicht sie ab, ist eine der beiden Rechnungen falsch. | **Sie deckt sich nicht, und keine der beiden ist falsch — sie messen Verschiedenes.** 3.6: **6.658 von 11.360 (58,6 %)**; A11s Größe nachgerechnet: **2.962 von 12.157 (24,4 %)** gegen 29,7 %. Der Unterschied ist die Definition, nicht die Bandbreite. 3.6 ist korrigiert. |
 | **M6** | Wie oft ändert eine Preissenkung tatsächlich die Rangposition — und um wie viel? | Anforderung 3 des Nutzers steht und fällt damit. Wenn Preissenkungen den Rang kaum bewegen, braucht die Veränderungsansicht mehr Gewicht als die Rangliste. | **Sie bewegt den Rang, aber die Stichprobe ist klein.** 17 echte Senkungen (von 49 `price_dropped`-Zeilen; 10 sind Parserkorrekturen, 22 nicht nachrechenbar): Median −15,9 % Preis → **+539 Rangplätze** (4,4 % des Feldes). Selbst −3,0 % bewegten 105 Plätze. 2.4 bleibt. |
 
@@ -929,10 +958,11 @@ betrifft Geld, Risiko, Schreibzugriffe auf Produktionsdaten oder Recht.
    schlecht aussehen.
 4. **Veränderung** wird an der Versionshistorie gemessen, nicht am Kalender,
    und die Liste wird nach Anzahl geschnitten — weil eine Anzahl nie leer
-   ist, eine Zeitspanne aber nur so verlässlich wie die Kadenz (die am
-   2026-09-12 mit einem P90 von 2,34 Tagen deutlich besser lag als die 5,7
-   Tage der Abgänge-Spec; das kürzeste benannte Fenster ist deshalb auf 3
-   Tage herunter, siehe 4.3 und 13.4).
+   ist, eine Zeitspanne aber nur so verlässlich wie die Kadenz (das am
+   2026-09-12 gemessene `last_seen`-Alter lag mit einem P90 von 2,34 Tagen
+   niedrig, misst aber **nicht** den Regionsabstand der Abgänge-Spec; das
+   kürzeste benannte Fenster bleibt deshalb bei 7 Tagen, und die Frage ist
+   offen — siehe 4.3 und 13.4).
 5. **Zugriff** über einen Snapshot ohne jeden Schlüssel im Frontend, weil das
    die einzige Variante ist, die **keine** Änderung an der
    Produktionsdatenbank verlangt — und **Abgänge, Unbestätigtes und
@@ -1220,10 +1250,18 @@ Schwellenwirkung über den gesamten Bestand: älter als 1 d **4.342 (34,4 %)**,
    auf diesem Bestand also unbelegt.** Bis zur Nachmessung in vier Wochen gilt
    die regionsindividuelle Definition aus der Zustandstabelle in 6.3, weil sie
    der Stand vor der Messung war und nicht widerlegt wurde.
-2. **4.3 ist korrigiert: das kürzeste benannte Zeitfenster kann von 7 auf 3
-   Tage.** Die Begründung „7,6 Tage sind das 90. Perzentil des
-   Regionsabstands" trägt an diesem Bestand nicht mehr. Der 24-Stunden-Filter
-   bleibt ausgeschlossen — 34,4 % aller Objekte sind älter als einen Tag.
+2. **4.3: das kürzeste benannte Zeitfenster bleibt bei 7 Tagen.** Der Nachtrag
+   hatte es auf 3 Tage gesenkt; die Senkung ist am 2026-09-13 zurückgenommen.
+   Grund: Die alte Begründung ist das 90. Perzentil des **Regionsabstands**
+   (7,6 d, Abgänge-Spec), gemessen wurde hier das **`last_seen`-Alter** je
+   Objekt. Das sind zwei verschiedene Größen — die zweite kann die erste nicht
+   widerlegen. **Der Satz „die 5,7 und 7,6 Tage sind nicht widerlegt" weiter
+   unten und die Senkung in 4.3 konnten nie beide gelten;** jetzt gilt der
+   Satz. Der Regionsabstand selbst ist aus `sweep_region_runs` nachzumessen;
+   am 2026-09-13 war das nicht möglich, weil das Skript des Prüfers nicht mehr
+   vorhanden ist (13.8). **Die Frage ist damit offen, nicht zugunsten von 7
+   Tagen entschieden.** Unbestritten bleibt der Ausschluss des
+   24-Stunden-Filters — 34,4 % aller Objekte sind älter als einen Tag.
 3. **E-7 betrifft 54 Objekte, nicht 157** (6.2 korrigiert).
 
 **Was die Zahl nicht hergibt, und das ist hier der wichtigste Satz.** Der
