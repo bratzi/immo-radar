@@ -5,6 +5,7 @@ import {
 import {
   sweepZvgPortal,
   erfasseZvgDetails,
+  fasseZvgDetailsZusammen,
   ZVG_VERZOEGERUNG_MS,
 } from "./scrapers/zvg-portal/index.js";
 import { processCandidate, type PipelineCandidate } from "./lib/pipeline.js";
@@ -513,8 +514,12 @@ async function main() {
   }
   // Die Bekanntmachung wurde gelesen, sie nennt nur keinen verwertbaren
   // Verkehrswert (A-4, Aufgabe 2 -- Gegenstueck zum Immowelt-Fall oben).
-  // Fundort ist fuer ZVG immer null: ein fehlender Fundort heisst "nicht
-  // zuzuordnen", und Unzuordenbares ist nie ein Abgang.
+  // `fundort` bleibt null wie bei jeder ZVG-Zeile; die Partition liest ZVG
+  // ohnehin aus der externalId (`partitionEinesListings` faellt auf
+  // `partitionAusExternalId` zurueck, `sn-40908` -> `sn`). Die Zeile unterliegt
+  // damit derselben Abgangs- und Loeschwache wie jedes andere ZVG-Objekt,
+  // NICHT einer schwaecheren: nach dem Delisting kann sie regulaer Abgang
+  // werden und nach KARENZ_TAGE hart geloescht werden.
   for (const zusammenfassung of zvgDetails.ohneVerkehrswert) {
     // Gekapselt wie der Immowelt-Fall oben: Ein voruebergehender
     // Datenbankfehler beim unwichtigsten Schreibvorgang des Laufs darf den
@@ -534,6 +539,7 @@ async function main() {
       );
     }
   }
+  console.log(fasseZvgDetailsZusammen(zvgDetails));
 
   // Jetzt steht fest, wie viele besser belegte Kandidaten es in diesem Lauf
   // gab: freie Plaetze gehen an die zurueckgestellten, nur landesweit
