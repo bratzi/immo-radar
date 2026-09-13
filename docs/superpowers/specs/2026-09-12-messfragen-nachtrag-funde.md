@@ -109,6 +109,29 @@ genannten 5,6 %.
 **Zulässige Antwort:** „Auf sieben Tagen Historie nicht entscheidbar, in
 vier Wochen nachmessen." Das ist hier vermutlich die ehrlichere.
 
+> **Erledigt am 2026-09-13.** 6.3 trägt jetzt nur noch einen Stand: Die
+> Zustandstabelle definiert „unbestätigt" weiter regionsindividuell (Kadenz
+> der Region bzw. deren Doppeltes), und der Fließtext beschließt **keine**
+> globale 3-Tage-Schwelle mehr — sie ist ausdrücklich **zurückgezogen**, nicht
+> nur relativiert. Dieselbe Änderung trägt die M4-Zeile in Abschnitt 10 und
+> 13.4.
+>
+> **Die drei widerlegten Begründungssätze sind gestrichen, nicht ergänzt:**
+> „3 Tage liegen über jedem Regions-P90", „eine gerade Zahl über dem
+> gemessenen Maximum" und „trifft keine Region dauerhaft" stehen im Text nur
+> noch als zitierte, ausdrücklich falsifizierte Aussagen (`nw`-P90 3,32 d,
+> Maximum 4,78 d, `ni` 25,4 % / `nw` 10,7 % dauerhaft unbestätigt bei 3
+> Tagen) — nicht mehr als geltende Begründung.
+>
+> **Geschrieben ist die im Fund verlangte Antwort, fast wörtlich:** „Entschieden:
+> nicht entscheidbar. Die Schwelle wird in vier Wochen nachgemessen; bis dahin
+> gilt die regionsindividuelle Definition aus der Zustandstabelle oben." Dazu
+> ergänzt 6.3 den Befund, dass auch die Grundgesamtheit die Schwelle nicht
+> trägt (nur 187 von 12.611 Objekten älter als 5 Tage, 13,0 % statt 5,6 % über
+> 3 Tagen auf der einschränkbaren Teilmenge) — kein Weg wurde gewählt, weil
+> keiner zur Wahl stand: Der Fund verlangte hier keine Entscheidung zwischen
+> zwei Optionen, sondern das Zurückziehen einer unbelegten Schwelle.
+
 ## Wichtig 3 — Abschnitt 4.3: zwei Stände, und die Messung ersetzt eine andere Größe
 
 Die Filterliste „(7 / 14 / 30 Tage)" und die Begründung für das
@@ -123,6 +146,28 @@ trage nicht mehr. Beides zugleich geht nicht.
 Entweder den Regionsabstand aus `sweep_region_runs` wirklich nachmessen,
 oder die Änderung an 4.3 zurücknehmen.
 
+> **Erledigt am 2026-09-13. Weg 2 gewählt: die Änderung an 4.3 ist
+> zurückgenommen.** Weg 1 (Regionsabstand aus `sweep_region_runs`
+> nachmessen mit `messung-korrektur-regionsabstand.ts`) war nicht gangbar:
+> Das Skript liegt im git-ignorierten Verzeichnis
+> `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/`, das weder im
+> Arbeitszweig noch im Hauptcheckout existiert — es ist mit der Sitzung des
+> Prüfers verloren gegangen, nicht gescheitert. Ein neues Skript zu schreiben
+> war in dieser reinen Dokumentationsrunde nicht zulässig, und Datenbankzugriff
+> war für diese Aufgabe ohnehin ausgeschlossen. Der Fehlschlag ist in 4.3
+> ausdrücklich vermerkt („Was zu tun wäre, und warum es nicht getan ist"),
+> nicht stillschweigend übergangen — genau das verlangt der Fund.
+>
+> 4.3 zeigt wieder die **7 / 14 / 30-Tage-Fassung** und stellt Regionsabstand
+> (Abgänge-Spec, P90 7,6 Tage) und `last_seen`-Alter (M4) als zwei benannte,
+> verschiedene Größen nebeneinander; die Frage nach dem kürzesten Fenster
+> bleibt **offen, nicht zugunsten von 7 Tagen entschieden**. 13.4 trägt
+> dieselbe Aussage und löst damit den vom Fund benannten Widerspruch auf:
+> „die 5,7 und 7,6 Tage sind nicht widerlegt" (durch eine andere Größe) und
+> „die Frage ist offen" (weil der Regionsabstand selbst nicht nachgemessen
+> wurde) schließen sich nicht aus — nicht widerlegt ist nicht dasselbe wie
+> bestätigt.
+
 ## Wichtig 4 — M6 misst einen Rang, den der Entwurf nicht vergibt
 
 **6 der 17** echten Senkungen liegen in **S0** — Objekten, die nach 3.7
@@ -133,6 +178,27 @@ belegt wird, stammt teils aus einer Liste, die es so nicht geben wird.
 Entweder innerhalb der Stufe und ohne S0 neu rechnen, oder ausdrücklich
 dranschreiben, welche Liste gerankt wurde.
 
+> **Erledigt am 2026-09-13. Weg 2 gewählt: die gerankte Liste ist benannt,
+> nicht neu gerechnet.** Weg 1 (innerhalb der Stufe und ohne S0 neu rechnen
+> mit `messung-m6-preissenkung.ts` / `messung-m6-teil2.ts`) war nicht gangbar:
+> Beide Skripte lagen im selben git-ignorierten, verlorenen Verzeichnis wie
+> das Regionsabstand-Skript (siehe Wichtig 3 und den Kopf dieser Datei); eine
+> reine Dokumentationsrunde durfte weder neue Skripte schreiben noch die
+> Datenbank anfassen.
+>
+> 2.4 und 13.6 benennen jetzt ausdrücklich, welche Liste M6 gerankt hat:
+> „global über alle 12.157 bewerteten Objekte einschließlich S0" — eine
+> Liste, die das Dashboard nach 3.2/3.7 so nie zeigen wird —, und dass **6
+> der 17** echten Senkungen in S0 lagen, das gar keinen Rangplatz bekommt.
+>
+> **Der verlangte Vorbehalt zur Stichprobengröße von 17 steht in 2.4:** „Die
+> Messung belegt sie nicht: Sie umfasst 17 echte Preissenkungen aus sieben
+> Tagen Historie, mehrere davon zum selben Objekt". 13.6 spricht es noch
+> deutlicher aus: „2.4 bleibt — begründet, aber nicht belegt." Die Aussage
+> „Anforderung 3 ist belegt" steht damit an keiner Stelle mehr unbedingt da;
+> was bleibt, ist die Formel-Begründung, ausdrücklich getrennt von der
+> unbelegten Messung.
+
 ## Wichtig 5 — E-7 und 6.2: „54 statt 157" ist kein Vergleich gleicher Art
 
 Alt war „ohne `fundort`", neu ist „ohne zuordenbare Region" über
@@ -140,6 +206,22 @@ Alt war „ohne `fundort`", neu ist „ohne zuordenbare Region" über
 196 ZVG), **ohne zuordenbare Region 54**. Der Rückgang von 8,2 % auf 0,4 %
 ist damit teils definitorisch. Die angegebene Ursache („Fundort wird seit
 dem Umbau mitgeschrieben") ist behauptet, nicht gemessen.
+
+> **Erledigt am 2026-09-13.** E-7 und 6.2 stellen beide Größen jetzt mit
+> Namen nebeneinander: **ohne `fundort` 250** (54 Immowelt, 196 ZVG) und
+> **ohne zuordenbare Region 54**. Beide Stellen sagen ausdrücklich, dass der
+> Rückgang von 8,2 % auf 0,4 % teils definitorisch ist, weil die alte
+> Zählung vom 2026-09-09 nie nach der neuen Definition wiederholt wurde und
+> die beiden Zahlen deshalb **nicht vergleichbar** sind.
+>
+> Die Ursachenbehauptung ist **als Vermutung gekennzeichnet, nicht
+> gestrichen** — 6.2 nennt sie wörtlich „plausibel, aber für diesen Entwurf
+> nicht nachgemessen; es wird hier als Vermutung geführt und nicht als
+> Ursache behauptet" und verweist ausdrücklich auf `ABNAHME-BASIS.md` A-2.
+> Auch 6.3 ist an der betroffenen Stelle präzisiert: Die Zustandsbedingung
+> „oder `fundort is null`" ist durch „`partitionEinesListings` liefert keine
+> Region" ersetzt, weil die 196 ZVG-Objekte über ihr `external_id`-Präfix
+> sehr wohl zuordenbar sind.
 
 ## Gering
 
@@ -150,6 +232,35 @@ dem Umbau mitgeschrieben") ist behauptet, nicht gemessen.
 - E-4 trägt weiter „339 von 409 Meldekandidaten", während 13.7 aus derselben
   Messung „197 von 12.611" ableitet.
 - Die Zahl „6.408 von 11.308 = 56,7 %" in 3.1 steht ohne Verfahren.
+
+> **Erledigt am 2026-09-13, alle vier Punkte.**
+>
+> - **3.8 und Abschnitt 7** (nicht 9 — die Zeile „solange nur … Objekte eine
+>   belegte Miete tragen" steht und stand bereits vor der Korrekturrunde in
+>   Abschnitt 7, „Was dieser Entwurf nicht löst") nennen jetzt **1** statt
+>   zwei Objekte mit belegter Miete: 3.8 „Belegte Miete: 1 Objekt, nicht über
+>   der Schwelle", Abschnitt 7 „Solange nur **ein** Objekt eine belegte Miete
+>   trägt … bleibt S3 fast leer."
+> - Die **7,6-Tage-Aussage** ist in 4.3 und Abschnitt 7 als eigene Größe
+>   (90. Perzentil des Regionsabstands, Abgänge-Spec) neben dem
+>   `last_seen`-Alter aus M4 gekennzeichnet und nicht mehr „der Regelfall"
+>   genannt; das Wort „Regelfall" kommt im Entwurf nicht mehr vor. Das
+>   Ergebnis ist mit Wichtig 3 vereinheitlicht: beide Größen bleiben offen,
+>   bis der Regionsabstand selbst nachgemessen ist.
+> - **E-4** (339 von 409) und **13.7** stehen jetzt nebeneinander mit dem
+>   Vermerk, dass es zwei verschiedene Grundgesamtheiten sind (A11s
+>   Meldekandidaten vs. die Stufenzahlen aus M3) und beides **keine eigene
+>   Messung**, sondern eine Ableitung ist. 13.7 zählt nach der korrigierten
+>   Stufenregel jetzt **53 von 12.611** (S3 1 + S2 52) statt der alten 197 —
+>   der alte Wert steht als Fußnote „nach der alten Stufenregel waren es
+>   197", nicht mehr als aktueller Stand.
+> - Die Zahl „6.408 von 11.308 = 56,7 %" in 3.1 trägt jetzt ein **Verfahren**
+>   (eigene Box direkt unter der Tabelle: Grundgesamtheit, Zuordnung über
+>   `plzBundesland.generated.json`, was die Zahl nicht hergibt) samt der
+>   Einschränkung, dass der Zählschritt selbst im Nachtrag nicht protokolliert
+>   und das zugehörige Messskript nicht mehr vorhanden ist — die Zahl gilt
+>   deshalb als **nicht reproduzierbar** und ist bei der nächsten Messung
+>   mitzuführen, statt gestrichen zu werden.
 
 ---
 
