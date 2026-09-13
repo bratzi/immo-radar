@@ -238,7 +238,8 @@ beschrifteter Block mit eigener Rangliste.
 
 Begründung: Eine gemeinsame Liste müsste behaupten, wie viele Rangplätze eine
 belegte Miete wert ist. Diese Zahl hat niemand gemessen, und sie ist auch
-nicht messbar, solange der Bestand **zwei** belegte Objekte enthält. Die
+nicht messbar, solange der Bestand **ein einziges** belegtes Objekt enthält
+(gemessen 2026-09-12, M3; am 2026-09-08 waren es zwei). Die
 gemessene Unschärfe der Bundeslandstufe (bis −37 %/+67 %, siehe 3.4)
 übersteigt in NRW und Bayern den Abstand zwischen beliebig vielen Rangplätzen
 — ein gemeinsamer Rang wäre eine Zahl ohne Bedeutung.
@@ -488,13 +489,21 @@ Meldeschwelle (`kaufpreisfaktor` 3…15 **und** `DSCR >= 1,3`) von denen
 darunter. Über der Linie steht die Rangliste; unter der Linie steht eine
 zusammengeklappte Zeile mit der Anzahl.
 
-**Warum das nötig ist:** Heute enthält S3 zwei Objekte, und *keines* passiert
-die Schwellen (A11). Ohne diese Linie stünde das bestbelegte, aber schlechte
-Objekt des Bestands ganz oben auf der Seite — die Sicherheitsstufe würde
-gegen Anforderung 1 arbeiten. Mit der Linie klappt S3 zu einer einzigen
-ehrlichen Zeile zusammen („Belegte Miete: 2 Objekte, keines über der
-Schwelle") und das erste **gerankte** Objekt der Seite ist das beste, das es
-gibt.
+**Warum das nötig ist:** S3 enthält am 2026-09-12 genau **ein** Objekt, und es
+passiert die Schwellen *nicht* (Faktor 13,0, DSCR 0,76; M3, siehe 13.1). Ohne
+diese Linie stünde das bestbelegte, aber schlechte Objekt des Bestands ganz
+oben auf der Seite — die Sicherheitsstufe würde gegen Anforderung 1 arbeiten.
+Mit der Linie klappt S3 zu einer einzigen ehrlichen Zeile zusammen („Belegte
+Miete: 1 Objekt, nicht über der Schwelle") und das erste **gerankte** Objekt
+der Seite ist das beste, das es gibt.
+
+> **Korrigiert am 2026-09-13:** Hier standen weiter „zwei Objekte" — der Stand
+> vom 2026-09-08. Gemessen sind **1 von 12.611**. Der Text der Zeile wird
+> ohnehin zur Anzeigezeit aus den Daten gerechnet (3.9), nicht aus diesem
+> Dokument. **Was die Zahl nicht hergibt:** Sie ist eine Momentaufnahme und
+> eher fallend als steigend — von drei Objekten mit belegter Miete haben zwei
+> sie wieder verloren, weil ihre neuere Version aus der Immowelt-Ergebnisliste
+> stammt, die keine Miete nennt (13.1, Punkt 3).
 
 Damit gilt Anforderung 1 („das beste Objekt steht immer oben") in der einzig
 haltbaren Lesart: das beste Objekt, über das genug bekannt ist, um es so zu
@@ -875,11 +884,16 @@ Ehrliche Fehlanzeige, damit niemand sie im Bild sucht:
   eine PLZ für Immowelt-Objekte (`lib/rentEstimate.ts`), und die ist von
   Rechenzentrums-Adressen gesperrt. Das Dashboard macht die Unschärfe
   sichtbar; es beseitigt sie nicht.
-- **Er erzeugt keine Top-Treffer.** Solange nur zwei Objekte eine belegte
-  Miete tragen, bleibt S3 fast leer. Das ist kein Fehler der Darstellung.
+- **Er erzeugt keine Top-Treffer.** Solange nur **ein** Objekt eine belegte
+  Miete trägt (gemessen am 2026-09-12, M3), bleibt S3 fast leer. Das ist kein
+  Fehler der Darstellung.
 - **Er repariert keine Abdeckung.** Ein Bundesland, das seit über einer Woche
-  nicht gesweept wurde — bei einem 90. Perzentil von 7,6 Tagen der Regelfall
-  am Rand —, steht auch im Dashboard so da: sichtbar, aber nicht behoben.
+  nicht gesweept wurde, steht auch im Dashboard so da: sichtbar, aber nicht
+  behoben. Wie oft das vorkommt, ist **offen**: Die Abgänge-Spec nennt für den
+  **Regionsabstand** ein 90. Perzentil von 7,6 Tagen (Monte-Carlo, älterer
+  Bestand); die Messung vom 2026-09-12 hat eine **andere** Größe erhoben, das
+  `last_seen`-Alter je Objekt, und kann die 7,6 Tage weder bestätigen noch
+  widerlegen (4.3, 13.4).
 - **Er ersetzt Telegram nicht.** Die Meldung ist der Weckruf, das Dashboard
   der Überblick. Ob bundeslandgenaue Schätzungen überhaupt melden dürfen, ist
   eine offene Nutzerentscheidung (A11 Schritt 4 = E-4 hier).
@@ -983,7 +997,7 @@ betrifft Geld, Risiko, Schreibzugriffe auf Produktionsdaten oder Recht.
 | **E-1** | **Zugriffsweg: Snapshot-Export (C1, empfohlen), Anmeldung (B) oder anon-Key (A)?** | B und A verlangen **`create policy` auf der Produktionsdatenbank**; B zusätzlich ein angelegtes Benutzerkonto. C1 verlangt **keine** Änderung. |
 | **E-2** | **Wer darf das Dashboard sehen?** Nicht verlinkte URL, Basic Auth, oder Anmeldung? | Bestimmt, ob der gesamte Bestand samt Kennzahlen faktisch öffentlich ist. |
 | **E-3** | **Darf die Seite öffentlich erreichbar sein**, obwohl sie von Immowelt übernommene Titel und Preise zeigt und Bilder aus dem Immowelt-CDN einbindet? | Rechtsfrage. Dieser Entwurf hat dazu keine Kompetenz und trifft keine Aussage. |
-| **E-4** | **Dürfen bundeslandgenaue Schätzungen melden — oder nur im Dashboard erscheinen?** (identisch mit A11 Schritt 4) | 339 von 409 Meldekandidaten. Bei „nur Dashboard" wird das Dashboard der Hauptweg und nicht die Ergänzung. |
+| **E-4** | **Dürfen bundeslandgenaue Schätzungen melden — oder nur im Dashboard erscheinen?** (identisch mit A11 Schritt 4) | **Zwei Zahlen, zwei Grundgesamtheiten** (vereinheitlicht 2026-09-13): **339 von 409 Meldekandidaten** stammen aus A11 vom 2026-09-08 und zählen nur die Objekte, die die Meldeschwellen passieren. Aus M3 (2026-09-12) folgt die andere Seite: Dürfen bundeslandgenaue Schätzungen nicht melden, bleiben nach der **korrigierten** Stufenregel **S3 1 + S2 52 = 53 von 12.611** Objekten für den Meldeweg (13.7; nach der alten Stufenregel waren es 197). Beides ist **keine eigene Messung**, sondern eine Ableitung aus den Stufenzahlen. Bei „nur Dashboard" wird das Dashboard der Hauptweg und nicht die Ergänzung — und zwar deutlicher, als die 339 vermuten lassen. |
 | **E-5** | **Gilt der Rangvorschlag aus 2.3 (DSCR, keine erfundene Punktzahl)?** | Alles Weitere baut darauf. Eine gewichtete Punktzahl wäre möglich, aber die Gewichte müssten vom Nutzer kommen, nicht vom Entwurf. |
 | **E-6** | **Wie lange bleiben Abgänge im Archiv?** Unbegrenzt, oder nach N Tagen ausblenden (nicht löschen)? | Unter Option 3 wird nie gelöscht; das Archiv wächst sonst unbegrenzt. |
 | **E-7** | **Was geschieht mit den Objekten ohne zuordenbare Region?** (identisch mit Frage 5 der Abgänge-Spec) — am 2026-09-12 über `partitionEinesListings` ausgezählt: **54 von 12.611 (0,4 %)** | Sie sind dauerhaft „unbestätigt". Sie zu verwerfen wäre ein Schreibzugriff auf Produktionsdaten. **Zum Vergleich der Größen** (präzisiert 2026-09-13): Objekte **ohne `fundort`** sind es 250 (2,0 %), davon 196 ZVG, die über ihr `external_id`-Präfix trotzdem zuordenbar sind. Die alten **157 (8,2 %)** vom 2026-09-09 stammen aus der Zählung **ohne `fundort`** und sind mit den 54 **nicht vergleichbar**; der Rückgang ist teils definitorisch. *Was die Zahl nicht hergibt:* wie viel davon Fortschritt ist — die alte Zählung wurde nie nach der neuen Definition wiederholt. |
@@ -1472,8 +1486,11 @@ Median um 539 Plätze" ist es nicht. Sie ist nach vier Wochen zu wiederholen.
 ### 13.7 Was Schritt 0 offen lässt
 
 - **M4 und M6 haben zu wenig Historie.** Beide Zahlen sind an sieben Tagen
-  Bestand gemessen und nach vier Wochen zu wiederholen. Bis dahin sind die
-  3-Tage-Schwelle (6.3) und das 3-Tage-Fenster (4.3) vorläufig.
+  Bestand gemessen und nach vier Wochen zu wiederholen. Sie tragen deshalb
+  **keine Schwelle**: Die vom Nachtrag beschlossene 3-Tage-Schwelle (6.3) und
+  das 3-Tage-Fenster (4.3) sind am 2026-09-13 **zurückgenommen**. Bis zur
+  Nachmessung gilt die regionsindividuelle Definition (6.3) und das
+  7-Tage-Fenster (4.3), beides als offener Punkt, nicht als Entscheidung.
 - **Die 148 Objekte ohne Fläche und ohne Lücke** verschwinden von selbst,
   sobald sie erneut gescannt werden. Die erweiterte S0-Bedingung aus 3.3
   bleibt trotzdem nötig: Sie ist die Regel, die verhindert, dass die
@@ -1483,6 +1500,62 @@ Median um 539 Plätze" ist es nicht. Sie ist nach vier Wochen zu wiederholen.
   Hebel für das Dashboard ist derselbe wie für die Meldung (A11): eine PLZ
   für Immowelt-Objekte, nicht eine bessere Mietschätzung.
 - **E-4 ist durch M3 dringender geworden, nicht entspannter.** Wenn
-  bundeslandgenaue Schätzungen nicht melden dürfen, bleiben **197 von 12.611**
-  Objekten für den Meldeweg — das Dashboard wäre dann nicht die Ergänzung,
-  sondern der einzige Weg zu 98 % des Bestands.
+  bundeslandgenaue Schätzungen nicht melden dürfen, bleiben nach der
+  **korrigierten** Stufenregel **53 von 12.611** Objekten für den Meldeweg
+  (S3 1 + S2 52) — das Dashboard wäre dann nicht die Ergänzung, sondern der
+  einzige Weg zu über 99 % des Bestands. *Verfahren:* Das ist eine
+  **Ableitung** aus den Stufenzahlen in 13.1, keine eigene Messung; nach der
+  alten Stufenregel lautete sie 197 (S3 1 + S2 196), und diese Fassung stand
+  bis zum 2026-09-13 hier. *Was die Zahl nicht hergibt:* Sie sagt nicht, wie
+  viele dieser 53 Objekte die Meldeschwellen überhaupt passieren — die Größe,
+  die A11 mit „339 von 409 Meldekandidaten" (2026-09-08) zählt, ist eine
+  andere (E-4).
+
+---
+
+### 13.8 Korrekturrunde 2026-09-13 — was an diesem Nachtrag korrigiert wurde
+
+**Keine Codeänderung, keine neue Messung.** Diese Runde hat den Nachtrag vom
+2026-09-12 gegen die Funde in
+[`2026-09-12-messfragen-nachtrag-funde.md`](2026-09-12-messfragen-nachtrag-funde.md)
+gelesen. Die **Rohzahlen der Messung sind reproduziert und bestätigt**;
+beanstandet war, was der Nachtrag daraus im Entwurf gemacht hat. Geändert
+wurde deshalb kein Messwert, sondern wo zwei Stände nebeneinanderstanden, wo
+eine Zahl ohne Verfahren dastand und wo eine Schlussfolgerung weiter trug, als
+ihre Zahl reicht.
+
+| Fund | Stellen | Ergebnis |
+|---|---|---|
+| Korrigierte S0-Regel, alte Zahlen | 3.1, 3.3, 10 (M3), 13.1 | Gezählt wird nach der korrigierten Regel: **S3 1 · S2 52 · S1 11.308 · S0 1.250**. Die Blockfrage für S2 ist wieder **offen**. |
+| 6.3 trug zwei Schwellen | 6.3, 10 (M4), 13.4, 13.7 | Die globale 3-Tage-Schwelle ist **zurückgezogen**; sie ist auf sieben Tagen Historie nicht entscheidbar. |
+| 4.3 gegen 13.4 | 4.3, 7, 10 (M4), 12, 13.4, 13.7 | Das kürzeste Fenster bleibt bei **7 Tagen**, weil M4 das `last_seen`-Alter misst und nicht den Regionsabstand. Frage offen. |
+| M6 rankte eine andere Liste | 2.4, 10 (M6), 13.6 | Die gerankte Liste ist benannt: global über alle 12.157 **einschließlich S0**. 2.4 trägt den Vorbehalt aus n = 17. |
+| „54 statt 157" | 6.2, 6.3, 11 (E-7), 13.4 | Beide Größen stehen mit Namen nebeneinander (ohne `fundort` **250**, ohne zuordenbare Region **54**); die Ursache ist als **Vermutung** gekennzeichnet. |
+| Vier kleine Funde | 3.1, 3.2, 3.8, 7, 11 (E-4), 13.7 | „2 Objekte" → **1**; die 7,6 Tage sind als andere Größe gekennzeichnet; E-4 und 13.7 tragen dieselbe Ableitung; „6.408 von 11.308" hat ein Verfahren. |
+
+**Was diese Runde nicht konnte, und das ist der wichtigste Satz hier.** Zwei
+Funde ließen die Wahl zwischen *nachmessen* und *kennzeichnen*. Nachgemessen
+wurde **nichts**, und zwar nicht aus Bequemlichkeit: Die Messskripte des
+Prüfers —
+`messung-korrektur-regionsabstand.ts`, `messung-m6-preissenkung.ts`,
+`messung-m6-teil2.ts` — liegen im Verzeichnis
+`.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/`, das
+**git-ignoriert** ist. Das Verzeichnis existiert weder im Arbeitszweig noch im
+Hauptcheckout; es ist mit der Sitzung des Prüfers verloren gegangen. Die
+Skripte sind also nicht *gescheitert*, sie waren **gar nicht vorhanden**. Neue
+zu schreiben war in einer reinen Dokumentationsrunde nicht zulässig.
+
+**Daraus folgt für die Nachmessung in vier Wochen**, dass drei Dinge
+zusammengehören und in einem Zug zu erledigen sind:
+
+1. Der **Regionsabstand** aus `sweep_region_runs` — er entscheidet über das
+   kürzeste Zeitfenster in 4.3 **und** über die Schwelle in 6.3.
+2. **M6 innerhalb der Stufe und ohne S0** — erst das ergibt eine Zahl über die
+   Rangliste, die der Entwurf wirklich vergibt.
+3. Die **Zählung hinter „6.408 von 11.308"** (3.1), deren Rechenschritt nicht
+   protokolliert ist.
+
+**Und eine Lehre für die Ablage:** Ein Messskript, dessen Ergebnis in eine
+Spezifikation eingeht, gehört nicht in ein git-ignoriertes Verzeichnis. Sonst
+ist die Zahl da und ihr Verfahren weg — genau der Zustand, den die Grundregel
+dieses Nachtrags verbietet.
