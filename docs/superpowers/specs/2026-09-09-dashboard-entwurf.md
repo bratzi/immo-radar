@@ -725,12 +725,40 @@ zwei Regionen reproduziert, kein Parserfehler (A15, Übergabe 2026-09-09).
 `istRegionVollstaendig` kann für sie nie `true` liefern, und seit der
 Fail-closed-Umstellung heißt das: **aus diesen Regionen wird nie ein Objekt
 als abgängig markiert.** Dazu kommen Objekte ohne zuordenbare Region, die
-unter keiner regionsgenauen Regel je markierbar sind: am 2026-09-12 über
-`partitionEinesListings` ausgezählt noch **54 von 12.611 (0,4 %)** statt der
-157 (8,2 %) vom 2026-09-09 — der Fundort wird seit dem Umbau auf die
-Ergebnisliste zu jedem neuen Objekt mitgeschrieben, und der Altbestand ist
-gegenüber dem Zuwachs klein geworden. E-7 betrifft damit 54 Objekte, nicht
-157.
+unter keiner regionsgenauen Regel je markierbar sind.
+
+> **Zwei verschiedene Größen, am 2026-09-13 auseinandergezogen.** Der Nachtrag
+> hat „54 statt 157" geschrieben und damit zwei Zählungen verglichen, die
+> nicht dasselbe messen. Beide am 2026-09-12 über den vollständigen Bestand
+> (n = 12.611) ausgezählt:
+>
+> | Größe | Verfahren | Wert 2026-09-12 |
+> |---|---|---|
+> | **ohne `fundort`** — die Größe, aus der die alten 157 stammen | Feld `listings.fundort` ist leer | **250 (2,0 %)**, davon 54 Immowelt und 196 ZVG |
+> | **ohne zuordenbare Region** — die Größe, die E-7 wirklich betrifft | `partitionEinesListings` liefert keine Region (gespeicherter `fundort`, sonst ZVG-Präfix der `external_id`) | **54 (0,4 %)** |
+>
+> Der Unterschied sind die **196 ZVG-Objekte**: Sie tragen keinen `fundort`,
+> bekommen ihre Region aber aus dem Präfix ihrer `external_id`. Sie sind
+> zuordenbar und gehören deshalb nicht zu E-7.
+>
+> **Der Rückgang von 8,2 % auf 0,4 % ist damit teils definitorisch**, nicht
+> allein ein Fortschritt: Die alte Zahl zählte über die erste Größe, die neue
+> über die zweite. Was an dem Rückgang Messung ist und was Definition, ist mit
+> diesen beiden Zahlen **nicht auseinanderzuhalten**, weil die alte Zählung
+> vom 2026-09-09 nicht nach der zweiten Größe wiederholt wurde.
+>
+> **Vermutung, nicht gemessen:** dass der Fundort seit dem Umbau auf die
+> Ergebnisliste zu jedem neuen Objekt mitgeschrieben wird und der Altbestand
+> gegenüber dem Zuwachs klein geworden ist. Das ist plausibel, aber für diesen
+> Entwurf **nicht nachgemessen**; es wird hier als Vermutung geführt und nicht
+> als Ursache behauptet (`ABNAHME-BASIS.md` A-2 verlangt genau das).
+>
+> **Was die Zahlen nicht hergeben:** Sie sind eine Momentaufnahme eines
+> siebentägigen Bestands. Sie sagen, wie viele Objekte **heute** keiner Region
+> zuzuordnen sind — nicht, wie viele es bleiben werden.
+
+**E-7 betrifft damit 54 Objekte** — die ohne zuordenbare Region, nicht die 250
+ohne `fundort`.
 
 > **Folge: Das Fehlen einer Abgangsmarkierung ist kein Beleg für
 > Verfügbarkeit.** Wer graue und nicht-graue Objekte als „weg" und „da" liest,
@@ -741,8 +769,14 @@ gegenüber dem Zuwachs klein geworden. E-7 betrifft damit 54 Objekte, nicht
 | Zustand | Bedingung | Darstellung |
 |---|---|---|
 | **verfügbar** | `disappeared_at is null` **und** `last_seen` jünger als die Kadenz seiner Region | normal |
-| **unbestätigt** | `disappeared_at is null`, aber `last_seen` älter als das Doppelte der Regionskadenz — oder die Region kann Abgänge grundsätzlich nicht erkennen (`nw`, `bw`, `mv`) oder `fundort is null` | eigenes Merkmal, **nicht grau**: „seit X Tagen nicht bestätigt" |
+| **unbestätigt** | `disappeared_at is null`, aber `last_seen` älter als das Doppelte der Regionskadenz — oder die Region kann Abgänge grundsätzlich nicht erkennen (`nw`, `bw`, `mv`) oder `partitionEinesListings` liefert **keine Region** | eigenes Merkmal, **nicht grau**: „seit X Tagen nicht bestätigt" |
 | **abgängig** | `disappeared_at is not null` | ausgegraut, mit Datum |
+
+> **Präzisiert am 2026-09-13:** In der mittleren Zeile stand „oder `fundort is
+> null`". Das wäre zu weit gefasst — die **196 ZVG-Objekte** tragen keinen
+> `fundort`, sind über das Präfix ihrer `external_id` aber sehr wohl einer
+> Region zuzuordnen (6.2). Maßgeblich ist, ob `partitionEinesListings` eine
+> Region liefert; das betrifft **54 Objekte**, nicht 250.
 
 **„Unbestätigt" ist optisch von „abgängig" getrennt**, und zwar deutlich:
 Grau heißt „beobachtet, dass es weg ist". Unbestätigt heißt „nicht
@@ -952,7 +986,7 @@ betrifft Geld, Risiko, Schreibzugriffe auf Produktionsdaten oder Recht.
 | **E-4** | **Dürfen bundeslandgenaue Schätzungen melden — oder nur im Dashboard erscheinen?** (identisch mit A11 Schritt 4) | 339 von 409 Meldekandidaten. Bei „nur Dashboard" wird das Dashboard der Hauptweg und nicht die Ergänzung. |
 | **E-5** | **Gilt der Rangvorschlag aus 2.3 (DSCR, keine erfundene Punktzahl)?** | Alles Weitere baut darauf. Eine gewichtete Punktzahl wäre möglich, aber die Gewichte müssten vom Nutzer kommen, nicht vom Entwurf. |
 | **E-6** | **Wie lange bleiben Abgänge im Archiv?** Unbegrenzt, oder nach N Tagen ausblenden (nicht löschen)? | Unter Option 3 wird nie gelöscht; das Archiv wächst sonst unbegrenzt. |
-| **E-7** | **Was geschieht mit den Objekten ohne zuordenbare Region?** (identisch mit Frage 5 der Abgänge-Spec) — am 2026-09-12 noch **54 von 12.611**, nicht mehr 157 (M4, siehe 6.2) | Sie sind dauerhaft „unbestätigt". Sie zu verwerfen wäre ein Schreibzugriff auf Produktionsdaten. Die Dringlichkeit ist durch die Messung gesunken: 0,4 % statt 8,2 %. |
+| **E-7** | **Was geschieht mit den Objekten ohne zuordenbare Region?** (identisch mit Frage 5 der Abgänge-Spec) — am 2026-09-12 über `partitionEinesListings` ausgezählt: **54 von 12.611 (0,4 %)** | Sie sind dauerhaft „unbestätigt". Sie zu verwerfen wäre ein Schreibzugriff auf Produktionsdaten. **Zum Vergleich der Größen** (präzisiert 2026-09-13): Objekte **ohne `fundort`** sind es 250 (2,0 %), davon 196 ZVG, die über ihr `external_id`-Präfix trotzdem zuordenbar sind. Die alten **157 (8,2 %)** vom 2026-09-09 stammen aus der Zählung **ohne `fundort`** und sind mit den 54 **nicht vergleichbar**; der Rückgang ist teils definitorisch. *Was die Zahl nicht hergibt:* wie viel davon Fortschritt ist — die alte Zählung wurde nie nach der neuen Definition wiederholt. |
 | **E-8** | **Wo läuft das Dashboard, und was darf es kosten?** | Ein Snapshot ist eine statische Datei und praktisch kostenlos; Weg B verlangt einen laufenden Dienst. |
 
 ---
@@ -1274,7 +1308,11 @@ Schwellenwirkung über den gesamten Bestand: älter als 1 d **4.342 (34,4 %)**,
    vorhanden ist (13.8). **Die Frage ist damit offen, nicht zugunsten von 7
    Tagen entschieden.** Unbestritten bleibt der Ausschluss des
    24-Stunden-Filters — 34,4 % aller Objekte sind älter als einen Tag.
-3. **E-7 betrifft 54 Objekte, nicht 157** (6.2 korrigiert).
+3. **E-7 betrifft 54 Objekte** — die ohne zuordenbare Region (6.2). Der
+   Vergleich mit den 157 vom 2026-09-09 ist am 2026-09-13 gestrichen worden:
+   Jene Zahl zählte die Objekte **ohne `fundort`**, und das sind heute 250,
+   davon 196 ZVG, die über ihr `external_id`-Präfix trotzdem zuordenbar sind.
+   Zwei verschiedene Größen, kein Vergleich.
 
 **Was die Zahl nicht hergibt, und das ist hier der wichtigste Satz.** Der
 Bestand ist am **2026-09-05** entstanden. Die 4,78 Tage sind deshalb zugleich
