@@ -49,11 +49,14 @@ Historie bleibt im Umlauf):
   in Klartext geloggt und bleiben nach der Umstellung exakt so gesichert.
 - **In der Produktionsdatenbank liegt nichts davon** — `SUPABASE_URL` und
   `SUPABASE_SERVICE_KEY` stehen nur in den Secrets, nicht im Code.
-- **Nicht geprüft, bewusst zurückgestellt:** ob irgendwo in
-  `docs/superpowers/specs/` oder Testfixtures reale Namen aus
-  ZVG-Bekanntmachungen stehen. ZVG-Bekanntmachungen sind ohnehin amtliche
-  öffentliche Unterlagen; das Risiko ist niedrig, aber ungeprüft. Bei Bedarf
-  ein Punkt für einen späteren `grep` durch `docs/` und `scraper/**/*.test.ts`.
+- **Nachgeprüft (2026-09-13):** Die beiden ZVG-Testfixtures
+  (`scraper/test/fixtures/zvg-portal-detail-40908.html`,
+  `zvg-portal-suche-sachsen-mfh.html`) sind Rohkopien der öffentlichen
+  Justizportal-Seite. Sie enthalten Fallnummer, Objektadresse, Gericht und
+  den Gläubigervertreter (Kanzlei samt Telefonnummer) — **keinen
+  Schuldner-/Eigentümernamen**. Alles darin steht bereits unverändert auf der
+  amtlichen, für Bieter bestimmten öffentlichen Seite. Kein zusätzliches
+  Risiko durch die Umstellung.
 
 **Ergebnis:** Die Umstellung ist aus Sicht der Zugangsdaten unbedenklich.
 
