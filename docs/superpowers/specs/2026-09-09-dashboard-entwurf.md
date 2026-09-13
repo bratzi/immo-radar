@@ -188,7 +188,23 @@ gewachsen; die alten Zahlen sind damit nicht falsch gewesen, sondern
 | Meldeklasse wechselt im ±30-%-Mietband | **2.962 von 12.157 (24,4 %)** | 558 von 1.879 (29,7 %) |
 | Objekte mit `wohnflaeche_fehlt` (jüngste Version) | **306 (2,4 %)**, plus 148 ohne Fläche und ohne Lücke | über die Hälfte (210 von 400) |
 | Objekte mit `units_unconfirmed` (jüngste Version) | **12.521 von 12.611 (99,3 %)** | 567 von 1.000 |
-| Bundesländer, die intern das ±30-%-Band verlassen | **7 von 16** (unverändert, Tabelleneigenschaft), dort **6.408 von 11.308** bewerteten S1-Objekten = **56,7 %** | 7 von 16, dort 64 % |
+| Bundesländer, die intern das ±30-%-Band verlassen | **7 von 16** (unverändert, Tabelleneigenschaft), dort **6.408 von 11.308** bewerteten S1-Objekten = **56,7 %** (Verfahren siehe unter der Tabelle) | 7 von 16, dort 64 % |
+
+> **Verfahren zu „6.408 von 11.308" (2026-09-12, nachgetragen am 2026-09-13).**
+> Grundgesamtheit sind die **11.308 S1-Objekte nach der korrigierten
+> Stufenregel** aus 3.3 (jüngste Version je Objekt, S0 hat Vorrang) — dieselbe
+> Zahl, auf die sich auch 13.3 bezieht. Jedes dieser Objekte trägt über
+> `plzBundesland.generated.json` genau ein Bundesland; gezählt sind die
+> Objekte, die in einem der **sieben in 3.4 fett markierten** Länder liegen,
+> also in einem Land, dessen interne Tabellenspanne das ±30-%-Band verlässt.
+> **Was die Zahl nicht hergibt:** Sie sagt, wie viele Objekte in einem Land
+> mit breiter Miettabelle liegen — **nicht**, wie weit deren geschätzte Miete
+> tatsächlich danebenliegt. Sie ist eine Eigenschaft der Tabelle und der
+> regionalen Verteilung des Bestands, keine Fehlermessung.
+> **Einschränkung, die dranstehen muss:** Der Zählschritt selbst ist im
+> Nachtrag nicht protokolliert, und das Messskript ist nicht mehr vorhanden
+> (siehe 13.8). Die 6.408 sind deshalb derzeit **nicht nachvollziehbar
+> reproduzierbar**; sie sind bei der nächsten Messung mitzuführen.
 
 **Die entscheidende Asymmetrie:** Eine falsche Mietschätzung kann **nie einen
 `top_treffer` erzeugen**, nur einen `pruefkandidat` (A11, `bestimmeMeldeklasse`
@@ -230,12 +246,41 @@ Alles daraus ist heute schon gespeichert: `listing_versions.rent_source` und
 > 98,4 % aus Immowelt. Die Zahlen unten sind die gemessenen; die alten Werte
 > („2 Objekte", „83 %", „über 50 %") sind ersetzt, nicht ergänzt.
 
-| Stufe | Name | Bedingung | Anteil, gemessen 2026-09-12 (n = 12.611) |
+> **Nachkorrigiert am 2026-09-13.** Der Nachtrag vom 2026-09-12 hat die
+> S0-Bedingung um `living_area_m2 <= 0` erweitert, seine Stufenzahlen aber
+> weiter **nach der alten Regel** gezählt — dieselbe Zeile trug damit die neue
+> Bedingung und die alten Zahlen. Die Tabelle unten zählt nach der
+> **korrigierten** Regel; die Werte des Nachtrags (S2 196, S1 11.312, S0
+> 1.102) sind ersetzt, nicht ergänzt. Die Verschiebung sind genau die 148
+> Objekte ohne Wohnfläche und ohne Lücke, die weiter unten beschrieben sind
+> (144 aus S2, 4 aus S1).
+>
+> **Verfahren:** jüngste Version je Objekt, Stufe nach der Regel in dieser
+> Tabelle, S0 hat Vorrang vor der Mietquelle; gemessen am 2026-09-12 gegen den
+> vollständigen Bestand (n = 12.611), Herleitung in 13.1.
+
+| Stufe | Name | Bedingung | Anteil, gemessen 2026-09-12, gezählt nach der korrigierten Regel (n = 12.611) |
 |---|---|---|---|
 | **S3** | belegt | `rent_source = 'angegeben'` **und** keine Lücke aus der S0-Liste | **1 Objekt** (0,01 %) |
-| **S2** | regional geschätzt | `rent_source = 'geschaetzt_regional'` (PLZ-Zweisteller) | **196** (1,6 %), davon 169 ZVG |
-| **S1** | bundeslandgenau geschätzt | `rent_source ∈ {'geschaetzt_bundesland', 'geschaetzt_bundesweit'}` | **11.312** (89,7 %) |
-| **S0** | **nicht beurteilbar** | mindestens eine Lücke aus: `wohnflaeche_fehlt`, `preis_miete_unvereinbar`, `rent_estimate_unreliable` — **oder `living_area_m2` fehlt oder ist 0** | **1.102** (8,7 %) |
+| **S2** | regional geschätzt | `rent_source = 'geschaetzt_regional'` (PLZ-Zweisteller) | **52** (0,4 %), davon 39 ZVG |
+| **S1** | bundeslandgenau geschätzt | `rent_source ∈ {'geschaetzt_bundesland', 'geschaetzt_bundesweit'}` | **11.308** (89,7 %) |
+| **S0** | **nicht beurteilbar** | mindestens eine Lücke aus: `wohnflaeche_fehlt`, `preis_miete_unvereinbar`, `rent_estimate_unreliable` — **oder `living_area_m2` fehlt oder ist 0** | **1.250** (9,9 %) |
+
+> **Was diese Zahlen nicht hergeben:** Sie sind eine Momentaufnahme vom
+> 2026-09-12 an einem Bestand, der in sieben Tagen von 2.108 auf 17.391
+> Versionen gewachsen ist. Die Stufenanteile sind eine Eigenschaft der
+> **Quellenmischung**, nicht des Marktes (13.1).
+
+> **Offen, und durch die Korrektur neu geöffnet: Trägt S2 einen eigenen
+> Block?** Der Nachtrag hat das mit 196 Objekten bejaht. Unter der
+> korrigierten Regel sind es **52 von 12.611 (0,4 %)** — ein eigener,
+> beschrifteter Block für vier von tausend Objekten ist nicht mehr belegt, und
+> die Frage ist damit **offen, nicht beantwortet**. Sie ist vor **Schritt 4**
+> des Abschnitts 9 (die Rangliste) zu entscheiden, nicht vor Schritt 2
+> (`ranking.ts`): Die Stufe S2 bleibt als Stufe bestehen und wird berechnet;
+> zu entscheiden ist allein, ob die Oberfläche sie als eigenen Block zeigt
+> oder mit S1 zusammenlegt und die PLZ-Genauigkeit als Merkmal am Objekt
+> führt.
 
 **Die S0-Bedingung ist gegenüber der ersten Fassung erweitert**, und das ist
 keine Kosmetik: 148 Objekte haben in ihrer jüngsten Version **keine
@@ -818,7 +863,7 @@ Entwurf **nicht** ausgeführt.
 |---|---|---|---|
 | **M1** | Wie stark verschiebt `units_unconfirmed` (Annahme `MIN_EINHEITEN = 3`) den DSCR? Nachrechnung über alle bewertbaren Objekte mit angenommener und alternativer Einheitenzahl, im Verfahren von A11. | Entscheidet, ob es Merkmal bleibt (3.3) oder eine eigene Stufe wird. Betrifft 567 von 1.000 Versionen. | **Merkmal, endgültig.** Der Hebel ist durch die 20-/35-%-Deckelung strukturell auf **−18,75 % … +23,08 %** begrenzt; bei der gemessenen Alternative (4 Einheiten) wechselt **0** von 12.126 Objekten die Schwelle, bei 6 Einheiten 21 (0,17 %). ±30 % Miete bewegen 11,6 %. |
 | **M2** | Wie breit ist das DSCR-Band je Objekt tatsächlich, wenn die Miete um die Landesspanne aus 3.4 skaliert wird? | Die Bandbreite ist nach 3.4 **nicht** proportional zur Miete. Ohne diese Messung ist die Sortierung nach unterer Kante (3.5) unkalibriert. | Band **67,9 % des Punktwerts im Median** (P95 101,9 %, max 126,5 %), S2 47,6 %. Die Nichtproportionalität gilt nur für **7,8 %** der Objekte (Median-Verstärkung 1,000). Sortierung nach unterer Kante verschiebt den Rang im Median um **713 Plätze**. |
-| **M3** | Wie verteilen sich die Objekte auf S3/S2/S1/S0? | 83 % S1 und „über die Hälfte `wohnflaeche_fehlt`" überschneiden sich unbekannt stark. Entscheidet, ob S2 überhaupt genug Objekte für einen eigenen Block hat. | **S3 1 · S2 196 · S1 11.312 · S0 1.102** von 12.611. S2 trägt einen Block, ist aber faktisch der ZVG-Block (169 von 196). 3.3 ist **korrigiert**, samt einer Lücke in der S0-Bedingung (148 Objekte). |
+| **M3** | Wie verteilen sich die Objekte auf S3/S2/S1/S0? | 83 % S1 und „über die Hälfte `wohnflaeche_fehlt`" überschneiden sich unbekannt stark. Entscheidet, ob S2 überhaupt genug Objekte für einen eigenen Block hat. | **S3 1 · S2 52 · S1 11.308 · S0 1.250** von 12.611, gezählt nach der **korrigierten** S0-Regel (Nachkorrektur 2026-09-13; der Nachtrag zählte mit 196/11.312/1.102 noch nach der alten). 3.3 ist **korrigiert**, samt der Lücke in der S0-Bedingung (148 Objekte). **Die Blockfrage für S2 bleibt damit offen, nicht beantwortet:** 52 von 12.611 = 0,4 % tragen keinen eigenen beschrifteten Block; zu entscheiden vor Schritt 4 aus Abschnitt 9. *Was die Zahl nicht hergibt:* Momentaufnahme eines siebentägigen Bestands, Eigenschaft der Quellenmischung, nicht des Marktes. |
 | **M4** | Verteilung des `last_seen`-Alters je Region. | Kalibriert die Schwelle für „unbestätigt" (6.3). | Median **0,83 d**, P90 **2,34 d**, Maximum **4,78 d**; Regionsmediane 0,13 bis 1,33 d. **Globale Schwelle 3 Tage** statt regionsindividuell (6.3 korrigiert), kürzestes Zeitfenster in 4.3 von 7 auf 3 Tage. |
 | **M5** | Wie viele Objekte sind Schwellenwechsler nach 3.6 — und deckt sich die Zahl mit A11s 558? | Prüft, ob die Objekt-Sicht dieselbe Größe misst wie die Bestands-Sicht. Weicht sie ab, ist eine der beiden Rechnungen falsch. | **Sie deckt sich nicht, und keine der beiden ist falsch — sie messen Verschiedenes.** 3.6: **6.658 von 11.360 (58,6 %)**; A11s Größe nachgerechnet: **2.962 von 12.157 (24,4 %)** gegen 29,7 %. Der Unterschied ist die Definition, nicht die Bandbreite. 3.6 ist korrigiert. |
 | **M6** | Wie oft ändert eine Preissenkung tatsächlich die Rangposition — und um wie viel? | Anforderung 3 des Nutzers steht und fällt damit. Wenn Preissenkungen den Rang kaum bewegen, braucht die Veränderungsansicht mehr Gewicht als die Rangliste. | **Sie bewegt den Rang, aber die Stichprobe ist klein.** 17 echte Senkungen (von 49 `price_dropped`-Zeilen; 10 sind Parserkorrekturen, 22 nicht nachrechenbar): Median −15,9 % Preis → **+539 Rangplätze** (4,4 % des Feldes). Selbst −3,0 % bewegten 105 Plätze. 2.4 bleibt. |
@@ -915,12 +960,28 @@ eingetragen (2026-09-12 16:00 UTC), nicht `new Date()`.
 **Verfahren.** Jüngste Version je Objekt, Stufe nach der Regel aus 3.3, S0
 hat Vorrang vor der Mietquelle.
 
-| Stufe | n | Anteil | davon Immowelt | davon ZVG |
-|---|---:|---:|---:|---:|
-| **S3** belegt | **1** | 0,01 % | 1 | 0 |
-| **S2** PLZ-genau | **196** | 1,6 % | 27 | 169 |
-| **S1** bundeslandgenau | **11.312** | 89,7 % | 11.308 | 4 |
-| **S0** nicht beurteilbar | **1.102** | 8,7 % | 1.079 | 23 |
+> **Nachkorrigiert am 2026-09-13.** Die Tabelle des Nachtrags zählte nach der
+> **alten** S0-Regel (nur `data_gaps`), obwohl derselbe Abschnitt die Regel um
+> `living_area_m2 <= 0` erweitert hat. Beide Zählungen stehen unten
+> nebeneinander, weil sie verschiedene Regeln messen; **maßgeblich ist die
+> rechte Spalte**, und nur sie steht in 3.3.
+
+| Stufe | n nach der **alten** Regel (Nachtrag) | n nach der **korrigierten** Regel — maßgeblich | Anteil |
+|---|---:|---:|---:|
+| **S3** belegt | 1 | **1** | 0,01 % |
+| **S2** PLZ-genau | 196 | **52** | 0,4 % |
+| **S1** bundeslandgenau | 11.312 | **11.308** | 89,7 % |
+| **S0** nicht beurteilbar | 1.102 | **1.250** | 9,9 % |
+
+Die Differenz sind genau die **148** Objekte ohne Wohnfläche und ohne Lücke
+aus Punkt 4 weiter unten: 144 wandern aus S2 nach S0, 4 aus S1.
+
+**Aufteilung nach Quelle.** Gemessen ist sie nur für die alte Regel (S3 1
+Immowelt; S2 27 Immowelt / 169 ZVG; S1 11.308 Immowelt / 4 ZVG; S0 1.079
+Immowelt / 23 ZVG) und für S2 unter der korrigierten Regel: dort bleiben
+**39 ZVG** von 52. Für S1 und S0 ist die Quellenaufteilung unter der
+korrigierten Regel **nicht gemessen** und wird hier bewusst **nicht
+hochgerechnet**.
 
 Rohe Mietquelle ohne S0-Vorrang: `geschaetzt_bundesland` 12.361 (98,0 %),
 `geschaetzt_regional` 243 (1,9 %), `geschaetzt_bundesweit` 6, `angegeben` 1.
@@ -934,9 +995,15 @@ S0-Gründe (mehrfach möglich): `rent_estimate_unreliable` 796,
    sind es heute nicht mehr: Der Bestand ist auf das Sechsfache gewachsen und
    besteht zu 98,4 % aus Immowelt, dessen Ergebnisliste eine Wohnfläche nennt
    und keine PLZ. Beides zusammen leert S0 und füllt S1.
-2. **S2 trägt einen eigenen Block — aber es ist der ZVG-Block.** 169 der 196
-   S2-Objekte sind Zwangsversteigerungen. Wer S2 baut, baut die ZVG-Ansicht.
-   Das ist kein Einwand, es muss nur dranstehen.
+2. **Ob S2 einen eigenen Block trägt, ist offen** — und das ist die Aussage,
+   die sich am 2026-09-13 umgedreht hat. Der Nachtrag hat sie mit 196 Objekten
+   bejaht; unter der korrigierten Regel sind es **52 von 12.611 (0,4 %)**. Ein
+   eigener, beschrifteter Block für vier von tausend Objekten ist damit
+   **nicht belegt**. Was bleibt: Es ist der ZVG-Block — **39 der 52**
+   S2-Objekte sind Zwangsversteigerungen (vorher 169 von 196). Wer S2 baut,
+   baut die ZVG-Ansicht. Die Entscheidung gehört vor Schritt 4 aus
+   Abschnitt 9, nicht vor Schritt 2: Die Stufe wird in `ranking.ts` in jedem
+   Fall berechnet; offen ist nur ihre Darstellung (3.3).
 3. **S3 ist kein Block, sondern eine Zeile**, und eine schrumpfende:
    Insgesamt trugen **3** Objekte je eine belegte Miete; bei zweien ist sie
    inzwischen wieder verschwunden, weil ihre neuere Version aus der
