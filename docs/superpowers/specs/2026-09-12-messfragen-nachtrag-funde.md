@@ -10,6 +10,24 @@
 > **Diese Datei existiert, weil die Korrekturrunde nicht mehr gelaufen ist:**
 > Der Agent starb am Sitzungslimit, bevor er eine Zeile geändert hatte. Ohne
 > diese Datei wären die Funde mit der Sitzung verloren gewesen.
+>
+> **Erledigt am 2026-09-13. Diese Datei ist damit vom Auftrag zum Protokoll
+> geworden:** Unter jedem Fund steht, **was** geändert wurde und — wo der Fund
+> zwei Wege offenließ — **welcher Weg gewählt wurde und warum**. Die
+> Korrekturrunde hat **nichts gemessen und keine Zeile Code geändert**; die
+> Rohzahlen des Nachtrags sind bestätigt. Der Entwurf führt sie in
+> **Abschnitt 13.8** zusammen.
+>
+> **Der eine Satz, der über alle Funde hinweg zählt:** Zwei Funde ließen die
+> Wahl zwischen *nachmessen* und *kennzeichnen*. Nachgemessen wurde keiner —
+> nicht aus Bequemlichkeit, sondern weil die drei Messskripte des Prüfers
+> (`messung-korrektur-regionsabstand.ts`, `messung-m6-preissenkung.ts`,
+> `messung-m6-teil2.ts`) im **git-ignorierten** Verzeichnis
+> `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/` lagen. Dieses
+> Verzeichnis existiert **weder im Arbeitszweig noch im Hauptcheckout**; es
+> ist mit der Sitzung des Prüfers verloren gegangen. Die Skripte sind also
+> nicht gescheitert, sie waren gar nicht vorhanden — und eine reine
+> Dokumentationsrunde durfte keine neuen schreiben.
 
 ## Warum das zählt
 
@@ -40,6 +58,25 @@ Block" — auf Zahlen aus genau der Regel, die derselbe Abschnitt für falsch
 erklärt. **Mit 52 Objekten ist die Blockfrage offen, nicht beantwortet.**
 
 Zu ändern: 3.3, 3.1, die M3-Zeile in Abschnitt 10, und 13.1.
+
+> **Erledigt am 2026-09-13.** Alle vier Stellen zählen jetzt nach der
+> korrigierten Regel: **S3 1 · S2 52 · S1 11.308 · S0 1.250**. 13.1 stellt
+> beide Zählungen nebeneinander und sagt, dass die korrigierte maßgeblich ist;
+> 3.3 nennt zusätzlich Verfahren und das, was die Zahlen nicht hergeben.
+>
+> **Der eigentliche Punkt ist umgesetzt:** Die M3-Antwort „S2 trägt genug für
+> einen eigenen Block" ist **zurückgezogen**. Die Blockfrage steht in 3.3, in
+> 13.1 (Punkt 2) und in der M3-Zeile als **offen** — mit der Begründung, dass
+> 52 von 12.611 Objekten (0,4 %) keinen eigenen beschrifteten Block tragen —
+> und ist Abschnitt 9, **Schritt 4** zugeordnet, nicht Schritt 2. Dort steht
+> ausdrücklich, dass `ranking.ts` davon nicht berührt ist: Die Stufe wird in
+> jedem Fall berechnet, offen ist nur ihre Darstellung.
+>
+> **Beim Gegenlesen gefundene Folgestellen**, die derselbe Fund erzeugt hat:
+> 3.2 („jede Stufe ein eigener Block"), 3.7 (begründete eine Ablehnung mit
+> „über die Hälfte des Bestands", gemessen sind 9,9 %), Abschnitt 9
+> (Schritte 0 und 4) und 13.3 (seine 52 auswertbaren S2-Objekte **sind** das
+> korrigierte S2). Auch E-4 und 13.7 hängen daran — siehe unter „Gering".
 
 ## Kritisch 2 — Abschnitt 6.3: zwei Stände, und eine Begründung gegen die eigenen Zahlen
 
