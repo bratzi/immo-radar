@@ -217,44 +217,137 @@ export function beschreibeDetailFehler(
   return { text: `ZVG-Detailseite ${url}: Fehler, übersprungen`, stoerung: true };
 }
 
+/**
+ * Wie ein Detailergebnis einzuordnen ist -- als reine Funktion herausgezogen,
+ * damit diese Entscheidung unter Test steht (`erfasseZvgDetails` selbst
+ * startet einen echten Browser und ist nicht direkt testbar).
+ *
+ * "ohne-verkehrswert" ist eine Eigenschaft der Quelle (das Gericht laesst den
+ * Wert aus) und bekommt spaeter eine Zeile ohne Bewertung. "stoerung" ist ein
+ * echter Abrufausfall und bekommt fail-closed KEINE Zeile: eine Zeile ohne
+ * Bewertung behauptet "geprueft, kein Wert vorhanden", und das waere bei
+ * einer blossen Stoerung eine Behauptung ueber etwas, das niemand gesehen hat.
+ */
+export type DetailErgebnis =
+  | { art: "erfasst"; daten: ZvgDetailData }
+  | { art: "ohne-verkehrswert" }
+  | { art: "stoerung" };
+
+export function ordneDetailErgebnisEin(
+  daten: ZvgDetailData | null,
+  fehler: unknown
+): DetailErgebnis {
+  if (daten !== null) return { art: "erfasst", daten };
+  if (fehler instanceof VerkehrswertFehltError) return { art: "ohne-verkehrswert" };
+  return { art: "stoerung" };
+}
+
+export interface ZvgDetailVerteilung {
+  termine: ZvgDetailData[];
+  ohneVerkehrswert: ZvgListSummary[];
+  stoerungen: ZvgListSummary[];
+}
+
+/**
+ * Teilt die eingeordneten Detailergebnisse auf die Listen auf, die `main.ts`
+ * verarbeitet: `termine` werden bewertet, fuer `ohneVerkehrswert` entsteht
+ * eine Zeile ohne Bewertung. `stoerungen` schreibt niemand -- sie stehen nur
+ * fuer die Laufsumme hier.
+ *
+ * Als reine Funktion herausgezogen, weil an genau dieser Aufteilung die
+ * Zusage haengt, dass eine Stoerung KEINE Zeile "geprueft, kein Wert"
+ * erzeugt. In `erfasseZvgDetails` (echter Browser) war sie nicht testbar.
+ */
+export function verteileErgebnisse(
+  ergebnisse: { zusammenfassung: ZvgListSummary; ergebnis: DetailErgebnis }[]
+): ZvgDetailVerteilung {
+  const verteilung: ZvgDetailVerteilung = { termine: [], ohneVerkehrswert: [], stoerungen: [] };
+  for (const { zusammenfassung, ergebnis } of ergebnisse) {
+    switch (ergebnis.art) {
+      case "erfasst":
+        verteilung.termine.push(ergebnis.daten);
+        break;
+      case "ohne-verkehrswert":
+        verteilung.ohneVerkehrswert.push(zusammenfassung);
+        break;
+      case "stoerung":
+        // Weder Termin noch Zeile: der Abruf ist gescheitert, keine Aussage
+        // ueber das Objekt moeglich. last_detail_at bleibt, wie es war, und
+        // der naechste Lauf holt die Seite erneut.
+        verteilung.stoerungen.push(zusammenfassung);
+        break;
+    }
+  }
+  return verteilung;
+}
+
+/**
+ * Laufsumme des ZVG-Detailzweigs -- Gegenstueck zu `fasseOhnePreisZusammen`
+ * im Immowelt-Zweig. Sie ist der Produktionsbeleg fuer A-4 (gemessen: drei
+ * Dauerfaelle je Lauf) und macht einen Massenausfall sichtbar: Liefert das
+ * Portal fuer jede Detailseite "error" (Referer oder Session kaputt), steigen
+ * seit K-1 die Stoerungen auf die Scheibengroesse, nicht "ohne Verkehrswert".
+ */
+export function fasseZvgDetailsZusammen(verteilung: ZvgDetailVerteilung): string {
+  const { termine, ohneVerkehrswert, stoerungen } = verteilung;
+  const gesamt = termine.length + ohneVerkehrswert.length + stoerungen.length;
+  return (
+    `ZVG: ${ohneVerkehrswert.length} von ${gesamt} Detailseiten ohne verwertbaren Verkehrswert ` +
+    `(Zeile ohne Bewertung), ${termine.length} erfasst, ${stoerungen.length} Stoerungen ` +
+    `(nichts geschrieben, der naechste Lauf holt sie erneut).`
+  );
+}
+
 async function detailSeiteHolen(
   page: Page,
   zusammenfassung: ZvgListSummary,
   referer: string
-): Promise<ZvgDetailData | null> {
+): Promise<DetailErgebnis> {
+  let daten: ZvgDetailData | null = null;
+  let fehler: unknown = null;
   try {
     await page.goto(zusammenfassung.url, { waitUntil: "domcontentloaded", referer });
-    return parseZvgDetailPage(await page.content(), {
+    daten = parseZvgDetailPage(await page.content(), {
       externalId: zusammenfassung.externalId,
       url: zusammenfassung.url,
       court: zusammenfassung.court,
       caseNumber: zusammenfassung.caseNumber,
     });
   } catch (err) {
-    const { text, stoerung } = beschreibeDetailFehler(zusammenfassung.url, err);
+    fehler = err;
+  }
+
+  const ergebnis = ordneDetailErgebnisEin(daten, fehler);
+  if (ergebnis.art !== "erfasst") {
+    const { text, stoerung } = beschreibeDetailFehler(zusammenfassung.url, fehler);
     // Nur eine echte Stoerung bekommt den Stapelabzug. Ein Gericht, das ein
     // Feld leer laesst, ist keine -- und drei solcher Zeilen in JEDEM Lauf
     // wuerden echte Stoerungen im Log verdecken.
-    if (stoerung) console.warn(text, err);
+    if (stoerung) console.warn(text, fehler);
     else console.log(text);
-    return null;
   }
+  return ergebnis;
 }
 
 /**
  * Phase B: Detailseiten nur fuer die uebergebenen externalIds.
  * Der Referer muss auf die Sucheinstiegsseite zeigen -- zvg-portal.de
  * liefert sonst HTTP 200 mit dem woertlichen Body "error".
+ *
+ * Liefert neben den erfassten Terminen auch `ohneVerkehrswert`: Objekte,
+ * deren Bekanntmachung keinen verwertbaren Verkehrswert nennt (A-4). Ein
+ * echter Abrufausfall (Stoerung) landet in KEINER der beiden Listen, sondern
+ * nur in `stoerungen` fuer die Laufsumme (`verteileErgebnisse`).
  */
 export async function erfasseZvgDetails(
   zusammenfassungen: Map<string, ZvgListSummary>,
   externalIds: string[]
-): Promise<ZvgDetailData[]> {
-  if (externalIds.length === 0) return [];
+): Promise<ZvgDetailVerteilung> {
+  if (externalIds.length === 0) return verteileErgebnisse([]);
 
   // headless: false -- siehe sweepZvgPortal / scrapers/immowelt/index.ts.
   const browser: Browser = await chromium.launch({ headless: false });
-  const ergebnisse: ZvgDetailData[] = [];
+  const ergebnisse: { zusammenfassung: ZvgListSummary; ergebnis: DetailErgebnis }[] = [];
   try {
     const page = await browser.newPage();
     await page.goto(SEARCH_URL, { waitUntil: "domcontentloaded" });
@@ -267,11 +360,11 @@ export async function erfasseZvgDetails(
       const zusammenfassung = zusammenfassungen.get(externalId);
       if (zusammenfassung === undefined) continue;
       await sleep(ZVG_VERZOEGERUNG_MS);
-      const daten = await detailSeiteHolen(page, zusammenfassung, referer);
-      if (daten !== null) ergebnisse.push(daten);
+      const ergebnis = await detailSeiteHolen(page, zusammenfassung, referer);
+      ergebnisse.push({ zusammenfassung, ergebnis });
     }
   } finally {
     await browser.close();
   }
-  return ergebnisse;
+  return verteileErgebnisse(ergebnisse);
 }

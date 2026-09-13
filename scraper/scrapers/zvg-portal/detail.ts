@@ -276,6 +276,7 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
 
   const felder: { label: string; wert: string }[] = [];
   let verkehrswertText = "";
+  let verkehrswertFeldGefunden = false;
   let terminText = "";
   let objektLageText = "";
   let beschreibungText = "";
@@ -288,7 +289,10 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
     const label = rawLabel.replace(/:$/, "");
     const wert = zellenText($, $(tds[1]));
     felder.push({ label, wert });
-    if (label === "Verkehrswert in €") verkehrswertText = wert;
+    if (label === "Verkehrswert in €") {
+      verkehrswertText = wert;
+      verkehrswertFeldGefunden = true;
+    }
     if (label === "Termin") terminText = wert;
     if (label === "Objekt/Lage") objektLageText = wert;
     if (label === "Beschreibung") beschreibungText = wert;
@@ -319,6 +323,20 @@ export function parseZvgDetailPage(html: string, kontext: ZvgDetailKontext): Zvg
 
   const wohnflaeche = wohnflaecheAusBeschreibung(beschreibungText);
   const baujahrText = ersteTrefferGruppe(beschreibungText, BAUJAHR_PATTERNS);
+
+  // Erst der Beleg, dass die Bekanntmachung ueberhaupt gelesen wurde. Ohne das
+  // Feld "Verkehrswert in €" hat niemand den Wert gesehen -- die Fehlerseite
+  // "error" (falscher Referer), eine Wartungsseite oder ein Selektorbruch
+  // liefern alle einen leeren Text. Das darf nicht als VerkehrswertFehltError
+  // gelten: der fuehrt zu einer Zeile "geprueft, kein Wert" samt
+  // last_detail_at und nimmt das Objekt sieben Tage aus der Detailerfassung.
+  // Unbekannter Zustand ist eine Stoerung, nie "in Ordnung".
+  if (!verkehrswertFeldGefunden) {
+    throw new Error(
+      `ZVG-Detailseite ${kontext.externalId}: kein Feld "Verkehrswert in €" gefunden ` +
+        `(${felder.length} Felder gelesen) -- Bekanntmachung nicht gelesen, keine Aussage ueber den Wert`
+    );
+  }
 
   const priceCents = Math.round(parseVerkehrswert(verkehrswertText) * 100);
   if (!Number.isFinite(priceCents) || priceCents <= 0) {

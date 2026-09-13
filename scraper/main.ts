@@ -5,6 +5,7 @@ import {
 import {
   sweepZvgPortal,
   erfasseZvgDetails,
+  fasseZvgDetailsZusammen,
   ZVG_VERZOEGERUNG_MS,
 } from "./scrapers/zvg-portal/index.js";
 import { processCandidate, type PipelineCandidate } from "./lib/pipeline.js";
@@ -487,7 +488,8 @@ async function main() {
     detailVersatz
   );
 
-  for (const termin of await erfasseZvgDetails(zvg.zusammenfassungen, zvgAuswahl)) {
+  const zvgDetails = await erfasseZvgDetails(zvg.zusammenfassungen, zvgAuswahl);
+  for (const termin of zvgDetails.termine) {
     await verarbeiteKandidatIsoliert(telegramConfig, {
       source: "zvg-portal",
       externalId: termin.externalId,
@@ -510,6 +512,34 @@ async function main() {
       attachments: termin.attachments,
     }, meldebudget);
   }
+  // Die Bekanntmachung wurde gelesen, sie nennt nur keinen verwertbaren
+  // Verkehrswert (A-4, Aufgabe 2 -- Gegenstueck zum Immowelt-Fall oben).
+  // `fundort` bleibt null wie bei jeder ZVG-Zeile; die Partition liest ZVG
+  // ohnehin aus der externalId (`partitionEinesListings` faellt auf
+  // `partitionAusExternalId` zurueck, `sn-40908` -> `sn`). Die Zeile unterliegt
+  // damit derselben Abgangs- und Loeschwache wie jedes andere ZVG-Objekt,
+  // NICHT einer schwaecheren: nach dem Delisting kann sie regulaer Abgang
+  // werden und nach KARENZ_TAGE hart geloescht werden.
+  for (const zusammenfassung of zvgDetails.ohneVerkehrswert) {
+    // Gekapselt wie der Immowelt-Fall oben: Ein voruebergehender
+    // Datenbankfehler beim unwichtigsten Schreibvorgang des Laufs darf den
+    // Lauf nicht abbrechen (A-1).
+    try {
+      await upsertListingOhneBewertung(sb, {
+        source: "zvg-portal",
+        externalId: zusammenfassung.externalId,
+        url: zusammenfassung.url,
+        fundort: null,
+        detailGelesen: true,
+      });
+    } catch (err) {
+      console.error(
+        `Zeile ohne Bewertung fehlgeschlagen [zvg-portal · ${zusammenfassung.externalId}]:`,
+        err
+      );
+    }
+  }
+  console.log(fasseZvgDetailsZusammen(zvgDetails));
 
   // Jetzt steht fest, wie viele besser belegte Kandidaten es in diesem Lauf
   // gab: freie Plaetze gehen an die zurueckgestellten, nur landesweit

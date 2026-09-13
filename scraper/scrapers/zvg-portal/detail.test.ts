@@ -152,6 +152,96 @@ describe("parseZvgDetailPage — Verkehrswert-Plausibilität", () => {
   });
 });
 
+describe("parseZvgDetailPage — die Bekanntmachung wurde gar nicht gelesen (K-1)", () => {
+  // Diese drei Seiten haben KEINE Bekanntmachungstabelle -- die Detailseite
+  // wurde nie wirklich angezeigt. Die alte Fassung wertete das trotzdem als
+  // "Verkehrswert fehlt" (VerkehrswertFehltError mit leerem feldtext), weil
+  // die Unterscheidung allein am Ausbleiben einer Zahl haengt, nicht an einem
+  // Beleg, dass die Tabelle ueberhaupt gelesen wurde. Seit A-4 (Aufgabe 2)
+  // schreibt genau diese Fehleinordnung eine Zeile "geprueft, kein Wert
+  // vorhanden" UND setzt last_detail_at -- ein einmaliger Portalschluckauf
+  // wuerde damit zu einem stillen, sieben Tage haltbaren Datenausfall.
+  it("wirft KEINEN VerkehrswertFehltError bei der woertlichen Fehlerseite 'error' (falscher Referer)", () => {
+    let gefangen: unknown;
+    try {
+      parseZvgDetailPage("error", KONTEXT);
+    } catch (err) {
+      gefangen = err;
+    }
+    expect(gefangen).not.toBeInstanceOf(VerkehrswertFehltError);
+    expect(gefangen).toBeInstanceOf(Error);
+  });
+
+  it("wirft KEINEN VerkehrswertFehltError bei einer leeren Huelle / Selektorbruch", () => {
+    let gefangen: unknown;
+    try {
+      parseZvgDetailPage("<html><body></body></html>", KONTEXT);
+    } catch (err) {
+      gefangen = err;
+    }
+    expect(gefangen).not.toBeInstanceOf(VerkehrswertFehltError);
+    expect(gefangen).toBeInstanceOf(Error);
+  });
+
+  it("wirft KEINEN VerkehrswertFehltError bei einer Wartungsseite", () => {
+    let gefangen: unknown;
+    try {
+      parseZvgDetailPage(
+        "<html><body><h1>Wartungsarbeiten</h1><p>Das Portal ist derzeit nicht erreichbar.</p></body></html>",
+        KONTEXT
+      );
+    } catch (err) {
+      gefangen = err;
+    }
+    expect(gefangen).not.toBeInstanceOf(VerkehrswertFehltError);
+    expect(gefangen).toBeInstanceOf(Error);
+  });
+
+  it("wirft KEINEN VerkehrswertFehltError, wenn die Tabelle da ist, die Verkehrswert-Zeile aber fehlt", () => {
+    // Die Tabelle wurde gelesen, das Feld aber nicht gefunden -- ein
+    // umbenanntes Label oder ein verschobener Selektor. Auch das ist kein
+    // Beleg, dass das Gericht keinen Wert nennt: gesehen hat ihn niemand.
+    let gefangen: unknown;
+    try {
+      parseMitErsetzung([
+        '<tr><td valign="top" align="left">Verkehrswert in €:</td><td valign="top" align="left"><p>271.000,00</p></td></tr>',
+        "",
+      ]);
+    } catch (err) {
+      gefangen = err;
+    }
+    expect(gefangen).not.toBeInstanceOf(VerkehrswertFehltError);
+    expect(gefangen).toBeInstanceOf(Error);
+  });
+});
+
+describe("parseZvgDetailPage — Feld vorhanden, Wert unverwertbar bleibt Eigenschaft der Quelle", () => {
+  // Gegenprobe zu K-1: Die Behebung darf nicht ins Gegenteil kippen. Die drei
+  // gemessenen Dauerfaelle (BACKLOG A6) tragen das Feld "Verkehrswert in €"
+  // -- nur ohne Betrag. Sie muessen weiter VerkehrswertFehltError ergeben,
+  // sonst stuenden sie wieder als Stoerung mit Stapelabzug im Log.
+  // Die aelteren Tests pruefen nur toThrow(/Verkehrswert/) -- das trifft auch
+  // eine Stoerungsmeldung, die das Wort enthaelt. Hier zaehlt der Typ.
+  const gemesseneFeldtexte = [
+    "Grundbuch von Duderstadt Blatt 7803 lfd.Nr. 1: €", // zvg_id=13233
+    "s. obige Beschreibungen", // zvg_id=49119
+    "Die Flurstücke bilden eine wirtschaftliche Einheit.", // zvg_id=167869
+    "", // Feld da, Zelle leer
+  ];
+  for (const feldtext of gemesseneFeldtexte) {
+    it(`wirft VerkehrswertFehltError fuer "${feldtext}"`, () => {
+      let gefangen: unknown;
+      try {
+        parseMitErsetzung(["<p>271.000,00</p>", `<p>${feldtext}</p>`]);
+      } catch (err) {
+        gefangen = err;
+      }
+      expect(gefangen).toBeInstanceOf(VerkehrswertFehltError);
+      expect((gefangen as VerkehrswertFehltError).feldtext).toBe(feldtext);
+    });
+  }
+});
+
 describe("parseZvgDetailPage — Wohnfläche- und Baujahr-Varianten", () => {
   it("liest 'Wohnfläche: 203 m²' (Label vor Wert) und 'Baujahr 1937'", () => {
     const daten = parseMitErsetzung(
