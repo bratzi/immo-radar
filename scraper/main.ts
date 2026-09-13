@@ -415,12 +415,27 @@ async function main() {
         `Immowelt ohne Preis [${zusammenfassung.fundort ?? "ohne Fundort"}]: ` +
           JSON.stringify(zusammenfassung.titleLine)
       );
-      await upsertListingOhneBewertung(sb, {
-        source: "immowelt",
-        externalId: zusammenfassung.externalId,
-        url: zusammenfassung.url,
-        fundort: zusammenfassung.fundort ?? null,
-      });
+      // Gekapselt wie jeder andere Schreibvorgang je Objekt
+      // (`verarbeiteKandidatIsoliert`, und die Abgangsschleife weiter oben):
+      // Ein voruebergehender Datenbankfehler beim *unwichtigsten* Schreiben
+      // des Laufs -- einem Objekt, das nicht einmal bewertet werden kann --
+      // darf nicht den ganzen Lauf abbrechen. Ungekapselt riss er den
+      // ZVG-Sweep, den Bestandsabgleich und jede Meldung mit sich und
+      // verletzte damit A-1 ("laeuft ohne Ausnahme durch") an genau der
+      // Stelle, die A-4 schliessen soll.
+      try {
+        await upsertListingOhneBewertung(sb, {
+          source: "immowelt",
+          externalId: zusammenfassung.externalId,
+          url: zusammenfassung.url,
+          fundort: zusammenfassung.fundort ?? null,
+        });
+      } catch (err) {
+        console.error(
+          `Zeile ohne Bewertung fehlgeschlagen [immowelt · ${zusammenfassung.externalId}]:`,
+          err
+        );
+      }
       continue;
     }
     immoweltBewertet += 1;

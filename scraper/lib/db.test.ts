@@ -8,6 +8,7 @@ import {
   versandBeleg,
   logNotification,
   upsertListingOhneBewertung,
+  bereitsGemeldeteListingIds,
 } from "./db.js";
 
 describe("diffVersion", () => {
@@ -257,5 +258,119 @@ describe("logNotification — die Erfolgszeile ruht auf der bestaetigten message
     // Kein "gesendet" ohne Beleg. Frueher stand hier "message_id=unbekannt",
     // also eine Erfolgsmeldung ohne Erfolg.
     expect(zeilen.filter((z) => z.includes("sn-40908"))).toEqual([]);
+  });
+});
+
+/**
+ * Ein Supabase-Doppel fuer `notifications`, das sich wie PostgREST verhaelt:
+ * Es schneidet **still** ab. Keine Fehlermeldung, kein Hinweis -- nur weniger
+ * Zeilen, als es gibt. Genau daran ist der Bestandsabgleich schon einmal
+ * zerbrochen (A14), und `bereitsGemeldeteListingIds` fragte bis heute ohne
+ * jede Obergrenze und ohne Blaetterung.
+ *
+ * `serverDecke` ist die Zahl, bei der der Server von sich aus abschneidet
+ * (PostgREST `max-rows`). Der Fake ehrt zusaetzlich `order`/`gt`/`limit`,
+ * damit eine Keyset-Blaetterung ueberhaupt durchkommen kann.
+ */
+function notificationsDoppel(
+  zeilen: { id: string; listing_id: string; kind: string }[],
+  serverDecke: number
+): { client: SupabaseClient; abfragen: () => number } {
+  let abfragen = 0;
+  const client = {
+    from(tabelle: string) {
+      if (tabelle !== "notifications") throw new Error(`unerwartete Tabelle ${tabelle}`);
+      let treffer = zeilen;
+      let nachId: string | null = null;
+      let grenze: number | null = null;
+      let sortiert = false;
+      const bauer: Record<string, unknown> = {
+        select: () => bauer,
+        in: (_spalte: string, werte: string[]) => {
+          const menge = new Set(werte);
+          treffer = treffer.filter((z) => menge.has(z.listing_id));
+          return bauer;
+        },
+        order: () => {
+          sortiert = true;
+          return bauer;
+        },
+        gt: (_spalte: string, wert: string) => {
+          nachId = wert;
+          return bauer;
+        },
+        limit: (n: number) => {
+          grenze = n;
+          return bauer;
+        },
+        then: (aufloesen: (a: { data: unknown; error: unknown }) => void) => {
+          abfragen += 1;
+          let ergebnis = [...treffer];
+          if (sortiert) ergebnis.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+          if (nachId !== null) ergebnis = ergebnis.filter((z) => z.id > nachId!);
+          const decke = grenze === null ? serverDecke : Math.min(grenze, serverDecke);
+          aufloesen({ data: ergebnis.slice(0, decke), error: null });
+        },
+      };
+      return bauer;
+    },
+  };
+  return { client: client as unknown as SupabaseClient, abfragen: () => abfragen };
+}
+
+describe("bereitsGemeldeteListingIds", () => {
+  it("findet jedes gemeldete Objekt, auch wenn der Server bei 1000 Zeilen abschneidet", async () => {
+    // 500 Objekte in EINEM Block, jedes mit drei Meldungen: 1.500 Zeilen.
+    // Der Server gibt 1.000 heraus und schweigt ueber den Rest. Ohne
+    // Blaetterung fehlen dadurch rund 167 Objekte -- und ein Objekt, das
+    // faelschlich als "nie gemeldet" gilt, bekommt nie eine Abgangsmeldung
+    // und wird nicht einmal als `verschwiegen` gezaehlt. Es ist fuer immer
+    // stumm. Genau der Ausfallmodus, den `3f8c7d8` gerade geschlossen hat.
+    const listingIds = Array.from(
+      { length: 500 },
+      (_, i) => `11111111-0000-0000-0000-${String(i).padStart(12, "0")}`
+    );
+    const zeilen = listingIds.flatMap((listingId, i) =>
+      ["pruefkandidat", "preisaenderung", "pruefkandidat"].map((kind, k) => ({
+        id: `22222222-0000-0000-0000-${String(i * 3 + k).padStart(12, "0")}`,
+        listing_id: listingId,
+        kind,
+      }))
+    );
+
+    const { client } = notificationsDoppel(zeilen, 1000);
+    const gefunden = await bereitsGemeldeteListingIds(client, listingIds);
+
+    expect(gefunden.size).toBe(500);
+  });
+
+  it("blaettert nicht endlos, wenn der Block genau auf die Seitengroesse faellt", async () => {
+    const listingIds = ["33333333-0000-0000-0000-000000000000"];
+    const zeilen = Array.from({ length: 1000 }, (_, i) => ({
+      id: `44444444-0000-0000-0000-${String(i).padStart(12, "0")}`,
+      listing_id: listingIds[0],
+      kind: "pruefkandidat",
+    }));
+
+    const { client, abfragen } = notificationsDoppel(zeilen, 1000);
+    const gefunden = await bereitsGemeldeteListingIds(client, listingIds);
+
+    expect(gefunden.size).toBe(1);
+    // Eine volle Seite, dann eine leere -- mehr darf es nicht brauchen.
+    expect(abfragen()).toBe(2);
+  });
+
+  it("zaehlt eine reine Preisaenderungsmeldung NICHT als gemeldet", async () => {
+    // Festgehalten, weil der Name der Funktion mehr verspricht, als sie
+    // prueft: `hoechsteKlasse` kennt nur `pruefkandidat` und `top_treffer`.
+    // Ein Objekt, das ausschliesslich wegen einer Preissenkung im Chat
+    // stand, gilt hier bewusst als "nie gemeldet".
+    const listingId = "55555555-0000-0000-0000-000000000000";
+    const { client } = notificationsDoppel(
+      [{ id: "66666666-0000-0000-0000-000000000000", listing_id: listingId, kind: "preisaenderung" }],
+      1000
+    );
+
+    expect((await bereitsGemeldeteListingIds(client, [listingId])).size).toBe(0);
   });
 });

@@ -134,7 +134,7 @@ describe("ermittleLueckencodeOhnePreis", () => {
  */
 describe("fasseOhnePreisZusammen", () => {
   it("nennt bei null Faellen keine Region", () => {
-    expect(fasseOhnePreisZusammen([])).toBe("0 ohne Preisangabe uebersprungen.");
+    expect(fasseOhnePreisZusammen([])).toBe("0 ohne Preisangabe erfasst, aber nicht bewertet.");
   });
 
   it("schluesselt nach Fundort auf", () => {
@@ -146,7 +146,7 @@ describe("fasseOhnePreisZusammen", () => {
     // "a", "b", "c" enthalten kein € -- alle drei zaehlen als
     // preis_auf_anfrage, die Fundort-Aufschluesselung bleibt erhalten.
     expect(fasseOhnePreisZusammen(faelle)).toBe(
-      "3 ohne Preisangabe uebersprungen: preis_auf_anfrage 3 (bw 2, nw 1), preis_unlesbar 0."
+      "3 ohne Preisangabe erfasst, aber nicht bewertet: preis_auf_anfrage 3 (bw 2, nw 1), preis_unlesbar 0."
     );
   });
 
@@ -159,7 +159,7 @@ describe("fasseOhnePreisZusammen", () => {
       { fundort: "nw", titleLine: "Haus - Ost - Preis auf Anfrage - 2 Zimmer" },
     ];
     expect(fasseOhnePreisZusammen(faelle)).toBe(
-      "3 ohne Preisangabe uebersprungen: preis_auf_anfrage 2 (bw 1, nw 1), preis_unlesbar 1 (bw 1)."
+      "3 ohne Preisangabe erfasst, aber nicht bewertet: preis_auf_anfrage 2 (bw 1, nw 1), preis_unlesbar 1 (bw 1)."
     );
   });
 
@@ -174,7 +174,7 @@ describe("fasseOhnePreisZusammen", () => {
 
   it("macht einen fehlenden Fundort sichtbar statt ihn zu verschweigen", () => {
     expect(fasseOhnePreisZusammen([{ fundort: null, titleLine: "a" }])).toBe(
-      "1 ohne Preisangabe uebersprungen: preis_auf_anfrage 1 (ohne Fundort 1), preis_unlesbar 0."
+      "1 ohne Preisangabe erfasst, aber nicht bewertet: preis_auf_anfrage 1 (ohne Fundort 1), preis_unlesbar 0."
     );
   });
 });

@@ -499,6 +499,21 @@ export const MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF = 10;
  * `verschwiegen` zaehlt deshalb nur, was der Deckel einem tatsaechlich
  * meldefaehigen Objekt genommen hat -- alles andere waere eine Zahl ohne
  * Bedeutung.
+ *
+ * BEWUSST OHNE AUSWAHLREGEL: Welche zehn der meldefaehigen Abgaenge
+ * durchkommen, entscheidet die Reihenfolge, in der sie hereinkommen. Eine
+ * Rangfolge zu erfinden waere eine Behauptung darueber, welcher Abgang
+ * wichtiger ist -- und die hat niemand gemessen.
+ *
+ * **Das wiegt seit dieser Korrektur schwerer als vorher.** Solange der
+ * Deckel vor dem Filter lag, bissen die zehn Plaetze fast nie auf
+ * meldefaehige Objekte, die Reihenfolge war also folgenlos. Jetzt sind alle
+ * zehn Plaetze per Definition meldefaehig: Die Reihenfolge entscheidet
+ * tatsaechlich, welche zehn von 35 Objekten je eine Meldung bekommen -- und
+ * sie ist seit `0aac237` die UUID-Ordnung der Keyset-Blaetterung, also
+ * faktisch zufaellig. Wer hier eine Regel einzieht, muss sie begruenden
+ * koennen; wer keine einzieht, sollte wissen, dass "zufaellig" die geltende
+ * Regel ist.
  */
 export function waehleAbgangsmeldungen<T extends { id: string }>(
   abgaenge: T[],
