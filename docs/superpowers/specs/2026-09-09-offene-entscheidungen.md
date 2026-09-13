@@ -1,8 +1,22 @@
 # Die Entscheidungen, an denen die Basis hängt
 
-**Stand 2026-09-09.** Dieses Papier sammelt an einer Stelle, was nur der Nutzer
-entscheiden kann — und trennt es von dem, was bisher fälschlich als seine
-Entscheidung geführt wurde, sich aber selbst beantwortet hat.
+**Stand 2026-09-09, entschieden am 2026-09-11.** Dieses Papier sammelt an einer
+Stelle, was nur der Nutzer entscheiden kann — und trennt es von dem, was bisher
+fälschlich als seine Entscheidung geführt wurde, sich aber selbst beantwortet
+hat.
+
+> **Beide Entscheidungen sind gefallen. Nicht wieder aufbringen.**
+>
+> | Frage | Entscheidung des Nutzers, 2026-09-11 |
+> |---|---|
+> | **1** — darf eine bundeslandgenaue Mietschätzung melden? | **(c) getrennte Budgets.** Umgesetzt: `lib/meldebudget.ts`, Kontingent 5 der 25 Plätze, ungenutzte Plätze fallen über `holeNach` zurück |
+> | **2** — Objekt ohne Preis speichern? | **(a) eine `listings`-Zeile ohne `listing_versions`-Zeile.** Kein nullbares `price_cents`, keine Migration. Umgesetzt in `ea8b731` |
+>
+> Was unten steht, ist die **Herleitung** dieser Entscheidungen und bleibt als
+> Begründung stehen. Es ist keine offene Frage mehr. Die Wirkung beider
+> Umsetzungen ist in [`../ABNAHME-BASIS.md`](../ABNAHME-BASIS.md) unter D-5 und
+> A-4 nachgehalten — D-5 ist dabei **gemessen und weiter offen**, weil im
+> gemessenen Fenster gar keine besser belegten Kandidaten existierten.
 
 ## Warum es dieses Papier gibt
 
@@ -23,10 +37,11 @@ Das ist der Grund, warum dieses Papier vor weiterem Code steht.
 
 ---
 
-## Entscheidung 1 — Darf eine bundeslandgenaue Mietschätzung eine Telegram-Meldung auslösen?
+## Entscheidung 1 — Darf eine bundeslandgenaue Mietschätzung eine Telegram-Meldung auslösen? — ENTSCHIEDEN: (c)
 
-**Das ist die teuerste offene Frage.** Sie entscheidet nicht nur, *ob* gemeldet
-wird, sondern über Wochen hinweg, *was zuerst*.
+**Das war die teuerste offene Frage.** Sie entscheidet nicht nur, *ob* gemeldet
+wird, sondern über Wochen hinweg, *was zuerst*. **Am 2026-09-11 hat der Nutzer
+(c) gewählt; alles Weitere hier ist die Herleitung.**
 
 ### Was gemessen ist
 
@@ -88,7 +103,10 @@ Meldungen bedeutet, dass die Reihenfolge über Wochen wirkt. Ein Mietfehler von
 
 ---
 
-## Entscheidung 2 — Wird ein Objekt ohne Preis gespeichert statt fallengelassen?
+## Entscheidung 2 — Wird ein Objekt ohne Preis gespeichert statt fallengelassen? — ENTSCHIEDEN: (a)
+
+**Am 2026-09-11 hat der Nutzer (a) gewählt, umgesetzt in `ea8b731`.** Alles
+Weitere hier ist die Herleitung.
 
 Betrifft **A13 Schritt 2** (Immowelt, „Preis auf Anfrage") und **A6** (ZVG, das
 Gericht hat den Verkehrswert ausgelassen). Beides läuft auf dieselbe Frage

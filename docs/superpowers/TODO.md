@@ -1,9 +1,13 @@
 # immo-radar — Überblick und To-do-Liste
 
-**Stand:** 2026-09-09, 11:00 UTC. Belegt durch Abfrage der Produktionsdatenbank
-und `git log`, nicht aus dem Gedächtnis. Die Zahlen im Abschnitt „Belegter
-Ist-Zustand" stammen weiterhin vom 2026-09-08 und sind als solche
-gekennzeichnet.
+**Stand:** 2026-09-13. Belegt durch Abfrage der Produktionsdatenbank,
+`git log` und den Lauf `34637349206`, nicht aus dem Gedächtnis. Die Zahlen im
+Abschnitt „Belegter Ist-Zustand" stammen weiterhin vom 2026-09-08 und sind als
+solche gekennzeichnet — der Bestand ist seither auf rund 12.600 Objekte
+gewachsen, die Größenordnungen dort sind überholt.
+
+> **Die Detailbegründungen dieser Sitzung stehen in**
+> [`UEBERGABE.md`](UEBERGABE.md). Wo beide etwas sagen, gilt UEBERGABE.
 
 > **Ausfuehrbare Aufgabenliste:** [BACKLOG.md](BACKLOG.md) - Teil A ist so
 > geschnitten, dass Subagenten es ohne Vorwissen abarbeiten koennen.
@@ -151,8 +155,10 @@ Sie gingen als `pruefkandidat` raus, **nicht** als `top_treffer`:
 
 **Was dabei auffiel und für B2 zählt:** Seit dem 2026-09-07 um 05:43 ist kein
 einziger `top_treffer` mehr versandt worden. Alle 42 Treffer des Laufs vom
-2026-09-08 18:29 beruhen auf geschätzter Miete; im ganzen Bestand tragen nur
-zwei Objekte eine belegte. Die höchste Meldeklasse ist praktisch unerreichbar.
+2026-09-08 18:29 beruhen auf geschätzter Miete; im ganzen Bestand trug damals
+nur eine Handvoll Objekte eine belegte. **Am 2026-09-12 nachgemessen (M3): es
+ist genau ein einziges Objekt von 12.611.** Die höchste Meldeklasse ist
+praktisch unerreichbar.
 
 ## Warnung: der Anschluss ist am 2026-09-08 erneut ausgefallen
 
@@ -189,15 +195,23 @@ das Ergebnis trägt:
 
 | Rang | Aufgabe | Stand |
 |---|---|---|
-| 1 | Option 3 — markieren ohne löschen | **gebaut** (2026-09-11), Produktionsbeleg fehlt |
-| 2 | Meldereihenfolge (D-5) | **gebaut**, Produktionsbeleg fehlt |
+| 1 | Option 3 — markieren ohne löschen | **gebaut und belegt** — Lauf `34637349206` (2026-09-11) markierte 32 Immowelt-Objekte mit `disappeared_at`, vorher null. **B-2 ist erfüllt** |
+| 2 | Meldereihenfolge (D-5) | **gebaut, Beleg nur zur Hälfte** — Zurückgestellte 71 auf 47, aber die Belegqualität der Gesendeten blieb bei 25 von 25 auf der gröbsten Mietstufe. Es gab keine besser belegten Kandidaten; die Kontingentlogik ist weder belegt noch widerlegt |
 | 3 | Dashboard-Entwurf, ohne Frontend-Code | **fertig** (`specs/2026-09-09-dashboard-entwurf.md`) |
 | 4 | Kleine echte Fehler, Doku gegen Code | **erledigt** |
-| 5 | Objekt ohne Preis speichern (A-4) | offen, **Entscheidung des Nutzers** |
+| 5 | Objekt ohne Preis speichern (A-4) | **entschieden am 2026-09-11** — eine `listings`-Zeile ohne `listing_versions`-Zeile, keine Migration — und **gebaut** in `ea8b731`; Produktionsbeleg fehlt |
 | — | A16, B1, A11/3, B3, B4 | **zurückgestellt**, Begründung in `specs/2026-09-09-offene-entscheidungen.md` |
 
-**Als Nächstes:** ein Produktionslauf, der Option 3 und D-5 belegt. Dieses
-Projekt belegt Abnahmen an echten Läufen, nicht an Tests.
+**Der Lauf ist gefahren.** `34637349206` hat Option 3 belegt und dabei zwei
+Fehler sichtbar gemacht, die vorher unerreichbar waren: eine Blätterung ohne
+Sortierung, die jedem Lauf 14,5 % des Bestands unterschlug, und einen
+Abgangsdeckel, der vor dem Filter statt dahinter lag. Genau das war der Grund,
+den Lauf zu fahren, statt weiter zu programmieren.
+
+**Als Nächstes:** der Merge des Zweigs `blaetterung-meldedeckel-a4` und ein
+zweiter Produktionslauf, der A-4 belegt und zeigt, wie viele Markierungen ein
+Lauf findet, der den **ganzen** Bestand sieht. Dieses Projekt belegt Abnahmen
+an echten Läufen, nicht an Tests.
 
 ---
 
@@ -397,11 +411,12 @@ Frage 1 hängt an Teilprojekt 2: Solange die Miete aus einer Handtabelle
 geschätzt wird, rankt das Dashboard nach einer Zahl mit unbekanntem Fehler.
 **Deshalb steht 2 vor 3** — nicht aus Ordnungsliebe.
 
-### 7. Kleinkram
+### 7. Kleinkram — ERLEDIGT
 
-- `README.md`, Abschnitt „Betrieb", behauptet der Cron sei „derzeit
-  **pausiert**" und müsse nach dem Merge wieder aktiviert werden. Er läuft
-  seit heute wieder. Der Absatz ist veraltet und irreführend.
+- ~~`README.md`, Abschnitt „Betrieb", behauptet der Cron sei „derzeit
+  **pausiert**".~~ **Am 2026-09-13 nachgeprüft: der Absatz ist längst
+  korrigiert** und nennt den Zeitplan „läuft", samt der gemessenen 43 %
+  Ausfallquote. Der Eintrag war selbst der veraltete Stand.
 
 ---
 
