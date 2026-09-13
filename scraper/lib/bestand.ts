@@ -443,7 +443,26 @@ export function sweepStartVersatz(
 }
 
 /**
- * Wie viele Abgangsmeldungen ein Lauf hoechstens verschickt.
+ * Wie viele Abgangsmeldungen EINE QUELLE je Lauf hoechstens verschickt.
+ *
+ * NICHT "je Lauf insgesamt": `gleicheBestandAb` (main.ts) laeuft einmal fuer
+ * Immowelt und einmal fuer ZVG, und jeder Aufruf bekommt sein eigenes
+ * frisches Budget von `MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF`. Ein Lauf mit
+ * zwei Quellen kann also bis zu ZWEI MAL diese Zahl verschicken, nicht nur
+ * einmal. Das ist Absicht, keine Luecke: Eine laute Quelle darf die andere
+ * nicht verdraengen. ZVG markiert ein bis zwei Objekte je Lauf; teilten sich
+ * beide Quellen ein gemeinsames Budget, koennte ein einzelner grosser
+ * Immowelt-Abgangsschub dessen Plaetze restlos aufbrauchen.
+ *
+ * Bis zum 2026-09-12 stand hier "Wie viele Abgangsmeldungen ein Lauf
+ * hoechstens verschickt" (Name: `MAX_ABGANGSMELDUNGEN_JE_LAUF`) -- eine
+ * Zusage, die der Code nie eingehalten hat, weil er von Anfang an je
+ * Sweep-Aufruf zaehlte. Das fiel bis zur Korrektur von Aufgabe 2 nicht auf:
+ * Vor `waehleAbgangsmeldungen` fuellten sich die 10 Plaetze meist mit nicht
+ * meldefaehigen Objekten, und der nachgelagerte `continue` fing fast alles
+ * ab. Seit der Deckel HINTER den Meldefaehigkeits-Filter gewandert ist, sind
+ * alle 10 Plaetze je Quelle per Definition meldefaehig -- die falsche
+ * Zusage waere jetzt sichtbar geworden.
  *
  * WARUM ES DIESE GRENZE BRAUCHT: Bis zum 2026-09-09 markierte allein ZVG,
  * und dort sind es ein bis zwei Objekte je Lauf -- die Meldeschleife lief
@@ -464,21 +483,45 @@ export function sweepStartVersatz(
  * der Datenbank, und genau daraus lebt die ausgegraute Darstellung im
  * Dashboard. Der Deckel kostet eine Chat-Nachricht, keine Information.
  */
-export const MAX_ABGANGSMELDUNGEN_JE_LAUF = 10;
+export const MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF = 10;
 
 /**
- * Schneidet die Abgangsliste auf das, was ein Lauf melden darf.
+ * Welche Abgaenge DIESER AUFRUF meldet -- ein Aufruf pro Quelle, siehe
+ * `MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF`.
  *
- * Bewusst ohne Auswahlregel: Die Reihenfolge ist die des Bestandsabgleichs.
- * Eine Rangfolge zu erfinden ("die teuersten zuerst") waere eine Behauptung
- * darueber, welcher Abgang wichtiger ist -- und die ist nicht gemessen.
+ * WARUM DIE REIHENFOLGE ZAEHLT: Bis zum 2026-09-12 lag der Deckel VOR dem
+ * Filter "wurde dieses Objekt je gemeldet". Bei 671 Meldungen auf 12.158
+ * Objekte sind die ersten zehn Markierungen fast nie gemeldete: Lauf
+ * 34637349206 deckelte auf 10 Kandidaten und verschickte davon EINE
+ * Meldung. Die uebrigen 34 bleiben fuer immer stumm, denn sie sind
+ * markiert und tauchen nie wieder als neuer Abgang auf.
+ *
+ * `verschwiegen` zaehlt deshalb nur, was der Deckel einem tatsaechlich
+ * meldefaehigen Objekt genommen hat -- alles andere waere eine Zahl ohne
+ * Bedeutung.
+ *
+ * BEWUSST OHNE AUSWAHLREGEL: Welche zehn der meldefaehigen Abgaenge
+ * durchkommen, entscheidet die Reihenfolge, in der sie hereinkommen. Eine
+ * Rangfolge zu erfinden waere eine Behauptung darueber, welcher Abgang
+ * wichtiger ist -- und die hat niemand gemessen.
+ *
+ * **Das wiegt seit dieser Korrektur schwerer als vorher.** Solange der
+ * Deckel vor dem Filter lag, bissen die zehn Plaetze fast nie auf
+ * meldefaehige Objekte, die Reihenfolge war also folgenlos. Jetzt sind alle
+ * zehn Plaetze per Definition meldefaehig: Die Reihenfolge entscheidet
+ * tatsaechlich, welche zehn von 35 Objekten je eine Meldung bekommen -- und
+ * sie ist seit `0aac237` die UUID-Ordnung der Keyset-Blaetterung, also
+ * faktisch zufaellig. Wer hier eine Regel einzieht, muss sie begruenden
+ * koennen; wer keine einzieht, sollte wissen, dass "zufaellig" die geltende
+ * Regel ist.
  */
-export function budgetiereAbgangsmeldungen<T>(abgaenge: T[]): {
-  melden: T[];
-  verschwiegen: number;
-} {
+export function waehleAbgangsmeldungen<T extends { id: string }>(
+  abgaenge: T[],
+  warGemeldet: (id: string) => boolean
+): { melden: T[]; verschwiegen: number } {
+  const meldefaehig = abgaenge.filter((a) => warGemeldet(a.id));
   return {
-    melden: abgaenge.slice(0, MAX_ABGANGSMELDUNGEN_JE_LAUF),
-    verschwiegen: Math.max(0, abgaenge.length - MAX_ABGANGSMELDUNGEN_JE_LAUF),
+    melden: meldefaehig.slice(0, MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF),
+    verschwiegen: Math.max(0, meldefaehig.length - MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF),
   };
 }

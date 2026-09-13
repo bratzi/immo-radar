@@ -146,8 +146,13 @@ function aufschluesselnJeFundort(faelle: { fundort: string | null }[]): string {
 }
 
 /**
- * Fasst die Objekte zusammen, die ohne Preis uebersprungen wurden -- nach
- * Fundort UND nach Lueckencode aufgeschluesselt.
+ * Fasst die Objekte zusammen, die ohne Preis erfasst, aber nicht bewertet
+ * wurden -- nach Fundort UND nach Lueckencode aufgeschluesselt.
+ *
+ * Der Text sagte bis `ea8b731` "uebersprungen". Das stimmt seither nicht
+ * mehr: Das Objekt bekommt eine listings-Zeile, nur keine Bewertung. Die
+ * Zeile ist ausgerechnet die, an der jemand A-4 im Protokoll nachprueft --
+ * sie darf dort nicht das Gegenteil des neuen Verhaltens behaupten.
  *
  * Warum die Fundort-Aufschluesselung: Die Quote schwankte zwischen 0,5 % und
  * 6,5 % je Lauf. Gemessen ist das ein Regionseffekt und keine
@@ -167,7 +172,7 @@ function aufschluesselnJeFundort(faelle: { fundort: string | null }[]): string {
 export function fasseOhnePreisZusammen(
   faelle: { fundort: string | null; titleLine: string }[]
 ): string {
-  if (faelle.length === 0) return "0 ohne Preisangabe uebersprungen.";
+  if (faelle.length === 0) return "0 ohne Preisangabe erfasst, aber nicht bewertet.";
 
   // Ein Record statt einer Map: Beide Schluessel sind vom Typ her Pflicht,
   // also braucht der Zugriff unten keine Non-null-Zusicherung. Kommt je ein
@@ -186,5 +191,5 @@ export function fasseOhnePreisZusammen(
     return `${code} ${gruppe.length}${aufschluesselung}`;
   });
 
-  return `${faelle.length} ohne Preisangabe uebersprungen: ${teile.join(", ")}.`;
+  return `${faelle.length} ohne Preisangabe erfasst, aber nicht bewertet: ${teile.join(", ")}.`;
 }

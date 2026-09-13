@@ -10,8 +10,8 @@ import {
 import { processCandidate, type PipelineCandidate } from "./lib/pipeline.js";
 import {
   ermittleMarkierungen,
-  budgetiereAbgangsmeldungen,
-  MAX_ABGANGSMELDUNGEN_JE_LAUF,
+  waehleAbgangsmeldungen,
+  MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF,
   ermittleRueckkehrer,
   waehleDetailKandidaten,
   budgetiereKandidaten,
@@ -31,7 +31,12 @@ import {
   ladeLetzteRegionsSweeps,
   ladeSweepHistorie,
 } from "./lib/bestandDb.js";
-import { hoechsteGemeldeteKlasse, logNotification, versandBeleg } from "./lib/db.js";
+import {
+  bereitsGemeldeteListingIds,
+  logNotification,
+  versandBeleg,
+  upsertListingOhneBewertung,
+} from "./lib/db.js";
 import {
   sendTelegramMessage,
   formatAbgangMessage,
@@ -269,18 +274,18 @@ async function gleicheBestandAb(
   // Abgangsmeldung nur fuer Objekte, die es frueher in den Chat geschafft
   // haben. Alles andere waere bei mehreren hundert Objekten Dauerfeuer --
   // und weil auch das noch zu viele sein koennen, deckelt
-  // `budgetiereAbgangsmeldungen` die Zahl zusaetzlich (siehe dort).
-  const { melden, verschwiegen } = budgetiereAbgangsmeldungen(abgaenge);
+  // `waehleAbgangsmeldungen` die Zahl zusaetzlich (siehe dort).
+  const gemeldeteIds = await bereitsGemeldeteListingIds(sb, abgaenge.map((l) => l.id));
+  const { melden, verschwiegen } = waehleAbgangsmeldungen(abgaenge, (id) => gemeldeteIds.has(id));
   if (verschwiegen > 0) {
     console.log(
-      `${sweep.source}: ${verschwiegen} weitere Abgaenge sind markiert, aber nicht gemeldet ` +
-        `(Deckel ${MAX_ABGANGSMELDUNGEN_JE_LAUF}). Sie stehen mit disappeared_at im Bestand.`
+      `${sweep.source}: ${verschwiegen} weitere meldefaehige Abgaenge sind markiert, aber nicht ` +
+        `gemeldet (Deckel ${MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF} je Quelle). Sie stehen mit ` +
+        `disappeared_at im Bestand.`
     );
   }
   for (const abgang of melden) {
     try {
-      const gemeldet = await hoechsteGemeldeteKlasse(sb, abgang.id);
-      if (gemeldet === "keine") continue;
       const { data } = await sb
         .from("listing_versions")
         .select("title, city, zip_code, price_cents, units")
@@ -410,6 +415,27 @@ async function main() {
         `Immowelt ohne Preis [${zusammenfassung.fundort ?? "ohne Fundort"}]: ` +
           JSON.stringify(zusammenfassung.titleLine)
       );
+      // Gekapselt wie jeder andere Schreibvorgang je Objekt
+      // (`verarbeiteKandidatIsoliert`, und die Abgangsschleife weiter oben):
+      // Ein voruebergehender Datenbankfehler beim *unwichtigsten* Schreiben
+      // des Laufs -- einem Objekt, das nicht einmal bewertet werden kann --
+      // darf nicht den ganzen Lauf abbrechen. Ungekapselt riss er den
+      // ZVG-Sweep, den Bestandsabgleich und jede Meldung mit sich und
+      // verletzte damit A-1 ("laeuft ohne Ausnahme durch") an genau der
+      // Stelle, die A-4 schliessen soll.
+      try {
+        await upsertListingOhneBewertung(sb, {
+          source: "immowelt",
+          externalId: zusammenfassung.externalId,
+          url: zusammenfassung.url,
+          fundort: zusammenfassung.fundort ?? null,
+        });
+      } catch (err) {
+        console.error(
+          `Zeile ohne Bewertung fehlgeschlagen [immowelt · ${zusammenfassung.externalId}]:`,
+          err
+        );
+      }
       continue;
     }
     immoweltBewertet += 1;
