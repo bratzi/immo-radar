@@ -242,6 +242,62 @@ export function ordneDetailErgebnisEin(
   return { art: "stoerung" };
 }
 
+export interface ZvgDetailVerteilung {
+  termine: ZvgDetailData[];
+  ohneVerkehrswert: ZvgListSummary[];
+  stoerungen: ZvgListSummary[];
+}
+
+/**
+ * Teilt die eingeordneten Detailergebnisse auf die Listen auf, die `main.ts`
+ * verarbeitet: `termine` werden bewertet, fuer `ohneVerkehrswert` entsteht
+ * eine Zeile ohne Bewertung. `stoerungen` schreibt niemand -- sie stehen nur
+ * fuer die Laufsumme hier.
+ *
+ * Als reine Funktion herausgezogen, weil an genau dieser Aufteilung die
+ * Zusage haengt, dass eine Stoerung KEINE Zeile "geprueft, kein Wert"
+ * erzeugt. In `erfasseZvgDetails` (echter Browser) war sie nicht testbar.
+ */
+export function verteileErgebnisse(
+  ergebnisse: { zusammenfassung: ZvgListSummary; ergebnis: DetailErgebnis }[]
+): ZvgDetailVerteilung {
+  const verteilung: ZvgDetailVerteilung = { termine: [], ohneVerkehrswert: [], stoerungen: [] };
+  for (const { zusammenfassung, ergebnis } of ergebnisse) {
+    switch (ergebnis.art) {
+      case "erfasst":
+        verteilung.termine.push(ergebnis.daten);
+        break;
+      case "ohne-verkehrswert":
+        verteilung.ohneVerkehrswert.push(zusammenfassung);
+        break;
+      case "stoerung":
+        // Weder Termin noch Zeile: der Abruf ist gescheitert, keine Aussage
+        // ueber das Objekt moeglich. last_detail_at bleibt, wie es war, und
+        // der naechste Lauf holt die Seite erneut.
+        verteilung.stoerungen.push(zusammenfassung);
+        break;
+    }
+  }
+  return verteilung;
+}
+
+/**
+ * Laufsumme des ZVG-Detailzweigs -- Gegenstueck zu `fasseOhnePreisZusammen`
+ * im Immowelt-Zweig. Sie ist der Produktionsbeleg fuer A-4 (gemessen: drei
+ * Dauerfaelle je Lauf) und macht einen Massenausfall sichtbar: Liefert das
+ * Portal fuer jede Detailseite "error" (Referer oder Session kaputt), steigen
+ * seit K-1 die Stoerungen auf die Scheibengroesse, nicht "ohne Verkehrswert".
+ */
+export function fasseZvgDetailsZusammen(verteilung: ZvgDetailVerteilung): string {
+  const { termine, ohneVerkehrswert, stoerungen } = verteilung;
+  const gesamt = termine.length + ohneVerkehrswert.length + stoerungen.length;
+  return (
+    `ZVG: ${ohneVerkehrswert.length} von ${gesamt} Detailseiten ohne verwertbaren Verkehrswert ` +
+    `(Zeile ohne Bewertung), ${termine.length} erfasst, ${stoerungen.length} Stoerungen ` +
+    `(nichts geschrieben, der naechste Lauf holt sie erneut).`
+  );
+}
+
 async function detailSeiteHolen(
   page: Page,
   zusammenfassung: ZvgListSummary,
@@ -280,18 +336,18 @@ async function detailSeiteHolen(
  *
  * Liefert neben den erfassten Terminen auch `ohneVerkehrswert`: Objekte,
  * deren Bekanntmachung keinen verwertbaren Verkehrswert nennt (A-4). Ein
- * echter Abrufausfall (Stoerung) landet in KEINER der beiden Listen.
+ * echter Abrufausfall (Stoerung) landet in KEINER der beiden Listen, sondern
+ * nur in `stoerungen` fuer die Laufsumme (`verteileErgebnisse`).
  */
 export async function erfasseZvgDetails(
   zusammenfassungen: Map<string, ZvgListSummary>,
   externalIds: string[]
-): Promise<{ termine: ZvgDetailData[]; ohneVerkehrswert: ZvgListSummary[] }> {
-  if (externalIds.length === 0) return { termine: [], ohneVerkehrswert: [] };
+): Promise<ZvgDetailVerteilung> {
+  if (externalIds.length === 0) return verteileErgebnisse([]);
 
   // headless: false -- siehe sweepZvgPortal / scrapers/immowelt/index.ts.
   const browser: Browser = await chromium.launch({ headless: false });
-  const termine: ZvgDetailData[] = [];
-  const ohneVerkehrswert: ZvgListSummary[] = [];
+  const ergebnisse: { zusammenfassung: ZvgListSummary; ergebnis: DetailErgebnis }[] = [];
   try {
     const page = await browser.newPage();
     await page.goto(SEARCH_URL, { waitUntil: "domcontentloaded" });
@@ -305,13 +361,10 @@ export async function erfasseZvgDetails(
       if (zusammenfassung === undefined) continue;
       await sleep(ZVG_VERZOEGERUNG_MS);
       const ergebnis = await detailSeiteHolen(page, zusammenfassung, referer);
-      if (ergebnis.art === "erfasst") termine.push(ergebnis.daten);
-      else if (ergebnis.art === "ohne-verkehrswert") ohneVerkehrswert.push(zusammenfassung);
-      // "stoerung": weder Termin noch Zeile -- der Abruf ist gescheitert,
-      // keine Aussage ueber das Objekt moeglich.
+      ergebnisse.push({ zusammenfassung, ergebnis });
     }
   } finally {
     await browser.close();
   }
-  return { termine, ohneVerkehrswert };
+  return verteileErgebnisse(ergebnisse);
 }
