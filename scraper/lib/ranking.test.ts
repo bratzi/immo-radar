@@ -43,6 +43,28 @@ describe("bestimmeSicherheitsstufe", () => {
     expect(bestimmeSicherheitsstufe({ ...flaeche, rentSource: "geschaetzt_bundesland" })).toBe("S1");
     expect(bestimmeSicherheitsstufe({ ...flaeche, rentSource: "geschaetzt_bundesweit" })).toBe("S1");
   });
+
+  it("stuft ein unbekanntes rent_source als S0 ein, nicht als S1", () => {
+    // Abschnitt 3.3 definiert S1 als AUFZAEHLUNG --
+    // rent_source ∈ {'geschaetzt_bundesland', 'geschaetzt_bundesweit'} --
+    // keine Restmenge. Ein Wert ausserhalb der vier benannten gehoert in
+    // keine der drei bewertbaren Stufen. "Wer nicht urteilen kann, loescht
+    // nicht" (global-constraints.md) gilt auch hier: ein unbekannter
+    // Zustand ist S0 ("nicht beurteilbar"), nie S1 ("bundeslandgenau
+    // geschaetzt") -- alles andere waere Nichtwissen als Behauptung
+    // getarnt, und genau das nennt 3.7 den gefaehrlichsten Fall.
+    //
+    // Seit ea8b731 ist das kein theoretischer Fall mehr: Das Projekt legt
+    // `listings`-Zeilen ohne `listing_versions`-Zeile an (Objekte, die die
+    // Quelle ohne Preis anbietet). Solche Objekte tragen ueberhaupt kein
+    // rent_source -- also null. Ein zweiter Agent zieht dieselbe Regel
+    // gerade fuer ZVG nach, es werden also mehr.
+    const flaeche = { dataGaps: [], livingAreaM2: 120 };
+    expect(bestimmeSicherheitsstufe({ ...flaeche, rentSource: null })).toBe("S0");
+    expect(bestimmeSicherheitsstufe({ ...flaeche, rentSource: "geschaetzt_irgendwie" })).toBe(
+      "S0"
+    );
+  });
 });
 
 describe("die Rangzahl ist der DSCR -- und der haengt an einer Identitaet", () => {

@@ -28,6 +28,17 @@ const S0_LUECKEN = ["wohnflaeche_fehlt", "preis_miete_unvereinbar", "rent_estima
  * fehlt. Wuerde die Stufe nur an der Luecke haengen, datierte die Rangliste
  * auf den Tag, an dem ein Objekt zuletzt gescannt wurde, statt auf den
  * tatsaechlichen Zustand des Feldes.
+ *
+ * `rentSource` wird gegen eine **Aufzaehlung** geprueft, nicht gegen eine
+ * Restmenge: Abschnitt 3.3 definiert S1 als
+ * `rent_source ∈ {'geschaetzt_bundesland', 'geschaetzt_bundesweit'}`, S2 und
+ * S3 je einen einzelnen Wert. Ein Wert ausserhalb dieser vier -- `null`
+ * oder ein unbekannter String -- faellt deshalb bewusst auf S0, nicht auf
+ * S1: "Wer nicht urteilen kann, loescht nicht" (global-constraints.md) gilt
+ * auch fuer die Rangliste. Ein unbekannter Zustand heisst "nicht
+ * beurteilbar", nie "vermutlich bundeslandgenau geschaetzt" -- alles andere
+ * verwandelte Nichtwissen in eine Behauptung, und genau das nennt Abschnitt
+ * 3.7 des Entwurfs den gefaehrlichsten Fall fuer ein Ranking-Dashboard.
  */
 export function bestimmeSicherheitsstufe(objekt: {
   rentSource: string | null;
@@ -51,5 +62,9 @@ export function bestimmeSicherheitsstufe(objekt: {
     return "S2";
   }
 
-  return "S1";
+  if (objekt.rentSource === "geschaetzt_bundesland" || objekt.rentSource === "geschaetzt_bundesweit") {
+    return "S1";
+  }
+
+  return "S0";
 }
