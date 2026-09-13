@@ -86,6 +86,14 @@ Zu ändern: 3.3, 3.1, die M3-Zeile in Abschnitt 10, und 13.1.
 > offen ist (Verweis auf 3.3). 13.8 führt „12" in der Stellen-Spalte der
 > Kritisch-1-Zeile jetzt mit auf, statt nur die 4.3-Zeile — der Dokumentkopf
 > listete „12" bereits, aber bis zu dieser Korrektur zu Unrecht.
+>
+> **Nachkorrigiert in der finalen Fix-Welle (2026-09-13, F-1):** Die
+> M3-Zeile in Abschnitt 10 gab trotzdem zwei Antworten in einem Satz:
+> „bleibt damit offen, nicht beantwortet" und direkt danach „52 von 12.611 =
+> 0,4 % tragen keinen eigenen beschrifteten Block" — Letzteres liest sich
+> wie eine bereits getroffene Entscheidung. Der Satz ist jetzt an 3.3
+> angeglichen: „Ein eigener, beschrifteter Block für 52 von 12.611 (0,4 %)
+> ist nicht mehr belegt (wie in 3.3)" — Nichtbelegtheit statt Verneinung.
 
 ## Kritisch 2 — Abschnitt 6.3: zwei Stände, und eine Begründung gegen die eigenen Zahlen
 
@@ -290,6 +298,12 @@ dem Umbau mitgeschrieben") ist behauptet, nicht gemessen.
 >   Stufenregel jetzt **53 von 12.611** (S3 1 + S2 52) statt der alten 197 —
 >   der alte Wert steht als Fußnote „nach der alten Stufenregel waren es
 >   197", nicht mehr als aktueller Stand.
+>   **Nachkorrigiert in der finalen Fix-Welle (2026-09-13, F-2):** „Beides ist
+>   keine eigene Messung" schrieb den 339 von 409 sprachlich dieselbe
+>   Ableitungs-Eigenschaft zu wie den 53 — falsch, denn die 339 sind A11s
+>   **eigene Zählung** vom 2026-09-08, keine Ableitung. E-4 sagt jetzt: „Die
+>   53 sind keine eigene Messung, sondern eine Ableitung … die 339 von 409
+>   sind dagegen A11s eigene Zählung … und keine Ableitung."
 > - Die Zahl „6.408 von 11.308 = 56,7 %" in 3.1 trägt jetzt **kein**
 >   behauptetes Verfahren mehr. **Korrektur in Fix-Runde 1 (2026-09-13):** Die
 >   ursprünglich hier nachgetragene Herleitung — jedes S1-Objekt trage über
@@ -297,11 +311,16 @@ dem Umbau mitgeschrieben") ist behauptet, nicht gemessen.
 >   haltbar, weil S1 gerade die Stufe **ohne** PLZ-genaue Miete ist
 >   (`ermittleJahreskaltmiete`, `scraper/lib/rentEstimate.ts:207-219`) und die
 >   6 `geschaetzt_bundesweit`-Objekte in S1 gar kein Bundesland tragen. Diese
->   Herleitung ist **gestrichen**. Die Box unter der Tabelle in 3.1 sagt jetzt
->   ausdrücklich **„Verfahren unbekannt, nicht reproduzierbar"**, ohne einen
->   PLZ-Weg zu behaupten; die Zahl selbst bleibt stehen und ist bei der
->   nächsten Messung mit einem tatsächlich protokollierten Verfahren neu zu
->   erheben.
+>   Herleitung ist **gestrichen**.
+>   **Nachkorrigiert in der finalen Fix-Welle (2026-09-13, F-3):** Der Plan
+>   aus Schritt 6 verlangte „Verfahren ergänzen **oder** die Zahl streichen"
+>   — die Tabellenzelle in 3.1 tat bis dahin **keins von beiden** und zeigte
+>   „6.408 von 11.308 = 56,7 %" weiter als aktuellen Messwert. Die Zelle
+>   nennt die Zahl jetzt nicht mehr, sondern verweist auf den Kasten
+>   darunter; der Kasten selbst sagt ausdrücklich **„Verfahren unbekannt,
+>   nicht reproduzierbar"** und führt „6.408" nur noch als **frühere Angabe
+>   des Nachtrags vom 2026-09-12**, nicht als aktuellen Wert dieses
+>   Entwurfs.
 
 ---
 
@@ -318,6 +337,18 @@ Zustand, den *nicht beurteilbar* annehmen kann — genau das passiert hier.
 Die Regel ist im Entwurf um `living_area_m2 <= 0` ergänzt, **aber nicht
 implementiert**. Sie gehört in `lib/ranking.ts` mit einem Test, der zuerst
 rot ist.
+
+> **Überholt, festgestellt bei der finalen Fix-Welle (2026-09-13):** Dieser
+> Absatz stimmt nicht mehr. `scraper/lib/ranking.ts` (Hauptcheckout) enthält
+> `bestimmeSicherheitsstufe` und prüft dort `livingAreaM2 === null ||
+> livingAreaM2 <= 0` genau wie hier verlangt; `ranking.test.ts:6-27` deckt
+> exakt diesen Fall ab (die 148 Objekte ohne Fläche und ohne Lücke). Die
+> Regel ist also **implementiert**, mit einem Test, der die 148er-Fälle
+> benennt. Das Ranking-Modul hat inzwischen zusätzlich eine eigene, im
+> Entwurf bisher fehlende Regel: Ein unbekanntes oder fehlendes
+> `rent_source` fällt ebenfalls auf S0 (`ranking.test.ts:47-67`) — dazu
+> siehe F-4 in der finalen Fix-Welle und den entsprechenden Kasten in 3.3
+> des Entwurfs. Diese Session hat den Code nicht geändert, nur gelesen.
 
 ## Grundregel für die Korrekturrunde
 
