@@ -212,23 +212,25 @@ gewachsen; die alten Zahlen sind damit nicht falsch gewesen, sondern
 | Meldeklasse wechselt im ±30-%-Mietband | **2.962 von 12.157 (24,4 %)** | 558 von 1.879 (29,7 %) |
 | Objekte mit `wohnflaeche_fehlt` (jüngste Version) | **306 (2,4 %)**, plus 148 ohne Fläche und ohne Lücke | über die Hälfte (210 von 400) |
 | Objekte mit `units_unconfirmed` (jüngste Version) | **12.521 von 12.611 (99,3 %)** | 567 von 1.000 |
-| Bundesländer, die intern das ±30-%-Band verlassen | **7 von 16** (unverändert, Tabelleneigenschaft), dort **6.408 von 11.308** bewerteten S1-Objekten = **56,7 %** (Verfahren siehe unter der Tabelle) | 7 von 16, dort 64 % |
+| Bundesländer, die intern das ±30-%-Band verlassen | **7 von 16** (unverändert, Tabelleneigenschaft), dort **6.408 von 11.308** bewerteten S1-Objekten = **56,7 %** (Verfahren unbekannt, siehe unter der Tabelle) | 7 von 16, dort 64 % |
 
-> **Verfahren zu „6.408 von 11.308" (2026-09-12, nachgetragen am 2026-09-13).**
-> Grundgesamtheit sind die **11.308 S1-Objekte nach der korrigierten
-> Stufenregel** aus 3.3 (jüngste Version je Objekt, S0 hat Vorrang) — dieselbe
-> Zahl, auf die sich auch 13.3 bezieht. Jedes dieser Objekte trägt über
-> `plzBundesland.generated.json` genau ein Bundesland; gezählt sind die
-> Objekte, die in einem der **sieben in 3.4 fett markierten** Länder liegen,
-> also in einem Land, dessen interne Tabellenspanne das ±30-%-Band verlässt.
-> **Was die Zahl nicht hergibt:** Sie sagt, wie viele Objekte in einem Land
-> mit breiter Miettabelle liegen — **nicht**, wie weit deren geschätzte Miete
-> tatsächlich danebenliegt. Sie ist eine Eigenschaft der Tabelle und der
-> regionalen Verteilung des Bestands, keine Fehlermessung.
-> **Einschränkung, die dranstehen muss:** Der Zählschritt selbst ist im
-> Nachtrag nicht protokolliert, und das Messskript ist nicht mehr vorhanden
-> (siehe 13.8). Die 6.408 sind deshalb derzeit **nicht nachvollziehbar
-> reproduzierbar**; sie sind bei der nächsten Messung mitzuführen.
+> **„6.408 von 11.308" — Verfahren unbekannt, nicht reproduzierbar
+> (nachgetragen am 2026-09-13).** Der Nachtrag vom 2026-09-12 nannte diese
+> Zahl ohne Verfahren. Eine zwischenzeitlich hier nachgetragene Herleitung —
+> jedes S1-Objekt trage über `plzBundesland.generated.json` genau ein
+> Bundesland — ist **selbst nicht belegt und mit den Produktfunktionen nicht
+> vereinbar**: S1 ist gerade die Stufe **ohne** PLZ-genaue Miete
+> (`ermittleJahreskaltmiete`, `scraper/lib/rentEstimate.ts:207-219`, schätzt
+> bundeslandgenau nur, wenn *keine* regionale PLZ-Miete greift und bekommt das
+> Bundesland als Namen übergeben, nicht über eine PLZ-Zuordnung), und die 6
+> `geschaetzt_bundesweit`-Objekte innerhalb von S1 tragen gar kein
+> Bundesland. Diese Herleitung ist deshalb **gestrichen**, nicht nur ergänzt.
+> **Welches Verfahren die 6.408 tatsächlich erzeugt hat, ist nicht bekannt:**
+> Der Zählschritt ist im Nachtrag vom 2026-09-12 nicht protokolliert, und das
+> zugehörige Messskript ist nicht mehr vorhanden (13.8). Die Zahl steht hier
+> deshalb ausdrücklich mit **Verfahren unbekannt** — sie ist derzeit **nicht
+> nachvollziehbar und nicht reproduzierbar** und bei der nächsten Messung mit
+> einem protokollierten Verfahren neu zu erheben, nicht fortzuschreiben.
 
 **Die entscheidende Asymmetrie:** Eine falsche Mietschätzung kann **nie einen
 `top_treffer` erzeugen**, nur einen `pruefkandidat` (A11, `bestimmeMeldeklasse`
@@ -1048,8 +1050,9 @@ betrifft Geld, Risiko, Schreibzugriffe auf Produktionsdaten oder Recht.
 1. **Rang** ist der DSCR — die einzige der fünf Kennzahlen, die alles kennt,
    was die anderen kennen; drei der fünf sind rechnerisch dieselbe Zahl, und
    eine der vier Top-Treffer-Bedingungen kann nie greifen.
-2. **Unsicherheit** ordnet vor der Punktzahl: vier Sicherheitsstufen als
-   getrennte Blöcke, die Zahl als Band mit der gemessenen Spanne des
+2. **Unsicherheit** ordnet vor der Punktzahl: Sicherheitsstufen als getrennte
+   Blöcke (ob S2 mit seinen 52 Objekten einen eigenen Block bekommt, ist
+   offen, siehe 3.3), die Zahl als Band mit der gemessenen Spanne des
    jeweiligen Bundeslandes, sortiert nach der ungünstigen Kante.
 3. **Nicht beurteilbare Objekte bekommen keinen Rangplatz und keine
    Kennzahl** — nur den Grund im Klartext, damit sie nie wie geprüft und
@@ -1464,7 +1467,9 @@ absteigend nach DSCR sortierten Feld aller 12.157 bewertbaren Objekte.
 >
 > **Was sich dadurch nicht ändert:** Die *Richtung* — eine Preissenkung hebt
 > den DSCR und damit den Rang — folgt aus der Formel und gilt in jeder
-> Teilliste. Die *Höhe* des Sprungs gilt nur für das global sortierte Feld.
+> gerankten Stufe, bei sonst gleicher Datenlage (S0 hat ohnehin keine
+> Rangliste, in die hinein sich etwas bewegen könnte). Die *Höhe* des
+> Sprungs gilt nur für das global sortierte Feld.
 
 **Die Rohzahl ist klein, und der erste Durchgang war unbrauchbar.** Von
 17.391 Versionen tragen **49** `price_dropped`. 22 davon sind nicht
@@ -1518,9 +1523,18 @@ Ergebnis.** **n = 17**, aus sieben Tagen Historie, und nur **2.756 von 12.611
 Objekten** haben überhaupt mehr als eine Version. Der Median von −15,9 % ist
 kein Marktwert, sondern das mittlere Element von siebzehn Fällen, von denen
 mehrere zum selben Objekt gehören (`73856ba5` erscheint dreimal). Die Aussage
-„eine Preissenkung bewegt den Rang" ist strukturell sicher — sie folgt aus
-der Formel und wird durch 17 von 17 Fällen bestätigt —, die Aussage „im
-Median um 539 Plätze" ist es nicht. Sie ist nach vier Wochen zu wiederholen.
+„eine Preissenkung bewegt den Rang, wenn sonst nichts sich ändert" ist
+strukturell sicher — sie folgt aus der **Formel**, nicht aus dieser
+Stichprobe: Ein niedrigerer Preis senkt Kaufpreis und Kaufnebenkosten und
+hebt damit den DSCR, in jeder gerankten Stufe. Die Stichprobe selbst trägt
+das nicht als Beleg: **Sechs der 17 Fälle liegen in S0** ohne Rangplatz, und
+der Gegenbefund oben (`e9a8c11d`) zeigt, dass eine gleichzeitige
+Verschlechterung der Datenlage die Formel-Wirkung überdecken kann. „17 von
+17 Fällen bestätigt" ist deshalb **kein belastbarer Beleg** und wird hier
+nicht mehr als einer angeführt. Die Aussage „im Median um 539 Plätze" ist
+ohnehin keine Messung dieses Entwurfs, sondern eine Eigenschaft der
+ungerankten Gesamtliste — sie ist nach vier Wochen, innerhalb der Stufe und
+ohne S0, zu wiederholen.
 
 ---
 
@@ -1567,12 +1581,12 @@ ihre Zahl reicht.
 
 | Fund | Stellen | Ergebnis |
 |---|---|---|
-| Korrigierte S0-Regel, alte Zahlen | 3.1, 3.3, 10 (M3), 13.1 | Gezählt wird nach der korrigierten Regel: **S3 1 · S2 52 · S1 11.308 · S0 1.250**. Die Blockfrage für S2 ist wieder **offen**. |
+| Korrigierte S0-Regel, alte Zahlen | 3.1, 3.3, 10 (M3), 12 (Punkt 2), 13.1 | Gezählt wird nach der korrigierten Regel: **S3 1 · S2 52 · S1 11.308 · S0 1.250**. Die Blockfrage für S2 ist wieder **offen** — auch in der Zusammenfassung (12), die zuvor weiter „vier Sicherheitsstufen als getrennte Blöcke" ohne diesen Vorbehalt nannte. |
 | 6.3 trug zwei Schwellen | 6.3, 10 (M4), 13.4, 13.7 | Die globale 3-Tage-Schwelle ist **zurückgezogen**; sie ist auf sieben Tagen Historie nicht entscheidbar. |
 | 4.3 gegen 13.4 | 4.3, 7, 10 (M4), 12, 13.4, 13.7 | Das kürzeste Fenster bleibt bei **7 Tagen**, weil M4 das `last_seen`-Alter misst und nicht den Regionsabstand. Frage offen. |
 | M6 rankte eine andere Liste | 2.4, 10 (M6), 13.6 | Die gerankte Liste ist benannt: global über alle 12.157 **einschließlich S0**. 2.4 trägt den Vorbehalt aus n = 17. |
 | „54 statt 157" | 6.2, 6.3, 11 (E-7), 13.4 | Beide Größen stehen mit Namen nebeneinander (ohne `fundort` **250**, ohne zuordenbare Region **54**); die Ursache ist als **Vermutung** gekennzeichnet. |
-| Vier kleine Funde | 3.1, 3.2, 3.8, 7, 11 (E-4), 13.7 | „2 Objekte" → **1**; die 7,6 Tage sind als andere Größe gekennzeichnet; E-4 und 13.7 tragen dieselbe Ableitung; „6.408 von 11.308" hat ein Verfahren. |
+| Vier kleine Funde | 3.1, 3.2, 3.8, 7, 11 (E-4), 13.7 | „2 Objekte" → **1**; die 7,6 Tage sind als andere Größe gekennzeichnet; E-4 und 13.7 tragen dieselbe Ableitung; „6.408 von 11.308" trägt **Verfahren unbekannt, nicht reproduzierbar** (Fix-Runde 1, 2026-09-13 — die zunächst hier nachgetragene PLZ-Herleitung war nicht haltbar und ist gestrichen). |
 | Folgestellen beim Gegenlesen | Kopf des Dokuments, 3.2, 3.7, 9, 13.3 | Der Kopf nennt die Korrekturrunde; 3.2 und 9 (Schritt 4) tragen die offene Blockfrage; 3.7 verlor die Begründung „über die Hälfte des Bestands" (gemessen 9,9 %); 13.3 sagt jetzt, dass seine 52 auswertbaren S2-Objekte genau das korrigierte S2 sind. |
 
 **Was diese Runde nicht konnte, und das ist der wichtigste Satz hier.** Zwei

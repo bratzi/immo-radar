@@ -77,6 +77,15 @@ Zu ändern: 3.3, 3.1, die M3-Zeile in Abschnitt 10, und 13.1.
 > „über die Hälfte des Bestands", gemessen sind 9,9 %), Abschnitt 9
 > (Schritte 0 und 4) und 13.3 (seine 52 auswertbaren S2-Objekte **sind** das
 > korrigierte S2). Auch E-4 und 13.7 hängen daran — siehe unter „Gering".
+>
+> **Nachkorrigiert in Fix-Runde 1 (2026-09-13):** 12.2 trug weiter „vier
+> Sicherheitsstufen als getrennte Blöcke" ohne den Vorbehalt zur offenen
+> Blockfrage — die Zusammenfassung in Abschnitt 12 ist die Stelle, die ein
+> fremder Leser zuerst liest, und behauptete damit stillschweigend, die Frage
+> sei entschieden. 12.2 nennt jetzt ausdrücklich, dass die Blockfrage für S2
+> offen ist (Verweis auf 3.3). 13.8 führt „12" in der Stellen-Spalte der
+> Kritisch-1-Zeile jetzt mit auf, statt nur die 4.3-Zeile — der Dokumentkopf
+> listete „12" bereits, aber bis zu dieser Korrektur zu Unrecht.
 
 ## Kritisch 2 — Abschnitt 6.3: zwei Stände, und eine Begründung gegen die eigenen Zahlen
 
@@ -153,8 +162,16 @@ oder die Änderung an 4.3 zurücknehmen.
 > `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/`, das weder im
 > Arbeitszweig noch im Hauptcheckout existiert — es ist mit der Sitzung des
 > Prüfers verloren gegangen, nicht gescheitert. Ein neues Skript zu schreiben
-> war in dieser reinen Dokumentationsrunde nicht zulässig, und Datenbankzugriff
-> war für diese Aufgabe ohnehin ausgeschlossen. Der Fehlschlag ist in 4.3
+> war in dieser reinen Dokumentationsrunde nicht zulässig. **Korrektur in
+> Fix-Runde 1 (2026-09-13):** Hier stand fälschlich, Datenbankzugriff sei für
+> diese Aufgabe „ohnehin ausgeschlossen" gewesen — das widerspricht dem
+> Brief, der lesenden Datenbankzugriff für Weg 1 ausdrücklich erlaubt
+> („Braucht einen Datenbankzugriff … kein Scraping. Das ist erlaubt."). Wahr
+> ist: Der **Koordinator** hat für diese Fortsetzung Datenbankzugriff und
+> neue Skripte untersagt, weil die Aufgabe eine reine Dokumentationsrunde
+> ist — das ist eine Anweisung des Koordinators, keine Regel des Briefs.
+> Am Ergebnis ändert das nichts: Weg 1 wäre auch mit Datenbankzugriff am
+> fehlenden Skript gescheitert. Der Fehlschlag ist in 4.3
 > ausdrücklich vermerkt („Was zu tun wäre, und warum es nicht getan ist"),
 > nicht stillschweigend übergangen — genau das verlangt der Fund.
 >
@@ -183,8 +200,15 @@ dranschreiben, welche Liste gerankt wurde.
 > mit `messung-m6-preissenkung.ts` / `messung-m6-teil2.ts`) war nicht gangbar:
 > Beide Skripte lagen im selben git-ignorierten, verlorenen Verzeichnis wie
 > das Regionsabstand-Skript (siehe Wichtig 3 und den Kopf dieser Datei); eine
-> reine Dokumentationsrunde durfte weder neue Skripte schreiben noch die
-> Datenbank anfassen.
+> neue Fassung zu schreiben war in dieser reinen Dokumentationsrunde nicht
+> zulässig. **Korrektur in Fix-Runde 1 (2026-09-13):** Hier stand fälschlich,
+> die Runde „durfte weder neue Skripte schreiben noch die Datenbank
+> anfassen" — auch das widerspricht dem Brief, der für Weg 1 ausdrücklich
+> Datenbankzugriff erlaubt. Wahr ist wie bei Wichtig 3: Der **Koordinator**
+> hat Datenbankzugriff und neue Skripte für diese Fortsetzung untersagt, weil
+> sie eine reine Dokumentationsrunde ist — eine Anweisung des Koordinators,
+> keine Regel des Briefs. Am Ergebnis ändert das nichts: Weg 1 wäre auch mit
+> Datenbankzugriff an den fehlenden Skripten gescheitert.
 >
 > 2.4 und 13.6 benennen jetzt ausdrücklich, welche Liste M6 gerankt hat:
 > „global über alle 12.157 bewerteten Objekte einschließlich S0" — eine
@@ -198,6 +222,18 @@ dranschreiben, welche Liste gerankt wurde.
 > „Anforderung 3 ist belegt" steht damit an keiner Stelle mehr unbedingt da;
 > was bleibt, ist die Formel-Begründung, ausdrücklich getrennt von der
 > unbelegten Messung.
+>
+> **Nachkorrigiert in Fix-Runde 1 (2026-09-13).** Der Schlusssatz von 13.6
+> und der Satz `:1464-1466` stützten die Aussage „eine Preissenkung bewegt
+> den Rang" noch auf „17 von 17 Fällen bestätigt" bzw. „gilt in jeder
+> Teilliste" — beides zu stark: Sechs der 17 Fälle liegen in S0 ohne
+> Rangplatz, und derselbe Abschnitt trägt einen Gegenbefund (`e9a8c11d`, DSCR
+> **fiel** trotz Preissenkung). Beide Stellen stützen die Aussage jetzt
+> ausschließlich auf die **Formel** und sprechen von „jeder gerankten Stufe,
+> bei sonst gleicher Datenlage" statt „jeder Teilliste"; „17 von 17
+> bestätigt" wird nicht mehr als Beleg angeführt. Damit gibt es nur noch
+> einen Stand mit der M6-Zeile in Abschnitt 10 („Sie bewegt den Rang — belegt
+> ist das aber nicht").
 
 ## Wichtig 5 — E-7 und 6.2: „54 statt 157" ist kein Vergleich gleicher Art
 
@@ -254,13 +290,18 @@ dem Umbau mitgeschrieben") ist behauptet, nicht gemessen.
 >   Stufenregel jetzt **53 von 12.611** (S3 1 + S2 52) statt der alten 197 —
 >   der alte Wert steht als Fußnote „nach der alten Stufenregel waren es
 >   197", nicht mehr als aktueller Stand.
-> - Die Zahl „6.408 von 11.308 = 56,7 %" in 3.1 trägt jetzt ein **Verfahren**
->   (eigene Box direkt unter der Tabelle: Grundgesamtheit, Zuordnung über
->   `plzBundesland.generated.json`, was die Zahl nicht hergibt) samt der
->   Einschränkung, dass der Zählschritt selbst im Nachtrag nicht protokolliert
->   und das zugehörige Messskript nicht mehr vorhanden ist — die Zahl gilt
->   deshalb als **nicht reproduzierbar** und ist bei der nächsten Messung
->   mitzuführen, statt gestrichen zu werden.
+> - Die Zahl „6.408 von 11.308 = 56,7 %" in 3.1 trägt jetzt **kein**
+>   behauptetes Verfahren mehr. **Korrektur in Fix-Runde 1 (2026-09-13):** Die
+>   ursprünglich hier nachgetragene Herleitung — jedes S1-Objekt trage über
+>   `plzBundesland.generated.json` genau ein Bundesland — war selbst nicht
+>   haltbar, weil S1 gerade die Stufe **ohne** PLZ-genaue Miete ist
+>   (`ermittleJahreskaltmiete`, `scraper/lib/rentEstimate.ts:207-219`) und die
+>   6 `geschaetzt_bundesweit`-Objekte in S1 gar kein Bundesland tragen. Diese
+>   Herleitung ist **gestrichen**. Die Box unter der Tabelle in 3.1 sagt jetzt
+>   ausdrücklich **„Verfahren unbekannt, nicht reproduzierbar"**, ohne einen
+>   PLZ-Weg zu behaupten; die Zahl selbst bleibt stehen und ist bei der
+>   nächsten Messung mit einem tatsächlich protokollierten Verfahren neu zu
+>   erheben.
 
 ---
 
