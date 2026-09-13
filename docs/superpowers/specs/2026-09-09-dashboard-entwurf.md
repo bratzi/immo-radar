@@ -165,6 +165,18 @@ würde ein Objekt nach oben schieben, das sich verändert hat, ohne dadurch
 besser geworden zu sein. Veränderung bekommt eine eigene Darstellung
 (Abschnitt 4), keinen Platz in der Zahl.
 
+> **Am 2026-09-12 gemessen (M6, Abschnitt 13.6), am 2026-09-13 mit dem
+> Vorbehalt versehen, den die Stichprobe verlangt.** Die Entscheidung steht,
+> aber sie steht auf der **Formel** — ein niedrigerer Preis hebt den DSCR —,
+> nicht auf der Messung. **Die Messung belegt sie nicht:** Sie umfasst **17
+> echte Preissenkungen** aus sieben Tagen Historie, mehrere davon zum selben
+> Objekt, und sie hat den Rang **global über alle 12.157 bewerteten Objekte
+> einschließlich S0** bestimmt — über eine Liste also, die das Dashboard nach
+> 3.2 und 3.7 so nie zeigt; **6 der 17** Senkungen betrafen S0-Objekte, die
+> überhaupt keinen Rangplatz bekommen. Der Median „+539 Plätze" ist deshalb
+> **keine Aussage über die Rangliste dieses Entwurfs**. Zu wiederholen nach
+> vier Wochen, dann innerhalb der Stufe und ohne S0.
+
 ---
 
 ## 3. Frage 2 — Wie wird Nichtwissen einsortiert?
@@ -923,7 +935,7 @@ Entwurf **nicht** ausgeführt.
 | **M3** | Wie verteilen sich die Objekte auf S3/S2/S1/S0? | 83 % S1 und „über die Hälfte `wohnflaeche_fehlt`" überschneiden sich unbekannt stark. Entscheidet, ob S2 überhaupt genug Objekte für einen eigenen Block hat. | **S3 1 · S2 52 · S1 11.308 · S0 1.250** von 12.611, gezählt nach der **korrigierten** S0-Regel (Nachkorrektur 2026-09-13; der Nachtrag zählte mit 196/11.312/1.102 noch nach der alten). 3.3 ist **korrigiert**, samt der Lücke in der S0-Bedingung (148 Objekte). **Die Blockfrage für S2 bleibt damit offen, nicht beantwortet:** 52 von 12.611 = 0,4 % tragen keinen eigenen beschrifteten Block; zu entscheiden vor Schritt 4 aus Abschnitt 9. *Was die Zahl nicht hergibt:* Momentaufnahme eines siebentägigen Bestands, Eigenschaft der Quellenmischung, nicht des Marktes. |
 | **M4** | Verteilung des `last_seen`-Alters je Region. | Kalibriert die Schwelle für „unbestätigt" (6.3). | Median **0,83 d**, P90 **2,34 d**, Maximum **4,78 d**; Regionsmediane 0,13 bis 1,33 d. **Die Schwelle bleibt offen** (Nachkorrektur 2026-09-13): Die im Nachtrag beschlossene globale 3-Tage-Schwelle ist zurückgezogen — `nw` hat ein P90 von 3,32 d, das Maximum ist 4,78 d, und bei 3 Tagen stünden `ni` 25,4 % und `nw` 10,7 % dauerhaft unbestätigt. Bis zur Nachmessung in vier Wochen gilt die regionsindividuelle Definition (6.3). Das kürzeste Zeitfenster in 4.3 bleibt bei **7 Tagen**, weil M4 das `last_seen`-Alter misst und nicht den Regionsabstand. *Was die Zahl nicht hergibt:* Der Bestand ist erst 6,92 Tage alt; ein längerer Rückstand konnte gar nicht auftreten. |
 | **M5** | Wie viele Objekte sind Schwellenwechsler nach 3.6 — und deckt sich die Zahl mit A11s 558? | Prüft, ob die Objekt-Sicht dieselbe Größe misst wie die Bestands-Sicht. Weicht sie ab, ist eine der beiden Rechnungen falsch. | **Sie deckt sich nicht, und keine der beiden ist falsch — sie messen Verschiedenes.** 3.6: **6.658 von 11.360 (58,6 %)**; A11s Größe nachgerechnet: **2.962 von 12.157 (24,4 %)** gegen 29,7 %. Der Unterschied ist die Definition, nicht die Bandbreite. 3.6 ist korrigiert. |
-| **M6** | Wie oft ändert eine Preissenkung tatsächlich die Rangposition — und um wie viel? | Anforderung 3 des Nutzers steht und fällt damit. Wenn Preissenkungen den Rang kaum bewegen, braucht die Veränderungsansicht mehr Gewicht als die Rangliste. | **Sie bewegt den Rang, aber die Stichprobe ist klein.** 17 echte Senkungen (von 49 `price_dropped`-Zeilen; 10 sind Parserkorrekturen, 22 nicht nachrechenbar): Median −15,9 % Preis → **+539 Rangplätze** (4,4 % des Feldes). Selbst −3,0 % bewegten 105 Plätze. 2.4 bleibt. |
+| **M6** | Wie oft ändert eine Preissenkung tatsächlich die Rangposition — und um wie viel? | Anforderung 3 des Nutzers steht und fällt damit. Wenn Preissenkungen den Rang kaum bewegen, braucht die Veränderungsansicht mehr Gewicht als die Rangliste. | **Sie bewegt den Rang — belegt ist das aber nicht.** 17 echte Senkungen (von 49 `price_dropped`-Zeilen; 10 sind Parserkorrekturen, 22 nicht nachrechenbar): Median −15,9 % Preis → **+539 Rangplätze** (4,4 % des Feldes); selbst −3,0 % bewegten 105 Plätze. **2.4 bleibt, gestützt auf die Formel, nicht auf diese Zahlen** (Vorbehalt ergänzt am 2026-09-13). *Was die Zahl nicht hergibt:* n = 17 aus sieben Tagen, mehrere Fälle zum selben Objekt — und gerankt wurde **global über alle 12.157 bewerteten Objekte einschließlich S0**, also über eine Liste, die das Dashboard nach 3.2/3.7 nicht zeigt; **6 der 17** Senkungen lagen in S0, das gar keinen Rangplatz bekommt. Nach vier Wochen innerhalb der Stufe und ohne S0 zu wiederholen. |
 
 ---
 
@@ -1339,6 +1351,28 @@ die Mietschätzung über die Einordnung und nicht die Objektdaten".
 beide mit den echten Funktionen nachgerechnet; der Rang ist die Position im
 absteigend nach DSCR sortierten Feld aller 12.157 bewertbaren Objekte.
 
+> **Welche Liste hier gerankt wurde — nachgetragen am 2026-09-13.** Gerankt
+> wurde **global über alle 12.157 bewerteten Objekte, einschließlich S0**,
+> also über **eine Liste, die das Dashboard so nie zeigen wird**. Der Entwurf
+> vergibt Rangplätze anders: 3.2 trennt nach Stufenblöcken, und 3.7 gibt
+> S0-Objekten **überhaupt keinen Rangplatz**. Konkret liegen **6 der 17**
+> echten Senkungen in S0. Die Rangsprünge unten sind deshalb Positionen in
+> einem Feld, das der Nutzer nicht zu sehen bekommt, und die Zahl „+539
+> Plätze" ist **keine Aussage über die Rangliste des Dashboards**.
+>
+> **Warum nicht neu gerechnet wurde.** Der Auftrag ließ die Wahl, innerhalb
+> der Stufe und ohne S0 neu zu rechnen. Die dafür vorgesehenen Skripte
+> `messung-m6-preissenkung.ts` und `messung-m6-teil2.ts` liegen im
+> git-ignorierten Verzeichnis
+> `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/` und sind dort
+> **nicht mehr vorhanden** (13.8); diese Runde ändert zudem keine Zeile Code.
+> Die Neurechnung bleibt offen und ist mit der Wiederholung nach vier Wochen
+> zusammenzulegen.
+>
+> **Was sich dadurch nicht ändert:** Die *Richtung* — eine Preissenkung hebt
+> den DSCR und damit den Rang — folgt aus der Formel und gilt in jeder
+> Teilliste. Die *Höhe* des Sprungs gilt nur für das global sortierte Feld.
+
 **Die Rohzahl ist klein, und der erste Durchgang war unbrauchbar.** Von
 17.391 Versionen tragen **49** `price_dropped`. 22 davon sind nicht
 nachrechenbar (fehlende Fläche in einer der beiden Versionen). Von den
@@ -1364,11 +1398,16 @@ rutschte und sie damit nach S0 wanderten. Die A9-Untergrenze wirkt also genau
 wie beabsichtigt. **Kein Fall blieb ohne Rangwechsel**; selbst die kleinste
 Senkung (−3,0 %, 235.000 → 228.000 €) bewegte den Rang um **105 Plätze**.
 
-**Was das am Entwurf ändert: 2.4 bleibt, jetzt belegt.** Anforderung 3 („durch
-eine Preissenkung rutscht ein Objekt nach oben") erledigt der DSCR von selbst;
-ein zusätzlicher Veränderungsbonus auf die Rangzahl bleibt abgelehnt. Die
-Rangliste ist bei dieser Bestandsgröße **empfindlich genug**, dass eine
-Preissenkung sichtbar wird, ohne dass man sie extra gewichtet.
+**Was das am Entwurf ändert: 2.4 bleibt — begründet, aber nicht belegt.**
+Anforderung 3 („durch eine Preissenkung rutscht ein Objekt nach oben")
+erledigt der DSCR von selbst; ein zusätzlicher Veränderungsbonus auf die
+Rangzahl bleibt abgelehnt. Diese Ablehnung steht auf der **Formel**, nicht auf
+den 17 Fällen: Ein niedrigerer Preis hebt den DSCR, das gilt unabhängig von
+der Stichprobe. **Was die 17 Fälle nicht tragen**, ist der Satz „Anforderung 3
+ist belegt" — n = 17, aus sieben Tagen, mehrere Fälle zum selben Objekt, und
+gerankt über eine Liste, die das Dashboard nicht zeigt (siehe den Kasten
+oben). Die Aussage „die Rangliste ist empfindlich genug" ist damit **eine
+begründete Erwartung, keine Messung**, und nach vier Wochen zu prüfen.
 
 **Der Gegenbefund, der dranstehen muss.** Ein Fall lief gegen die Erwartung:
 `e9a8c11d`, 47.490 → 39.950 € (−15,9 %), und der DSCR **fiel** von 6,658 auf
