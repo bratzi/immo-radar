@@ -1,253 +1,191 @@
-# Übergabe — Stand 2026-09-11
+# Übergabe — Stand 2026-09-12
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
 > (woran „die Basis steht" gemessen wird), dann
-> [`specs/2026-09-09-offene-entscheidungen.md`](specs/2026-09-09-offene-entscheidungen.md)
-> (was noch dem Nutzer gehört), dann [`BACKLOG.md`](BACKLOG.md) und
+> [`specs/2026-09-12-messfragen-nachtrag-funde.md`](specs/2026-09-12-messfragen-nachtrag-funde.md)
+> (die einzige offene Arbeit mit Frist), dann [`BACKLOG.md`](BACKLOG.md) und
 > [`TODO.md`](TODO.md).
 
 ## Wo wir stehen
 
-`main` = `935207c`, Arbeitsverzeichnis sauber. **423 Tests grün** (Sitzungsbeginn:
-397), `npx tsc --noEmit` sauber. Alle vier Agenten-Worktrees dieser Sitzung sind
-gemergt und abgeräumt.
+`main` = `60e4da9` und **ein Commit vor `origin/main`**. Die eigentliche
+Arbeit dieser Sitzung liegt **nicht auf `main`**, sondern auf dem Zweig
+`blaetterung-meldedeckel-a4` (Worktree unter
+`.worktrees/blaetterung-meldedeckel-a4`, sieben Commits, Arbeitsverzeichnis
+sauber, **427 Tests grün**, `npx tsc --noEmit` sauber).
 
-**Der wichtigste Befund dieser Sitzung ist keine Zeile Code, sondern eine
-Verhältniszahl.** Von fünf offenen Abnahmekriterien hingen **drei an einer
-Entscheidung**, eines nur an **Zeit**, und nur B-2 war echte Arbeit. Die Basis
-ließ sich durch Programmieren fast nicht weiter voranbringen — das ist der
-Grund, warum diese Sitzung mit einer Neupriorisierung begonnen hat statt mit
-einem Umbau.
+**Der wichtigste Satz dieser Sitzung:** Der Produktionslauf, der B-2 belegen
+sollte, hat B-2 belegt **und dabei zwei Fehler sichtbar gemacht, die vorher
+unerreichbar waren**. Genau das war der Grund, den Lauf zu fahren, statt
+weiter zu programmieren.
 
-**Was geschlossen wurde:** Option 3 (Immowelt markiert Abgänge, löscht sie nie),
-das getrennte Meldekontingent, die vierte Fail-open-Stelle, der Dashboard-Entwurf
-und zwölf Doku-Stellen, die dem Code widersprachen.
-
-**Was als Nächstes kommt:** Ein Produktionslauf, der Option 3 belegt. Der Code
-steht, der Beleg fehlt — und ohne ihn gilt B-2 nicht als erfüllt.
-
----
-
-## Option 3 ist gebaut: markieren ohne löschen
-
-Abnahmekriterium B-2 verlangt wörtlich, dass ein verschwundenes Immowelt-Objekt
-als verschwunden **erkannt** wird — nicht, dass es gelöscht wird. Bis zu dieser
-Sitzung trugen **null** Immowelt-Objekte ein `disappeared_at`.
-
-### Der Entwurf hängt an einer einzigen Frage
-
-**Wieviel Beweislast eine Markierung trägt, hängt daran, ob die Quelle
-überhaupt löschen darf.** Das ist der ganze Kern von `ermittleMarkierungen`
-(`lib/bestand.ts`):
-
-- **Mit Löschhoheit** ist die Markierung der **erste Schritt der Löschung** —
-  nach der Karenz räumt `loescheAbgelaufene` sie hart weg. Sie trägt deshalb
-  dieselbe Beweislast wie die Löschung selbst: quellenweite Mengenprüfung und
-  `vollstaendig`. Für ZVG ändert sich nichts.
-- **Ohne Löschhoheit** ist die Markierung ein **reversibler Endzustand**. Dann
-  genügt der Regionsbeweis: Markiert wird nur, wessen Fundort eine Region ist,
-  die in **diesem** Lauf ihre Vollständigkeit gegen die vom Portal ausgewiesene
-  Trefferzahl belegt hat.
-
-**Warum die quellenweite Prüfung für Immowelt der falsche Maßstab ist:** Sie
-vergleicht gegen einen historischen Median, und bei einer rotierend erfassten
-Quelle misst dieser Median nur die Rotation — gemessen 3.361 bis 9.329 Objekte
-je Lauf, Faktor 2,8. Sie wäre dort ein permanentes Nein, also nie eine
-Markierung. Der Regionsbeweis vergleicht stattdessen gegen eine **Live-Wahrheit**.
-
-### Die harte Löschung bleibt gesperrt, und zwar an einer Stelle
-
-Sie hängt allein an `QUELLEN_MIT_LOESCHHOHEIT` in `bestandDb.ts`, und dort steht
-`immowelt` nicht. Neu ist `quelleHatLoeschhoheit`, damit die Liste von außen
-lesbar ist statt still in einer Abfrage zu stecken. **Ein zweites Verzeichnis
-wäre der falsche Weg** — zwei Listen, die auseinanderlaufen können, sind genau
-die Bauart, aus der die bisherigen Fail-open-Stellen entstanden sind.
-
-**Sabotageprobe:** Trägt man `immowelt` in die Erlaubnisliste ein, fallen drei
-Tests. Übergeht man die Mengenprüfung bei einer Quelle mit Löschhoheit, fällt
-einer.
-
-### Die bewusste Lücke
-
-`nw`, `bw` und `mv` nennen ihre Trefferzahl nirgends (gemessen 2026-09-09, weder
-im Titel noch im Seitentext). Sie erreichen den Geltungsbereich nie, also wird
-dort **nie etwas markiert**. Das ist kein Versehen: `nw` allein ist 21,2 % des
-Bestands, und solange der zweite Vollständigkeitsmaßstab fehlt (A16, bewusst
-zurückgestellt), ist Nichtstun die richtige Antwort.
-
-**Fürs Dashboard heißt das:** Fehlendes Grau ist kein Beleg für Verfügbarkeit.
-Der Entwurf löst das mit drei Zuständen statt zwei — verfügbar, **unbestätigt**,
-abgängig.
-
-### Die vierte Fail-open-Stelle, gefunden beim Umbau
-
-`regionErfassen` **weiß**, wenn die Blätterung am Seitendeckel des Portals
-endet — die Region ist dann nachweislich unvollständig erfasst. Dieser Befund
-wurde bisher nur geloggt und floss nicht in `istRegionVollstaendig` ein.
-
-Solange nichts markiert wurde, kostete das nichts. Mit Option 3 wäre es ein
-Loch: Der Deckel liegt bei rund 10.000 Objekten; meldet das Portal 10.000 bis
-13.333, landet die abgeschnittene Menge zufällig innerhalb der 25-%-Toleranz,
-die Region käme in den Geltungsbereich, und die abgeschnittenen Objekte wären
-Abgänge.
-
-**Ein bekannter Unvollständigkeitsbefund darf nie in eine
-Vollständigkeitsaussage münden.** Das dritte Argument ist verpflichtend und hat
-keinen Vorgabewert — ein stilles `false` wäre genau die Sorte Vorgabe, die einen
-unbekannten Zustand als „in Ordnung" liest.
-
-### Der Deckel, den die Verdrahtung nötig gemacht hat
-
-`ermittleMarkierungen` war gebaut und getestet, aber **von niemandem
-aufgerufen** — damit blieb B-2 unerfüllt. Beim Verdrahten fiel auf, dass die
-Abgangsmeldung ungedeckelt lief: Bis heute markierte allein ZVG mit ein bis zwei
-Objekten je Lauf, deshalb fiel es nie auf. Mit Immowelt holt der erste Lauf
-danach einen Rückstand auf, der seit Projektbeginn gewachsen ist — jedes Objekt,
-das je in den Chat kam und inzwischen weg ist, in **einem** Lauf.
-
-Dieses Projekt hat den Nutzer schon einmal mit 318 Meldungen geflutet; deshalb
-gibt es `MAX_MELDUNGEN_JE_LAUF` überhaupt. Eine Markierung freizugeben, ohne die
-Meldeseite zu deckeln, wäre derselbe Fehler an der Nachbarstelle.
-`MAX_ABGANGSMELDUNGEN_JE_LAUF = 10`.
-
-**Was der Deckel kostet, und warum es vertretbar ist:** Die überzähligen
-Abgänge werden **nicht** nachgeholt — sie sind markiert und tauchen nicht erneut
-als neuer Abgang auf. Ihr Verschwinden bleibt unbemeldet, aber nicht unbemerkt:
-`disappeared_at` steht in der Datenbank, und genau daraus lebt die ausgegraute
-Darstellung. **Der Deckel kostet eine Chat-Nachricht, keine Information.**
+| Was | Stand |
+|---|---|
+| **B-2** verschwundene Immowelt-Objekte | **erfüllt**, belegt am Lauf `34637349206` |
+| **A-4** kein Objekt fällt still heraus | **Code steht** auf dem Zweig, Beleg durch einen Lauf fehlt |
+| **D-5** Meldebudget | **weiter offen**, und die Messung sagt warum |
+| Dashboard Schritt 0 (M1–M6) | **gemessen**, Nachtrag aber **nicht abgenommen** |
 
 ---
 
-## Das Meldebudget hat jetzt eine Reihenfolge
+## Der Produktionslauf und was er gezeigt hat
 
-D-5 war offen, weil das Budget von 25 dauerhaft ausgeschöpft ist — zuletzt 25
-gesendet, **117 zurückgestellt**. Die Ursache war nicht die Menge, sondern die
-**Reihenfolge**: Die nur landesweit geschätzte Mietstufe stellt **339 von 409**
-Kandidaten und beherrschte die Liste allein durch ihre Masse. Ein Objekt mit
-belegter oder PLZ-genauer Miete stand hinter Dutzenden Schätzungen an, bei 117
-Zurückgestellten über Wochen hinweg.
+Lauf `34637349206` auf `d4f744b`, 2026-09-11, 19:10 bis 19:58 UTC.
 
-Sie bekommt jetzt **5 der 25 Plätze**. **Es fällt nichts weg:** Bleiben Plätze
-frei, weil es weniger gut belegte Kandidaten gab, gehen sie am Ende des Laufs
-über `holeNach` doch an die zurückgestellten landesweiten. Der Durchsatz sinkt
-nicht, nur die Reihenfolge stimmt.
+**B-2 ist erfüllt.** 32 Immowelt-Objekte tragen `disappeared_at` — vorher
+waren es **null**. Verteilt auf `th` 13, `sl` 8, `hh` 5, `hb` 4, `be` 2. Kein
+Lauf hat auf einen Schlag Hunderte markiert. `mv` und `nw` nannten ihre
+Trefferzahl nicht und wurden fail-closed übergangen; die **bewusste Lücke**
+besteht also weiter und trifft mit `nw` allein 21,2 % des Bestands.
 
-**Die Stufe kommt aus der getypten `MietQuelle`, nicht aus der Datenlücke**
-`miete_nur_bundeslandgenau`. Die Lücke ist nur deren Ableitung und liegt in
-einem Set mit Zeichenketten, die der jeweilige Scraper beisteuert. Ein Merkmal,
-das entscheidet **wer** gemeldet wird, darf nicht an einer Zeichenkette aus dem
-Parser hängen.
+### Befund 1: Die Blätterung war eine Stichprobe, keine Abfrage
 
-**Rücknehmbar ohne Rest:** Kontingent gleich Maximum verhält sich exakt wie der
-Code davor, und genau das steht unter Test. Das ist die Sicherheitsleine, falls
-der Nutzer A11 Schritt 4 anders entscheidet.
+Das Protokoll meldete **44** Markierungen, in der Datenbank standen **32**.
+Die Differenz führte zu `ladeBekannteListings`: Es blätterte mit
+`.range(von, bis)` **ohne Sortierung**. Postgres liefert dann in physischer
+Reihenfolge, und jedes `UPDATE` desselben Laufs — `last_seen` für rund
+10.000 gesehene Objekte — verschiebt Zeilen zwischen die Seiten.
 
-**Sabotageproben:** Ignoriert `darfSenden` das Kontingent, fallen fünf Tests.
-Ignoriert `holeNach` das Gesamtbudget, fallen drei.
+Nachgemessen über `listings`:
 
----
+| Blätterung über 12.158 Zeilen | Zeilen |
+|---|---|
+| doppelt geliefert | 1.762 |
+| nie geliefert | 1.762 |
 
-## Der Dashboard-Entwurf steht — und hat eine tote Schwelle gefunden
+**Jeder Lauf sah rund 14,5 % des Bestands nicht**, jedes Mal einen anderen
+Teil. Was `bekannte` nicht enthält, kann weder markiert noch entmarkiert
+werden. Die Richtung war zwar fail-closed — Unsichtbares wird nicht
+gelöscht —, aber jede Zahl, die auf dieser Liste beruhte, war falsch.
 
-`specs/2026-09-09-dashboard-entwurf.md`, 739 Zeilen, **keine Zeile Frontend-Code**
-(die Reihenfolge „Basis vor Dashboard" gilt weiter).
+Behoben in `0aac237`: Keyset statt Bereich, die nächste Seite beginnt hinter
+einer konkreten `id`. **Die Lehre gilt über diese Stelle hinaus: Eine
+seitenweise Abfrage ohne stabile Sortierung ist keine Abfrage, sondern eine
+Stichprobe.**
 
-**Die Rangzahl ist der DSCR, keine erfundene Punktzahl.** Nachgerechnet und
-bestätigt: `geschaetzterDscr` ist exakt `nettomietrenditeCapRate / 6`, und
-`bruttomietrendite` ist `100 / kaufpreisfaktor`. Von fünf Kennzahlen bleiben
-damit **zwei** unabhängige Ordnungen; eine gewichtete Summe hätte dieselbe
-Information doppelt gezählt.
+### Befund 2: Der Deckel lag vor dem Filter
 
-**Eine der vier `topTreffer`-Bedingungen ist tot.** `finanzierungsrisiko` kippt
-erst unterhalb DSCR ≈ 0,81–0,84 (gerechnet über Kaufnebenkosten von 8,57 % bei
-3,5 % Grunderwerbsteuer bis 11,57 % bei 6,5 %). Die Schwelle verlangt aber
-`DSCR >= 1,3`. Innerhalb von `topTreffer` kann sie **nie** die bindende
-Bedingung sein. Eigene Nachrechnung bestätigt beides.
+Von 44 markierten Abgängen kamen 10 in den Deckel, und **genau eine** Meldung
+ging raus. Der Grund: `budgetiereAbgangsmeldungen` deckelte **alle**
+Markierungen, und erst danach filterte die Schleife auf Objekte, die je im
+Chat waren. Bei 671 Meldungen auf 12.158 Objekte sind die ersten zehn
+Markierungen fast nie gemeldete. Die 34 übrigen bleiben **für immer stumm**,
+denn sie sind markiert und tauchen nie wieder als neuer Abgang auf.
 
-**Unsicherheit wird als Band geführt, nicht als Punkt**, und sortiert wird nach
-der **ungünstigen Bandkante** — dadurch ist breite Unschärfe eine Zurückstufung
-statt einer neutralen Eigenschaft. Vier Sicherheitsstufen, ohne Schemaänderung,
-als **getrennte Blöcke statt einer Liste**: Der Wechselkurs zwischen belegter
-und geschätzter Miete ist bei zwei belegten Objekten im ganzen Bestand nicht
-messbar, also wird er nicht behauptet.
+Behoben in `3f8c7d8`: erst filtern, dann deckeln, und `verschwiegen` zählt
+nur noch meldefähige Objekte.
 
-**Nicht beurteilbare Objekte bekommen keinen Rangplatz und keine Kennzahl** —
-kein grauer DSCR 0,0, sondern der Grund im Klartext. Für ein Ranking-Dashboard
-ist *geprüft und schlecht* der gefährlichste Zustand, den *nicht beurteilbar*
-annehmen kann.
-
-**Der Zeitraum ist historienrelativ statt kalenderrelativ.** `changed` und
-`price_dropped` vergleichen die Vorversion desselben Objekts, nicht einen
-Zeitpunkt — strukturell immun gegen 43 % Cron-Ausfall und 5,7 Tage
-Regionsabstand. Ein 24-Stunden-Fenster wäre für die meisten Regionen leer.
-
-**Zugriff:** Snapshot-Export durch den Lauf, der den Service-Key ohnehin hält —
-der einzige Weg, der **null Änderungen an der Produktionsdatenbank** verlangt
-und strukturell keinen Schreibzugriff verlieren kann. Die Alternativen stehen
-mit ihren Anforderungen als Nutzerentscheidung im Entwurf.
+**Nachgezogen in `749b273`, nach einem Prüffund:** Der Deckel gilt **je
+Quelle**, nicht je Lauf — `gleicheBestandAb` läuft einmal für Immowelt und
+einmal für ZVG. Der Docstring behauptete „je Lauf". **Entschieden: die Zahl
+bleibt je Quelle, die Behauptung wurde korrigiert.** Begründung: Eine laute
+Quelle darf die andere nicht verdrängen; ZVG markiert ein bis zwei Objekte je
+Lauf und hätte sonst keinen Platz mehr, sobald Immowelt seinen Rückstand
+abträgt. Die Konstante heißt jetzt `MAX_ABGANGSMELDUNGEN_JE_QUELLE_UND_LAUF`.
+**Der Preis: ein Lauf kann bis zu 20 Abgangsmeldungen verschicken.**
 
 ---
 
-## Zwei Entscheidungen sind gefallen, ohne dass sie dem Nutzer vorgelegt wurden
+## D-5 bleibt offen, und die Messung sagt warum
 
-Beide waren als „Entscheidung des Nutzers" geführt und haben sich bei genauem
-Hinsehen selbst beantwortet. Begründung in
-[`specs/2026-09-09-offene-entscheidungen.md`](specs/2026-09-09-offene-entscheidungen.md).
+D-5 verlangt zweierlei: weniger Zurückgestellte **und** besser belegte
+Objekte unter den Gesendeten. Die erste Hälfte steht — 71 auf 47. Die zweite
+wurde gemessen und fiel aus:
 
-**Der Cron bleibt bei drei Stunden (A10).** Die Fortsetzungsrotation entzieht
-der Abwägung die Grundlage: Der Startindex kam früher aus der Wanduhr, ein
-ausgefallener Lauf übersprang damit einen Versatz. Jetzt zeigt er auf die
-Region, die am längsten nicht gesweept wurde. **Ein ausgefallener Termin kostet
-Zeit, aber keine Abdeckung.** Ein Stunden-Cron kaufte 1,5 Tage mit der
-dreifachen Tagesmenge an Abrufen bei einer Quelle, die genau die misst.
+| Lauf | gesendet | davon auf der gröbsten Mietstufe |
+|---|---|---|
+| `34630574787` (vorher) | 25 | **25** |
+| `34637349206` (nachher) | 25 | **25** |
 
-**Die 157 Objekte ohne Fundort bleiben stehen.** Ein fehlender Fundort heißt
-„nicht zuzuordnen", und Unzuordenbares ist nie ein Abgang — so ist der Code
-schon gebaut. Sie einmalig zu verwerfen wäre ein Schreibzugriff auf
-Produktionsdaten für einen Nutzen, den niemand benennen kann.
+**Es gab schlicht keine besser belegten Kandidaten.** Beide Zeitfenster
+bestanden zu 100 % aus Immowelt mit bundeslandgenauer Schätzung. Die 20
+ungenutzten Plätze gingen bestimmungsgemäß über `holeNach` an die landesweite
+Stufe zurück — der Mechanismus arbeitet also korrekt, er hatte nur nichts zu
+tun. **Die Kontingentlogik ist an diesen Läufen weder belegt noch
+widerlegt.** Ein echter Test braucht ein Fenster mit ZVG- oder PLZ-tragenden
+Kandidaten.
 
-## Die eine Entscheidung, die offen bleibt
+---
 
-**Wird ein Objekt ohne Preis gespeichert statt fallengelassen?** Betrifft A13
-Schritt 2 (Immowelt, „Preis auf Anfrage") und A6 (ZVG, das Gericht hat den
-Verkehrswert ausgelassen). Daran hängt A-4.
+## Die Messfragen sind gemessen, der Nachtrag ist nicht abgenommen
 
-Empfehlung: **eine `listings`-Zeile ohne `listing_versions`-Zeile**. Sie erfüllt
-A-4 wörtlich, ohne Migration auf Produktionsdaten und ohne jede Metrik
-anzufassen. `price_cents` nullbar zu machen ist der sauberere Endzustand und
-lässt sich später nachziehen; umgekehrt ginge es schlechter.
+Schritt 0 des Dashboard-Entwurfs (M1 bis M6) wurde gemessen, mit den
+Projektfunktionen statt mit nachgebauten Formeln — die Gegenprobe trifft bei
+12.156 von 12.157 Objekten den gespeicherten Wert. Mehrere Annahmen des
+Entwurfs sind damit überholt:
 
-**Vorsicht:** Auch die empfohlene Variante berührt die Löschwachen. Eine
-`listings`-Zeile ohne Bewertung darf nie als Abgang gelten, nur weil sie keine
-Version trägt.
+- **Nur ein einziges Objekt im ganzen Bestand trägt eine belegte Miete**,
+  nicht zwei.
+- Die angenommene Einheitenzahl bewegt **keine einzige** Schwelle. Die
+  20/35-%-Deckelung begrenzt den Hebel strukturell; die Miete ist 70-mal so
+  wirksam. `units_unconfirmed` bleibt Merkmal, endgültig.
+- Eine Preissenkung bewegt den Rang deutlich: Median −15,9 % Preis ergab
+  +539 Plätze. Anforderung 3 des Nutzers ist damit belegt.
+- **148 Objekte ohne Wohnfläche tragen keine Datenlücke** und landen mit
+  DSCR 0 in einer Stufe, in die sie nicht gehören. Für ein Ranking-Dashboard
+  ist *geprüft und schlecht* der gefährlichste Zustand, den *nicht
+  beurteilbar* annehmen kann. Die Regel ist im Entwurf ergänzt, **aber nicht
+  implementiert**.
+
+**Die Nachprüfung hat den Nachtrag jedoch nicht freigegeben:** zwei kritische
+Widersprüche im Entwurf, drei wichtige Funde. Nicht die Messung ist
+beanstandet, sondern was der Nachtrag daraus im Entwurf gemacht hat — unter
+anderem eine Stufentabelle, die die korrigierte Regel neben den
+unkorrigierten Zahlen führt, und eine 3-Tage-Schwelle, deren Begründung gegen
+die eigenen Messwerte steht.
+
+**Alle Funde stehen wörtlich in
+[`specs/2026-09-12-messfragen-nachtrag-funde.md`](specs/2026-09-12-messfragen-nachtrag-funde.md).**
+Die Korrekturrunde kam nicht mehr zustande: Der Agent starb am
+Sitzungslimit, bevor er eine Zeile geändert hatte.
 
 ---
 
 ## Was als Nächstes zu tun ist
 
-1. **Einen Produktionslauf fahren und Option 3 belegen.** Der Code steht, der
-   Beleg fehlt. Zu prüfen: Tragen Immowelt-Objekte jetzt `disappeared_at`? Bleibt
-   die Zahl plausibel, oder markiert ein Lauf auf einen Schlag Hunderte? Greift
-   der Deckel? **Ohne diesen Lauf gilt B-2 nicht als erfüllt** — dieses Projekt
-   belegt Abnahmen an echten Läufen, nicht an Tests.
-2. **Denselben Lauf für D-5 mitlesen.** Sinkt die Zahl der Zurückgestellten, und
-   stehen unter den Gesendeten jetzt besser belegte Objekte?
-3. **Die offene Entscheidung klären** (Objekt ohne Preis), dann A-4 schließen.
-4. **Danach das Dashboard**, in der Reihenfolge des Entwurfs: erst die
-   Messfragen, dann `lib/ranking.ts` als reine Funktion mit TDD, dann der
-   Snapshot-Export — und erst danach die erste Zeile Oberfläche.
+1. **Die Korrekturrunde am Nachtrag fahren.** Die Funddatei ist der Auftrag,
+   Punkt für Punkt. **Danach erst** kann `lib/ranking.ts` geschnitten werden —
+   der Entwurf ist dessen Grundlage, und ein Entwurf mit zwei Ständen
+   erzeugt Code mit zwei Ständen.
+2. **Die Gesamtprüfung des Zweigs fahren** (`superpowers:requesting-code-review`
+   über `main..blaetterung-meldedeckel-a4`), dann mergen. Die drei
+   Codeaufgaben sind einzeln geprüft und freigegeben; die Gesamtprüfung und
+   der Merge fehlen. **Solange der Zweig nicht auf `main` ist, läuft die
+   Produktion weiter mit der kaputten Blätterung.**
+3. **Einen Produktionslauf nach dem Merge.** Er beantwortet zwei Fragen auf
+   einmal: Wie viele Markierungen zeigt ein Lauf, der den **ganzen** Bestand
+   sieht? Und schreibt A-4 jetzt Zeilen für Objekte ohne Preis?
+4. **Danach das Dashboard** in der Reihenfolge des Entwurfs: `lib/ranking.ts`
+   als reine Funktion mit TDD, dann der Snapshot-Export, und erst danach die
+   erste Zeile Oberfläche.
 
-## Ausdrücklich zurückgestellt, mit Begründung
+## Entscheidungen des Nutzers, gefallen am 2026-09-11
 
-Nicht weil es falsch wäre, sondern weil es mehr Genauigkeit kauft, als das
-Ergebnis trägt.
+Nicht wieder aufbringen.
 
-| Punkt | Warum |
+| Frage | Entscheidung |
 |---|---|
-| **A16** zweiter Vollständigkeitsmaßstab | Voraussetzung für B1 — und B1 ist im eigenen Entwurf verworfen. Unter Option 3 kostet ein Fehlurteil graue Darstellung. 13 von 16 Regionen nennen ihre Trefferzahl ohnehin. |
-| **B1** regionsgenaues Löschen | Selbst mit reparierter Trefferzahl erlaubt die 25-%-Toleranz einen Lauf mit 75 % Ausbeute, also bis zu **1.724** echte Objekte in einem Zug. Gelöschte Zeilen sind weg, ausgegraute nicht. |
-| **A11 Schritt 3 / B3** INKAR-Validierung | Die Zuordnung von 95 PLZ-Werten zu Referenzkreisen müsste von Hand entstehen. Die Tabelle ist mit n = 23 geprüft, Median −11,4 %. Und eine falsche Schätzung kann **nie** einen Top-Treffer erzeugen. Die Antwort auf die Unschärfe ist, sie sichtbar zu machen. |
-| **B4** Einheitenzahl | Dieselbe Begründung: gehört in die Unsicherheitsdarstellung, nicht in eine genauere Schätzung. |
+| Objekt ohne Preis (A-4) | **Eine `listings`-Zeile ohne `listing_versions`-Zeile.** Kein nullbares `price_cents`, keine Migration. Umgesetzt in `ea8b731` |
+| Rangzahl im Dashboard (E-5) | **Der DSCR**, keine erfundene Punktzahl |
+| Bundeslandgenaue Schätzungen melden (E-4) | **Ja**, mit dem Kontingent von 5 der 25 Plätze |
+| Zugriffsweg des Dashboards (E-1) | **Snapshot-Export.** Keine Änderung an der Produktionsdatenbank |
+
+## Wie in diesem Projekt gearbeitet wird
+
+**Festgelegt vom Nutzer am 2026-09-11, gilt für jede Iteration:**
+
+1. Erst ein **Plan** mit `superpowers:writing-plans` für die nächsten oder
+   noch offenen Tätigkeiten.
+2. Dann **je Aufgabe ein eigener Agent** nach
+   `superpowers:subagent-driven-development`.
+3. **Jeder Agent wägt selbst ab, welche Superpower zu seiner Aufgabe passt,
+   und wendet sie an.** Der Auftrag sagt ihm das ausdrücklich, gibt sie aber
+   nicht vor.
+
+Das hat in dieser Sitzung fünf Aufgaben getragen. Die Prüfung nach jeder
+Aufgabe hat sich zweimal bezahlt gemacht: Sie fand den Deckel, der je Quelle
+statt je Lauf gilt, und sie hat den Nachtrag zu den Messfragen gestoppt, den
+ich sonst abgenommen hätte.
 
 ---
 
@@ -270,9 +208,18 @@ export GH_TOKEN=$(printf "protocol=https\nhost=github.com\n\n" | git credential 
 **Die Tokenfrage ist geschlossen** (A2, Entscheidung des Nutzers vom
 2026-09-08). Nicht wieder aufbringen.
 
+**Lesende Datenbankabfragen laufen lokal** und sind von der Live-Sperre nicht
+betroffen. Ein fertiger Client liegt in `scraper/lib/supabase.ts`; ein
+Messskript läuft mit `cd scraper && npx tsx <pfad>`. Der Worktree braucht
+dafür eine Kopie von `scraper/.env`.
+
 ---
 
 ## Fallen, die schon zugeschnappt sind
+
+**Eine seitenweise Abfrage ohne stabile Sortierung ist eine Stichprobe.**
+Gemessen: 1.762 von 12.158 Zeilen doppelt, 1.762 nie. Wer `.range()` benutzt,
+sortiert vorher — besser noch: blättert per Keyset.
 
 **Nie einen Live-Lauf lokal.** [`lib/nurInCi.ts`](../../scraper/lib/nurInCi.ts)
 bricht `npm run scrape` und jedes Prüfskript ohne `CI` ab. Der Anschluss des
@@ -280,57 +227,51 @@ Nutzers ist zweimal ausgefallen. Prüfungen laufen über
 [`pruefung.yml`](../../.github/workflows/pruefung.yml), volle Läufe über
 `gh workflow run scrape.yml --ref main`.
 
-**Ein Prüflauf gegen EINE Region kostet fast nichts und beantwortet mehr als
-jede Vermutung.** Drei solche Läufe haben A15 entschieden, nachdem drei
-Sitzungen darüber spekuliert hatten.
+**Was nur im Chat steht, stirbt mit der Sitzung.** Diese Sitzung verlor einen
+Agenten am Sitzungslimit, mitten in einer Korrekturrunde. Gerettet hat die
+Arbeit nur, dass die Prüfungsfunde vorher als Datei ins Repo geschrieben
+wurden. Befunde gehören ins Repo, sobald sie feststehen — nicht erst, wenn
+sie abgearbeitet sind.
+
+**Ein abgebrochener Agent ist nicht wertlos — erst in seinen Worktree sehen.**
 
 **Subagenten in Worktrees brauchen `node_modules` — und `npm ci` ist dafür der
 falsche Weg.** Der richtige steht in
 [`scripts/worktree-node-modules.sh`](../../scripts/worktree-node-modules.sh):
-Verzeichnis-Junction, Symlink, notfalls lokale Kopie, kein Netz. Ein
-Agentenauftrag verbietet Netzkommandos ausdrücklich.
+Verzeichnis-Junction, Symlink, notfalls lokale Kopie, kein Netz.
 
-**Ein abgebrochener Agent ist nicht wertlos — erst in seinen Worktree sehen.**
-Zum zweiten Mal belegt: Diese Sitzung verlor zwei Agenten am Sitzungslimit. Der
-eine hatte seine Arbeit fertig und grün, nur nicht committet; der andere hatte
-die vierte Fail-open-Stelle gefunden. Beides wäre verloren gewesen, hätte
-jemand neu angefangen statt hineingesehen.
+**Eine Prämisse im Agentenauftrag kann selbst veraltet sein.** Wer aus einer
+Doku einen Auftrag schneidet, prüft die Doku zuerst am Code.
 
-**Eine Prämisse im Agentenauftrag kann selbst veraltet sein.** Der Auftrag
-„README behauptet, der Cron sei pausiert" stammte aus einem To-do-Eintrag, der
-seit vier Tagen überholt war. Der Agent hat es gemerkt und gemeldet, statt eine
-Korrektur zu erfinden. **Der Fehler lag beim Koordinator, nicht beim Agenten** —
-wer aus einer Doku einen Auftrag schneidet, prüft die Doku zuerst am Code.
+**Ein Prüflauf gegen EINE Region kostet fast nichts und beantwortet mehr als
+jede Vermutung.**
 
 **`printf` und das Prozentzeichen.** Eine Commit-Nachricht mit `8,2 %` bricht
-mitten im Satz ab. Längere Nachrichten über eine Datei und `git commit -F`.
+mitten im Satz ab. Längere Nachrichten über `git commit -F`.
 
-**Ein Test, der am Kalender hängt, ist eine Zeitbombe.** Wer Testdaten mit Datum
-baut, macht sie relativ zur Uhr oder friert die Uhr ein.
-
-**Eine Fehlermeldung, die eine Ursache behauptet, ist gefährlich.** Erst messen.
-
-**Wer eine Grenze entfernt, muss die dahinter suchen.**
+**Ein Test, der am Kalender hängt, ist eine Zeitbombe.**
 
 **Ein grüner Test beweist nichts, wenn er nie rot war.** Bei jedem Test, der
-sofort grün ist: Produktionscode kurz kaputtmachen und zusehen, ob der Test es
-merkt. Diese Sitzung hat es fünfmal getan.
+sofort grün ist: Produktionscode kurz kaputtmachen und zusehen, ob der Test
+es merkt.
 
 **Fail-open in den Löschwachen ist der teuerste Fehler.** In `bestand.ts`,
 `plausibilitaet.ts`, `bestandDb.ts` und `scrapers/immowelt/index.ts` gilt: ein
-unbekannter Zustand ist `null`/`false`, nie „in Ordnung". **Vier** Stellen sind
-inzwischen geschlossen — die vierte fiel erst auf, als Option 3 sie erreichbar
-machte. Wer eine fünfte findet, schließt sie sofort: Sie kosten nichts, solange
-sie unerreicht sind, und alles, sobald sie erreicht werden.
+unbekannter Zustand ist `null`/`false`, nie „in Ordnung". Vier Stellen sind
+geschlossen. Wer eine fünfte findet, schließt sie sofort.
 
-**Immowelt ist nicht gesperrt, headless wird erkannt.** `headless: true` → HTTP
-403 mit CAPTCHA; `headless: false` → 200. In CI unter `xvfb-run`.
+**Eine Messung kann einen Entwurf umwerfen — und dann muss der Entwurf
+umgeschrieben werden, nicht ergänzt.** Zwei Stände nebeneinander sind
+schlimmer als ein falscher: Wer später liest, kann nicht wissen, welcher gilt.
+
+**Immowelt ist nicht gesperrt, headless wird erkannt.** `headless: true` →
+HTTP 403 mit CAPTCHA; `headless: false` → 200. In CI unter `xvfb-run`.
 
 **Ein CAPTCHA wird nicht gelöst.** Es misst eine zu hohe Abrufrate.
 
 **Immowelt-Detailseiten (`/expose/`) sind von Rechenzentrums-Adressen gesperrt.**
-Bewertung kommt aus der Titelzeile der Ergebnisliste. Deshalb gibt es keine PLZ
-und die Miete ist bundeslandgenau.
+Bewertung kommt aus der Titelzeile der Ergebnisliste. Deshalb gibt es keine
+PLZ und die Miete ist bundeslandgenau.
 
 **Leere Bundesländer sind bei ZVG normal.**
 
