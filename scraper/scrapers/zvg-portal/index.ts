@@ -217,44 +217,81 @@ export function beschreibeDetailFehler(
   return { text: `ZVG-Detailseite ${url}: Fehler, übersprungen`, stoerung: true };
 }
 
+/**
+ * Wie ein Detailergebnis einzuordnen ist -- als reine Funktion herausgezogen,
+ * damit diese Entscheidung unter Test steht (`erfasseZvgDetails` selbst
+ * startet einen echten Browser und ist nicht direkt testbar).
+ *
+ * "ohne-verkehrswert" ist eine Eigenschaft der Quelle (das Gericht laesst den
+ * Wert aus) und bekommt spaeter eine Zeile ohne Bewertung. "stoerung" ist ein
+ * echter Abrufausfall und bekommt fail-closed KEINE Zeile: eine Zeile ohne
+ * Bewertung behauptet "geprueft, kein Wert vorhanden", und das waere bei
+ * einer blossen Stoerung eine Behauptung ueber etwas, das niemand gesehen hat.
+ */
+export type DetailErgebnis =
+  | { art: "erfasst"; daten: ZvgDetailData }
+  | { art: "ohne-verkehrswert" }
+  | { art: "stoerung" };
+
+export function ordneDetailErgebnisEin(
+  daten: ZvgDetailData | null,
+  fehler: unknown
+): DetailErgebnis {
+  if (daten !== null) return { art: "erfasst", daten };
+  if (fehler instanceof VerkehrswertFehltError) return { art: "ohne-verkehrswert" };
+  return { art: "stoerung" };
+}
+
 async function detailSeiteHolen(
   page: Page,
   zusammenfassung: ZvgListSummary,
   referer: string
-): Promise<ZvgDetailData | null> {
+): Promise<DetailErgebnis> {
+  let daten: ZvgDetailData | null = null;
+  let fehler: unknown = null;
   try {
     await page.goto(zusammenfassung.url, { waitUntil: "domcontentloaded", referer });
-    return parseZvgDetailPage(await page.content(), {
+    daten = parseZvgDetailPage(await page.content(), {
       externalId: zusammenfassung.externalId,
       url: zusammenfassung.url,
       court: zusammenfassung.court,
       caseNumber: zusammenfassung.caseNumber,
     });
   } catch (err) {
-    const { text, stoerung } = beschreibeDetailFehler(zusammenfassung.url, err);
+    fehler = err;
+  }
+
+  const ergebnis = ordneDetailErgebnisEin(daten, fehler);
+  if (ergebnis.art !== "erfasst") {
+    const { text, stoerung } = beschreibeDetailFehler(zusammenfassung.url, fehler);
     // Nur eine echte Stoerung bekommt den Stapelabzug. Ein Gericht, das ein
     // Feld leer laesst, ist keine -- und drei solcher Zeilen in JEDEM Lauf
     // wuerden echte Stoerungen im Log verdecken.
-    if (stoerung) console.warn(text, err);
+    if (stoerung) console.warn(text, fehler);
     else console.log(text);
-    return null;
   }
+  return ergebnis;
 }
 
 /**
  * Phase B: Detailseiten nur fuer die uebergebenen externalIds.
  * Der Referer muss auf die Sucheinstiegsseite zeigen -- zvg-portal.de
  * liefert sonst HTTP 200 mit dem woertlichen Body "error".
+ *
+ * Liefert neben den erfassten Terminen auch `ohneVerkehrswert`: Objekte,
+ * deren Bekanntmachung keinen verwertbaren Verkehrswert nennt (A-4). Ein
+ * echter Abrufausfall (Stoerung) landet in KEINER der beiden Listen.
  */
 export async function erfasseZvgDetails(
   zusammenfassungen: Map<string, ZvgListSummary>,
   externalIds: string[]
-): Promise<ZvgDetailData[]> {
-  if (externalIds.length === 0) return [];
+): Promise<{ termine: ZvgDetailData[]; ohneVerkehrswert: ZvgListSummary[] }> {
+  if (externalIds.length === 0) return { termine: [], ohneVerkehrswert: [] };
 
   // headless: false -- siehe sweepZvgPortal / scrapers/immowelt/index.ts.
   const browser: Browser = await chromium.launch({ headless: false });
-  const ergebnisse: ZvgDetailData[] = [];
+  const termine: ZvgDetailData[] = [];
+  const ohneVerkehrswert: ZvgListSummary[] = [];
   try {
     const page = await browser.newPage();
     await page.goto(SEARCH_URL, { waitUntil: "domcontentloaded" });
@@ -267,11 +304,14 @@ export async function erfasseZvgDetails(
       const zusammenfassung = zusammenfassungen.get(externalId);
       if (zusammenfassung === undefined) continue;
       await sleep(ZVG_VERZOEGERUNG_MS);
-      const daten = await detailSeiteHolen(page, zusammenfassung, referer);
-      if (daten !== null) ergebnisse.push(daten);
+      const ergebnis = await detailSeiteHolen(page, zusammenfassung, referer);
+      if (ergebnis.art === "erfasst") termine.push(ergebnis.daten);
+      else if (ergebnis.art === "ohne-verkehrswert") ohneVerkehrswert.push(zusammenfassung);
+      // "stoerung": weder Termin noch Zeile -- der Abruf ist gescheitert,
+      // keine Aussage ueber das Objekt moeglich.
     }
   } finally {
     await browser.close();
   }
-  return ergebnisse;
+  return { termine, ohneVerkehrswert };
 }

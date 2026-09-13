@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { istFlaechendeckenderNullausfall,
   beschreibeDetailFehler,
+  ordneDetailErgebnisEin,
 } from "./index.js";
 import { VerkehrswertFehltError } from "./detail.js";
 
@@ -46,5 +47,23 @@ describe("beschreibeDetailFehler", () => {
     const b = beschreibeDetailFehler("https://www.zvg-portal.de/x", new Error("net::ERR_ABORTED"));
     expect(b.stoerung).toBe(true);
     expect(b.text).toContain("Fehler, übersprungen");
+  });
+});
+
+describe("ordneDetailErgebnisEin", () => {
+  it("trennt 'die Quelle nennt keinen Wert' von 'der Abruf ist gescheitert'", () => {
+    expect(ordneDetailErgebnisEin(null, new VerkehrswertFehltError("--")).art).toBe(
+      "ohne-verkehrswert"
+    );
+    expect(ordneDetailErgebnisEin(null, new Error("timeout")).art).toBe("stoerung");
+  });
+
+  it("schreibt bei einer Stoerung KEINE Zeile ohne Bewertung", () => {
+    // Eine Zeile ohne Bewertung behauptet "geprueft, kein Wert vorhanden".
+    // Bei einem Abbruch waere das eine Behauptung ueber etwas, das niemand
+    // gesehen hat -- genau die Bauart, die dieses Projekt fail-closed nennt.
+    expect(ordneDetailErgebnisEin(null, new Error("ERR_NAME_NOT_RESOLVED")).art).toBe(
+      "stoerung"
+    );
   });
 });

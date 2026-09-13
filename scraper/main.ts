@@ -487,7 +487,8 @@ async function main() {
     detailVersatz
   );
 
-  for (const termin of await erfasseZvgDetails(zvg.zusammenfassungen, zvgAuswahl)) {
+  const zvgDetails = await erfasseZvgDetails(zvg.zusammenfassungen, zvgAuswahl);
+  for (const termin of zvgDetails.termine) {
     await verarbeiteKandidatIsoliert(telegramConfig, {
       source: "zvg-portal",
       externalId: termin.externalId,
@@ -509,6 +510,29 @@ async function main() {
       sourceDataGaps: termin.dataGaps,
       attachments: termin.attachments,
     }, meldebudget);
+  }
+  // Die Bekanntmachung wurde gelesen, sie nennt nur keinen verwertbaren
+  // Verkehrswert (A-4, Aufgabe 2 -- Gegenstueck zum Immowelt-Fall oben).
+  // Fundort ist fuer ZVG immer null: ein fehlender Fundort heisst "nicht
+  // zuzuordnen", und Unzuordenbares ist nie ein Abgang.
+  for (const zusammenfassung of zvgDetails.ohneVerkehrswert) {
+    // Gekapselt wie der Immowelt-Fall oben: Ein voruebergehender
+    // Datenbankfehler beim unwichtigsten Schreibvorgang des Laufs darf den
+    // Lauf nicht abbrechen (A-1).
+    try {
+      await upsertListingOhneBewertung(sb, {
+        source: "zvg-portal",
+        externalId: zusammenfassung.externalId,
+        url: zusammenfassung.url,
+        fundort: null,
+        detailGelesen: true,
+      });
+    } catch (err) {
+      console.error(
+        `Zeile ohne Bewertung fehlgeschlagen [zvg-portal · ${zusammenfassung.externalId}]:`,
+        err
+      );
+    }
   }
 
   // Jetzt steht fest, wie viele besser belegte Kandidaten es in diesem Lauf

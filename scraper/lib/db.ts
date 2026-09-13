@@ -134,33 +134,49 @@ export function listingUpsertZeile(
  * Migration und ohne dass eine einzige Metrik eine Zeile ohne Preis zu sehen
  * bekommt.
  *
- * **Die Funktion ist quellenunabhaengig gebaut, aufgerufen wird sie heute
- * aber nur fuer Immowelt.** Der ZVG-Fall (das Gericht laesst den
- * Verkehrswert aus, A6 -- gemessen drei stehende IDs ueber acht Laeufe)
- * verwirft das Objekt weiterhin in `scrapers/zvg-portal/index.ts`. A-4 ist
- * damit **zur Haelfte** geschlossen, nicht ganz; die Entscheidung des
- * Nutzers vom 2026-09-11 galt ausdruecklich fuer beide Quellen
+ * **Die Funktion ist quellenunabhaengig gebaut** und wird fuer beide Quellen
+ * aufgerufen: Immowelt (Preis fehlt schon in der Ergebnisliste) und seit A-4
+ * auch ZVG (das Gericht laesst in der Bekanntmachung den Verkehrswert aus,
+ * A6 -- gemessen drei stehende IDs ueber acht Laeufe,
+ * `scrapers/zvg-portal/index.ts`). Die Entscheidung des Nutzers vom
+ * 2026-09-11 galt ausdruecklich fuer beide Quellen
  * (`specs/2026-09-09-offene-entscheidungen.md`, Entscheidung 2).
  *
- * Und auch fuer Immowelt gilt der Anspruch nur innerhalb der
- * Rotationsscheibe: Eine Zeile bekommt nur, wer in `immoweltAuswahl` liegt
- * (hoechstens 600 von mehreren tausend gesehenen Objekten). Preislose
- * Objekte ausserhalb der Scheibe fallen in diesem Lauf weiterhin durch und
- * werden von der Rotation erst spaeter eingeholt.
+ * Fuer Immowelt gilt der Anspruch nur innerhalb der Rotationsscheibe: Eine
+ * Zeile bekommt nur, wer in `immoweltAuswahl` liegt (hoechstens 600 von
+ * mehreren tausend gesehenen Objekten). Preislose Objekte ausserhalb der
+ * Scheibe fallen in diesem Lauf weiterhin durch und werden von der Rotation
+ * erst spaeter eingeholt.
  *
- * `last_detail_at` bleibt leer: Es wurde keine Detailseite gelesen, und ein
- * gesetzter Wert hielte das Objekt aus `ladeVeralteteExternalIds` heraus.
- * **Achtung beim Verdrahten von ZVG:** Genau deshalb landen die drei
- * preislosen ZVG-Faelle dann in jedem Lauf in `zvgVeraltet` und verbrauchen
- * Detailbudget fuer etwas, das das Gericht nie nachliefert.
+ * `last_detail_at` haengt am Schalter `detailGelesen` und ist NICHT einfach
+ * immer leer: Bei Immowelt wurde nie eine Detailseite gelesen (der fehlende
+ * Preis steht schon in der Ergebnisliste) -- ein gesetzter Wert hielte das
+ * Objekt faelschlich aus `ladeVeralteteExternalIds` heraus, als sei es
+ * frisch im Detail erfasst. Bei ZVG WURDE die Detailseite gelesen, sie nennt
+ * nur keinen Wert; bliebe das Feld dort leer, holte `ladeVeralteteExternalIds`
+ * dieselben Faelle in jedem Lauf erneut und verbrauchte Detailbudget fuer
+ * etwas, das das Gericht nie nachliefert -- derselbe stehende Rueckstand, nur
+ * teurer.
  */
 export async function upsertListingOhneBewertung(
   supabase: SupabaseClient,
-  daten: { source: string; externalId: string; url: string; fundort: string | null }
+  daten: {
+    source: string;
+    externalId: string;
+    url: string;
+    fundort: string | null;
+    /**
+     * true, wenn die Detailseite tatsaechlich abgerufen wurde und nur keinen
+     * verwertbaren Wert enthielt (ZVG). false/undefined, wenn die Bewertung
+     * schon an der Ergebnisliste scheiterte und nie eine Detailseite geholt
+     * wurde (Immowelt). Steuert `last_detail_at` -- siehe Docstring oben.
+     */
+    detailGelesen?: boolean;
+  }
 ): Promise<void> {
   const jetzt = new Date().toISOString();
   const { error } = await supabase.from("listings").upsert(
-    { ...listingUpsertZeile(daten, jetzt), last_detail_at: null },
+    { ...listingUpsertZeile(daten, jetzt), last_detail_at: daten.detailGelesen ? jetzt : null },
     { onConflict: "source,external_id" }
   );
   if (error) throw error;

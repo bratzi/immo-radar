@@ -179,6 +179,54 @@ describe("upsertListingOhneBewertung", () => {
     expect(zeile.disappeared_at).toBeNull();
     expect(zeile.last_seen).toEqual(expect.any(String));
   });
+
+  it("setzt last_detail_at, wenn die Detailseite gelesen wurde", async () => {
+    // ZVG: Die Bekanntmachung WURDE gelesen, sie nennt nur keinen Wert.
+    // Bliebe last_detail_at leer, holte ladeVeralteteExternalIds das Objekt
+    // in jedem Lauf erneut -- Detailbudget fuer etwas, das das Gericht nie
+    // nachliefert.
+    let zeile: Record<string, unknown> = {};
+    const client = {
+      from: () => ({
+        upsert: (werte: Record<string, unknown>) => {
+          zeile = werte;
+          return Promise.resolve({ data: null, error: null });
+        },
+      }),
+    } as unknown as SupabaseClient;
+
+    await upsertListingOhneBewertung(client, {
+      source: "zvg-portal",
+      externalId: "sn-40908",
+      url: "https://www.zvg-portal.de/index.php?button=showZvg&zvg_id=40908&land_abk=sn",
+      fundort: null,
+      detailGelesen: true,
+    });
+
+    expect(zeile.last_detail_at).toEqual(expect.any(String));
+  });
+
+  it("laesst last_detail_at leer, wenn keine Detailseite gelesen wurde", async () => {
+    // Immowelt: aus der Ergebnisliste bewertet, nie eine Detailseite geholt.
+    let zeile: Record<string, unknown> = {};
+    const client = {
+      from: () => ({
+        upsert: (werte: Record<string, unknown>) => {
+          zeile = werte;
+          return Promise.resolve({ data: null, error: null });
+        },
+      }),
+    } as unknown as SupabaseClient;
+
+    await upsertListingOhneBewertung(client, {
+      source: "immowelt",
+      externalId: "abc",
+      url: "https://example.invalid/expose/abc",
+      fundort: null,
+    });
+
+    expect(zeile.last_detail_at).toBeNull();
+  });
 });
 
 /**
