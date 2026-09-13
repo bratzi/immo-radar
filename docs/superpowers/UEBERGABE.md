@@ -1,30 +1,28 @@
-# Übergabe — Stand 2026-09-12
+# Übergabe — Stand 2026-09-13
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
-> (woran „die Basis steht" gemessen wird), dann
-> [`specs/2026-09-12-messfragen-nachtrag-funde.md`](specs/2026-09-12-messfragen-nachtrag-funde.md)
-> (die einzige offene Arbeit mit Frist), dann [`BACKLOG.md`](BACKLOG.md) und
-> [`TODO.md`](TODO.md).
+> (woran „die Basis steht" gemessen wird), dann [`BACKLOG.md`](BACKLOG.md) und
+> [`TODO.md`](TODO.md). Der laufende SDD-Ledger steht unter
+> `.superpowers/sdd/2026-09-13-nachtrag-ranking-und-zvg-a4/progress.md`,
+> letzter Abschnitt „Stand bei Sitzungsende 2026-09-13".
 
 ## Wo wir stehen
 
-`main` = `60e4da9` und **ein Commit vor `origin/main`**. Die eigentliche
-Arbeit dieser Sitzung liegt **nicht auf `main`**, sondern auf dem Zweig
-`blaetterung-meldedeckel-a4` (Worktree unter
-`.worktrees/blaetterung-meldedeckel-a4`, sieben Commits, Arbeitsverzeichnis
-sauber, **427 Tests grün**, `npx tsc --noEmit` sauber).
-
-**Der wichtigste Satz dieser Sitzung:** Der Produktionslauf, der B-2 belegen
-sollte, hat B-2 belegt **und dabei zwei Fehler sichtbar gemacht, die vorher
-unerreichbar waren**. Genau das war der Grund, den Lauf zu fahren, statt
-weiter zu programmieren.
+Beide Zweige der laufenden Iteration sind auf `main` gemergt:
+`sdd/zvg-a4` (`db0a22e`, --no-ff) und `sdd/nachtrag-korrektur` (danach,
+--no-ff). **Voller Testlauf auf dem gemergten `main` grün: 453 Tests,
+`npx tsc --noEmit` sauber.** `main` ist **9 Commits vor `origin/main`,
+noch nicht gepusht** — Push gehört dem Nutzer (siehe unten).
 
 | Was | Stand |
 |---|---|
 | **B-2** verschwundene Immowelt-Objekte | **erfüllt**, belegt am Lauf `34637349206` |
-| **A-4** kein Objekt fällt still heraus | **Code steht** auf dem Zweig, Beleg durch einen Lauf fehlt |
-| **D-5** Meldebudget | **weiter offen**, und die Messung sagt warum |
-| Dashboard Schritt 0 (M1–M6) | **gemessen**, Nachtrag aber **nicht abgenommen** |
+| **A-4** kein Objekt fällt still heraus | **Code steht für beide Quellen** (Immowelt seit `ea8b731`, ZVG seit `db0a22e`), Produktionsbeleg fehlt |
+| **D-5** Meldebudget | weiter offen, und die Messung sagt warum (siehe unten) |
+| Dashboard-Entwurf, Nachtrag zu M1–M6 | **korrigiert und gemergt** — die Korrekturrunde (F-1..F-5) ist am Code nachverifiziert, kein Zwei-Stände-Problem mehr |
+| `lib/ranking.ts`, Sicherheitsstufe (`bestimmeSicherheitsstufe`) | **fertig und gemergt** (Teil von Schritt 2) |
+| `lib/ranking.ts`, Rest von Schritt 2 (Rangzahl, Bandkanten, Bandbreite je Bundesland, Schwellenwechsler, drei Verfügbarkeitszustände) | **offen** |
+| Snapshot-Export (Schritt 3) | **offen**, hängt an einer Nutzerfrage (siehe unten) |
 
 ---
 
@@ -107,12 +105,12 @@ Kandidaten.
 
 ---
 
-## Die Messfragen sind gemessen, der Nachtrag ist nicht abgenommen
+## Die Messfragen sind gemessen, der Nachtrag ist korrigiert und gemergt
 
 Schritt 0 des Dashboard-Entwurfs (M1 bis M6) wurde gemessen, mit den
 Projektfunktionen statt mit nachgebauten Formeln — die Gegenprobe trifft bei
 12.156 von 12.157 Objekten den gespeicherten Wert. Mehrere Annahmen des
-Entwurfs sind damit überholt:
+ursprünglichen Entwurfs waren damit überholt:
 
 - **Nur ein einziges Objekt im ganzen Bestand trägt eine belegte Miete**,
   nicht zwei.
@@ -124,40 +122,47 @@ Entwurfs sind damit überholt:
 - **148 Objekte ohne Wohnfläche tragen keine Datenlücke** und landen mit
   DSCR 0 in einer Stufe, in die sie nicht gehören. Für ein Ranking-Dashboard
   ist *geprüft und schlecht* der gefährlichste Zustand, den *nicht
-  beurteilbar* annehmen kann. Die Regel ist im Entwurf ergänzt, **aber nicht
-  implementiert**.
+  beurteilbar* annehmen kann. Die Regel ist inzwischen **implementiert**:
+  `lib/ranking.ts` (`bestimmeSicherheitsstufe`), gemergt in `db0a22e`.
 
-**Die Nachprüfung hat den Nachtrag jedoch nicht freigegeben:** zwei kritische
-Widersprüche im Entwurf, drei wichtige Funde. Nicht die Messung ist
-beanstandet, sondern was der Nachtrag daraus im Entwurf gemacht hat — unter
-anderem eine Stufentabelle, die die korrigierte Regel neben den
-unkorrigierten Zahlen führt, und eine 3-Tage-Schwelle, deren Begründung gegen
-die eigenen Messwerte steht.
+**Eine erste Nachprüfung hatte den Nachtrag zunächst nicht freigegeben:**
+zwei kritische Widersprüche im Entwurf, drei wichtige Funde — Details in
+[`specs/2026-09-12-messfragen-nachtrag-funde.md`](specs/2026-09-12-messfragen-nachtrag-funde.md).
+Eine Korrekturrunde und eine zweite, finale Fix-Welle (F-1 bis F-5) haben die
+Funde behoben; ein scoped Re-Review hat jeden Punkt einzeln bestätigt und
+einen davon (F-4, die Stufentabelle bei Zeilen ohne Version) direkt am Code
+nachverifiziert statt nur dem Bericht zu glauben. **Ergebnis: Ready to
+merge**, seither Teil von `main`.
 
-**Alle Funde stehen wörtlich in
-[`specs/2026-09-12-messfragen-nachtrag-funde.md`](specs/2026-09-12-messfragen-nachtrag-funde.md).**
-Die Korrekturrunde kam nicht mehr zustande: Der Agent starb am
-Sitzungslimit, bevor er eine Zeile geändert hatte.
+**Eine Nutzerfrage aus dieser Korrekturrunde bleibt bewusst offen** (siehe
+Ruling 9 im SDD-Ledger): Ob ein Objekt ohne Preis/Verkehrswert (`listings`
+ohne `listing_versions`) im Dashboard im S0-Bereich „Nicht beurteilbar"
+erscheinen oder nur auf der Betriebsseite sichtbar sein soll. Nötig vor dem
+Snapshot-Export (Schritt 3), im Entwurf Abschnitt 3.3 als offen markiert.
 
 ---
 
 ## Was als Nächstes zu tun ist
 
-1. **Die Korrekturrunde am Nachtrag fahren.** Die Funddatei ist der Auftrag,
-   Punkt für Punkt. **Danach erst** kann `lib/ranking.ts` geschnitten werden —
-   der Entwurf ist dessen Grundlage, und ein Entwurf mit zwei Ständen
-   erzeugt Code mit zwei Ständen.
-2. **Die Gesamtprüfung des Zweigs fahren** (`superpowers:requesting-code-review`
-   über `main..blaetterung-meldedeckel-a4`), dann mergen. Die drei
-   Codeaufgaben sind einzeln geprüft und freigegeben; die Gesamtprüfung und
-   der Merge fehlen. **Solange der Zweig nicht auf `main` ist, läuft die
-   Produktion weiter mit der kaputten Blätterung.**
-3. **Einen Produktionslauf nach dem Merge.** Er beantwortet zwei Fragen auf
-   einmal: Wie viele Markierungen zeigt ein Lauf, der den **ganzen** Bestand
-   sieht? Und schreibt A-4 jetzt Zeilen für Objekte ohne Preis?
-4. **Danach das Dashboard** in der Reihenfolge des Entwurfs: `lib/ranking.ts`
-   als reine Funktion mit TDD, dann der Snapshot-Export, und erst danach die
-   erste Zeile Oberfläche.
+1. **Push nach `origin/main`** — gehört dem Nutzer, siehe unten. Danach ist
+   ein Cron-Lauf wieder auf dem aktuellen Stand.
+2. **Ein Produktionslauf zum Beleg von A-4/B-1**, nach Möglichkeit sofort per
+   `gh workflow run scrape.yml --ref main` ausgelöst statt auf den nächsten
+   Cron-Termin gewartet (Token-Beschaffung über den Windows-Credential-Manager
+   funktioniert diese Sitzung, siehe „Werkzeuge und Zugänge"). Er beantwortet
+   zugleich, ob ZVG jetzt ebenfalls Zeilen für Objekte ohne Verkehrswert
+   schreibt.
+3. **Die offene Nutzerfrage aus Ruling 9 klären**: Objekte ohne Preis im
+   S0-Bereich des Dashboards zeigen oder nur auf der Betriebsseite? Blockiert
+   Schritt 3.
+4. **`lib/ranking.ts` fertigstellen** (Rest von Schritt 2: Rangzahl,
+   Bandkanten, Bandbreite je Bundesland, Schwellenwechsler, drei
+   Verfügbarkeitszustände), dann der **Snapshot-Export** (Schritt 3), danach
+   erst die erste Zeile Oberfläche — Reihenfolge „Basis vor Dashboard" gilt
+   unverändert.
+5. **Aufräumen:** Worktrees `.worktrees/zvg-a4` und
+   `.worktrees/nachtrag-korrektur` entfernen, sobald der Nutzer die im
+   SDD-Ledger dokumentierten Rulings (1–9) gesehen hat.
 
 ## Entscheidungen des Nutzers, gefallen am 2026-09-11
 
@@ -208,7 +213,7 @@ ich sonst abgenommen hätte.
 | Supabase Service-Key | volle Datenrechte, umgeht RLS |
 | Telegram-Bot | `Immo2501bot` |
 
-**`gh` ist installiert, aber nicht eingeloggt.** Je Aufruf:
+**`gh` ist installiert, aber nicht dauerhaft eingeloggt.** Je Aufruf neu (funktioniert, zuletzt am 2026-09-13 geprüft):
 
 ```bash
 export PATH="$PATH:/c/Program Files/GitHub CLI"

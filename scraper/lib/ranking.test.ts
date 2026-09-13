@@ -49,7 +49,7 @@ describe("bestimmeSicherheitsstufe", () => {
     // rent_source ∈ {'geschaetzt_bundesland', 'geschaetzt_bundesweit'} --
     // keine Restmenge. Ein Wert ausserhalb der vier benannten gehoert in
     // keine der drei bewertbaren Stufen. "Wer nicht urteilen kann, loescht
-    // nicht" (global-constraints.md) gilt auch hier: ein unbekannter
+    // nicht" (docs/superpowers/BACKLOG.md) gilt auch hier: ein unbekannter
     // Zustand ist S0 ("nicht beurteilbar"), nie S1 ("bundeslandgenau
     // geschaetzt") -- alles andere waere Nichtwissen als Behauptung
     // getarnt, und genau das nennt 3.7 den gefaehrlichsten Fall.
@@ -57,8 +57,8 @@ describe("bestimmeSicherheitsstufe", () => {
     // Seit ea8b731 ist das kein theoretischer Fall mehr: Das Projekt legt
     // `listings`-Zeilen ohne `listing_versions`-Zeile an (Objekte, die die
     // Quelle ohne Preis anbietet). Solche Objekte tragen ueberhaupt kein
-    // rent_source -- also null. Ein zweiter Agent zieht dieselbe Regel
-    // gerade fuer ZVG nach, es werden also mehr.
+    // rent_source -- also null, sowohl fuer Immowelt als auch fuer ZVG
+    // (beide Quellen seit dem Merge von sdd/zvg-a4).
     const flaeche = { dataGaps: [], livingAreaM2: 120 };
     expect(bestimmeSicherheitsstufe({ ...flaeche, rentSource: null })).toBe("S0");
     expect(bestimmeSicherheitsstufe({ ...flaeche, rentSource: "geschaetzt_irgendwie" })).toBe(

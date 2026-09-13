@@ -339,14 +339,18 @@ Prüfung bei Zeile 296; `BETRAG_PATTERN` bei Zeile 123).
       URL an, und `pruefung.yml` kennt nur die Eingaben `skript`, `region`
       und `max_seiten` — es gibt keinen Weg, eine ZVG-URL hineinzureichen,
       ohne das Skript umzubauen.
-- [~] **Schritt 3 — Teil 2 erledigt, Teil 1 und 3 offen.** Zu reparieren ist
+- [~] **Schritt 3 — Teil 1 und 2 erledigt, Teil 3 offen.** Zu reparieren ist
       nicht das Lesen, sondern der Umgang mit dem Fehlen.
-      1. **OFFEN — ist ein Objekt ohne Verkehrswert bewertbar?** Ohne
-         Vergleichsmaßstab gibt es keine Kennzahl und keine Meldung. Es
-         konsequent wie `wohnflaeche_fehlt` zu behandeln — speichern und die
-         Lücke sichtbar machen, statt es fallen zu lassen — würde
-         `price_cents` nullbar verlangen, also eine Schemaänderung. Das ist
-         eine Entscheidung des Nutzers, keine Aufräumarbeit.
+      1. **ERLEDIGT (`db0a22e`, A-4 Aufgabe 2).** Ein Objekt ohne Verkehrswert
+         wird jetzt wie `wohnflaeche_fehlt` behandelt: `ordneDetailErgebnisEin`
+         in `scrapers/zvg-portal/index.ts` liefert `{ art: "ohne-verkehrswert" }`,
+         und `main.ts` schreibt dafür per `upsertListingOhneBewertung` eine
+         `listings`-Zeile ohne `listing_versions`-Zeile — keine Schemaänderung
+         an `price_cents` nötig, das Gegenstück zum Immowelt-Fall vom
+         2026-09-11. Die Zeile unterliegt derselben Abgangs- und Löschwache wie
+         jede andere ZVG-Zeile (Fundort fällt auf `partitionAusExternalId`
+         zurück). Produktionsbeleg, dass die Zeilen in einem echten Lauf
+         entstehen, steht noch aus (siehe ABNAHME-BASIS A-4).
       2. **ERLEDIGT (`ea68fbf`).** `VerkehrswertFehltError` trennt „die Quelle
          nennt keinen Wert" von einer echten Störung;
          `beschreibeDetailFehler` entscheidet daraus Text und Schwere und

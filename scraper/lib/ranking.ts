@@ -34,8 +34,8 @@ const S0_LUECKEN = ["wohnflaeche_fehlt", "preis_miete_unvereinbar", "rent_estima
  * `rent_source ∈ {'geschaetzt_bundesland', 'geschaetzt_bundesweit'}`, S2 und
  * S3 je einen einzelnen Wert. Ein Wert ausserhalb dieser vier -- `null`
  * oder ein unbekannter String -- faellt deshalb bewusst auf S0, nicht auf
- * S1: "Wer nicht urteilen kann, loescht nicht" (global-constraints.md) gilt
- * auch fuer die Rangliste. Ein unbekannter Zustand heisst "nicht
+ * S1: "Wer nicht urteilen kann, loescht nicht" (docs/superpowers/BACKLOG.md)
+ * gilt auch fuer die Rangliste. Ein unbekannter Zustand heisst "nicht
  * beurteilbar", nie "vermutlich bundeslandgenau geschaetzt" -- alles andere
  * verwandelte Nichtwissen in eine Behauptung, und genau das nennt Abschnitt
  * 3.7 des Entwurfs den gefaehrlichsten Fall fuer ein Ranking-Dashboard.
