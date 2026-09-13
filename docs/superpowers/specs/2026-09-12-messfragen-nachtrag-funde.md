@@ -10,6 +10,24 @@
 > **Diese Datei existiert, weil die Korrekturrunde nicht mehr gelaufen ist:**
 > Der Agent starb am Sitzungslimit, bevor er eine Zeile geändert hatte. Ohne
 > diese Datei wären die Funde mit der Sitzung verloren gewesen.
+>
+> **Erledigt am 2026-09-13. Diese Datei ist damit vom Auftrag zum Protokoll
+> geworden:** Unter jedem Fund steht, **was** geändert wurde und — wo der Fund
+> zwei Wege offenließ — **welcher Weg gewählt wurde und warum**. Die
+> Korrekturrunde hat **nichts gemessen und keine Zeile Code geändert**; die
+> Rohzahlen des Nachtrags sind bestätigt. Der Entwurf führt sie in
+> **Abschnitt 13.8** zusammen.
+>
+> **Der eine Satz, der über alle Funde hinweg zählt:** Zwei Funde ließen die
+> Wahl zwischen *nachmessen* und *kennzeichnen*. Nachgemessen wurde keiner —
+> nicht aus Bequemlichkeit, sondern weil die drei Messskripte des Prüfers
+> (`messung-korrektur-regionsabstand.ts`, `messung-m6-preissenkung.ts`,
+> `messung-m6-teil2.ts`) im **git-ignorierten** Verzeichnis
+> `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/` lagen. Dieses
+> Verzeichnis existiert **weder im Arbeitszweig noch im Hauptcheckout**; es
+> ist mit der Sitzung des Prüfers verloren gegangen. Die Skripte sind also
+> nicht gescheitert, sie waren gar nicht vorhanden — und eine reine
+> Dokumentationsrunde durfte keine neuen schreiben.
 
 ## Warum das zählt
 
@@ -40,6 +58,42 @@ Block" — auf Zahlen aus genau der Regel, die derselbe Abschnitt für falsch
 erklärt. **Mit 52 Objekten ist die Blockfrage offen, nicht beantwortet.**
 
 Zu ändern: 3.3, 3.1, die M3-Zeile in Abschnitt 10, und 13.1.
+
+> **Erledigt am 2026-09-13.** Alle vier Stellen zählen jetzt nach der
+> korrigierten Regel: **S3 1 · S2 52 · S1 11.308 · S0 1.250**. 13.1 stellt
+> beide Zählungen nebeneinander und sagt, dass die korrigierte maßgeblich ist;
+> 3.3 nennt zusätzlich Verfahren und das, was die Zahlen nicht hergeben.
+>
+> **Der eigentliche Punkt ist umgesetzt:** Die M3-Antwort „S2 trägt genug für
+> einen eigenen Block" ist **zurückgezogen**. Die Blockfrage steht in 3.3, in
+> 13.1 (Punkt 2) und in der M3-Zeile als **offen** — mit der Begründung, dass
+> 52 von 12.611 Objekten (0,4 %) keinen eigenen beschrifteten Block tragen —
+> und ist Abschnitt 9, **Schritt 4** zugeordnet, nicht Schritt 2. Dort steht
+> ausdrücklich, dass `ranking.ts` davon nicht berührt ist: Die Stufe wird in
+> jedem Fall berechnet, offen ist nur ihre Darstellung.
+>
+> **Beim Gegenlesen gefundene Folgestellen**, die derselbe Fund erzeugt hat:
+> 3.2 („jede Stufe ein eigener Block"), 3.7 (begründete eine Ablehnung mit
+> „über die Hälfte des Bestands", gemessen sind 9,9 %), Abschnitt 9
+> (Schritte 0 und 4) und 13.3 (seine 52 auswertbaren S2-Objekte **sind** das
+> korrigierte S2). Auch E-4 und 13.7 hängen daran — siehe unter „Gering".
+>
+> **Nachkorrigiert in Fix-Runde 1 (2026-09-13):** 12.2 trug weiter „vier
+> Sicherheitsstufen als getrennte Blöcke" ohne den Vorbehalt zur offenen
+> Blockfrage — die Zusammenfassung in Abschnitt 12 ist die Stelle, die ein
+> fremder Leser zuerst liest, und behauptete damit stillschweigend, die Frage
+> sei entschieden. 12.2 nennt jetzt ausdrücklich, dass die Blockfrage für S2
+> offen ist (Verweis auf 3.3). 13.8 führt „12" in der Stellen-Spalte der
+> Kritisch-1-Zeile jetzt mit auf, statt nur die 4.3-Zeile — der Dokumentkopf
+> listete „12" bereits, aber bis zu dieser Korrektur zu Unrecht.
+>
+> **Nachkorrigiert in der finalen Fix-Welle (2026-09-13, F-1):** Die
+> M3-Zeile in Abschnitt 10 gab trotzdem zwei Antworten in einem Satz:
+> „bleibt damit offen, nicht beantwortet" und direkt danach „52 von 12.611 =
+> 0,4 % tragen keinen eigenen beschrifteten Block" — Letzteres liest sich
+> wie eine bereits getroffene Entscheidung. Der Satz ist jetzt an 3.3
+> angeglichen: „Ein eigener, beschrifteter Block für 52 von 12.611 (0,4 %)
+> ist nicht mehr belegt (wie in 3.3)" — Nichtbelegtheit statt Verneinung.
 
 ## Kritisch 2 — Abschnitt 6.3: zwei Stände, und eine Begründung gegen die eigenen Zahlen
 
@@ -72,6 +126,29 @@ genannten 5,6 %.
 **Zulässige Antwort:** „Auf sieben Tagen Historie nicht entscheidbar, in
 vier Wochen nachmessen." Das ist hier vermutlich die ehrlichere.
 
+> **Erledigt am 2026-09-13.** 6.3 trägt jetzt nur noch einen Stand: Die
+> Zustandstabelle definiert „unbestätigt" weiter regionsindividuell (Kadenz
+> der Region bzw. deren Doppeltes), und der Fließtext beschließt **keine**
+> globale 3-Tage-Schwelle mehr — sie ist ausdrücklich **zurückgezogen**, nicht
+> nur relativiert. Dieselbe Änderung trägt die M4-Zeile in Abschnitt 10 und
+> 13.4.
+>
+> **Die drei widerlegten Begründungssätze sind gestrichen, nicht ergänzt:**
+> „3 Tage liegen über jedem Regions-P90", „eine gerade Zahl über dem
+> gemessenen Maximum" und „trifft keine Region dauerhaft" stehen im Text nur
+> noch als zitierte, ausdrücklich falsifizierte Aussagen (`nw`-P90 3,32 d,
+> Maximum 4,78 d, `ni` 25,4 % / `nw` 10,7 % dauerhaft unbestätigt bei 3
+> Tagen) — nicht mehr als geltende Begründung.
+>
+> **Geschrieben ist die im Fund verlangte Antwort, fast wörtlich:** „Entschieden:
+> nicht entscheidbar. Die Schwelle wird in vier Wochen nachgemessen; bis dahin
+> gilt die regionsindividuelle Definition aus der Zustandstabelle oben." Dazu
+> ergänzt 6.3 den Befund, dass auch die Grundgesamtheit die Schwelle nicht
+> trägt (nur 187 von 12.611 Objekten älter als 5 Tage, 13,0 % statt 5,6 % über
+> 3 Tagen auf der einschränkbaren Teilmenge) — kein Weg wurde gewählt, weil
+> keiner zur Wahl stand: Der Fund verlangte hier keine Entscheidung zwischen
+> zwei Optionen, sondern das Zurückziehen einer unbelegten Schwelle.
+
 ## Wichtig 3 — Abschnitt 4.3: zwei Stände, und die Messung ersetzt eine andere Größe
 
 Die Filterliste „(7 / 14 / 30 Tage)" und die Begründung für das
@@ -86,6 +163,36 @@ trage nicht mehr. Beides zugleich geht nicht.
 Entweder den Regionsabstand aus `sweep_region_runs` wirklich nachmessen,
 oder die Änderung an 4.3 zurücknehmen.
 
+> **Erledigt am 2026-09-13. Weg 2 gewählt: die Änderung an 4.3 ist
+> zurückgenommen.** Weg 1 (Regionsabstand aus `sweep_region_runs`
+> nachmessen mit `messung-korrektur-regionsabstand.ts`) war nicht gangbar:
+> Das Skript liegt im git-ignorierten Verzeichnis
+> `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/`, das weder im
+> Arbeitszweig noch im Hauptcheckout existiert — es ist mit der Sitzung des
+> Prüfers verloren gegangen, nicht gescheitert. Ein neues Skript zu schreiben
+> war in dieser reinen Dokumentationsrunde nicht zulässig. **Korrektur in
+> Fix-Runde 1 (2026-09-13):** Hier stand fälschlich, Datenbankzugriff sei für
+> diese Aufgabe „ohnehin ausgeschlossen" gewesen — das widerspricht dem
+> Brief, der lesenden Datenbankzugriff für Weg 1 ausdrücklich erlaubt
+> („Braucht einen Datenbankzugriff … kein Scraping. Das ist erlaubt."). Wahr
+> ist: Der **Koordinator** hat für diese Fortsetzung Datenbankzugriff und
+> neue Skripte untersagt, weil die Aufgabe eine reine Dokumentationsrunde
+> ist — das ist eine Anweisung des Koordinators, keine Regel des Briefs.
+> Am Ergebnis ändert das nichts: Weg 1 wäre auch mit Datenbankzugriff am
+> fehlenden Skript gescheitert. Der Fehlschlag ist in 4.3
+> ausdrücklich vermerkt („Was zu tun wäre, und warum es nicht getan ist"),
+> nicht stillschweigend übergangen — genau das verlangt der Fund.
+>
+> 4.3 zeigt wieder die **7 / 14 / 30-Tage-Fassung** und stellt Regionsabstand
+> (Abgänge-Spec, P90 7,6 Tage) und `last_seen`-Alter (M4) als zwei benannte,
+> verschiedene Größen nebeneinander; die Frage nach dem kürzesten Fenster
+> bleibt **offen, nicht zugunsten von 7 Tagen entschieden**. 13.4 trägt
+> dieselbe Aussage und löst damit den vom Fund benannten Widerspruch auf:
+> „die 5,7 und 7,6 Tage sind nicht widerlegt" (durch eine andere Größe) und
+> „die Frage ist offen" (weil der Regionsabstand selbst nicht nachgemessen
+> wurde) schließen sich nicht aus — nicht widerlegt ist nicht dasselbe wie
+> bestätigt.
+
 ## Wichtig 4 — M6 misst einen Rang, den der Entwurf nicht vergibt
 
 **6 der 17** echten Senkungen liegen in **S0** — Objekten, die nach 3.7
@@ -96,6 +203,46 @@ belegt wird, stammt teils aus einer Liste, die es so nicht geben wird.
 Entweder innerhalb der Stufe und ohne S0 neu rechnen, oder ausdrücklich
 dranschreiben, welche Liste gerankt wurde.
 
+> **Erledigt am 2026-09-13. Weg 2 gewählt: die gerankte Liste ist benannt,
+> nicht neu gerechnet.** Weg 1 (innerhalb der Stufe und ohne S0 neu rechnen
+> mit `messung-m6-preissenkung.ts` / `messung-m6-teil2.ts`) war nicht gangbar:
+> Beide Skripte lagen im selben git-ignorierten, verlorenen Verzeichnis wie
+> das Regionsabstand-Skript (siehe Wichtig 3 und den Kopf dieser Datei); eine
+> neue Fassung zu schreiben war in dieser reinen Dokumentationsrunde nicht
+> zulässig. **Korrektur in Fix-Runde 1 (2026-09-13):** Hier stand fälschlich,
+> die Runde „durfte weder neue Skripte schreiben noch die Datenbank
+> anfassen" — auch das widerspricht dem Brief, der für Weg 1 ausdrücklich
+> Datenbankzugriff erlaubt. Wahr ist wie bei Wichtig 3: Der **Koordinator**
+> hat Datenbankzugriff und neue Skripte für diese Fortsetzung untersagt, weil
+> sie eine reine Dokumentationsrunde ist — eine Anweisung des Koordinators,
+> keine Regel des Briefs. Am Ergebnis ändert das nichts: Weg 1 wäre auch mit
+> Datenbankzugriff an den fehlenden Skripten gescheitert.
+>
+> 2.4 und 13.6 benennen jetzt ausdrücklich, welche Liste M6 gerankt hat:
+> „global über alle 12.157 bewerteten Objekte einschließlich S0" — eine
+> Liste, die das Dashboard nach 3.2/3.7 so nie zeigen wird —, und dass **6
+> der 17** echten Senkungen in S0 lagen, das gar keinen Rangplatz bekommt.
+>
+> **Der verlangte Vorbehalt zur Stichprobengröße von 17 steht in 2.4:** „Die
+> Messung belegt sie nicht: Sie umfasst 17 echte Preissenkungen aus sieben
+> Tagen Historie, mehrere davon zum selben Objekt". 13.6 spricht es noch
+> deutlicher aus: „2.4 bleibt — begründet, aber nicht belegt." Die Aussage
+> „Anforderung 3 ist belegt" steht damit an keiner Stelle mehr unbedingt da;
+> was bleibt, ist die Formel-Begründung, ausdrücklich getrennt von der
+> unbelegten Messung.
+>
+> **Nachkorrigiert in Fix-Runde 1 (2026-09-13).** Der Schlusssatz von 13.6
+> und der Satz `:1464-1466` stützten die Aussage „eine Preissenkung bewegt
+> den Rang" noch auf „17 von 17 Fällen bestätigt" bzw. „gilt in jeder
+> Teilliste" — beides zu stark: Sechs der 17 Fälle liegen in S0 ohne
+> Rangplatz, und derselbe Abschnitt trägt einen Gegenbefund (`e9a8c11d`, DSCR
+> **fiel** trotz Preissenkung). Beide Stellen stützen die Aussage jetzt
+> ausschließlich auf die **Formel** und sprechen von „jeder gerankten Stufe,
+> bei sonst gleicher Datenlage" statt „jeder Teilliste"; „17 von 17
+> bestätigt" wird nicht mehr als Beleg angeführt. Damit gibt es nur noch
+> einen Stand mit der M6-Zeile in Abschnitt 10 („Sie bewegt den Rang — belegt
+> ist das aber nicht").
+
 ## Wichtig 5 — E-7 und 6.2: „54 statt 157" ist kein Vergleich gleicher Art
 
 Alt war „ohne `fundort`", neu ist „ohne zuordenbare Region" über
@@ -103,6 +250,22 @@ Alt war „ohne `fundort`", neu ist „ohne zuordenbare Region" über
 196 ZVG), **ohne zuordenbare Region 54**. Der Rückgang von 8,2 % auf 0,4 %
 ist damit teils definitorisch. Die angegebene Ursache („Fundort wird seit
 dem Umbau mitgeschrieben") ist behauptet, nicht gemessen.
+
+> **Erledigt am 2026-09-13.** E-7 und 6.2 stellen beide Größen jetzt mit
+> Namen nebeneinander: **ohne `fundort` 250** (54 Immowelt, 196 ZVG) und
+> **ohne zuordenbare Region 54**. Beide Stellen sagen ausdrücklich, dass der
+> Rückgang von 8,2 % auf 0,4 % teils definitorisch ist, weil die alte
+> Zählung vom 2026-09-09 nie nach der neuen Definition wiederholt wurde und
+> die beiden Zahlen deshalb **nicht vergleichbar** sind.
+>
+> Die Ursachenbehauptung ist **als Vermutung gekennzeichnet, nicht
+> gestrichen** — 6.2 nennt sie wörtlich „plausibel, aber für diesen Entwurf
+> nicht nachgemessen; es wird hier als Vermutung geführt und nicht als
+> Ursache behauptet" und verweist ausdrücklich auf `ABNAHME-BASIS.md` A-2.
+> Auch 6.3 ist an der betroffenen Stelle präzisiert: Die Zustandsbedingung
+> „oder `fundort is null`" ist durch „`partitionEinesListings` liefert keine
+> Region" ersetzt, weil die 196 ZVG-Objekte über ihr `external_id`-Präfix
+> sehr wohl zuordenbar sind.
 
 ## Gering
 
@@ -113,6 +276,51 @@ dem Umbau mitgeschrieben") ist behauptet, nicht gemessen.
 - E-4 trägt weiter „339 von 409 Meldekandidaten", während 13.7 aus derselben
   Messung „197 von 12.611" ableitet.
 - Die Zahl „6.408 von 11.308 = 56,7 %" in 3.1 steht ohne Verfahren.
+
+> **Erledigt am 2026-09-13, alle vier Punkte.**
+>
+> - **3.8 und Abschnitt 7** (nicht 9 — die Zeile „solange nur … Objekte eine
+>   belegte Miete tragen" steht und stand bereits vor der Korrekturrunde in
+>   Abschnitt 7, „Was dieser Entwurf nicht löst") nennen jetzt **1** statt
+>   zwei Objekte mit belegter Miete: 3.8 „Belegte Miete: 1 Objekt, nicht über
+>   der Schwelle", Abschnitt 7 „Solange nur **ein** Objekt eine belegte Miete
+>   trägt … bleibt S3 fast leer."
+> - Die **7,6-Tage-Aussage** ist in 4.3 und Abschnitt 7 als eigene Größe
+>   (90. Perzentil des Regionsabstands, Abgänge-Spec) neben dem
+>   `last_seen`-Alter aus M4 gekennzeichnet und nicht mehr „der Regelfall"
+>   genannt; das Wort „Regelfall" kommt im Entwurf nicht mehr vor. Das
+>   Ergebnis ist mit Wichtig 3 vereinheitlicht: beide Größen bleiben offen,
+>   bis der Regionsabstand selbst nachgemessen ist.
+> - **E-4** (339 von 409) und **13.7** stehen jetzt nebeneinander mit dem
+>   Vermerk, dass es zwei verschiedene Grundgesamtheiten sind (A11s
+>   Meldekandidaten vs. die Stufenzahlen aus M3) und beides **keine eigene
+>   Messung**, sondern eine Ableitung ist. 13.7 zählt nach der korrigierten
+>   Stufenregel jetzt **53 von 12.611** (S3 1 + S2 52) statt der alten 197 —
+>   der alte Wert steht als Fußnote „nach der alten Stufenregel waren es
+>   197", nicht mehr als aktueller Stand.
+>   **Nachkorrigiert in der finalen Fix-Welle (2026-09-13, F-2):** „Beides ist
+>   keine eigene Messung" schrieb den 339 von 409 sprachlich dieselbe
+>   Ableitungs-Eigenschaft zu wie den 53 — falsch, denn die 339 sind A11s
+>   **eigene Zählung** vom 2026-09-08, keine Ableitung. E-4 sagt jetzt: „Die
+>   53 sind keine eigene Messung, sondern eine Ableitung … die 339 von 409
+>   sind dagegen A11s eigene Zählung … und keine Ableitung."
+> - Die Zahl „6.408 von 11.308 = 56,7 %" in 3.1 trägt jetzt **kein**
+>   behauptetes Verfahren mehr. **Korrektur in Fix-Runde 1 (2026-09-13):** Die
+>   ursprünglich hier nachgetragene Herleitung — jedes S1-Objekt trage über
+>   `plzBundesland.generated.json` genau ein Bundesland — war selbst nicht
+>   haltbar, weil S1 gerade die Stufe **ohne** PLZ-genaue Miete ist
+>   (`ermittleJahreskaltmiete`, `scraper/lib/rentEstimate.ts:207-219`) und die
+>   6 `geschaetzt_bundesweit`-Objekte in S1 gar kein Bundesland tragen. Diese
+>   Herleitung ist **gestrichen**.
+>   **Nachkorrigiert in der finalen Fix-Welle (2026-09-13, F-3):** Der Plan
+>   aus Schritt 6 verlangte „Verfahren ergänzen **oder** die Zahl streichen"
+>   — die Tabellenzelle in 3.1 tat bis dahin **keins von beiden** und zeigte
+>   „6.408 von 11.308 = 56,7 %" weiter als aktuellen Messwert. Die Zelle
+>   nennt die Zahl jetzt nicht mehr, sondern verweist auf den Kasten
+>   darunter; der Kasten selbst sagt ausdrücklich **„Verfahren unbekannt,
+>   nicht reproduzierbar"** und führt „6.408" nur noch als **frühere Angabe
+>   des Nachtrags vom 2026-09-12**, nicht als aktuellen Wert dieses
+>   Entwurfs.
 
 ---
 
@@ -129,6 +337,18 @@ Zustand, den *nicht beurteilbar* annehmen kann — genau das passiert hier.
 Die Regel ist im Entwurf um `living_area_m2 <= 0` ergänzt, **aber nicht
 implementiert**. Sie gehört in `lib/ranking.ts` mit einem Test, der zuerst
 rot ist.
+
+> **Überholt, festgestellt bei der finalen Fix-Welle (2026-09-13):** Dieser
+> Absatz stimmt nicht mehr. `scraper/lib/ranking.ts` (Hauptcheckout) enthält
+> `bestimmeSicherheitsstufe` und prüft dort `livingAreaM2 === null ||
+> livingAreaM2 <= 0` genau wie hier verlangt; `ranking.test.ts:6-27` deckt
+> exakt diesen Fall ab (die 148 Objekte ohne Fläche und ohne Lücke). Die
+> Regel ist also **implementiert**, mit einem Test, der die 148er-Fälle
+> benennt. Das Ranking-Modul hat inzwischen zusätzlich eine eigene, im
+> Entwurf bisher fehlende Regel: Ein unbekanntes oder fehlendes
+> `rent_source` fällt ebenfalls auf S0 (`ranking.test.ts:47-67`) — dazu
+> siehe F-4 in der finalen Fix-Welle und den entsprechenden Kasten in 3.3
+> des Entwurfs. Diese Session hat den Code nicht geändert, nur gelesen.
 
 ## Grundregel für die Korrekturrunde
 

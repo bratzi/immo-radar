@@ -2,7 +2,11 @@
 
 **Stand:** 2026-09-09, **Nachtrag 2026-09-12** (Abschnitt 13: Schritt 0
 geschlossen, M1 bis M6 gemessen; 3.1, 3.3, 3.4, 3.6, 3.9, 4.3, 6.2 und 6.3
-sind daraufhin korrigiert)
+sind daraufhin korrigiert), **Korrekturrunde 2026-09-13** (Abschnitt 13.8:
+der Nachtrag trug an sechs Stellen zwei Stände nebeneinander; 2.4, 3.1, 3.2,
+3.3, 3.8, 4.3, 6.2, 6.3, 7, 10, 11, 12, 13.1, 13.4, 13.6 und 13.7 sind
+daraufhin vereinheitlicht — **ohne neue Messung**, die Rohzahlen des
+Nachtrags sind bestätigt)
 **Status:** Entwurf. **Kein Code, keine Zeile Frontend.** Der Nutzer hat am
 2026-09-08 festgelegt, dass die Basis steht, bevor Webseite und Dashboard
 gebaut werden ([`ABNAHME-BASIS.md`](../ABNAHME-BASIS.md)). Dieses Dokument
@@ -23,8 +27,16 @@ beantwortet die Fragen, die vor der ersten Zeile fallen müssen.
 > lesende** Datenbankabfragen beantwortet worden (kein Netzabruf, kein
 > Scraper-Lauf, kein Schreibzugriff). Die Antworten stehen in Abschnitt 13;
 > wo sie eine Entscheidung verschoben haben, ist der betroffene Abschnitt
-> **an Ort und Stelle korrigiert** und die Korrektur als solche markiert —
-> nirgends stehen zwei Stände nebeneinander.
+> **an Ort und Stelle korrigiert** und die Korrektur als solche markiert.
+>
+> **Korrekturrunde 2026-09-13:** Dieser Anspruch war nicht eingelöst. Eine
+> Nachprüfung hat die **Rohzahlen des Nachtrags durchweg reproduziert**, aber
+> sechs Stellen gefunden, an denen zwei Stände nebeneinanderstanden oder eine
+> Schlussfolgerung weiter trug als ihre Zahl. Sie sind vereinheitlicht; was
+> geändert wurde und was offen bleibt, steht in **13.8**. Auch diese Runde hat
+> **nichts gemessen** und keine Zeile Code geändert. Seither gilt: **Kein
+> Abschnitt trägt zwei Stände, und keine Zahl steht ohne Verfahren, Datum und
+> die Angabe, was sie nicht hergibt.**
 
 ---
 
@@ -165,6 +177,18 @@ würde ein Objekt nach oben schieben, das sich verändert hat, ohne dadurch
 besser geworden zu sein. Veränderung bekommt eine eigene Darstellung
 (Abschnitt 4), keinen Platz in der Zahl.
 
+> **Am 2026-09-12 gemessen (M6, Abschnitt 13.6), am 2026-09-13 mit dem
+> Vorbehalt versehen, den die Stichprobe verlangt.** Die Entscheidung steht,
+> aber sie steht auf der **Formel** — ein niedrigerer Preis hebt den DSCR —,
+> nicht auf der Messung. **Die Messung belegt sie nicht:** Sie umfasst **17
+> echte Preissenkungen** aus sieben Tagen Historie, mehrere davon zum selben
+> Objekt, und sie hat den Rang **global über alle 12.157 bewerteten Objekte
+> einschließlich S0** bestimmt — über eine Liste also, die das Dashboard nach
+> 3.2 und 3.7 so nie zeigt; **6 der 17** Senkungen betrafen S0-Objekte, die
+> überhaupt keinen Rangplatz bekommen. Der Median „+539 Plätze" ist deshalb
+> **keine Aussage über die Rangliste dieses Entwurfs**. Zu wiederholen nach
+> vier Wochen, dann innerhalb der Stufe und ohne S0.
+
 ---
 
 ## 3. Frage 2 — Wie wird Nichtwissen einsortiert?
@@ -188,7 +212,27 @@ gewachsen; die alten Zahlen sind damit nicht falsch gewesen, sondern
 | Meldeklasse wechselt im ±30-%-Mietband | **2.962 von 12.157 (24,4 %)** | 558 von 1.879 (29,7 %) |
 | Objekte mit `wohnflaeche_fehlt` (jüngste Version) | **306 (2,4 %)**, plus 148 ohne Fläche und ohne Lücke | über die Hälfte (210 von 400) |
 | Objekte mit `units_unconfirmed` (jüngste Version) | **12.521 von 12.611 (99,3 %)** | 567 von 1.000 |
-| Bundesländer, die intern das ±30-%-Band verlassen | **7 von 16** (unverändert, Tabelleneigenschaft), dort **6.408 von 11.308** bewerteten S1-Objekten = **56,7 %** | 7 von 16, dort 64 % |
+| Bundesländer, die intern das ±30-%-Band verlassen | **7 von 16** (unverändert, Tabelleneigenschaft); der Anteil betroffener S1-Objekte ist **nicht reproduzierbar erhoben**, siehe Kasten unter der Tabelle | 7 von 16, dort 64 % |
+
+> **Verfahren unbekannt, nicht reproduzierbar (nachgetragen am 2026-09-13).**
+> Der Nachtrag vom 2026-09-12 gab hier „6.408 von 11.308 (56,7 %)" an, ohne
+> ein Verfahren zu nennen. Eine zwischenzeitlich nachgetragene Herleitung —
+> jedes S1-Objekt trage über `plzBundesland.generated.json` genau ein
+> Bundesland — war **selbst nicht belegt und mit den Produktfunktionen nicht
+> vereinbar**: S1 ist gerade die Stufe **ohne** PLZ-genaue Miete
+> (`ermittleJahreskaltmiete`, `scraper/lib/rentEstimate.ts:207-219`, schätzt
+> bundeslandgenau nur, wenn *keine* regionale PLZ-Miete greift und bekommt das
+> Bundesland als Namen übergeben, nicht über eine PLZ-Zuordnung), und die 6
+> `geschaetzt_bundesweit`-Objekte innerhalb von S1 tragen gar kein
+> Bundesland. Diese Herleitung ist deshalb **gestrichen**.
+> **Welches Verfahren die „6.408" tatsächlich erzeugt hat, ist nicht
+> bekannt:** Der Zählschritt ist im Nachtrag vom 2026-09-12 nicht
+> protokolliert, und das zugehörige Messskript ist nicht mehr vorhanden
+> (13.8). **Die Zahl „6.408 von 11.308 = 56,7 %" ist deshalb aus der Tabelle
+> entfernt** und steht nur noch hier, als **frühere Angabe des Nachtrags vom
+> 2026-09-12** — nicht als aktueller Messwert dieses Entwurfs. Sie ist
+> derzeit **nicht nachvollziehbar und nicht reproduzierbar** und bei der
+> nächsten Messung mit einem protokollierten Verfahren neu zu erheben.
 
 **Die entscheidende Asymmetrie:** Eine falsche Mietschätzung kann **nie einen
 `top_treffer` erzeugen**, nur einen `pruefkandidat` (A11, `bestimmeMeldeklasse`
@@ -202,7 +246,10 @@ sie wie belegte Objekte zu sortieren.
 Sortiert wird **lexikografisch**: zuerst die Sicherheitsstufe, dann innerhalb
 der Stufe die Rangzahl. Aber — und das ist der Kern — **die Stufen werden
 nicht zu einer Liste zusammengeschoben.** Jede Stufe ist ein eigener,
-beschrifteter Block mit eigener Rangliste.
+beschrifteter Block mit eigener Rangliste. (**Offen seit dem 2026-09-13:** ob
+das auch für S2 gilt, das nach der korrigierten Stufenregel nur noch 52
+Objekte trägt — siehe 3.3. Das Prinzip „getrennte Blöcke statt einer Liste"
+hängt nicht daran.)
 
 > **Auf die Frage des Nutzers — „rangiert ein Prüfkandidat mit geschätzter
 > Miete gleichberechtigt mit einem Top-Treffer mit belegter?" — lautet die
@@ -210,7 +257,8 @@ beschrifteter Block mit eigener Rangliste.
 
 Begründung: Eine gemeinsame Liste müsste behaupten, wie viele Rangplätze eine
 belegte Miete wert ist. Diese Zahl hat niemand gemessen, und sie ist auch
-nicht messbar, solange der Bestand **zwei** belegte Objekte enthält. Die
+nicht messbar, solange der Bestand **ein einziges** belegtes Objekt enthält
+(gemessen 2026-09-12, M3; am 2026-09-08 waren es zwei). Die
 gemessene Unschärfe der Bundeslandstufe (bis −37 %/+67 %, siehe 3.4)
 übersteigt in NRW und Bayern den Abstand zwischen beliebig vielen Rangplätzen
 — ein gemeinsamer Rang wäre eine Zahl ohne Bedeutung.
@@ -221,8 +269,9 @@ stärkste Aussage, die die Datenlage trägt.
 
 ### 3.3 Die vier Stufen
 
-Alles daraus ist heute schon gespeichert: `listing_versions.rent_source` und
-`listing_versions.data_gaps`. **Keine Schemaänderung.**
+Alles daraus ist heute schon gespeichert: `listing_versions.rent_source`,
+`listing_versions.data_gaps` und `listing_versions.living_area_m2`. **Keine
+Schemaänderung.**
 
 > **Korrigiert am 2026-09-12 durch M3 (Nachtrag, Abschnitt 13).** Die Spalte
 > „Heutiger Anteil" trug den Stand vom 2026-09-08 (2.108 Versionen, überwiegend
@@ -230,12 +279,66 @@ Alles daraus ist heute schon gespeichert: `listing_versions.rent_source` und
 > 98,4 % aus Immowelt. Die Zahlen unten sind die gemessenen; die alten Werte
 > („2 Objekte", „83 %", „über 50 %") sind ersetzt, nicht ergänzt.
 
-| Stufe | Name | Bedingung | Anteil, gemessen 2026-09-12 (n = 12.611) |
+> **Nachkorrigiert am 2026-09-13.** Der Nachtrag vom 2026-09-12 hat die
+> S0-Bedingung um `living_area_m2 <= 0` erweitert, seine Stufenzahlen aber
+> weiter **nach der alten Regel** gezählt — dieselbe Zeile trug damit die neue
+> Bedingung und die alten Zahlen. Die Tabelle unten zählt nach der
+> **korrigierten** Regel; die Werte des Nachtrags (S2 196, S1 11.312, S0
+> 1.102) sind ersetzt, nicht ergänzt. Die Verschiebung sind genau die 148
+> Objekte ohne Wohnfläche und ohne Lücke, die weiter unten beschrieben sind
+> (144 aus S2, 4 aus S1).
+>
+> **Verfahren:** jüngste Version je Objekt, Stufe nach der Regel in dieser
+> Tabelle, S0 hat Vorrang vor der Mietquelle; gemessen am 2026-09-12 gegen den
+> vollständigen Bestand (n = 12.611), Herleitung in 13.1.
+
+| Stufe | Name | Bedingung | Anteil, gemessen 2026-09-12, gezählt nach der korrigierten Regel (n = 12.611) |
 |---|---|---|---|
 | **S3** | belegt | `rent_source = 'angegeben'` **und** keine Lücke aus der S0-Liste | **1 Objekt** (0,01 %) |
-| **S2** | regional geschätzt | `rent_source = 'geschaetzt_regional'` (PLZ-Zweisteller) | **196** (1,6 %), davon 169 ZVG |
-| **S1** | bundeslandgenau geschätzt | `rent_source ∈ {'geschaetzt_bundesland', 'geschaetzt_bundesweit'}` | **11.312** (89,7 %) |
-| **S0** | **nicht beurteilbar** | mindestens eine Lücke aus: `wohnflaeche_fehlt`, `preis_miete_unvereinbar`, `rent_estimate_unreliable` — **oder `living_area_m2` fehlt oder ist 0** | **1.102** (8,7 %) |
+| **S2** | regional geschätzt | `rent_source = 'geschaetzt_regional'` (PLZ-Zweisteller) | **52** (0,4 %), davon 39 ZVG |
+| **S1** | bundeslandgenau geschätzt | `rent_source ∈ {'geschaetzt_bundesland', 'geschaetzt_bundesweit'}` | **11.308** (89,7 %) |
+| **S0** | **nicht beurteilbar** | mindestens eine Lücke aus: `wohnflaeche_fehlt`, `preis_miete_unvereinbar`, `rent_estimate_unreliable` — **oder** `living_area_m2` fehlt oder ist 0 — **oder** `rent_source` fehlt oder liegt außerhalb der drei benannten Werte (`angegeben`, `geschaetzt_regional`, `geschaetzt_bundesland`/`geschaetzt_bundesweit`) | **1.250** (9,9 %; die `rent_source`-Regel ist darin **nicht mitgezählt**, siehe Kasten unten) |
+
+> **Ergänzt in der finalen Fix-Welle (2026-09-13): die `rent_source`-Regel
+> aus dem Code.** `scraper/lib/ranking.ts`
+> (`bestimmeSicherheitsstufe`, Test `ranking.test.ts:47-67`) prüft
+> `rent_source` gegen eine **Aufzählung**, nicht gegen eine Restmenge: Ein
+> Wert außerhalb der drei genannten — insbesondere `null` — fällt auf S0,
+> nicht auf S1. Diese Regel stand bisher nirgends in der Stufentabelle, ist
+> aber kein theoretischer Fall mehr: Seit `ea8b731` (Immowelt) und mit
+> `sdd/zvg-a4` (ZVG) legen beide Quellen für Objekte ohne Preis eine
+> `listings`-Zeile **ohne** zugehörige `listing_versions`-Zeile an — solche
+> Zeilen tragen kein `rent_source` und fallen nach dieser Regel auf S0.
+> **Was hier nicht geschieht:** Die gemessenen 1.250 (9,9 %) sind die Zählung
+> vom 2026-09-12, vor dieser Ergänzung — wie viele zusätzliche Objekte die
+> `rent_source`-Regel seither in S0 zieht, ist **nicht gemessen und wird hier
+> nicht geschätzt**. Das wäre eine neue Datenbankabfrage, die diese
+> Dokumentationsrunde nicht ausführen darf.
+>
+> **Offen, nicht entschieden — Frage an den Nutzer:** Eine `listings`-Zeile
+> ohne Version hat auch **keinen `data_gaps`-Eintrag** und damit keinen
+> Klartext-Grund aus `DATA_GAP_LABELS`, den 3.7 für jedes S0-Objekt verlangt.
+> Ob solche Zeilen im S0-Bereich der Rangliste erscheinen oder ausschließlich
+> auf der Betriebsseite (Abschnitt 8) geführt werden, und welcher
+> Klartext-Grund dort für sie steht, entscheidet dieser Entwurf **nicht** —
+> das ist Abschnitt 9, **Schritt 3** (Snapshot-Export) zugeordnet und dort
+> als offene Entscheidung des Nutzers zu behandeln.
+
+> **Was diese Zahlen nicht hergeben:** Sie sind eine Momentaufnahme vom
+> 2026-09-12 an einem Bestand, der in sieben Tagen von 2.108 auf 17.391
+> Versionen gewachsen ist. Die Stufenanteile sind eine Eigenschaft der
+> **Quellenmischung**, nicht des Marktes (13.1).
+
+> **Offen, und durch die Korrektur neu geöffnet: Trägt S2 einen eigenen
+> Block?** Der Nachtrag hat das mit 196 Objekten bejaht. Unter der
+> korrigierten Regel sind es **52 von 12.611 (0,4 %)** — ein eigener,
+> beschrifteter Block für vier von tausend Objekten ist nicht mehr belegt, und
+> die Frage ist damit **offen, nicht beantwortet**. Sie ist vor **Schritt 4**
+> des Abschnitts 9 (die Rangliste) zu entscheiden, nicht vor Schritt 2
+> (`ranking.ts`): Die Stufe S2 bleibt als Stufe bestehen und wird berechnet;
+> zu entscheiden ist allein, ob die Oberfläche sie als eigenen Block zeigt
+> oder mit S1 zusammenlegt und die PLZ-Genauigkeit als Merkmal am Objekt
+> führt.
 
 **Die S0-Bedingung ist gegenüber der ersten Fassung erweitert**, und das ist
 keine Kosmetik: 148 Objekte haben in ihrer jüngsten Version **keine
@@ -283,12 +386,19 @@ wirksam. Die Zahl betrifft heute 12.521 von 12.611 Objekten (99,3 %) — eine
 eigene Stufe dafür wäre eine Stufe für fast den ganzen Bestand und würde
 nichts trennen.
 
-**Warum `preis_auf_anfrage` und `preis_unlesbar` hier nicht vorkommen:** Diese
-Objekte erreichen die Datenbank nie — sie werden schon in
+**`preis_auf_anfrage` und `preis_unlesbar` — richtiggestellt in der finalen
+Fix-Welle (2026-09-13).** Hier stand, diese Objekte „erreichen die Datenbank
+nie". **Das ist falsch** und war nur bis vor kurzem richtig: Sie wurden in
 `scrapers/immowelt/titelzeile.ts` übersprungen und nur in der Schlusszeile
-des Laufs gezählt (A13). Sie sind kein Dashboard-Zustand, sondern eine
-Laufkennzahl. Sie gehören auf eine **Betriebsseite** (Abschnitt 8), nicht in
-die Rangliste — dort würden sie als Objekt erscheinen, das es nicht gibt.
+des Laufs gezählt (A13) — **das galt bis `ea8b731`.** Seit `ea8b731`
+(Immowelt) und mit `sdd/zvg-a4` (ZVG) erreichen genau diese Objekte die
+Datenbank sehr wohl: als `listings`-Zeile **ohne** zugehörige
+`listing_versions`-Zeile. Nach der `rent_source`-Regel oben fällt eine
+solche Zeile auf **S0**. Sie sind damit kein reiner Laufkennwert mehr,
+sondern ein Fall, den die Stufentabelle jetzt kennt (siehe Kasten oben) —
+ob sie zusätzlich in der Rangliste erscheinen oder ausschließlich auf der
+**Betriebsseite** (Abschnitt 8) geführt werden, ist die offene Frage aus dem
+Kasten oben (Abschnitt 9, Schritt 3).
 
 ### 3.4 Entscheidung: Die Rangzahl wird als **Band** gezeigt, nicht als Punkt
 
@@ -417,8 +527,16 @@ hält fest, dass Zwangsversteigerungen ohne Flächenangabe „oft trotzdem
 lohnend" sind. Sie sind nicht schlecht. Über sie ist nichts bekannt.
 
 **Verworfen — S0-Objekte ausblenden:** Vom Nutzer bereits abgelehnt
-(Mietqualitäts-Befund, „Was bewusst nicht gemacht wurde"). Über die Hälfte
-des Bestands verschwände, darunter der gesamte ZVG-Anteil.
+(Mietqualitäts-Befund, „Was bewusst nicht gemacht wurde").
+
+> **Korrigiert am 2026-09-13:** Hier stand als zweite Begründung „über die
+> Hälfte des Bestands verschwände, darunter der gesamte ZVG-Anteil". Das war
+> der Stand vom 2026-09-08. Gemessen am 2026-09-12 und nach der korrigierten
+> Stufenregel gezählt sind es **1.250 von 12.611 (9,9 %)** (3.3) — nicht die
+> Hälfte, und auch nicht der gesamte ZVG-Anteil, denn 39 ZVG-Objekte liegen
+> weiter in S2. **Die Ablehnung steht davon unberührt**, weil sie eine
+> Entscheidung des Nutzers ist und nicht an der Größe hängt. Der Größenbefund
+> ist als Begründung gestrichen.
 
 **Verworfen — S0-Objekte mit DSCR 0 unten anhängen:** Das ist der heutige
 Zustand innerhalb der Kennzahlen und exakt der Zustand, den der
@@ -431,13 +549,21 @@ Meldeschwelle (`kaufpreisfaktor` 3…15 **und** `DSCR >= 1,3`) von denen
 darunter. Über der Linie steht die Rangliste; unter der Linie steht eine
 zusammengeklappte Zeile mit der Anzahl.
 
-**Warum das nötig ist:** Heute enthält S3 zwei Objekte, und *keines* passiert
-die Schwellen (A11). Ohne diese Linie stünde das bestbelegte, aber schlechte
-Objekt des Bestands ganz oben auf der Seite — die Sicherheitsstufe würde
-gegen Anforderung 1 arbeiten. Mit der Linie klappt S3 zu einer einzigen
-ehrlichen Zeile zusammen („Belegte Miete: 2 Objekte, keines über der
-Schwelle") und das erste **gerankte** Objekt der Seite ist das beste, das es
-gibt.
+**Warum das nötig ist:** S3 enthält am 2026-09-12 genau **ein** Objekt, und es
+passiert die Schwellen *nicht* (Faktor 13,0, DSCR 0,76; M3, siehe 13.1). Ohne
+diese Linie stünde das bestbelegte, aber schlechte Objekt des Bestands ganz
+oben auf der Seite — die Sicherheitsstufe würde gegen Anforderung 1 arbeiten.
+Mit der Linie klappt S3 zu einer einzigen ehrlichen Zeile zusammen („Belegte
+Miete: 1 Objekt, nicht über der Schwelle") und das erste **gerankte** Objekt
+der Seite ist das beste, das es gibt.
+
+> **Korrigiert am 2026-09-13:** Hier standen weiter „zwei Objekte" — der Stand
+> vom 2026-09-08. Gemessen sind **1 von 12.611**. Der Text der Zeile wird
+> ohnehin zur Anzeigezeit aus den Daten gerechnet (3.9), nicht aus diesem
+> Dokument. **Was die Zahl nicht hergibt:** Sie ist eine Momentaufnahme und
+> eher fallend als steigend — von drei Objekten mit belegter Miete haben zwei
+> sie wieder verloren, weil ihre neuere Version aus der Immowelt-Ergebnisliste
+> stammt, die keine Miete nennt (13.1, Punkt 3).
 
 Damit gilt Anforderung 1 („das beste Objekt steht immer oben") in der einzig
 haltbaren Lesart: das beste Objekt, über das genug bekannt ist, um es so zu
@@ -512,19 +638,48 @@ Streuung sichtbar bleibt, ohne sie zum Filter zu machen.
 **Zusätzliche Filter** mit *benannten* Fenstern (7 / 14 / 30 Tage) sind
 zulässig, aber **nicht Voreinstellung**. Neben ihnen steht die gemessene
 Regionskadenz, damit erkennbar ist, warum das kürzeste Fenster 7 Tage ist:
-7,6 Tage sind das 90. Perzentil des Regionsabstands. **Ein 24-Stunden-Fenster
-wird bewusst nicht angeboten**, und die Oberfläche sagt in einem Satz, warum.
+7,6 Tage sind das 90. Perzentil des Regionsabstands (Abgänge-Spec,
+Monte-Carlo — **nicht** dieselbe Größe wie das `last_seen`-Alter aus M4, siehe
+den Kasten unten). **Ein 24-Stunden-Fenster wird bewusst nicht angeboten**,
+und die Oberfläche sagt in einem Satz, warum.
 
-> **Am 2026-09-12 nachgemessen (M4).** Die Begründung des 7-Tage-Bodens — 7,6
-> Tage als 90. Perzentil des Regionsabstands — trägt am heutigen Bestand nicht
-> mehr: das gemessene `last_seen`-Alter liegt im Median bei 0,83 Tagen, im P90
-> bei 2,34 und im Maximum bei 4,78 Tagen. **Das kürzeste benannte Fenster kann
-> auf 3 Tage herunter**, ohne dass es scheinbar leer wird. Der
-> 24-Stunden-Filter bleibt trotzdem ausgeschlossen: 34,4 % aller Objekte sind
-> älter als einen Tag, ein Tagesfenster versteckt also ein Drittel des
-> Bestands. Die *Entscheidung*, nach Anzahl statt nach Zeit zu schneiden,
-> berührt das nicht — sie hängt nicht an der Kadenz, sondern daran, dass eine
-> Anzahl nie leer ist.
+> **Am 2026-09-12 gemessen (M4), am 2026-09-13 zurückgenommen: Es bleibt bei
+> 7 / 14 / 30 Tagen.** Der Nachtrag hatte das kürzeste benannte Fenster auf 3
+> Tage gesenkt. Die Senkung wird zurückgenommen, weil die Messung **eine
+> andere Größe misst als die Begründung, die sie ersetzen sollte**:
+>
+> | Größe | was sie beschreibt | Wert |
+> |---|---|---|
+> | **Regionsabstand** (alte Begründung, Abgänge-Spec) | Abstand, bis dieselbe Region wieder an der Reihe ist — die Kadenz des Laufs | Median 5,7 d, **P90 7,6 d** (Monte-Carlo über 3.000 Durchläufe) |
+> | **`last_seen`-Alter** (M4, 2026-09-12) | wie alt die jüngste Beobachtung je **Objekt** ist | Median 0,83 d, P90 2,34 d, max 4,78 d |
+>
+> Das eine ist ein Abstand zwischen zwei Läufen derselben Region, das andere
+> das Alter einer Objektbeobachtung. Eine niedrige Zahl bei der zweiten Größe
+> **widerlegt die erste nicht** — sie sagt nichts über sie. Der 7-Tage-Boden
+> steht deshalb weiter auf der Begründung, die er immer hatte.
+>
+> **Was zu tun wäre, und warum es nicht getan ist:** Die Frage wird erst
+> entschieden, wenn der **Regionsabstand selbst** aus `sweep_region_runs`
+> nachgemessen ist. Am 2026-09-13 war das nicht möglich: Das dafür
+> vorgesehene Skript
+> `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/messung-korrektur-regionsabstand.ts`
+> **existiert nicht mehr** — weder im Arbeitszweig noch im Hauptcheckout; das
+> Verzeichnis ist git-ignoriert und mit der Sitzung des Prüfers verloren
+> gegangen. Es ist also nicht gescheitert, sondern gar nicht erst vorhanden.
+> Ein neues Skript zu schreiben war in dieser Runde nicht zulässig (reine
+> Dokumentationsaufgabe, keine Zeile Code). **Damit ist der 3-Tage-Boden
+> unbelegt und die Frage offen**, nicht zugunsten von 7 Tagen entschieden:
+> Auch die 7,6 Tage stammen aus einer Simulation an einem älteren, kleineren
+> Bestand. Zusammen mit der Schwelle aus 6.3 ist das in vier Wochen zu messen.
+>
+> **Was die Messung sehr wohl hergibt:** Der 24-Stunden-Filter bleibt
+> ausgeschlossen, und jetzt mit einer gemessenen Begründung — **34,4 % aller
+> Objekte sind älter als einen Tag**, ein Tagesfenster versteckt also ein
+> Drittel des Bestands.
+>
+> Die *Entscheidung*, nach Anzahl statt nach Zeit zu schneiden, berührt das
+> alles nicht — sie hängt nicht an der Kadenz, sondern daran, dass eine Anzahl
+> nie leer ist.
 
 **Verworfen — „seit meinem letzten Besuch":** Verlangt Nutzerzustand und
 damit eine Schreibmöglichkeit aus dem Frontend heraus. Das ist genau die
@@ -639,12 +794,40 @@ zwei Regionen reproduziert, kein Parserfehler (A15, Übergabe 2026-09-09).
 `istRegionVollstaendig` kann für sie nie `true` liefern, und seit der
 Fail-closed-Umstellung heißt das: **aus diesen Regionen wird nie ein Objekt
 als abgängig markiert.** Dazu kommen Objekte ohne zuordenbare Region, die
-unter keiner regionsgenauen Regel je markierbar sind: am 2026-09-12 über
-`partitionEinesListings` ausgezählt noch **54 von 12.611 (0,4 %)** statt der
-157 (8,2 %) vom 2026-09-09 — der Fundort wird seit dem Umbau auf die
-Ergebnisliste zu jedem neuen Objekt mitgeschrieben, und der Altbestand ist
-gegenüber dem Zuwachs klein geworden. E-7 betrifft damit 54 Objekte, nicht
-157.
+unter keiner regionsgenauen Regel je markierbar sind.
+
+> **Zwei verschiedene Größen, am 2026-09-13 auseinandergezogen.** Der Nachtrag
+> hat „54 statt 157" geschrieben und damit zwei Zählungen verglichen, die
+> nicht dasselbe messen. Beide am 2026-09-12 über den vollständigen Bestand
+> (n = 12.611) ausgezählt:
+>
+> | Größe | Verfahren | Wert 2026-09-12 |
+> |---|---|---|
+> | **ohne `fundort`** — die Größe, aus der die alten 157 stammen | Feld `listings.fundort` ist leer | **250 (2,0 %)**, davon 54 Immowelt und 196 ZVG |
+> | **ohne zuordenbare Region** — die Größe, die E-7 wirklich betrifft | `partitionEinesListings` liefert keine Region (gespeicherter `fundort`, sonst ZVG-Präfix der `external_id`) | **54 (0,4 %)** |
+>
+> Der Unterschied sind die **196 ZVG-Objekte**: Sie tragen keinen `fundort`,
+> bekommen ihre Region aber aus dem Präfix ihrer `external_id`. Sie sind
+> zuordenbar und gehören deshalb nicht zu E-7.
+>
+> **Der Rückgang von 8,2 % auf 0,4 % ist damit teils definitorisch**, nicht
+> allein ein Fortschritt: Die alte Zahl zählte über die erste Größe, die neue
+> über die zweite. Was an dem Rückgang Messung ist und was Definition, ist mit
+> diesen beiden Zahlen **nicht auseinanderzuhalten**, weil die alte Zählung
+> vom 2026-09-09 nicht nach der zweiten Größe wiederholt wurde.
+>
+> **Vermutung, nicht gemessen:** dass der Fundort seit dem Umbau auf die
+> Ergebnisliste zu jedem neuen Objekt mitgeschrieben wird und der Altbestand
+> gegenüber dem Zuwachs klein geworden ist. Das ist plausibel, aber für diesen
+> Entwurf **nicht nachgemessen**; es wird hier als Vermutung geführt und nicht
+> als Ursache behauptet (`ABNAHME-BASIS.md` A-2 verlangt genau das).
+>
+> **Was die Zahlen nicht hergeben:** Sie sind eine Momentaufnahme eines
+> siebentägigen Bestands. Sie sagen, wie viele Objekte **heute** keiner Region
+> zuzuordnen sind — nicht, wie viele es bleiben werden.
+
+**E-7 betrifft damit 54 Objekte** — die ohne zuordenbare Region, nicht die 250
+ohne `fundort`.
 
 > **Folge: Das Fehlen einer Abgangsmarkierung ist kein Beleg für
 > Verfügbarkeit.** Wer graue und nicht-graue Objekte als „weg" und „da" liest,
@@ -655,8 +838,14 @@ gegenüber dem Zuwachs klein geworden. E-7 betrifft damit 54 Objekte, nicht
 | Zustand | Bedingung | Darstellung |
 |---|---|---|
 | **verfügbar** | `disappeared_at is null` **und** `last_seen` jünger als die Kadenz seiner Region | normal |
-| **unbestätigt** | `disappeared_at is null`, aber `last_seen` älter als das Doppelte der Regionskadenz — oder die Region kann Abgänge grundsätzlich nicht erkennen (`nw`, `bw`, `mv`) oder `fundort is null` | eigenes Merkmal, **nicht grau**: „seit X Tagen nicht bestätigt" |
+| **unbestätigt** | `disappeared_at is null`, aber `last_seen` älter als das Doppelte der Regionskadenz — oder die Region kann Abgänge grundsätzlich nicht erkennen (`nw`, `bw`, `mv`) oder `partitionEinesListings` liefert **keine Region** | eigenes Merkmal, **nicht grau**: „seit X Tagen nicht bestätigt" |
 | **abgängig** | `disappeared_at is not null` | ausgegraut, mit Datum |
+
+> **Präzisiert am 2026-09-13:** In der mittleren Zeile stand „oder `fundort is
+> null`". Das wäre zu weit gefasst — die **196 ZVG-Objekte** tragen keinen
+> `fundort`, sind über das Präfix ihrer `external_id` aber sehr wohl einer
+> Region zuzuordnen (6.2). Maßgeblich ist, ob `partitionEinesListings` eine
+> Region liefert; das betrifft **54 Objekte**, nicht 250.
 
 **„Unbestätigt" ist optisch von „abgängig" getrennt**, und zwar deutlich:
 Grau heißt „beobachtet, dass es weg ist". Unbestätigt heißt „nicht
@@ -673,29 +862,57 @@ wird alle 15 h geprüft, `ni` und `bw` alle rund 3 Tage (Abgänge-Spec). Eine
 gemeinsame Schwelle würde entweder `nw` zu spät oder `ni` dauerhaft als
 unbestätigt zeigen.
 
-> **Am 2026-09-12 gemessen (M4) — und die Begründung trägt heute nicht mehr.**
-> Über alle 12.611 Objekte: `last_seen`-Alter Median **0,83 Tage**, P90 **2,34
-> Tage**, **Maximum 4,78 Tage**. Kein einziges Objekt ist älter als fünf Tage.
-> Die Spreizung zwischen den Regionen, die die regionsindividuelle Schwelle
-> begründet hat, ist auf **0,13 bis 1,33 Tage im Median** geschrumpft (P90 je
-> Region höchstens 3,32 Tage, `nw`). Eine **globale** Schwelle von **3 Tagen**
-> trennt heute sauber: sie trifft 712 Objekte (5,6 %), keine Region dauerhaft,
-> und liegt über jedem Regions-P90.
+> **Am 2026-09-12 gemessen (M4), am 2026-09-13 nachkorrigiert: Die Schwelle
+> ist auf sieben Tagen Historie nicht entscheidbar.**
 >
-> **Entschieden: eine globale Schwelle von 3 Tagen**, nicht 2 × Regionsmedian.
-> Begründung: `sweep_region_runs` trägt 115 Zeilen aus sieben Tagen — für 16
-> Regionen ist das zu wenig für einen belastbaren Regionsmedian, und eine
-> Schwelle aus einem schwachen Median ist schlechter als eine gerade Zahl über
-> dem gemessenen Maximum aller Regionen. Sobald die Tabelle mehrere Wochen
-> trägt, ist die regionsindividuelle Schwelle nachzuziehen.
+> **Verfahren.** `last_seen`-Alter aller 12.611 Objekte gegen eine feste Uhr
+> (2026-09-12 16:00 UTC), Region über `partitionEinesListings`; Herleitung in
+> 13.4.
 >
-> **Was die Zahl nicht hergibt:** Der Bestand ist erst am 2026-09-05
-> entstanden. Die 4,78 Tage sind deshalb auch die Obergrenze dessen, was
-> überhaupt messbar war — ein längerer Rückstand *kann* an diesen Daten nicht
-> auftreten. Die Zahl belegt „die Kadenz hält aktuell", nicht „sie hält
-> dauerhaft". Die 43 % Cron-Ausfall aus A10 und die 5,7 Tage Regionsabstand
-> aus der Abgänge-Spec sind dadurch **nicht** widerlegt; sie sind an einem
-> älteren, kleineren Bestand gemessen worden.
+> | Größe | Wert |
+> |---|---|
+> | `last_seen`-Alter über den ganzen Bestand | Median **0,83 d**, P90 **2,34 d**, Maximum **4,78 d** |
+> | Regionsmediane | **0,13 bis 1,33 d** |
+> | höchstes Regions-P90 | `nw` **3,32 d**, `ni` **3,10 d** |
+> | ältestes `first_seen` | **6,92 d** |
+> | länger als 5 Tage im Bestand | **187 von 12.611 (1,5 %)** |
+>
+> **Der Nachtrag hatte hier eine globale Schwelle von 3 Tagen beschlossen. Sie
+> wird zurückgezogen**, weil ihre drei Begründungen an den eigenen Messwerten
+> scheitern:
+>
+> - „3 Tage liegen über jedem Regions-P90" — falsch: `nw` liegt bei 3,32 d.
+> - „eine gerade Zahl über dem gemessenen Maximum aller Regionen" — falsch:
+>   das Maximum ist 4,78 d.
+> - „trifft keine Region dauerhaft" — widerlegt: bei 3 Tagen stünden `ni`
+>   **217 von 853 (25,4 %)** und `nw` **337 von 3.163 (10,7 %)** dauerhaft als
+>   unbestätigt.
+>
+> **Und die Grundgesamtheit trägt eine 3-Tage-Aussage ohnehin nicht.** Der
+> Bestand ist am 2026-09-05 entstanden; nur 187 von 12.611 Objekten (1,5 %)
+> sind überhaupt länger als fünf Tage darin. Ein Objekt von gestern *kann*
+> kein Alter von 3 Tagen zeigen. Auf die Objekte eingeschränkt, die einen
+> solchen Rückstand überhaupt zeigen könnten, liegen **13,0 %** über 3 Tagen —
+> nicht die 5,6 %, die der Nachtrag über den ganzen Bestand gerechnet hat.
+>
+> **Entschieden: nicht entscheidbar.** Die Schwelle wird **in vier Wochen
+> nachgemessen**; bis dahin gilt die **regionsindividuelle** Definition aus
+> der Zustandstabelle oben. Das ist kein Aufschub aus Bequemlichkeit: Eine
+> globale Zahl aus diesen sieben Tagen wäre eine Schwelle mit schwacher
+> Begründung, und die ist in diesem Projekt schlechter als ein offener Punkt.
+>
+> **Was die Messung trotzdem hergibt:** Die Spreizung zwischen den Regionen,
+> die die regionsindividuelle Schwelle begründet hat, ist im Median auf 0,13
+> bis 1,33 Tage geschrumpft. Die Begründung der regionsindividuellen Schwelle
+> ist damit **schwächer geworden, aber nicht widerlegt** — sie steht bis zur
+> Nachmessung.
+>
+> **Was die Zahlen nicht hergeben:** Die 4,78 Tage sind zugleich die
+> Obergrenze dessen, was überhaupt messbar war — ein längerer Rückstand *kann*
+> in diesen Daten nicht vorkommen. Sie belegen „die Kadenz hält über die
+> letzten sieben Tage", nicht „sie hält dauerhaft". Die 43 % Cron-Ausfall aus
+> A10 und die 5,7 Tage Regionsabstand aus der Abgänge-Spec sind dadurch
+> **nicht** widerlegt; sie stammen von einem älteren, kleineren Bestand.
 
 ### 6.4 Die Karenz endet, das Grau nicht — was danach geschieht
 
@@ -727,11 +944,16 @@ Ehrliche Fehlanzeige, damit niemand sie im Bild sucht:
   eine PLZ für Immowelt-Objekte (`lib/rentEstimate.ts`), und die ist von
   Rechenzentrums-Adressen gesperrt. Das Dashboard macht die Unschärfe
   sichtbar; es beseitigt sie nicht.
-- **Er erzeugt keine Top-Treffer.** Solange nur zwei Objekte eine belegte
-  Miete tragen, bleibt S3 fast leer. Das ist kein Fehler der Darstellung.
+- **Er erzeugt keine Top-Treffer.** Solange nur **ein** Objekt eine belegte
+  Miete trägt (gemessen am 2026-09-12, M3), bleibt S3 fast leer. Das ist kein
+  Fehler der Darstellung.
 - **Er repariert keine Abdeckung.** Ein Bundesland, das seit über einer Woche
-  nicht gesweept wurde — bei einem 90. Perzentil von 7,6 Tagen der Regelfall
-  am Rand —, steht auch im Dashboard so da: sichtbar, aber nicht behoben.
+  nicht gesweept wurde, steht auch im Dashboard so da: sichtbar, aber nicht
+  behoben. Wie oft das vorkommt, ist **offen**: Die Abgänge-Spec nennt für den
+  **Regionsabstand** ein 90. Perzentil von 7,6 Tagen (Monte-Carlo, älterer
+  Bestand); die Messung vom 2026-09-12 hat eine **andere** Größe erhoben, das
+  `last_seen`-Alter je Objekt, und kann die 7,6 Tage weder bestätigen noch
+  widerlegen (4.3, 13.4).
 - **Er ersetzt Telegram nicht.** Die Meldung ist der Weckruf, das Dashboard
   der Überblick. Ob bundeslandgenaue Schätzungen überhaupt melden dürfen, ist
   eine offene Nutzerentscheidung (A11 Schritt 4 = E-4 hier).
@@ -746,6 +968,15 @@ beschreiben und nicht ein Objekt: übersprungene Objekte je Lauf
 genau deshalb getrennt), Stand je Region aus `sweep_region_runs`, und
 Meldebudget samt Rückstand (`Meldungen: X von hoechstens 25`, zuletzt 117
 zurückgestellt — D-5).
+
+> **Ergänzt in der finalen Fix-Welle (2026-09-13):** Seit `ea8b731` und mit
+> `sdd/zvg-a4` legen `preis_auf_anfrage` und `preis_unlesbar` inzwischen doch
+> eine `listings`-Zeile an (ohne Version, S0 nach 3.3) — sie beschreiben also
+> nicht mehr nur den Lauf. **Ob sie deshalb zusätzlich im S0-Bereich der
+> Rangliste erscheinen oder wie hier ausschließlich auf dieser Betriebsseite
+> geführt werden, ist offen** und in 3.3 als Frage an den Nutzer notiert
+> (Abschnitt 9, Schritt 3). Die Zählung nach Fundort bleibt in jedem Fall
+> auf der Betriebsseite sinnvoll.
 
 Kosten: null zusätzliche Datenhaltung, alles ist bereits gespeichert oder
 steht im Lauf-Log. Nutzen: A13 nennt die getrennte Quote ausdrücklich als
@@ -765,19 +996,31 @@ M1 bis M6 aus Abschnitt 10 beantworten. Zwei davon (M1, M3) verschieben
 möglicherweise die Stufengrenzen aus 3.3; sie gehören vor die erste Zeile.
 *Ergebnis: ein Nachtrag zu diesem Dokument, keine Codeänderung.*
 
+> **Stand 2026-09-13: gemessen ja, geschlossen nein.** Alle sechs Fragen sind
+> am 2026-09-12 gemessen (Abschnitt 13). Die Korrekturrunde vom 2026-09-13 hat
+> drei Punkte daraus wieder **geöffnet** (13.8): die Schwelle für
+> „unbestätigt" (6.3), das kürzeste Zeitfenster (4.3) und die Frage, ob S2
+> einen eigenen Block trägt (3.3). Die ersten beiden brauchen **vier Wochen
+> mehr Historie** und blockieren Schritt 2 nicht; die dritte ist eine
+> Darstellungsfrage und gehört vor Schritt 4.
+
 **Schritt 1 — Entscheidungen einholen (kein Code).**
 E-1 bis E-8 aus Abschnitt 11. Besonders E-1 (Zugriffsweg) und E-4
 (bundeslandgenaue Meldungen) legen fest, was überhaupt gebaut wird.
 
 **Schritt 2 — `scraper/lib/ranking.ts`: reine Funktionen, keine Ein-/Ausgabe.**
-Sicherheitsstufe aus `rent_source` + `data_gaps`; Rangzahl; Bandkanten durch
+Sicherheitsstufe aus `rent_source` + `data_gaps` + `living_area_m2` (3.3,
+inklusive der Aufzählungsregel für `rent_source`); Rangzahl; Bandkanten durch
 erneuten Aufruf von `berechneKennzahlen` mit skalierter Miete; Bandbreite je
 Bundesland aus `REGIONALE_MIETE_PRO_M2` und `plzBundesland.generated.json`;
-Schwellenwechsler-Merkmal; die drei Verfügbarkeitszustände. TDD wie im
-ganzen Projekt. **Zwei Tests, die zuerst rot sein müssen:** dass
-`geschaetzterDscr = nettomietrenditeCapRate / 6` gilt (2.1 — bricht sofort,
-wenn jemand eine der Formeln ändert), und dass ein Objekt mit
-`wohnflaeche_fehlt` **keine** Kennzahl ausliefert statt einer 0.
+Schwellenwechsler-Merkmal; die drei Verfügbarkeitszustände.
+**Berichtigt in der finalen Fix-Welle (2026-09-13):** TDD gilt wie im ganzen
+Projekt, aber nicht beide Tests sind „zuerst rot". Der Identitätstest
+`geschaetzterDscr = nettomietrenditeCapRate / 6` (2.1) ist als
+**Charakterisierungstest** angelegt — er hält bereits auf dem heutigen Code
+und wird vorab ausgeführt, nicht zuerst rot gesehen; er bricht sofort, wenn
+jemand eine der Formeln ändert. **Ein Test muss zuerst rot sein:** dass ein
+Objekt mit `wohnflaeche_fehlt` **keine** Kennzahl ausliefert statt einer 0.
 *Rein und testbar, ohne Datenbank, ohne Netz, ohne Frontend.*
 
 **Schritt 3 — Snapshot-Export.**
@@ -786,10 +1029,23 @@ den neuesten Stand je Objekt durch `ranking.ts` schickt und als Datei
 ablegt. Kein Schreibzugriff, keine Schemaänderung. Damit ist der Inhalt des
 Dashboards vollständig da, bevor eine einzige Zeile Oberfläche existiert —
 und prüfbar, indem man die Datei liest.
+**Hier fällt eine offene Frage an den Nutzer (ergänzt in der finalen
+Fix-Welle, 2026-09-13, siehe 3.3):** `listings`-Zeilen ohne
+`listing_versions`-Zeile (`preis_auf_anfrage` / `preis_unlesbar`, seit
+`ea8b731` und `sdd/zvg-a4`) fallen nach der `rent_source`-Regel auf S0, haben
+aber keinen `data_gaps`-Eintrag und damit keinen Klartext-Grund nach 3.7. Ob
+der Export sie in den S0-Bereich aufnimmt oder ausschließlich auf die
+Betriebsseite (Abschnitt 8) legt, und welcher Klartext-Grund ihnen dort
+zugeschrieben wird, ist **nicht entschieden** — keine Zahl dazu ist gemessen
+oder erfunden.
 
 **Schritt 4 — Die Rangliste.**
-Vier Blöcke (3.3), Schwellenlinie je Block (3.8), Band statt Punkt (3.4),
-Kopfzeile (3.9). Erste sichtbare Ausbaustufe.
+Blöcke nach Stufen (3.3), Schwellenlinie je Block (3.8), Band statt Punkt
+(3.4), Kopfzeile (3.9). Erste sichtbare Ausbaustufe.
+**Hier fällt die offene Blockfrage:** ob S2 mit seinen **52 Objekten (0,4 %)**
+einen eigenen beschrifteten Block bekommt oder mit S1 zusammengelegt wird und
+die PLZ-Genauigkeit als Merkmal am Objekt trägt (3.3). Die Frage berührt
+`ranking.ts` nicht — die Stufe wird dort in jedem Fall berechnet.
 
 **Schritt 5 — Die Veränderungsansicht.**
 Letzte N Änderungen (4.3), drei Arten unterschieden (4.2), Datum je Zeile.
@@ -799,6 +1055,9 @@ Drei Verfügbarkeitszustände (6.3), Regionsstand am Filter (4.4), Abgänge-
 Bereich (6.4). **Setzt Option 3 im Scraper voraus** — bis dahin ist
 `disappeared_at` für Immowelt immer `null` und der Zustand „abgängig" tritt
 nie ein. Bis dahin trägt „unbestätigt" die ganze Aussage.
+**Und die Schwelle für „unbestätigt" ist offen** (6.3): Bis zur Nachmessung
+gilt die regionsindividuelle Definition; eine feste globale Tageszahl darf
+hier nicht hart verdrahtet werden.
 
 **Schritt 7 — Betriebsseite** (Abschnitt 8). Zuletzt, weil sie niemandem
 fehlt, der sie nicht kennt.
@@ -818,10 +1077,10 @@ Entwurf **nicht** ausgeführt.
 |---|---|---|---|
 | **M1** | Wie stark verschiebt `units_unconfirmed` (Annahme `MIN_EINHEITEN = 3`) den DSCR? Nachrechnung über alle bewertbaren Objekte mit angenommener und alternativer Einheitenzahl, im Verfahren von A11. | Entscheidet, ob es Merkmal bleibt (3.3) oder eine eigene Stufe wird. Betrifft 567 von 1.000 Versionen. | **Merkmal, endgültig.** Der Hebel ist durch die 20-/35-%-Deckelung strukturell auf **−18,75 % … +23,08 %** begrenzt; bei der gemessenen Alternative (4 Einheiten) wechselt **0** von 12.126 Objekten die Schwelle, bei 6 Einheiten 21 (0,17 %). ±30 % Miete bewegen 11,6 %. |
 | **M2** | Wie breit ist das DSCR-Band je Objekt tatsächlich, wenn die Miete um die Landesspanne aus 3.4 skaliert wird? | Die Bandbreite ist nach 3.4 **nicht** proportional zur Miete. Ohne diese Messung ist die Sortierung nach unterer Kante (3.5) unkalibriert. | Band **67,9 % des Punktwerts im Median** (P95 101,9 %, max 126,5 %), S2 47,6 %. Die Nichtproportionalität gilt nur für **7,8 %** der Objekte (Median-Verstärkung 1,000). Sortierung nach unterer Kante verschiebt den Rang im Median um **713 Plätze**. |
-| **M3** | Wie verteilen sich die Objekte auf S3/S2/S1/S0? | 83 % S1 und „über die Hälfte `wohnflaeche_fehlt`" überschneiden sich unbekannt stark. Entscheidet, ob S2 überhaupt genug Objekte für einen eigenen Block hat. | **S3 1 · S2 196 · S1 11.312 · S0 1.102** von 12.611. S2 trägt einen Block, ist aber faktisch der ZVG-Block (169 von 196). 3.3 ist **korrigiert**, samt einer Lücke in der S0-Bedingung (148 Objekte). |
-| **M4** | Verteilung des `last_seen`-Alters je Region. | Kalibriert die Schwelle für „unbestätigt" (6.3). | Median **0,83 d**, P90 **2,34 d**, Maximum **4,78 d**; Regionsmediane 0,13 bis 1,33 d. **Globale Schwelle 3 Tage** statt regionsindividuell (6.3 korrigiert), kürzestes Zeitfenster in 4.3 von 7 auf 3 Tage. |
+| **M3** | Wie verteilen sich die Objekte auf S3/S2/S1/S0? | 83 % S1 und „über die Hälfte `wohnflaeche_fehlt`" überschneiden sich unbekannt stark. Entscheidet, ob S2 überhaupt genug Objekte für einen eigenen Block hat. | **S3 1 · S2 52 · S1 11.308 · S0 1.250** von 12.611, gezählt nach der **korrigierten** S0-Regel (Nachkorrektur 2026-09-13; der Nachtrag zählte mit 196/11.312/1.102 noch nach der alten). 3.3 ist **korrigiert**, samt der Lücke in der S0-Bedingung (148 Objekte). **Die Blockfrage für S2 bleibt damit offen, nicht beantwortet:** Ein eigener, beschrifteter Block für 52 von 12.611 (0,4 %) ist nicht mehr belegt (wie in 3.3); zu entscheiden vor Schritt 4 aus Abschnitt 9. *Was die Zahl nicht hergibt:* Momentaufnahme eines siebentägigen Bestands, Eigenschaft der Quellenmischung, nicht des Marktes. |
+| **M4** | Verteilung des `last_seen`-Alters je Region. | Kalibriert die Schwelle für „unbestätigt" (6.3). | Median **0,83 d**, P90 **2,34 d**, Maximum **4,78 d**; Regionsmediane 0,13 bis 1,33 d. **Die Schwelle bleibt offen** (Nachkorrektur 2026-09-13): Die im Nachtrag beschlossene globale 3-Tage-Schwelle ist zurückgezogen — `nw` hat ein P90 von 3,32 d, das Maximum ist 4,78 d, und bei 3 Tagen stünden `ni` 25,4 % und `nw` 10,7 % dauerhaft unbestätigt. Bis zur Nachmessung in vier Wochen gilt die regionsindividuelle Definition (6.3). Das kürzeste Zeitfenster in 4.3 bleibt bei **7 Tagen**, weil M4 das `last_seen`-Alter misst und nicht den Regionsabstand. *Was die Zahl nicht hergibt:* Der Bestand ist erst 6,92 Tage alt; ein längerer Rückstand konnte gar nicht auftreten. |
 | **M5** | Wie viele Objekte sind Schwellenwechsler nach 3.6 — und deckt sich die Zahl mit A11s 558? | Prüft, ob die Objekt-Sicht dieselbe Größe misst wie die Bestands-Sicht. Weicht sie ab, ist eine der beiden Rechnungen falsch. | **Sie deckt sich nicht, und keine der beiden ist falsch — sie messen Verschiedenes.** 3.6: **6.658 von 11.360 (58,6 %)**; A11s Größe nachgerechnet: **2.962 von 12.157 (24,4 %)** gegen 29,7 %. Der Unterschied ist die Definition, nicht die Bandbreite. 3.6 ist korrigiert. |
-| **M6** | Wie oft ändert eine Preissenkung tatsächlich die Rangposition — und um wie viel? | Anforderung 3 des Nutzers steht und fällt damit. Wenn Preissenkungen den Rang kaum bewegen, braucht die Veränderungsansicht mehr Gewicht als die Rangliste. | **Sie bewegt den Rang, aber die Stichprobe ist klein.** 17 echte Senkungen (von 49 `price_dropped`-Zeilen; 10 sind Parserkorrekturen, 22 nicht nachrechenbar): Median −15,9 % Preis → **+539 Rangplätze** (4,4 % des Feldes). Selbst −3,0 % bewegten 105 Plätze. 2.4 bleibt. |
+| **M6** | Wie oft ändert eine Preissenkung tatsächlich die Rangposition — und um wie viel? | Anforderung 3 des Nutzers steht und fällt damit. Wenn Preissenkungen den Rang kaum bewegen, braucht die Veränderungsansicht mehr Gewicht als die Rangliste. | **Sie bewegt den Rang — belegt ist das aber nicht.** 17 echte Senkungen (von 49 `price_dropped`-Zeilen; 10 sind Parserkorrekturen, 22 nicht nachrechenbar): Median −15,9 % Preis → **+539 Rangplätze** (4,4 % des Feldes); selbst −3,0 % bewegten 105 Plätze. **2.4 bleibt, gestützt auf die Formel, nicht auf diese Zahlen** (Vorbehalt ergänzt am 2026-09-13). *Was die Zahl nicht hergibt:* n = 17 aus sieben Tagen, mehrere Fälle zum selben Objekt — und gerankt wurde **global über alle 12.157 bewerteten Objekte einschließlich S0**, also über eine Liste, die das Dashboard nach 3.2/3.7 nicht zeigt; **6 der 17** Senkungen lagen in S0, das gar keinen Rangplatz bekommt. Nach vier Wochen innerhalb der Stufe und ohne S0 zu wiederholen. |
 
 ---
 
@@ -835,10 +1094,10 @@ betrifft Geld, Risiko, Schreibzugriffe auf Produktionsdaten oder Recht.
 | **E-1** | **Zugriffsweg: Snapshot-Export (C1, empfohlen), Anmeldung (B) oder anon-Key (A)?** | B und A verlangen **`create policy` auf der Produktionsdatenbank**; B zusätzlich ein angelegtes Benutzerkonto. C1 verlangt **keine** Änderung. |
 | **E-2** | **Wer darf das Dashboard sehen?** Nicht verlinkte URL, Basic Auth, oder Anmeldung? | Bestimmt, ob der gesamte Bestand samt Kennzahlen faktisch öffentlich ist. |
 | **E-3** | **Darf die Seite öffentlich erreichbar sein**, obwohl sie von Immowelt übernommene Titel und Preise zeigt und Bilder aus dem Immowelt-CDN einbindet? | Rechtsfrage. Dieser Entwurf hat dazu keine Kompetenz und trifft keine Aussage. |
-| **E-4** | **Dürfen bundeslandgenaue Schätzungen melden — oder nur im Dashboard erscheinen?** (identisch mit A11 Schritt 4) | 339 von 409 Meldekandidaten. Bei „nur Dashboard" wird das Dashboard der Hauptweg und nicht die Ergänzung. |
+| **E-4** | **Dürfen bundeslandgenaue Schätzungen melden — oder nur im Dashboard erscheinen?** (identisch mit A11 Schritt 4) | **Zwei Zahlen, zwei Grundgesamtheiten** (vereinheitlicht 2026-09-13): **339 von 409 Meldekandidaten** stammen aus A11 vom 2026-09-08 und zählen nur die Objekte, die die Meldeschwellen passieren. Aus M3 (2026-09-12) folgt die andere Seite: Dürfen bundeslandgenaue Schätzungen nicht melden, bleiben nach der **korrigierten** Stufenregel **S3 1 + S2 52 = 53 von 12.611** Objekten für den Meldeweg (13.7; nach der alten Stufenregel waren es 197). **Die 53 sind keine eigene Messung**, sondern eine Ableitung aus den Stufenzahlen (13.1); die 339 von 409 sind dagegen A11s eigene Zählung vom 2026-09-08 und keine Ableitung. Bei „nur Dashboard" wird das Dashboard der Hauptweg und nicht die Ergänzung — und zwar deutlicher, als die 339 vermuten lassen. |
 | **E-5** | **Gilt der Rangvorschlag aus 2.3 (DSCR, keine erfundene Punktzahl)?** | Alles Weitere baut darauf. Eine gewichtete Punktzahl wäre möglich, aber die Gewichte müssten vom Nutzer kommen, nicht vom Entwurf. |
 | **E-6** | **Wie lange bleiben Abgänge im Archiv?** Unbegrenzt, oder nach N Tagen ausblenden (nicht löschen)? | Unter Option 3 wird nie gelöscht; das Archiv wächst sonst unbegrenzt. |
-| **E-7** | **Was geschieht mit den Objekten ohne zuordenbare Region?** (identisch mit Frage 5 der Abgänge-Spec) — am 2026-09-12 noch **54 von 12.611**, nicht mehr 157 (M4, siehe 6.2) | Sie sind dauerhaft „unbestätigt". Sie zu verwerfen wäre ein Schreibzugriff auf Produktionsdaten. Die Dringlichkeit ist durch die Messung gesunken: 0,4 % statt 8,2 %. |
+| **E-7** | **Was geschieht mit den Objekten ohne zuordenbare Region?** (identisch mit Frage 5 der Abgänge-Spec) — am 2026-09-12 über `partitionEinesListings` ausgezählt: **54 von 12.611 (0,4 %)** | Sie sind dauerhaft „unbestätigt". Sie zu verwerfen wäre ein Schreibzugriff auf Produktionsdaten. **Zum Vergleich der Größen** (präzisiert 2026-09-13): Objekte **ohne `fundort`** sind es 250 (2,0 %), davon 196 ZVG, die über ihr `external_id`-Präfix trotzdem zuordenbar sind. Die alten **157 (8,2 %)** vom 2026-09-09 stammen aus der Zählung **ohne `fundort`** und sind mit den 54 **nicht vergleichbar**; der Rückgang ist teils definitorisch. *Was die Zahl nicht hergibt:* wie viel davon Fortschritt ist — die alte Zählung wurde nie nach der neuen Definition wiederholt. |
 | **E-8** | **Wo läuft das Dashboard, und was darf es kosten?** | Ein Snapshot ist eine statische Datei und praktisch kostenlos; Weg B verlangt einen laufenden Dienst. |
 
 ---
@@ -848,18 +1107,20 @@ betrifft Geld, Risiko, Schreibzugriffe auf Produktionsdaten oder Recht.
 1. **Rang** ist der DSCR — die einzige der fünf Kennzahlen, die alles kennt,
    was die anderen kennen; drei der fünf sind rechnerisch dieselbe Zahl, und
    eine der vier Top-Treffer-Bedingungen kann nie greifen.
-2. **Unsicherheit** ordnet vor der Punktzahl: vier Sicherheitsstufen als
-   getrennte Blöcke, die Zahl als Band mit der gemessenen Spanne des
+2. **Unsicherheit** ordnet vor der Punktzahl: Sicherheitsstufen als getrennte
+   Blöcke (ob S2 mit seinen 52 Objekten einen eigenen Block bekommt, ist
+   offen, siehe 3.3), die Zahl als Band mit der gemessenen Spanne des
    jeweiligen Bundeslandes, sortiert nach der ungünstigen Kante.
 3. **Nicht beurteilbare Objekte bekommen keinen Rangplatz und keine
    Kennzahl** — nur den Grund im Klartext, damit sie nie wie geprüft und
    schlecht aussehen.
 4. **Veränderung** wird an der Versionshistorie gemessen, nicht am Kalender,
    und die Liste wird nach Anzahl geschnitten — weil eine Anzahl nie leer
-   ist, eine Zeitspanne aber nur so verlässlich wie die Kadenz (die am
-   2026-09-12 mit einem P90 von 2,34 Tagen deutlich besser lag als die 5,7
-   Tage der Abgänge-Spec; das kürzeste benannte Fenster ist deshalb auf 3
-   Tage herunter, siehe 4.3 und 13.4).
+   ist, eine Zeitspanne aber nur so verlässlich wie die Kadenz (das am
+   2026-09-12 gemessene `last_seen`-Alter lag mit einem P90 von 2,34 Tagen
+   niedrig, misst aber **nicht** den Regionsabstand der Abgänge-Spec; das
+   kürzeste benannte Fenster bleibt deshalb bei 7 Tagen, und die Frage ist
+   offen — siehe 4.3 und 13.4).
 5. **Zugriff** über einen Snapshot ohne jeden Schlüssel im Frontend, weil das
    die einzige Variante ist, die **keine** Änderung an der
    Produktionsdatenbank verlangt — und **Abgänge, Unbestätigtes und
@@ -915,12 +1176,28 @@ eingetragen (2026-09-12 16:00 UTC), nicht `new Date()`.
 **Verfahren.** Jüngste Version je Objekt, Stufe nach der Regel aus 3.3, S0
 hat Vorrang vor der Mietquelle.
 
-| Stufe | n | Anteil | davon Immowelt | davon ZVG |
-|---|---:|---:|---:|---:|
-| **S3** belegt | **1** | 0,01 % | 1 | 0 |
-| **S2** PLZ-genau | **196** | 1,6 % | 27 | 169 |
-| **S1** bundeslandgenau | **11.312** | 89,7 % | 11.308 | 4 |
-| **S0** nicht beurteilbar | **1.102** | 8,7 % | 1.079 | 23 |
+> **Nachkorrigiert am 2026-09-13.** Die Tabelle des Nachtrags zählte nach der
+> **alten** S0-Regel (nur `data_gaps`), obwohl derselbe Abschnitt die Regel um
+> `living_area_m2 <= 0` erweitert hat. Beide Zählungen stehen unten
+> nebeneinander, weil sie verschiedene Regeln messen; **maßgeblich ist die
+> rechte Spalte**, und nur sie steht in 3.3.
+
+| Stufe | n nach der **alten** Regel (Nachtrag) | n nach der **korrigierten** Regel — maßgeblich | Anteil |
+|---|---:|---:|---:|
+| **S3** belegt | 1 | **1** | 0,01 % |
+| **S2** PLZ-genau | 196 | **52** | 0,4 % |
+| **S1** bundeslandgenau | 11.312 | **11.308** | 89,7 % |
+| **S0** nicht beurteilbar | 1.102 | **1.250** | 9,9 % |
+
+Die Differenz sind genau die **148** Objekte ohne Wohnfläche und ohne Lücke
+aus Punkt 4 weiter unten: 144 wandern aus S2 nach S0, 4 aus S1.
+
+**Aufteilung nach Quelle.** Gemessen ist sie nur für die alte Regel (S3 1
+Immowelt; S2 27 Immowelt / 169 ZVG; S1 11.308 Immowelt / 4 ZVG; S0 1.079
+Immowelt / 23 ZVG) und für S2 unter der korrigierten Regel: dort bleiben
+**39 ZVG** von 52. Für S1 und S0 ist die Quellenaufteilung unter der
+korrigierten Regel **nicht gemessen** und wird hier bewusst **nicht
+hochgerechnet**.
 
 Rohe Mietquelle ohne S0-Vorrang: `geschaetzt_bundesland` 12.361 (98,0 %),
 `geschaetzt_regional` 243 (1,9 %), `geschaetzt_bundesweit` 6, `angegeben` 1.
@@ -934,9 +1211,15 @@ S0-Gründe (mehrfach möglich): `rent_estimate_unreliable` 796,
    sind es heute nicht mehr: Der Bestand ist auf das Sechsfache gewachsen und
    besteht zu 98,4 % aus Immowelt, dessen Ergebnisliste eine Wohnfläche nennt
    und keine PLZ. Beides zusammen leert S0 und füllt S1.
-2. **S2 trägt einen eigenen Block — aber es ist der ZVG-Block.** 169 der 196
-   S2-Objekte sind Zwangsversteigerungen. Wer S2 baut, baut die ZVG-Ansicht.
-   Das ist kein Einwand, es muss nur dranstehen.
+2. **Ob S2 einen eigenen Block trägt, ist offen** — und das ist die Aussage,
+   die sich am 2026-09-13 umgedreht hat. Der Nachtrag hat sie mit 196 Objekten
+   bejaht; unter der korrigierten Regel sind es **52 von 12.611 (0,4 %)**. Ein
+   eigener, beschrifteter Block für vier von tausend Objekten ist damit
+   **nicht belegt**. Was bleibt: Es ist der ZVG-Block — **39 der 52**
+   S2-Objekte sind Zwangsversteigerungen (vorher 169 von 196). Wer S2 baut,
+   baut die ZVG-Ansicht. Die Entscheidung gehört vor Schritt 4 aus
+   Abschnitt 9, nicht vor Schritt 2: Die Stufe wird in `ranking.ts` in jedem
+   Fall berechnet; offen ist nur ihre Darstellung (3.3).
 3. **S3 ist kein Block, sondern eine Zeile**, und eine schrumpfende:
    Insgesamt trugen **3** Objekte je eine belegte Miete; bei zweien ist sie
    inzwischen wieder verschwunden, weil ihre neuere Version aus der
@@ -1074,7 +1357,10 @@ Schätztabelle**, nicht ein Konfidenzintervall der wirklichen Miete. Ein Band
 von 67,9 % heißt „innerhalb dieses Bundeslandes liegen die hinterlegten
 Mietwerte so weit auseinander", nicht „der wahre DSCR liegt mit 95 %
 Wahrscheinlichkeit darin". Für S2 sind es nur **52** auswertbare Objekte,
-weil 144 der 196 S2-Objekte keine Wohnfläche haben (siehe 13.1, Punkt 4).
+weil 144 der 196 S2-Objekte der **alten** Stufenregel keine Wohnfläche haben
+(siehe 13.1, Punkt 4). Nach der korrigierten Regel sind diese 144 nach S0
+gewandert; die 52 auswertbaren Objekte hier **sind** deshalb genau das
+korrigierte S2 aus 3.3.
 
 ---
 
@@ -1098,20 +1384,50 @@ Schwellenwirkung über den gesamten Bestand: älter als 1 d **4.342 (34,4 %)**,
 älter als 2 d 1.424 (11,3 %), älter als 3 d **712 (5,6 %)**, älter als 5 d
 **0**.
 
+> **Diese Prozentwerte haben einen falschen Nenner, und das ist am 2026-09-13
+> nachgetragen.** Der Bestand ist am 2026-09-05 entstanden; das älteste
+> `first_seen` liegt **6,92 Tage** zurück, und nur **187 von 12.611 Objekten
+> (1,5 %)** sind länger als fünf Tage darin. Ein Objekt, das seit gestern
+> bekannt ist, *kann* kein `last_seen`-Alter von 3 Tagen zeigen — es steht im
+> Nenner der 5,6 %, obwohl es zum Zähler gar nicht beitragen könnte. Auf die
+> Objekte eingeschränkt, die einen solchen Rückstand überhaupt zeigen könnten,
+> liegen **13,0 %** über 3 Tagen. Die 5,6 % sind deshalb keine Grundlage für
+> eine Schwelle.
+
 **Was das am Entwurf ändert.**
 
-1. **6.3 ist korrigiert: eine globale Schwelle von 3 Tagen** statt „2 × Median
-   des Regionsabstands". Die Spreizung, die die regionsindividuelle Schwelle
-   begründet hat (`nw` alle 15 h, `ni`/`bw` alle 3 Tage), ist auf 0,13 bis
-   1,33 Tage im Median geschrumpft; 3 Tage liegen über jedem Regions-P90 und
-   treffen 5,6 % des Bestands. `sweep_region_runs` trägt 115 Zeilen aus sieben
-   Tagen — zu wenig für 16 belastbare Regionsmediane. Eine gerade Zahl über
-   dem gemessenen Maximum aller Regionen ist die ehrlichere Schwelle.
-2. **4.3 ist korrigiert: das kürzeste benannte Zeitfenster kann von 7 auf 3
-   Tage.** Die Begründung „7,6 Tage sind das 90. Perzentil des
-   Regionsabstands" trägt an diesem Bestand nicht mehr. Der 24-Stunden-Filter
-   bleibt ausgeschlossen — 34,4 % aller Objekte sind älter als einen Tag.
-3. **E-7 betrifft 54 Objekte, nicht 157** (6.2 korrigiert).
+1. **6.3: die Schwelle ist auf diesen Daten nicht entscheidbar.** Der Nachtrag
+   hatte hier eine globale Schwelle von 3 Tagen beschlossen; sie ist am
+   2026-09-13 **zurückgezogen**, weil ihre Begründungen an den Zahlen dieser
+   Tabelle scheitern: `nw` hat ein P90 von **3,32 d** (die Schwelle liegt also
+   *nicht* über jedem Regions-P90), das Maximum aller Regionen ist **4,78 d**
+   (die Schwelle liegt also *nicht* darüber), und bei 3 Tagen stünden `ni`
+   **217 von 853 (25,4 %)** und `nw` **337 von 3.163 (10,7 %)** dauerhaft als
+   unbestätigt — „trifft keine Region dauerhaft" ist damit widerlegt. Es
+   bleibt: Die Spreizung, die die regionsindividuelle Schwelle begründet hat
+   (`nw` alle 15 h, `ni`/`bw` alle 3 Tage), ist im Median auf 0,13 bis 1,33
+   Tage geschrumpft, und `sweep_region_runs` trägt 115 Zeilen aus sieben Tagen
+   — zu wenig für 16 belastbare Regionsmediane. **Beide Schwellenformen sind
+   auf diesem Bestand also unbelegt.** Bis zur Nachmessung in vier Wochen gilt
+   die regionsindividuelle Definition aus der Zustandstabelle in 6.3, weil sie
+   der Stand vor der Messung war und nicht widerlegt wurde.
+2. **4.3: das kürzeste benannte Zeitfenster bleibt bei 7 Tagen.** Der Nachtrag
+   hatte es auf 3 Tage gesenkt; die Senkung ist am 2026-09-13 zurückgenommen.
+   Grund: Die alte Begründung ist das 90. Perzentil des **Regionsabstands**
+   (7,6 d, Abgänge-Spec), gemessen wurde hier das **`last_seen`-Alter** je
+   Objekt. Das sind zwei verschiedene Größen — die zweite kann die erste nicht
+   widerlegen. **Der Satz „die 5,7 und 7,6 Tage sind nicht widerlegt" weiter
+   unten und die Senkung in 4.3 konnten nie beide gelten;** jetzt gilt der
+   Satz. Der Regionsabstand selbst ist aus `sweep_region_runs` nachzumessen;
+   am 2026-09-13 war das nicht möglich, weil das Skript des Prüfers nicht mehr
+   vorhanden ist (13.8). **Die Frage ist damit offen, nicht zugunsten von 7
+   Tagen entschieden.** Unbestritten bleibt der Ausschluss des
+   24-Stunden-Filters — 34,4 % aller Objekte sind älter als einen Tag.
+3. **E-7 betrifft 54 Objekte** — die ohne zuordenbare Region (6.2). Der
+   Vergleich mit den 157 vom 2026-09-09 ist am 2026-09-13 gestrichen worden:
+   Jene Zahl zählte die Objekte **ohne `fundort`**, und das sind heute 250,
+   davon 196 ZVG, die über ihr `external_id`-Präfix trotzdem zuordenbar sind.
+   Zwei verschiedene Größen, kein Vergleich.
 
 **Was die Zahl nicht hergibt, und das ist hier der wichtigste Satz.** Der
 Bestand ist am **2026-09-05** entstanden. Die 4,78 Tage sind deshalb zugleich
@@ -1120,7 +1436,8 @@ die Obergrenze dessen, was überhaupt messbar war — ein längerer Rückstand
 über die letzten sieben Tage", nicht „sie hält dauerhaft". Die 43 %
 Cron-Ausfall aus A10 und die 5,7 Tage Regionsabstand aus der Abgänge-Spec
 sind dadurch **nicht widerlegt**; sie stammen von einem älteren, kleineren
-Bestand. Die 3-Tage-Schwelle ist nach vier Wochen Laufzeit nachzumessen.
+Bestand. Die Schwelle für „unbestätigt" ist nach vier Wochen Laufzeit zu
+messen — bis dahin ist sie offen, nicht auf 3 Tage festgelegt.
 
 ---
 
@@ -1187,6 +1504,30 @@ die Mietschätzung über die Einordnung und nicht die Objektdaten".
 beide mit den echten Funktionen nachgerechnet; der Rang ist die Position im
 absteigend nach DSCR sortierten Feld aller 12.157 bewertbaren Objekte.
 
+> **Welche Liste hier gerankt wurde — nachgetragen am 2026-09-13.** Gerankt
+> wurde **global über alle 12.157 bewerteten Objekte, einschließlich S0**,
+> also über **eine Liste, die das Dashboard so nie zeigen wird**. Der Entwurf
+> vergibt Rangplätze anders: 3.2 trennt nach Stufenblöcken, und 3.7 gibt
+> S0-Objekten **überhaupt keinen Rangplatz**. Konkret liegen **6 der 17**
+> echten Senkungen in S0. Die Rangsprünge unten sind deshalb Positionen in
+> einem Feld, das der Nutzer nicht zu sehen bekommt, und die Zahl „+539
+> Plätze" ist **keine Aussage über die Rangliste des Dashboards**.
+>
+> **Warum nicht neu gerechnet wurde.** Der Auftrag ließ die Wahl, innerhalb
+> der Stufe und ohne S0 neu zu rechnen. Die dafür vorgesehenen Skripte
+> `messung-m6-preissenkung.ts` und `messung-m6-teil2.ts` liegen im
+> git-ignorierten Verzeichnis
+> `.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/` und sind dort
+> **nicht mehr vorhanden** (13.8); diese Runde ändert zudem keine Zeile Code.
+> Die Neurechnung bleibt offen und ist mit der Wiederholung nach vier Wochen
+> zusammenzulegen.
+>
+> **Was sich dadurch nicht ändert:** Die *Richtung* — eine Preissenkung hebt
+> den DSCR und damit den Rang — folgt aus der Formel und gilt in jeder
+> gerankten Stufe, bei sonst gleicher Datenlage (S0 hat ohnehin keine
+> Rangliste, in die hinein sich etwas bewegen könnte). Die *Höhe* des
+> Sprungs gilt nur für das global sortierte Feld.
+
 **Die Rohzahl ist klein, und der erste Durchgang war unbrauchbar.** Von
 17.391 Versionen tragen **49** `price_dropped`. 22 davon sind nicht
 nachrechenbar (fehlende Fläche in einer der beiden Versionen). Von den
@@ -1212,11 +1553,16 @@ rutschte und sie damit nach S0 wanderten. Die A9-Untergrenze wirkt also genau
 wie beabsichtigt. **Kein Fall blieb ohne Rangwechsel**; selbst die kleinste
 Senkung (−3,0 %, 235.000 → 228.000 €) bewegte den Rang um **105 Plätze**.
 
-**Was das am Entwurf ändert: 2.4 bleibt, jetzt belegt.** Anforderung 3 („durch
-eine Preissenkung rutscht ein Objekt nach oben") erledigt der DSCR von selbst;
-ein zusätzlicher Veränderungsbonus auf die Rangzahl bleibt abgelehnt. Die
-Rangliste ist bei dieser Bestandsgröße **empfindlich genug**, dass eine
-Preissenkung sichtbar wird, ohne dass man sie extra gewichtet.
+**Was das am Entwurf ändert: 2.4 bleibt — begründet, aber nicht belegt.**
+Anforderung 3 („durch eine Preissenkung rutscht ein Objekt nach oben")
+erledigt der DSCR von selbst; ein zusätzlicher Veränderungsbonus auf die
+Rangzahl bleibt abgelehnt. Diese Ablehnung steht auf der **Formel**, nicht auf
+den 17 Fällen: Ein niedrigerer Preis hebt den DSCR, das gilt unabhängig von
+der Stichprobe. **Was die 17 Fälle nicht tragen**, ist der Satz „Anforderung 3
+ist belegt" — n = 17, aus sieben Tagen, mehrere Fälle zum selben Objekt, und
+gerankt über eine Liste, die das Dashboard nicht zeigt (siehe den Kasten
+oben). Die Aussage „die Rangliste ist empfindlich genug" ist damit **eine
+begründete Erwartung, keine Messung**, und nach vier Wochen zu prüfen.
 
 **Der Gegenbefund, der dranstehen muss.** Ein Fall lief gegen die Erwartung:
 `e9a8c11d`, 47.490 → 39.950 € (−15,9 %), und der DSCR **fiel** von 6,658 auf
@@ -1234,17 +1580,29 @@ Ergebnis.** **n = 17**, aus sieben Tagen Historie, und nur **2.756 von 12.611
 Objekten** haben überhaupt mehr als eine Version. Der Median von −15,9 % ist
 kein Marktwert, sondern das mittlere Element von siebzehn Fällen, von denen
 mehrere zum selben Objekt gehören (`73856ba5` erscheint dreimal). Die Aussage
-„eine Preissenkung bewegt den Rang" ist strukturell sicher — sie folgt aus
-der Formel und wird durch 17 von 17 Fällen bestätigt —, die Aussage „im
-Median um 539 Plätze" ist es nicht. Sie ist nach vier Wochen zu wiederholen.
+„eine Preissenkung bewegt den Rang, wenn sonst nichts sich ändert" ist
+strukturell sicher — sie folgt aus der **Formel**, nicht aus dieser
+Stichprobe: Ein niedrigerer Preis senkt Kaufpreis und Kaufnebenkosten und
+hebt damit den DSCR, in jeder gerankten Stufe. Die Stichprobe selbst trägt
+das nicht als Beleg: **Sechs der 17 Fälle liegen in S0** ohne Rangplatz, und
+der Gegenbefund oben (`e9a8c11d`) zeigt, dass eine gleichzeitige
+Verschlechterung der Datenlage die Formel-Wirkung überdecken kann. „17 von
+17 Fällen bestätigt" ist deshalb **kein belastbarer Beleg** und wird hier
+nicht mehr als einer angeführt. Die Aussage „im Median um 539 Plätze" ist
+ohnehin keine Messung dieses Entwurfs, sondern eine Eigenschaft der
+ungerankten Gesamtliste — sie ist nach vier Wochen, innerhalb der Stufe und
+ohne S0, zu wiederholen.
 
 ---
 
 ### 13.7 Was Schritt 0 offen lässt
 
 - **M4 und M6 haben zu wenig Historie.** Beide Zahlen sind an sieben Tagen
-  Bestand gemessen und nach vier Wochen zu wiederholen. Bis dahin sind die
-  3-Tage-Schwelle (6.3) und das 3-Tage-Fenster (4.3) vorläufig.
+  Bestand gemessen und nach vier Wochen zu wiederholen. Sie tragen deshalb
+  **keine Schwelle**: Die vom Nachtrag beschlossene 3-Tage-Schwelle (6.3) und
+  das 3-Tage-Fenster (4.3) sind am 2026-09-13 **zurückgenommen**. Bis zur
+  Nachmessung gilt die regionsindividuelle Definition (6.3) und das
+  7-Tage-Fenster (4.3), beides als offener Punkt, nicht als Entscheidung.
 - **Die 148 Objekte ohne Fläche und ohne Lücke** verschwinden von selbst,
   sobald sie erneut gescannt werden. Die erweiterte S0-Bedingung aus 3.3
   bleibt trotzdem nötig: Sie ist die Regel, die verhindert, dass die
@@ -1254,6 +1612,63 @@ Median um 539 Plätze" ist es nicht. Sie ist nach vier Wochen zu wiederholen.
   Hebel für das Dashboard ist derselbe wie für die Meldung (A11): eine PLZ
   für Immowelt-Objekte, nicht eine bessere Mietschätzung.
 - **E-4 ist durch M3 dringender geworden, nicht entspannter.** Wenn
-  bundeslandgenaue Schätzungen nicht melden dürfen, bleiben **197 von 12.611**
-  Objekten für den Meldeweg — das Dashboard wäre dann nicht die Ergänzung,
-  sondern der einzige Weg zu 98 % des Bestands.
+  bundeslandgenaue Schätzungen nicht melden dürfen, bleiben nach der
+  **korrigierten** Stufenregel **53 von 12.611** Objekten für den Meldeweg
+  (S3 1 + S2 52) — das Dashboard wäre dann nicht die Ergänzung, sondern der
+  einzige Weg zu über 99 % des Bestands. *Verfahren:* Das ist eine
+  **Ableitung** aus den Stufenzahlen in 13.1, keine eigene Messung; nach der
+  alten Stufenregel lautete sie 197 (S3 1 + S2 196), und diese Fassung stand
+  bis zum 2026-09-13 hier. *Was die Zahl nicht hergibt:* Sie sagt nicht, wie
+  viele dieser 53 Objekte die Meldeschwellen überhaupt passieren — die Größe,
+  die A11 mit „339 von 409 Meldekandidaten" (2026-09-08) zählt, ist eine
+  andere (E-4).
+
+---
+
+### 13.8 Korrekturrunde 2026-09-13 — was an diesem Nachtrag korrigiert wurde
+
+**Keine Codeänderung, keine neue Messung.** Diese Runde hat den Nachtrag vom
+2026-09-12 gegen die Funde in
+[`2026-09-12-messfragen-nachtrag-funde.md`](2026-09-12-messfragen-nachtrag-funde.md)
+gelesen. Die **Rohzahlen der Messung sind reproduziert und bestätigt**;
+beanstandet war, was der Nachtrag daraus im Entwurf gemacht hat. Geändert
+wurde deshalb kein Messwert, sondern wo zwei Stände nebeneinanderstanden, wo
+eine Zahl ohne Verfahren dastand und wo eine Schlussfolgerung weiter trug, als
+ihre Zahl reicht.
+
+| Fund | Stellen | Ergebnis |
+|---|---|---|
+| Korrigierte S0-Regel, alte Zahlen | 3.1, 3.3, 10 (M3), 12 (Punkt 2), 13.1 | Gezählt wird nach der korrigierten Regel: **S3 1 · S2 52 · S1 11.308 · S0 1.250**. Die Blockfrage für S2 ist wieder **offen** — auch in der Zusammenfassung (12), die zuvor weiter „vier Sicherheitsstufen als getrennte Blöcke" ohne diesen Vorbehalt nannte. |
+| 6.3 trug zwei Schwellen | 6.3, 10 (M4), 13.4, 13.7 | Die globale 3-Tage-Schwelle ist **zurückgezogen**; sie ist auf sieben Tagen Historie nicht entscheidbar. |
+| 4.3 gegen 13.4 | 4.3, 7, 10 (M4), 12, 13.4, 13.7 | Das kürzeste Fenster bleibt bei **7 Tagen**, weil M4 das `last_seen`-Alter misst und nicht den Regionsabstand. Frage offen. |
+| M6 rankte eine andere Liste | 2.4, 10 (M6), 13.6 | Die gerankte Liste ist benannt: global über alle 12.157 **einschließlich S0**. 2.4 trägt den Vorbehalt aus n = 17. |
+| „54 statt 157" | 6.2, 6.3, 11 (E-7), 13.4 | Beide Größen stehen mit Namen nebeneinander (ohne `fundort` **250**, ohne zuordenbare Region **54**); die Ursache ist als **Vermutung** gekennzeichnet. |
+| Vier kleine Funde | 3.1, 3.2, 3.8, 7, 11 (E-4), 13.7 | „2 Objekte" → **1**; die 7,6 Tage sind als andere Größe gekennzeichnet; E-4 und 13.7 tragen dieselbe Ableitung; „6.408 von 11.308" ist aus der Tabelle in 3.1 **entfernt** und steht nur noch im Kasten darunter als frühere Angabe des Nachtrags mit **Verfahren unbekannt, nicht reproduzierbar** (finale Fix-Welle, 2026-09-13 — die zunächst hier nachgetragene PLZ-Herleitung war nicht haltbar und ist gestrichen). |
+| Folgestellen beim Gegenlesen | Kopf des Dokuments, 3.2, 3.7, 9, 13.3 | Der Kopf nennt die Korrekturrunde; 3.2 und 9 (Schritt 4) tragen die offene Blockfrage; 3.7 verlor die Begründung „über die Hälfte des Bestands" (gemessen 9,9 %); 13.3 sagt jetzt, dass seine 52 auswertbaren S2-Objekte genau das korrigierte S2 sind. |
+
+**Was diese Runde nicht konnte, und das ist der wichtigste Satz hier.** Zwei
+Funde ließen die Wahl zwischen *nachmessen* und *kennzeichnen*. Nachgemessen
+wurde **nichts**, und zwar nicht aus Bequemlichkeit: Die Messskripte des
+Prüfers —
+`messung-korrektur-regionsabstand.ts`, `messung-m6-preissenkung.ts`,
+`messung-m6-teil2.ts` — liegen im Verzeichnis
+`.superpowers/sdd/2026-09-12-blaetterung-meldedeckel-und-a4/`, das
+**git-ignoriert** ist. Das Verzeichnis existiert weder im Arbeitszweig noch im
+Hauptcheckout; es ist mit der Sitzung des Prüfers verloren gegangen. Die
+Skripte sind also nicht *gescheitert*, sie waren **gar nicht vorhanden**. Neue
+zu schreiben war in einer reinen Dokumentationsrunde nicht zulässig.
+
+**Daraus folgt für die Nachmessung in vier Wochen**, dass drei Dinge
+zusammengehören und in einem Zug zu erledigen sind:
+
+1. Der **Regionsabstand** aus `sweep_region_runs` — er entscheidet über das
+   kürzeste Zeitfenster in 4.3 **und** über die Schwelle in 6.3.
+2. **M6 innerhalb der Stufe und ohne S0** — erst das ergibt eine Zahl über die
+   Rangliste, die der Entwurf wirklich vergibt.
+3. Die **Zählung hinter „6.408 von 11.308"** (3.1), deren Rechenschritt nicht
+   protokolliert ist.
+
+**Und eine Lehre für die Ablage:** Ein Messskript, dessen Ergebnis in eine
+Spezifikation eingeht, gehört nicht in ein git-ignoriertes Verzeichnis. Sonst
+ist die Zahl da und ihr Verfahren weg — genau der Zustand, den die Grundregel
+dieses Nachtrags verbietet.
