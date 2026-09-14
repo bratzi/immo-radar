@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import { ermittleJahreskaltmiete,
   mieteProM2FuerBundesland,
   bundeslandFuerRegionscode,
+  mietSpanneFuerBundesland,
+  mietSpanneBundesweit,
+  REGIONALE_SPANNE_S2,
 } from "./rentEstimate.js";
 
 describe("ermittleJahreskaltmiete", () => {
@@ -153,5 +156,33 @@ describe("ermittleJahreskaltmiete -- bundeslandgenauer Weg", () => {
   it("faellt auf den Bundesschnitt zurueck bei unbekanntem Bundesland", () => {
     const m = ermittleJahreskaltmiete(null, 100, undefined, "Elbonien");
     expect(m.quelle).toBe("geschaetzt_bundesweit");
+  });
+});
+
+describe("mietSpanneFuerBundesland", () => {
+  it("berechnet die gemessene Spanne fuer Bayern -- deckungsgleich mit Entwurf 3.4 (-34,8 % / +67,1 %)", () => {
+    const spanne = mietSpanneFuerBundesland("Bayern");
+    expect(spanne).not.toBeNull();
+    expect(spanne!.minProzent).toBeCloseTo(-0.348, 3);
+    expect(spanne!.maxProzent).toBeCloseTo(0.671, 3);
+  });
+
+  it("liefert null fuer ein unbekanntes Bundesland -- keine erfundene Spanne", () => {
+    expect(mietSpanneFuerBundesland("Nirgendwo")).toBeNull();
+  });
+});
+
+describe("REGIONALE_SPANNE_S2", () => {
+  it("ist die feste A11-Streuung der Tabelle gegen den Zensus, -23,7 % bis +23,9 %", () => {
+    expect(REGIONALE_SPANNE_S2.minProzent).toBeCloseTo(-0.237, 3);
+    expect(REGIONALE_SPANNE_S2.maxProzent).toBeCloseTo(0.239, 3);
+  });
+});
+
+describe("mietSpanneBundesweit", () => {
+  it("berechnet die Spanne ueber ALLE PLZ-Werte gegen den Bundesschnitt 11,11 €/m²", () => {
+    const spanne = mietSpanneBundesweit();
+    expect(spanne.minProzent).toBeCloseTo(-0.4599459945994599, 6);
+    expect(spanne.maxProzent).toBeCloseTo(0.8451845184518453, 6);
   });
 });
