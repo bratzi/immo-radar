@@ -118,6 +118,25 @@ export function bundeslandFuerRegionscode(code: string): string | null {
   return BUNDESLAND_JE_REGIONSCODE[code] ?? null;
 }
 
+/** Die REGIONALE_MIETE_PRO_M2-Werte aller PLZ-Zweisteller eines Bundeslandes. */
+function werteFuerBundesland(bundesland: string): number[] {
+  const zweisteller = new Set<string>();
+  for (const [plz, land] of Object.entries(plzBundesland as Record<string, string>)) {
+    if (land !== bundesland) continue;
+    const treffer = plz.match(/^(\d{2})\d{3}$/);
+    if (treffer !== null) zweisteller.add(treffer[1]);
+  }
+
+  const werte: number[] = [];
+  for (const zs of zweisteller) {
+    const wert = REGIONALE_MIETE_PRO_M2[zs];
+    if (wert !== undefined) werte.push(wert);
+  }
+  return werte;
+}
+
+const mittelwerte = new Map<string, number | null>();
+
 /**
  * Naeherungs-Kaltmiete je m²/Monat fuer ein ganzes BUNDESLAND.
  *
@@ -155,31 +174,87 @@ export function bundeslandFuerRegionscode(code: string): string | null {
  * Wird beim ersten Aufruf berechnet und gemerkt -- 10.812 PLZ-Eintraege sind
  * nichts, aber es passiert einmal je Kandidat.
  */
-const mittelwerte = new Map<string, number | null>();
-
 export function mieteProM2FuerBundesland(bundesland: string): number | null {
   const gemerkt = mittelwerte.get(bundesland);
   if (gemerkt !== undefined) return gemerkt;
 
-  const zweisteller = new Set<string>();
-  for (const [plz, land] of Object.entries(plzBundesland as Record<string, string>)) {
-    if (land !== bundesland) continue;
-    const treffer = plz.match(/^(\d{2})\d{3}$/);
-    if (treffer !== null) zweisteller.add(treffer[1]);
-  }
-
-  const werte: number[] = [];
-  for (const zs of zweisteller) {
-    const wert = REGIONALE_MIETE_PRO_M2[zs];
-    if (wert !== undefined) werte.push(wert);
-  }
-
+  const werte = werteFuerBundesland(bundesland);
   const ergebnis =
     werte.length === 0
       ? null
       : Math.round((werte.reduce((a, b) => a + b, 0) / werte.length) * 100) / 100;
   mittelwerte.set(bundesland, ergebnis);
   return ergebnis;
+}
+
+/**
+ * Bandbreite der Mietschaetzung, als prozentuale Abweichung vom Mittelwert
+ * nach unten und oben.
+ */
+export interface MietSpanne {
+  minProzent: number;
+  maxProzent: number;
+}
+
+/**
+ * Bandbreite fuer ein Bundesland: die GEMESSENE interne Spanne seiner
+ * PLZ-Werte gegen den eigenen Mittelwert (Dashboard-Entwurf 3.4) -- nicht
+ * eine pauschale Annahme. Fuer Bayern z. B. -34,8 % / +67,1 %, deckungsgleich
+ * mit der von Hand nachgerechneten Tabelle in 3.4. `null`, wenn das
+ * Bundesland keine PLZ-Werte hat (wie `mieteProM2FuerBundesland`).
+ */
+const spannen = new Map<string, MietSpanne | null>();
+
+export function mietSpanneFuerBundesland(bundesland: string): MietSpanne | null {
+  const gemerkt = spannen.get(bundesland);
+  if (gemerkt !== undefined) return gemerkt;
+
+  const werte = werteFuerBundesland(bundesland);
+  if (werte.length === 0) {
+    spannen.set(bundesland, null);
+    return null;
+  }
+  const mittel = mieteProM2FuerBundesland(bundesland);
+  if (mittel === null) {
+    spannen.set(bundesland, null);
+    return null;
+  }
+  const min = Math.min(...werte);
+  const max = Math.max(...werte);
+  const ergebnis: MietSpanne = {
+    minProzent: (min - mittel) / mittel,
+    maxProzent: (max - mittel) / mittel,
+  };
+  spannen.set(bundesland, ergebnis);
+  return ergebnis;
+}
+
+/**
+ * Feste Bandbreite fuer S2 (PLZ-genaue Schaetzung): die gemessene Streuung
+ * der Tabelle `REGIONALE_MIETE_PRO_M2` gegen den Zensus 2022 (Backlog A11,
+ * n = 23). Anders als bei S1 ist das keine je-Bundesland-Spanne -- sie
+ * beschreibt, wie gut die Tabelle selbst trifft, nicht die Streuung
+ * INNERHALB eines Landes.
+ */
+export const REGIONALE_SPANNE_S2: MietSpanne = {
+  minProzent: -0.237,
+  maxProzent: 0.239,
+};
+
+/**
+ * Bandbreite der bundesweiten Schaetzung (`geschaetzt_bundesweit`), analog
+ * zu `mietSpanneFuerBundesland`: die gemessene Spanne ALLER PLZ-Werte gegen
+ * den Bundesschnitt. Betrifft nur sehr wenige Objekte (6 von 12.611,
+ * gemessen 2026-09-12, Entwurf 3.3) -- Faelle ohne PLZ UND ohne Bundesland.
+ */
+export function mietSpanneBundesweit(): MietSpanne {
+  const werte = Object.values(REGIONALE_MIETE_PRO_M2);
+  const min = Math.min(...werte);
+  const max = Math.max(...werte);
+  return {
+    minProzent: (min - BUNDESWEITER_MIETPREIS_PRO_M2_MONAT) / BUNDESWEITER_MIETPREIS_PRO_M2_MONAT,
+    maxProzent: (max - BUNDESWEITER_MIETPREIS_PRO_M2_MONAT) / BUNDESWEITER_MIETPREIS_PRO_M2_MONAT,
+  };
 }
 
 /** Naeherungs-Kaltmiete je m²/Monat fuer eine PLZ, sonst null. */

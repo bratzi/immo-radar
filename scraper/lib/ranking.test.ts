@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { bestimmeSicherheitsstufe } from "./ranking.js";
-import { berechneKennzahlen } from "./metrics.js";
+import { bestimmeSicherheitsstufe, bewerteFuerRangliste, bestimmeVerfuegbarkeitszustand } from "./ranking.js";
+import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
 
 describe("bestimmeSicherheitsstufe", () => {
   it("stuft ein Objekt ohne Wohnflaeche als S0 ein, auch ohne die Datenluecke", () => {
@@ -112,5 +112,181 @@ describe("die Rangzahl ist der DSCR -- und der haengt an einer Identitaet", () =
 
     const b = berechneKennzahlen(kaputt, 6.5);
     expect(b.geschaetzterDscr).toBeCloseTo(b.nettomietrenditeCapRate / 6, 10);
+  });
+});
+
+describe("bewerteFuerRangliste", () => {
+  // Diese Fixtures haengen indirekt am Kalender: berechneKennzahlen ->
+  // instandhaltungssatzProM2 (metrics.ts) staffelt nach
+  // `alter = aktuelles Jahr - baujahr`. Bei baujahr 1998 wechselt `alter`
+  // am 2031-01-01 von <=32 auf >32 (Satz 9,0 -> 11,5 €/m²) -- die unten
+  // gepinnten DSCR-Werte gelten bis dahin und muessen danach neu gerechnet
+  // werden.
+  const leipzig: KennzahlenInput = {
+    kaufpreis: 480_000,
+    jahreskaltmiete: 32_000,
+    einheiten: 3,
+    baujahr: 1998,
+    wohnflaecheM2: 240,
+  };
+  const kaputt: KennzahlenInput = {
+    kaufpreis: 2_840,
+    jahreskaltmiete: 16_224,
+    einheiten: 3,
+    baujahr: 1998,
+    wohnflaecheM2: 198.8,
+  };
+  const GRUNDERWERBSTEUER = 5.5;
+
+  it("liefert bei wohnflaeche_fehlt KEINE Kennzahl -- keine 0, kein Rang, kein Band (3.7)", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_regional", dataGaps: [], livingAreaM2: null },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      "Bayern"
+    );
+    expect(ergebnis.stufe).toBe("S0");
+    expect(ergebnis.rangzahl).toBeNull();
+    expect(ergebnis.band).toBeNull();
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+
+  it("S3 traegt einen Punktwert, aber kein Band (3.4: 'Fuer S3 entfaellt das Band')", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "angegeben", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      null
+    );
+    expect(ergebnis.stufe).toBe("S3");
+    expect(ergebnis.rangzahl).toBeCloseTo(0.8039150663732376, 10);
+    expect(ergebnis.band).toBeNull();
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+
+  it("S1 mit bekanntem Bundesland bekommt das gemessene Landesband -- und ueberquert hier die Meldeschwelle 1,3", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      "Bayern"
+    );
+    expect(ergebnis.stufe).toBe("S1");
+    expect(ergebnis.rangzahl).toBeCloseTo(0.8039150663732376, 10);
+    expect(ergebnis.band).not.toBeNull();
+    expect(ergebnis.band!.unten).toBeCloseTo(0.5241500025253383, 8);
+    expect(ergebnis.band!.oben).toBeCloseTo(1.3431343814711796, 8);
+    expect(ergebnis.istSchwellenwechsler).toBe(true);
+  });
+
+  it("S1 ohne bekanntes Bundesland bekommt fail-closed KEIN Band -- keine erfundene Spanne", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      null
+    );
+    expect(ergebnis.stufe).toBe("S1");
+    expect(ergebnis.band).toBeNull();
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+
+  it("S1 mit rent_source geschaetzt_bundesweit nutzt die bundesweite Spanne, nicht die Landesspanne", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_bundesweit", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      null
+    );
+    expect(ergebnis.stufe).toBe("S1");
+    expect(ergebnis.band).not.toBeNull();
+    expect(ergebnis.band!.unten).toBeCloseTo(0.434157551596708, 8);
+    expect(ergebnis.band!.oben).toBeCloseTo(1.4833716346220858, 8);
+  });
+
+  it("S2 nutzt die feste A11-Spanne, unabhaengig vom Bundesland", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_regional", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      null
+    );
+    expect(ergebnis.stufe).toBe("S2");
+    expect(ergebnis.band).not.toBeNull();
+    expect(ergebnis.band!.unten).toBeCloseTo(0.6133871956427803, 8);
+    expect(ergebnis.band!.oben).toBeCloseTo(0.9960507672364413, 8);
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+
+  it("kein Schwellenwechsler, wenn das ganze Band ueber der Meldeschwelle liegt", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: 198.8 },
+      kaputt,
+      6.5,
+      "Bayern"
+    );
+    expect(ergebnis.stufe).toBe("S1");
+    expect(ergebnis.band!.unten).toBeGreaterThan(1.3);
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+});
+
+describe("bestimmeVerfuegbarkeitszustand", () => {
+  const jetzt = new Date("2026-09-14T12:00:00Z");
+
+  it("ist abgaengig, sobald disappearedAt gesetzt ist -- unabhaengig von allem anderen", () => {
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: "2026-09-01T00:00:00Z", lastSeen: "2026-09-14T11:00:00Z", kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("abgaengig");
+  });
+
+  it("ist unbestaetigt, wenn die Region keine Kadenz hat (nicht zuzuordnen ODER erkennt keine Abgaenge)", () => {
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: "2026-09-14T11:59:00Z", kadenzTageDerRegion: null },
+        jetzt
+      )
+    ).toBe("unbestaetigt");
+  });
+
+  it("ist verfuegbar, wenn last_seen juenger ist als die doppelte Regionskadenz", () => {
+    // Kadenz 1 Tag, last_seen vor 1,5 Tagen -- unter dem Doppelten (2 Tage).
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: "2026-09-13T00:00:00Z", kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("verfuegbar");
+  });
+
+  it("ist unbestaetigt, wenn last_seen aelter ist als die doppelte Regionskadenz", () => {
+    // Kadenz 1 Tag, last_seen vor 2 Tagen 13 Stunden -- ueber dem Doppelten.
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: "2026-09-11T23:00:00Z", kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("unbestaetigt");
+  });
+
+  it("ist unbestaetigt, wenn last_seen fehlt -- keine Angabe ist kein Freibrief", () => {
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: null, kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("unbestaetigt");
+  });
+
+  it("ist unbestaetigt, wenn last_seen kein gueltiges Datum ist", () => {
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: "kein-datum", kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("unbestaetigt");
   });
 });
