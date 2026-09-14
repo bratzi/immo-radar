@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { bestimmeSicherheitsstufe } from "./ranking.js";
-import { berechneKennzahlen } from "./metrics.js";
+import { bestimmeSicherheitsstufe, bewerteFuerRangliste } from "./ranking.js";
+import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
 
 describe("bestimmeSicherheitsstufe", () => {
   it("stuft ein Objekt ohne Wohnflaeche als S0 ein, auch ohne die Datenluecke", () => {
@@ -112,5 +112,115 @@ describe("die Rangzahl ist der DSCR -- und der haengt an einer Identitaet", () =
 
     const b = berechneKennzahlen(kaputt, 6.5);
     expect(b.geschaetzterDscr).toBeCloseTo(b.nettomietrenditeCapRate / 6, 10);
+  });
+});
+
+describe("bewerteFuerRangliste", () => {
+  const leipzig: KennzahlenInput = {
+    kaufpreis: 480_000,
+    jahreskaltmiete: 32_000,
+    einheiten: 3,
+    baujahr: 1998,
+    wohnflaecheM2: 240,
+  };
+  const kaputt: KennzahlenInput = {
+    kaufpreis: 2_840,
+    jahreskaltmiete: 16_224,
+    einheiten: 3,
+    baujahr: 1998,
+    wohnflaecheM2: 198.8,
+  };
+  const GRUNDERWERBSTEUER = 5.5;
+
+  it("liefert bei wohnflaeche_fehlt KEINE Kennzahl -- keine 0, kein Rang, kein Band (3.7)", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_regional", dataGaps: [], livingAreaM2: null },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      "Bayern"
+    );
+    expect(ergebnis.stufe).toBe("S0");
+    expect(ergebnis.rangzahl).toBeNull();
+    expect(ergebnis.band).toBeNull();
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+
+  it("S3 traegt einen Punktwert, aber kein Band (3.4: 'Fuer S3 entfaellt das Band')", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "angegeben", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      null
+    );
+    expect(ergebnis.stufe).toBe("S3");
+    expect(ergebnis.rangzahl).toBeCloseTo(0.8039150663732376, 10);
+    expect(ergebnis.band).toBeNull();
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+
+  it("S1 mit bekanntem Bundesland bekommt das gemessene Landesband -- und ueberquert hier die Meldeschwelle 1,3", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      "Bayern"
+    );
+    expect(ergebnis.stufe).toBe("S1");
+    expect(ergebnis.rangzahl).toBeCloseTo(0.8039150663732376, 10);
+    expect(ergebnis.band).not.toBeNull();
+    expect(ergebnis.band!.unten).toBeCloseTo(0.5241500025253383, 8);
+    expect(ergebnis.band!.oben).toBeCloseTo(1.3431343814711796, 8);
+    expect(ergebnis.istSchwellenwechsler).toBe(true);
+  });
+
+  it("S1 ohne bekanntes Bundesland bekommt fail-closed KEIN Band -- keine erfundene Spanne", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      null
+    );
+    expect(ergebnis.stufe).toBe("S1");
+    expect(ergebnis.band).toBeNull();
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+
+  it("S1 mit rent_source geschaetzt_bundesweit nutzt die bundesweite Spanne, nicht die Landesspanne", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_bundesweit", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      null
+    );
+    expect(ergebnis.stufe).toBe("S1");
+    expect(ergebnis.band).not.toBeNull();
+    expect(ergebnis.band!.unten).toBeCloseTo(0.434157551596708, 8);
+    expect(ergebnis.band!.oben).toBeCloseTo(1.4833716346220858, 8);
+  });
+
+  it("S2 nutzt die feste A11-Spanne, unabhaengig vom Bundesland", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_regional", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      GRUNDERWERBSTEUER,
+      null
+    );
+    expect(ergebnis.stufe).toBe("S2");
+    expect(ergebnis.band).not.toBeNull();
+    expect(ergebnis.band!.unten).toBeCloseTo(0.6133871956427803, 8);
+    expect(ergebnis.band!.oben).toBeCloseTo(0.9960507672364413, 8);
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+
+  it("kein Schwellenwechsler, wenn das ganze Band ueber der Meldeschwelle liegt", () => {
+    const ergebnis = bewerteFuerRangliste(
+      { rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: 198.8 },
+      kaputt,
+      6.5,
+      "Bayern"
+    );
+    expect(ergebnis.stufe).toBe("S1");
+    expect(ergebnis.band!.unten).toBeGreaterThan(1.3);
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
   });
 });

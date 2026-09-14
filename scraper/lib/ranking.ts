@@ -5,6 +5,14 @@
  * Reine Funktion: kein Supabase, kein Netz, kein `console`, keine Zeit.
  */
 
+import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
+import {
+  mietSpanneFuerBundesland,
+  mietSpanneBundesweit,
+  REGIONALE_SPANNE_S2,
+  type MietSpanne,
+} from "./rentEstimate.js";
+
 export type Sicherheitsstufe = "S3" | "S2" | "S1" | "S0";
 
 /**
@@ -67,4 +75,99 @@ export function bestimmeSicherheitsstufe(objekt: {
   }
 
   return "S0";
+}
+
+/** DSCR bei der unguenstigsten (`unten`) und der guenstigsten (`oben`) Mietannahme im Band. */
+export interface Bandkanten {
+  unten: number;
+  oben: number;
+}
+
+/**
+ * Schwelle, an der die Meldung haengt (`topTreffer` in `metrics.ts`,
+ * `geschaetzterDscr >= 1,3`). Hier dupliziert statt importiert, weil
+ * `metrics.ts` sie nirgends als eigenen Namen exportiert -- sie steckt dort
+ * als Literal in `topTreffer`.
+ */
+const DSCR_MELDESCHWELLE = 1.3;
+
+/**
+ * Bandkanten durch einen zweiten und dritten Aufruf von `berechneKennzahlen`
+ * mit skalierter Miete (Entwurf 3.4) -- das Band wird gerechnet, nicht
+ * geschaetzt. `noi` waechst monoton mit der Miete (Bewirtschaftungskosten
+ * sind zwischen 20 % und 35 % der Miete gedeckelt, nie mehr), darum liefert
+ * die niedrigere Miete auch zuverlaessig die niedrigere Bandkante.
+ */
+function berechneBandkanten(
+  input: KennzahlenInput,
+  grunderwerbsteuerSatzProzent: number,
+  spanne: MietSpanne
+): Bandkanten {
+  const untenInput = { ...input, jahreskaltmiete: input.jahreskaltmiete * (1 + spanne.minProzent) };
+  const obenInput = { ...input, jahreskaltmiete: input.jahreskaltmiete * (1 + spanne.maxProzent) };
+  return {
+    unten: berechneKennzahlen(untenInput, grunderwerbsteuerSatzProzent).geschaetzterDscr,
+    oben: berechneKennzahlen(obenInput, grunderwerbsteuerSatzProzent).geschaetzterDscr,
+  };
+}
+
+export interface RangEinordnung {
+  stufe: Sicherheitsstufe;
+  /** DSCR, `null` fuer S0 -- ein nicht beurteilbares Objekt bekommt KEINE Kennzahl (3.7), keine 0. */
+  rangzahl: number | null;
+  /** `null` fuer S0 (keine Kennzahl) und S3 (dort steht ein Punktwert, kein Band, 3.4). */
+  band: Bandkanten | null;
+  istSchwellenwechsler: boolean;
+}
+
+/**
+ * Fasst Sicherheitsstufe, Rangzahl, Bandkanten und Schwellenwechsler-Merkmal
+ * zu einer Einordnung zusammen (Entwurf 9, Schritt 2).
+ *
+ * S0 bekommt ueberhaupt keine Kennzahl (3.7) -- die Pruefung passiert VOR
+ * jedem Aufruf von `berechneKennzahlen`, nicht danach: Ein Objekt ohne
+ * Wohnflaeche soll nie eine 0 durchrechnen, die spaeter verworfen wird.
+ */
+export function bewerteFuerRangliste(
+  objekt: {
+    rentSource: string | null;
+    dataGaps: string[];
+    livingAreaM2: number | null;
+  },
+  kennzahlenInput: KennzahlenInput,
+  grunderwerbsteuerSatzProzent: number,
+  bundesland: string | null
+): RangEinordnung {
+  const stufe = bestimmeSicherheitsstufe(objekt);
+
+  if (stufe === "S0") {
+    return { stufe, rangzahl: null, band: null, istSchwellenwechsler: false };
+  }
+
+  const rangzahl = berechneKennzahlen(kennzahlenInput, grunderwerbsteuerSatzProzent).geschaetzterDscr;
+
+  if (stufe === "S3") {
+    return { stufe, rangzahl, band: null, istSchwellenwechsler: false };
+  }
+
+  const spanne: MietSpanne | null =
+    stufe === "S2"
+      ? REGIONALE_SPANNE_S2
+      : objekt.rentSource === "geschaetzt_bundesweit"
+        ? mietSpanneBundesweit()
+        : bundesland === null
+          ? null
+          : mietSpanneFuerBundesland(bundesland);
+
+  if (spanne === null) {
+    return { stufe, rangzahl, band: null, istSchwellenwechsler: false };
+  }
+
+  const band = berechneBandkanten(kennzahlenInput, grunderwerbsteuerSatzProzent, spanne);
+  return {
+    stufe,
+    rangzahl,
+    band,
+    istSchwellenwechsler: band.unten < DSCR_MELDESCHWELLE && band.oben >= DSCR_MELDESCHWELLE,
+  };
 }
