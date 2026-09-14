@@ -171,3 +171,40 @@ export function bewerteFuerRangliste(
     istSchwellenwechsler: band.unten < DSCR_MELDESCHWELLE && band.oben >= DSCR_MELDESCHWELLE,
   };
 }
+
+export type Verfuegbarkeitszustand = "verfuegbar" | "unbestaetigt" | "abgaengig";
+
+const MS_PRO_TAG = 24 * 60 * 60 * 1000;
+
+/**
+ * Die drei Verfuegbarkeitszustaende aus Entwurf 6.3.
+ *
+ * `kadenzTageDerRegion === null` deckt drei Faelle aus der Entwurfstabelle
+ * gleichzeitig ab, die dasselbe Ergebnis haben: keine Region zuzuordnen,
+ * eine Region ohne Abgangserkennung (`nw`, `bw`, `mv`), oder eine Kadenz,
+ * die (noch) nicht ermittelbar ist. In allen drei Faellen gilt "nicht
+ * hingesehen", nie "verfuegbar" -- Nichtwissen wird nicht zu Vertrauen
+ * aufgewertet, dieselbe Regel wie bei der Sicherheitsstufe.
+ *
+ * Fehlt `lastSeen`, gilt dasselbe: keine Angabe ist kein Freibrief (wie
+ * `istHartLoeschbar` in `bestand.ts`).
+ */
+export function bestimmeVerfuegbarkeitszustand(
+  objekt: {
+    disappearedAt: string | null;
+    lastSeen: string | null;
+    kadenzTageDerRegion: number | null;
+  },
+  jetzt: Date
+): Verfuegbarkeitszustand {
+  if (objekt.disappearedAt !== null) return "abgaengig";
+  if (objekt.kadenzTageDerRegion === null) return "unbestaetigt";
+  if (objekt.lastSeen === null) return "unbestaetigt";
+
+  const lastSeenMs = new Date(objekt.lastSeen).getTime();
+  if (!Number.isFinite(lastSeenMs)) return "unbestaetigt";
+
+  const alterMs = jetzt.getTime() - lastSeenMs;
+  const schwelleMs = 2 * objekt.kadenzTageDerRegion * MS_PRO_TAG;
+  return alterMs > schwelleMs ? "unbestaetigt" : "verfuegbar";
+}

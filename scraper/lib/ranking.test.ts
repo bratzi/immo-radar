@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { bestimmeSicherheitsstufe, bewerteFuerRangliste } from "./ranking.js";
+import { bestimmeSicherheitsstufe, bewerteFuerRangliste, bestimmeVerfuegbarkeitszustand } from "./ranking.js";
 import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
 
 describe("bestimmeSicherheitsstufe", () => {
@@ -222,5 +222,56 @@ describe("bewerteFuerRangliste", () => {
     expect(ergebnis.stufe).toBe("S1");
     expect(ergebnis.band!.unten).toBeGreaterThan(1.3);
     expect(ergebnis.istSchwellenwechsler).toBe(false);
+  });
+});
+
+describe("bestimmeVerfuegbarkeitszustand", () => {
+  const jetzt = new Date("2026-09-14T12:00:00Z");
+
+  it("ist abgaengig, sobald disappearedAt gesetzt ist -- unabhaengig von allem anderen", () => {
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: "2026-09-01T00:00:00Z", lastSeen: "2026-09-14T11:00:00Z", kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("abgaengig");
+  });
+
+  it("ist unbestaetigt, wenn die Region keine Kadenz hat (nicht zuzuordnen ODER erkennt keine Abgaenge)", () => {
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: "2026-09-14T11:59:00Z", kadenzTageDerRegion: null },
+        jetzt
+      )
+    ).toBe("unbestaetigt");
+  });
+
+  it("ist verfuegbar, wenn last_seen juenger ist als die doppelte Regionskadenz", () => {
+    // Kadenz 1 Tag, last_seen vor 1,5 Tagen -- unter dem Doppelten (2 Tage).
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: "2026-09-13T00:00:00Z", kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("verfuegbar");
+  });
+
+  it("ist unbestaetigt, wenn last_seen aelter ist als die doppelte Regionskadenz", () => {
+    // Kadenz 1 Tag, last_seen vor 2 Tagen 13 Stunden -- ueber dem Doppelten.
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: "2026-09-11T23:00:00Z", kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("unbestaetigt");
+  });
+
+  it("ist unbestaetigt, wenn last_seen fehlt -- keine Angabe ist kein Freibrief", () => {
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: null, kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("unbestaetigt");
   });
 });
