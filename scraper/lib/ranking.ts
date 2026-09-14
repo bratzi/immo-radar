@@ -2,7 +2,10 @@
  * Sicherheitsstufen fuer die Rangliste, nach Abschnitt 3.3 des
  * Dashboard-Entwurfs (docs/superpowers/specs/2026-09-09-dashboard-entwurf.md).
  *
- * Reine Funktion: kein Supabase, kein Netz, kein `console`, keine Zeit.
+ * Reine Funktion: kein Supabase, kein Netz, kein `console`. Zeit kommt nur
+ * indirekt herein, ueber `berechneKennzahlen` (metrics.ts liest dort
+ * `new Date().getFullYear()` fuer den Instandhaltungssatz) -- diese Datei
+ * selbst liest die Uhr nirgends direkt.
  */
 
 import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
@@ -117,6 +120,7 @@ export interface RangEinordnung {
   rangzahl: number | null;
   /** `null` fuer S0 (keine Kennzahl) und S3 (dort steht ein Punktwert, kein Band, 3.4). */
   band: Bandkanten | null;
+  /** Nur aussagekraeftig, wenn `band !== null` -- ohne Band ist `false` "nicht beurteilbar", nicht "ueberquert die Schwelle nicht". */
   istSchwellenwechsler: boolean;
 }
 
@@ -188,6 +192,13 @@ const MS_PRO_TAG = 24 * 60 * 60 * 1000;
  *
  * Fehlt `lastSeen`, gilt dasselbe: keine Angabe ist kein Freibrief (wie
  * `istHartLoeschbar` in `bestand.ts`).
+ *
+ * Entwurf 6.3 definiert nur zwei Kanten -- "juenger als die Kadenz" fuer
+ * verfuegbar, "aelter als das Doppelte" fuer unbestaetigt -- und laesst den
+ * Spalt dazwischen offen. Diese Funktion loest ihn bewusst zugunsten von
+ * "verfuegbar" auf: die einzige gepruefte Kante ist das Doppelte der
+ * Kadenz. Das ist eine Auslegung, keine Vorgabe des Entwurfs -- 6.3 kuendigt
+ * ohnehin eine Nachmessung der Schwelle in vier Wochen an.
  */
 export function bestimmeVerfuegbarkeitszustand(
   objekt: {

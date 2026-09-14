@@ -118,6 +118,25 @@ export function bundeslandFuerRegionscode(code: string): string | null {
   return BUNDESLAND_JE_REGIONSCODE[code] ?? null;
 }
 
+/** Die REGIONALE_MIETE_PRO_M2-Werte aller PLZ-Zweisteller eines Bundeslandes. */
+function werteFuerBundesland(bundesland: string): number[] {
+  const zweisteller = new Set<string>();
+  for (const [plz, land] of Object.entries(plzBundesland as Record<string, string>)) {
+    if (land !== bundesland) continue;
+    const treffer = plz.match(/^(\d{2})\d{3}$/);
+    if (treffer !== null) zweisteller.add(treffer[1]);
+  }
+
+  const werte: number[] = [];
+  for (const zs of zweisteller) {
+    const wert = REGIONALE_MIETE_PRO_M2[zs];
+    if (wert !== undefined) werte.push(wert);
+  }
+  return werte;
+}
+
+const mittelwerte = new Map<string, number | null>();
+
 /**
  * Naeherungs-Kaltmiete je m²/Monat fuer ein ganzes BUNDESLAND.
  *
@@ -155,25 +174,6 @@ export function bundeslandFuerRegionscode(code: string): string | null {
  * Wird beim ersten Aufruf berechnet und gemerkt -- 10.812 PLZ-Eintraege sind
  * nichts, aber es passiert einmal je Kandidat.
  */
-/** Die REGIONALE_MIETE_PRO_M2-Werte aller PLZ-Zweisteller eines Bundeslandes. */
-function werteFuerBundesland(bundesland: string): number[] {
-  const zweisteller = new Set<string>();
-  for (const [plz, land] of Object.entries(plzBundesland as Record<string, string>)) {
-    if (land !== bundesland) continue;
-    const treffer = plz.match(/^(\d{2})\d{3}$/);
-    if (treffer !== null) zweisteller.add(treffer[1]);
-  }
-
-  const werte: number[] = [];
-  for (const zs of zweisteller) {
-    const wert = REGIONALE_MIETE_PRO_M2[zs];
-    if (wert !== undefined) werte.push(wert);
-  }
-  return werte;
-}
-
-const mittelwerte = new Map<string, number | null>();
-
 export function mieteProM2FuerBundesland(bundesland: string): number | null {
   const gemerkt = mittelwerte.get(bundesland);
   if (gemerkt !== undefined) return gemerkt;
@@ -203,17 +203,30 @@ export interface MietSpanne {
  * mit der von Hand nachgerechneten Tabelle in 3.4. `null`, wenn das
  * Bundesland keine PLZ-Werte hat (wie `mieteProM2FuerBundesland`).
  */
+const spannen = new Map<string, MietSpanne | null>();
+
 export function mietSpanneFuerBundesland(bundesland: string): MietSpanne | null {
+  const gemerkt = spannen.get(bundesland);
+  if (gemerkt !== undefined) return gemerkt;
+
   const werte = werteFuerBundesland(bundesland);
-  if (werte.length === 0) return null;
+  if (werte.length === 0) {
+    spannen.set(bundesland, null);
+    return null;
+  }
   const mittel = mieteProM2FuerBundesland(bundesland);
-  if (mittel === null) return null;
+  if (mittel === null) {
+    spannen.set(bundesland, null);
+    return null;
+  }
   const min = Math.min(...werte);
   const max = Math.max(...werte);
-  return {
+  const ergebnis: MietSpanne = {
     minProzent: (min - mittel) / mittel,
     maxProzent: (max - mittel) / mittel,
   };
+  spannen.set(bundesland, ergebnis);
+  return ergebnis;
 }
 
 /**

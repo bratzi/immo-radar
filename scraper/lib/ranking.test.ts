@@ -116,6 +116,12 @@ describe("die Rangzahl ist der DSCR -- und der haengt an einer Identitaet", () =
 });
 
 describe("bewerteFuerRangliste", () => {
+  // Diese Fixtures haengen indirekt am Kalender: berechneKennzahlen ->
+  // instandhaltungssatzProM2 (metrics.ts) staffelt nach
+  // `alter = aktuelles Jahr - baujahr`. Bei baujahr 1998 wechselt `alter`
+  // am 2031-01-01 von <=32 auf >32 (Satz 9,0 -> 11,5 €/m²) -- die unten
+  // gepinnten DSCR-Werte gelten bis dahin und muessen danach neu gerechnet
+  // werden.
   const leipzig: KennzahlenInput = {
     kaufpreis: 480_000,
     jahreskaltmiete: 32_000,
@@ -270,6 +276,15 @@ describe("bestimmeVerfuegbarkeitszustand", () => {
     expect(
       bestimmeVerfuegbarkeitszustand(
         { disappearedAt: null, lastSeen: null, kadenzTageDerRegion: 1 },
+        jetzt
+      )
+    ).toBe("unbestaetigt");
+  });
+
+  it("ist unbestaetigt, wenn last_seen kein gueltiges Datum ist", () => {
+    expect(
+      bestimmeVerfuegbarkeitszustand(
+        { disappearedAt: null, lastSeen: "kein-datum", kadenzTageDerRegion: 1 },
         jetzt
       )
     ).toBe("unbestaetigt");
