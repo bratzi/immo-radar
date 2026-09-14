@@ -1159,6 +1159,52 @@ Vollständigkeitsmaßstab für Regionen ohne ausgewiesene Menge — siehe A16.
 **Schritt 2 und 3 dieser Aufgabe entfallen damit.** Es gibt kein Muster zu
 erweitern.
 
+---
+
+## A17. Vier kleinere Befunde aus der ranking-schritt2-Review, bewusst zurückgestellt
+
+**Herkunft:** Die abschließende Gesamtprüfung des Zweigs `sdd/ranking-schritt2`
+(gemergt `bf0ddf1`, Ledger
+`.superpowers/sdd/2026-09-14-ranking-schritt2-abschluss/progress.md`) hat vier
+wichtige und zwei kleine Befunde gemeldet. Die vier wichtigen und zwei
+kleinen sind in der Fixwave (`96f3528`) behoben; vier weitere kleine Punkte
+wurden bewusst nicht mitgezogen, um die Fixwave nicht zu einer zweiten
+Implementierungsrunde zu machen. Hierher geroutet, wie im Ledger vermerkt.
+
+- **`DSCR_MELDESCHWELLE` ist doppelt.** `scraper/lib/ranking.ts:95` definiert
+  `DSCR_MELDESCHWELLE = 1.3` als eigenen Namen, weil `scraper/lib/metrics.ts:88`
+  denselben Wert nur als Literal in der `topTreffer`-Bedingung trägt und ihn
+  nirgends exportiert. Ändert sich die Meldeschwelle künftig an einer Stelle,
+  bricht die andere lautlos. Behoben würde das, indem `metrics.ts` die Zahl
+  als benannte Konstante exportiert und `ranking.ts` sie importiert statt
+  dupliziert — das hätte `metrics.ts` angefasst, was der Plan ausdrücklich
+  ausschloss.
+- **`undefined` vs. `null` an der DB-Grenze in `bestimmeVerfuegbarkeitszustand`.**
+  Die Signatur verlangt `disappearedAt: string | null`, und die Prüfung
+  `if (objekt.disappearedAt !== null) return "abgaengig";` behandelt jedes
+  `undefined` (z. B. eine Spalte, die eine SQL-Abfrage nicht mit auswählt)
+  wie einen gesetzten Zeitstempel — das Objekt gälte fälschlich als
+  abgängig. Reine Funktion, daher Sache des Aufrufers (Schritt 3,
+  Snapshot-Export); dort beim Zusammenbauen des Eingabeobjekts aus der
+  Datenbankzeile `?? null` erzwingen und mit einem Test belegen, der ein
+  Objekt ohne das Feld durchreicht.
+- **`mietSpanneBundesweit()` bleibt ohne Memoisierung.** Im Gegensatz zu
+  `mieteProM2FuerBundesland` und (seit der Fixwave) `mietSpanneFuerBundesland`
+  läuft hier bei jedem Aufruf erneut ein `Object.values()`/`Math.min`/`Math.max`
+  über die ganze `REGIONALE_MIETE_PRO_M2`-Tabelle. Trifft nur sehr wenige
+  Objekte (6 von 12.611, Entwurf 3.3) — deutlich seltener als der bereits
+  behobene Fall für `mietSpanneFuerBundesland`, der 11.308 S1-Objekte betraf.
+- **Ungenannte Grenzfälle der finalen Gesamtprüfung.** Der Prüfbericht nennt
+  in der Kurzfassung „Grenzfälle unfixiert", ohne sie im Ledger einzeln
+  auszuschreiben. Vor einer Bearbeitung zuerst das Diff
+  `.superpowers/sdd/2026-09-14-ranking-schritt2-abschluss/review-e4492a2..96f3528.diff`
+  und die Fundstelle im Sitzungsprotokoll der finalen Gesamtprüfung
+  nachschlagen — hier nicht aus der Erinnerung nacherzählt, um nichts zu
+  erfinden.
+
+**Abnahme:** je Punkt ein eigener, zuerst rot gesehener Test, dann die
+minimale Behebung — wie überall in diesem Projekt.
+
 # Teil B — Braucht erst einen Entwurf
 
 Nicht direkt implementieren. Reihenfolge: `superpowers:brainstorming` → Spec

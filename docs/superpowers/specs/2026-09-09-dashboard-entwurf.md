@@ -1025,6 +1025,17 @@ jemand eine der Formeln ändert. **Ein Test muss zuerst rot sein:** dass ein
 Objekt mit `wohnflaeche_fehlt` **keine** Kennzahl ausliefert statt einer 0.
 *Rein und testbar, ohne Datenbank, ohne Netz, ohne Frontend.*
 
+> **Stand 2026-09-14: Schritt 2 vollständig umgesetzt und gemergt** (`bf0ddf1`).
+> `bestimmeSicherheitsstufe` war bereits fertig; `bewerteFuerRangliste`
+> (Rangzahl, Bandkanten, Bandbreite je Bundesland/bundesweit, feste
+> S2-Spanne, Schwellenwechsler-Merkmal) und `bestimmeVerfuegbarkeitszustand`
+> (die drei Verfügbarkeitszustände) sind seit dem Zweig `sdd/ranking-schritt2`
+> Teil von `main`. Whole-Branch-Review gelaufen, Fixwave eingearbeitet, 470
+> Tests grün, `tsc --noEmit` sauber. Vier kleinere Befunde aus der Review
+> (Grenzfälle unfixiert, `undefined`-vs-`null` an der DB-Grenze,
+> `mietSpanneBundesweit` ohne Memoisierung, `DSCR_MELDESCHWELLE` doppelt)
+> stehen als [`BACKLOG.md`](../BACKLOG.md) A17.
+
 **Schritt 3 — Snapshot-Export.**
 Ein zusätzlicher, ausschließlich **lesender** Schritt am Ende des Laufs, der
 den neuesten Stand je Objekt durch `ranking.ts` schickt und als Datei

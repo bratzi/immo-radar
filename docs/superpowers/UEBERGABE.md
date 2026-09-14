@@ -1,34 +1,38 @@
-# Übergabe — Stand 2026-09-14
+# Übergabe — Stand 2026-09-15
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
 > (woran „die Basis steht" gemessen wird), dann [`BACKLOG.md`](BACKLOG.md) und
-> [`TODO.md`](TODO.md). Der laufende SDD-Ledger steht unter
-> `.superpowers/sdd/2026-09-13-nachtrag-ranking-und-zvg-a4/progress.md`,
-> letzter Abschnitt „Wiederaufnahme 2026-09-14".
+> [`TODO.md`](TODO.md). Der zuletzt abgeschlossene SDD-Ledger steht unter
+> `.superpowers/sdd/2026-09-14-ranking-schritt2-abschluss/progress.md`
+> (Schritt 2 vollständig, gemergt); der davor unter
+> `.superpowers/sdd/2026-09-13-nachtrag-ranking-und-zvg-a4/progress.md`.
 
 ## Wo wir stehen
 
-Beide Zweige der laufenden Iteration sind auf `main` gemergt und **nach
-`origin/main` gepusht** (`297c226`): `sdd/zvg-a4` (`db0a22e`, --no-ff) und
-`sdd/nachtrag-korrektur` (danach, --no-ff). **Voller Testlauf auf dem
-gemergten `main` grün: 453 Tests, `npx tsc --noEmit` sauber.**
-`main` = `origin/main`.
+**Schritt 2 des Dashboard-Entwurfs ist vollständig und gemergt.** `main` =
+`origin/main` = `bf0ddf1`, Arbeitsverzeichnis sauber, **470 Tests grün,
+`npx tsc --noEmit` sauber**, keine offenen Worktrees mehr.
 
-**Vom Nutzer bewusst noch nicht ausgelöst** (im selben Zug abgefragt, nicht
-ausgewählt): ein Produktionslauf per `gh workflow run` zum Beleg von A-4/B-1,
-und das Aufräumen der Worktrees/Zweige `zvg-a4`/`nachtrag-korrektur`. Beides
-steht weiter zur Auswahl, ist aber keine offene Arbeit, sondern wartet auf
-den Nutzer.
+Die drei Zweige der letzten beiden Iterationen sind alle in `main`:
+`sdd/zvg-a4` (`db0a22e`), `sdd/nachtrag-korrektur` (`92504c5`) und
+`sdd/ranking-schritt2` (`bf0ddf1`, --no-ff). Alle Worktrees und Zweige sind
+aufgeräumt.
+
+**Ein Produktionslauf läuft** (`34910160636`, per `gh workflow run scrape.yml
+--ref main` am 2026-09-14 23:43 UTC ausgelöst). Er ist der ausstehende Beleg
+für A-4 (fällt wirklich kein Objekt still heraus?) und liefert zugleich
+frische Zahlen für B-1 und D-5. **Ergebnis noch nicht ausgewertet** — das ist
+der erste Griff der nächsten Sitzung.
 
 | Was | Stand |
 |---|---|
 | **B-2** verschwundene Immowelt-Objekte | **erfüllt**, belegt am Lauf `34637349206` |
-| **A-4** kein Objekt fällt still heraus | **Code steht für beide Quellen** (Immowelt seit `ea8b731`, ZVG seit `db0a22e`), Produktionsbeleg fehlt — Nutzer hat den `gh workflow run`-Vorschlag dafür (noch) nicht ausgewählt |
+| **A-4** kein Objekt fällt still heraus | **Code steht für beide Quellen** (Immowelt seit `ea8b731`, ZVG seit `db0a22e`); Produktionsbeleg **läuft** — Lauf `34910160636`, Auswertung offen |
 | **D-5** Meldebudget | weiter offen, und die Messung sagt warum (siehe unten) |
 | Dashboard-Entwurf, Nachtrag zu M1–M6 | **korrigiert und gemergt** — die Korrekturrunde (F-1..F-5) ist am Code nachverifiziert, kein Zwei-Stände-Problem mehr |
 | `lib/ranking.ts`, Sicherheitsstufe (`bestimmeSicherheitsstufe`) | **fertig und gemergt** (Teil von Schritt 2) |
-| `lib/ranking.ts`, Rest von Schritt 2 (Rangzahl, Bandkanten, Bandbreite je Bundesland, Schwellenwechsler, drei Verfügbarkeitszustände) | **offen** |
-| Snapshot-Export (Schritt 3) | **offen** — die blockierende Nutzerfrage ist entschieden (siehe unten), Umsetzung fehlt noch |
+| `lib/ranking.ts`, Rest von Schritt 2 (Rangzahl, Bandkanten, Bandbreite je Bundesland, Schwellenwechsler, drei Verfügbarkeitszustände) | **fertig und gemergt** (`bf0ddf1`) — `bewerteFuerRangliste` und `bestimmeVerfuegbarkeitszustand`, Whole-Branch-Review plus Fixwave durch. Vier kleine Restbefunde als [`BACKLOG.md`](BACKLOG.md) A17 |
+| Snapshot-Export (Schritt 3) | **offen und jetzt an der Reihe** — die blockierende Nutzerfrage ist entschieden (siehe unten), Umsetzung fehlt noch |
 
 ---
 
@@ -154,23 +158,24 @@ Nutzer.
 
 ## Was als Nächstes zu tun ist
 
-1. **Ein Produktionslauf zum Beleg von A-4/B-1**, nach Möglichkeit sofort per
-   `gh workflow run scrape.yml --ref main` ausgelöst statt auf den nächsten
-   Cron-Termin gewartet (Token-Beschaffung über den Windows-Credential-Manager
-   funktioniert diese Sitzung, siehe „Werkzeuge und Zugänge"). Dem Nutzer
-   diese Sitzung angeboten, aber noch nicht ausgelöst — er hatte nur den
-   Push ausgewählt. Er beantwortet zugleich, ob ZVG jetzt ebenfalls Zeilen
-   für Objekte ohne Verkehrswert schreibt.
-2. **`lib/ranking.ts` fertigstellen** (Rest von Schritt 2: Rangzahl,
-   Bandkanten, Bandbreite je Bundesland, Schwellenwechsler, drei
-   Verfügbarkeitszustände), dann der **Snapshot-Export** (Schritt 3) — die
-   blockierende Nutzerfrage ist entschieden (S0-Bereich, siehe oben), nur das
-   Klartext-Grund-Detail ist beim Bau noch zu wählen. Danach erst die erste
-   Zeile Oberfläche — Reihenfolge „Basis vor Dashboard" gilt unverändert.
-3. **Aufräumen:** Worktrees `.worktrees/zvg-a4` und
-   `.worktrees/nachtrag-korrektur` (samt Zweigen) entfernen — dem Nutzer
-   diese Sitzung angeboten, aber nicht ausgewählt. Beide sind vollständig in
-   `main` gemergt, nichts geht dabei verloren.
+1. **Den Produktionslauf `34910160636` auswerten** (ausgelöst 2026-09-14
+   23:43 UTC auf `bf0ddf1`). Er beantwortet, ob ZVG jetzt ebenfalls Zeilen
+   für Objekte ohne Verkehrswert schreibt — der ausstehende Beleg für A-4 —
+   und liefert frische Zahlen zu B-1 und D-5. Log über
+   `gh run view 34910160636 --log`, Gegenprobe in der Datenbank:
+   `listings`-Zeilen ohne `listing_versions`-Zeile je Quelle zählen.
+2. **Snapshot-Export bauen (Schritt 3).** `ranking.ts` ist damit fertig; der
+   Export schickt den neuesten Stand je Objekt durch `bewerteFuerRangliste`
+   und `bestimmeVerfuegbarkeitszustand` und legt ihn als Datei ab — lesend,
+   ohne Schemaänderung. Die blockierende Nutzerfrage ist entschieden
+   (S0-Bereich, siehe oben); nur der Klartext-Grund für Zeilen ohne
+   `data_gaps` ist beim Bau zu wählen. Zwei Dinge gehören dort mitgedacht:
+   das Nachschlagen der Regionskadenz (`sweep_region_runs`) und der Regionen
+   ohne Abgangserkennung (`nw`, `bw`, `mv`), beides bewusst aus `ranking.ts`
+   herausgehalten, sowie der `?? null`-Punkt aus [`BACKLOG.md`](BACKLOG.md)
+   A17. Danach erst die erste Zeile Oberfläche — Reihenfolge „Basis vor
+   Dashboard" gilt unverändert.
+3. **Kleinkram, wenn Luft ist:** die vier Restbefunde aus A17.
 
 ## Entscheidungen des Nutzers, gefallen am 2026-09-11
 
