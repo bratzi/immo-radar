@@ -1,28 +1,34 @@
-# Übergabe — Stand 2026-09-13
+# Übergabe — Stand 2026-09-14
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
 > (woran „die Basis steht" gemessen wird), dann [`BACKLOG.md`](BACKLOG.md) und
 > [`TODO.md`](TODO.md). Der laufende SDD-Ledger steht unter
 > `.superpowers/sdd/2026-09-13-nachtrag-ranking-und-zvg-a4/progress.md`,
-> letzter Abschnitt „Stand bei Sitzungsende 2026-09-13".
+> letzter Abschnitt „Wiederaufnahme 2026-09-14".
 
 ## Wo wir stehen
 
-Beide Zweige der laufenden Iteration sind auf `main` gemergt:
-`sdd/zvg-a4` (`db0a22e`, --no-ff) und `sdd/nachtrag-korrektur` (danach,
---no-ff). **Voller Testlauf auf dem gemergten `main` grün: 453 Tests,
-`npx tsc --noEmit` sauber.** `main` ist **9 Commits vor `origin/main`,
-noch nicht gepusht** — Push gehört dem Nutzer (siehe unten).
+Beide Zweige der laufenden Iteration sind auf `main` gemergt und **nach
+`origin/main` gepusht** (`297c226`): `sdd/zvg-a4` (`db0a22e`, --no-ff) und
+`sdd/nachtrag-korrektur` (danach, --no-ff). **Voller Testlauf auf dem
+gemergten `main` grün: 453 Tests, `npx tsc --noEmit` sauber.**
+`main` = `origin/main`.
+
+**Vom Nutzer bewusst noch nicht ausgelöst** (im selben Zug abgefragt, nicht
+ausgewählt): ein Produktionslauf per `gh workflow run` zum Beleg von A-4/B-1,
+und das Aufräumen der Worktrees/Zweige `zvg-a4`/`nachtrag-korrektur`. Beides
+steht weiter zur Auswahl, ist aber keine offene Arbeit, sondern wartet auf
+den Nutzer.
 
 | Was | Stand |
 |---|---|
 | **B-2** verschwundene Immowelt-Objekte | **erfüllt**, belegt am Lauf `34637349206` |
-| **A-4** kein Objekt fällt still heraus | **Code steht für beide Quellen** (Immowelt seit `ea8b731`, ZVG seit `db0a22e`), Produktionsbeleg fehlt |
+| **A-4** kein Objekt fällt still heraus | **Code steht für beide Quellen** (Immowelt seit `ea8b731`, ZVG seit `db0a22e`), Produktionsbeleg fehlt — Nutzer hat den `gh workflow run`-Vorschlag dafür (noch) nicht ausgewählt |
 | **D-5** Meldebudget | weiter offen, und die Messung sagt warum (siehe unten) |
 | Dashboard-Entwurf, Nachtrag zu M1–M6 | **korrigiert und gemergt** — die Korrekturrunde (F-1..F-5) ist am Code nachverifiziert, kein Zwei-Stände-Problem mehr |
 | `lib/ranking.ts`, Sicherheitsstufe (`bestimmeSicherheitsstufe`) | **fertig und gemergt** (Teil von Schritt 2) |
 | `lib/ranking.ts`, Rest von Schritt 2 (Rangzahl, Bandkanten, Bandbreite je Bundesland, Schwellenwechsler, drei Verfügbarkeitszustände) | **offen** |
-| Snapshot-Export (Schritt 3) | **offen**, hängt an einer Nutzerfrage (siehe unten) |
+| Snapshot-Export (Schritt 3) | **offen** — die blockierende Nutzerfrage ist entschieden (siehe unten), Umsetzung fehlt noch |
 
 ---
 
@@ -134,35 +140,37 @@ einen davon (F-4, die Stufentabelle bei Zeilen ohne Version) direkt am Code
 nachverifiziert statt nur dem Bericht zu glauben. **Ergebnis: Ready to
 merge**, seither Teil von `main`.
 
-**Eine Nutzerfrage aus dieser Korrekturrunde bleibt bewusst offen** (siehe
-Ruling 9 im SDD-Ledger): Ob ein Objekt ohne Preis/Verkehrswert (`listings`
-ohne `listing_versions`) im Dashboard im S0-Bereich „Nicht beurteilbar"
-erscheinen oder nur auf der Betriebsseite sichtbar sein soll. Nötig vor dem
-Snapshot-Export (Schritt 3), im Entwurf Abschnitt 3.3 als offen markiert.
+**Die Nutzerfrage aus Ruling 9 ist entschieden (2026-09-13/14):** Ein Objekt
+ohne Preis/Verkehrswert (`listings` ohne `listing_versions`) erscheint im
+Dashboard **im S0-Bereich** „Nicht beurteilbar" — konsistent mit anderen
+Datenlücken, sichtbar statt versteckt. Nachgezogen in Entwurf Abschnitt 3.3
+und Abschnitt 9. **Offen bleibt nur ein Umsetzungsdetail:** welcher
+Klartext-Grund (`DATA_GAP_LABELS`) einer solchen Zeile zugeschrieben wird,
+da sie keinen eigenen `data_gaps`-Eintrag trägt — das entscheidet sich beim
+Bau des Snapshot-Exports (Schritt 3), keine erneute Grundsatzfrage an den
+Nutzer.
 
 ---
 
 ## Was als Nächstes zu tun ist
 
-1. **Push nach `origin/main`** — gehört dem Nutzer, siehe unten. Danach ist
-   ein Cron-Lauf wieder auf dem aktuellen Stand.
-2. **Ein Produktionslauf zum Beleg von A-4/B-1**, nach Möglichkeit sofort per
+1. **Ein Produktionslauf zum Beleg von A-4/B-1**, nach Möglichkeit sofort per
    `gh workflow run scrape.yml --ref main` ausgelöst statt auf den nächsten
    Cron-Termin gewartet (Token-Beschaffung über den Windows-Credential-Manager
-   funktioniert diese Sitzung, siehe „Werkzeuge und Zugänge"). Er beantwortet
-   zugleich, ob ZVG jetzt ebenfalls Zeilen für Objekte ohne Verkehrswert
-   schreibt.
-3. **Die offene Nutzerfrage aus Ruling 9 klären**: Objekte ohne Preis im
-   S0-Bereich des Dashboards zeigen oder nur auf der Betriebsseite? Blockiert
-   Schritt 3.
-4. **`lib/ranking.ts` fertigstellen** (Rest von Schritt 2: Rangzahl,
+   funktioniert diese Sitzung, siehe „Werkzeuge und Zugänge"). Dem Nutzer
+   diese Sitzung angeboten, aber noch nicht ausgelöst — er hatte nur den
+   Push ausgewählt. Er beantwortet zugleich, ob ZVG jetzt ebenfalls Zeilen
+   für Objekte ohne Verkehrswert schreibt.
+2. **`lib/ranking.ts` fertigstellen** (Rest von Schritt 2: Rangzahl,
    Bandkanten, Bandbreite je Bundesland, Schwellenwechsler, drei
-   Verfügbarkeitszustände), dann der **Snapshot-Export** (Schritt 3), danach
-   erst die erste Zeile Oberfläche — Reihenfolge „Basis vor Dashboard" gilt
-   unverändert.
-5. **Aufräumen:** Worktrees `.worktrees/zvg-a4` und
-   `.worktrees/nachtrag-korrektur` entfernen, sobald der Nutzer die im
-   SDD-Ledger dokumentierten Rulings (1–9) gesehen hat.
+   Verfügbarkeitszustände), dann der **Snapshot-Export** (Schritt 3) — die
+   blockierende Nutzerfrage ist entschieden (S0-Bereich, siehe oben), nur das
+   Klartext-Grund-Detail ist beim Bau noch zu wählen. Danach erst die erste
+   Zeile Oberfläche — Reihenfolge „Basis vor Dashboard" gilt unverändert.
+3. **Aufräumen:** Worktrees `.worktrees/zvg-a4` und
+   `.worktrees/nachtrag-korrektur` (samt Zweigen) entfernen — dem Nutzer
+   diese Sitzung angeboten, aber nicht ausgewählt. Beide sind vollständig in
+   `main` gemergt, nichts geht dabei verloren.
 
 ## Entscheidungen des Nutzers, gefallen am 2026-09-11
 
@@ -184,6 +192,12 @@ Nicht wieder aufbringen.
 | Wie lange bleiben Abgänge im Archiv (E-6) | **Nicht unbegrenzt.** Ein Objekt verschwindet aus dem Abgänge-Bereich, sobald **verlässlich** feststeht, dass es nicht mehr existiert — nicht schon dann, wenn ein Lauf es bloß nicht gesehen hat. "Verlässlich" heißt: ein vollständiger, nicht abgebrochener Lauf mit ausreichender Erfassungsmenge hat es nicht mehr gefunden. Das ist dieselbe Unterscheidung, die `istRegionVollstaendig`/`imGeltungsbereich` schon treffen — Schritt 6 des Entwurfs (Zustände und Frische) kann sie direkt nutzen, ohne neue Löschbefugnis in der Datenbank. **Keine Entscheidung zur echten Löschung (B1)** — nur zur Anzeige im Archiv |
 | Objekte ohne Region, 54 Stück (E-7) | **Eigene, ausdrücklich beschriftete Kategorie** "Objekte ohne Region" — nicht in einen anderen Bereich einsortieren |
 | Wo läuft das Dashboard, was darf es kosten (E-8) | **Muss kostenlos und stabil laufen.** Empfehlung nach kurzer Recherche (2026-09-13): **Cloudflare Pages** (Hosting des Snapshot-Exports, kostenlos, unbegrenzte Bandbreite) + **Cloudflare Access** (Zugriffsschutz, kostenlos bis 50 Nutzer, E-Mail-Einmalcode an genau die eine erlaubte Adresse — erfüllt "nur ich" strenger als ein geteiltes Passwort). Vercels eigener Passwortschutz kostet auf dem Hobby-Plan extra (Pro-Zusatzpaket 150 $/Monat); Cloudflare bietet das Äquivalent kostenlos. Noch nicht eingerichtet — es gibt noch keinen Snapshot-Export zum Hosten (Schritt 3) |
+
+## Entscheidungen des Nutzers, gefallen am 2026-09-14
+
+| Frage | Entscheidung |
+|---|---|
+| Objekt ohne Preis im Dashboard zeigen? (Ruling 9, Entwurf 3.3/9) | **Im S0-Bereich** „Nicht beurteilbar" — nicht nur auf der Betriebsseite. Konsistent mit anderen Datenlücken (z. B. `wohnflaeche_fehlt`). Offen bleibt nur der genaue Klartext-Grund, ein Umsetzungsdetail für den Snapshot-Export (Schritt 3) |
 
 ## Wie in diesem Projekt gearbeitet wird
 

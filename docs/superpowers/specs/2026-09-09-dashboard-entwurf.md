@@ -315,14 +315,16 @@ Schemaänderung.**
 > nicht geschätzt**. Das wäre eine neue Datenbankabfrage, die diese
 > Dokumentationsrunde nicht ausführen darf.
 >
-> **Offen, nicht entschieden — Frage an den Nutzer:** Eine `listings`-Zeile
-> ohne Version hat auch **keinen `data_gaps`-Eintrag** und damit keinen
-> Klartext-Grund aus `DATA_GAP_LABELS`, den 3.7 für jedes S0-Objekt verlangt.
-> Ob solche Zeilen im S0-Bereich der Rangliste erscheinen oder ausschließlich
-> auf der Betriebsseite (Abschnitt 8) geführt werden, und welcher
-> Klartext-Grund dort für sie steht, entscheidet dieser Entwurf **nicht** —
-> das ist Abschnitt 9, **Schritt 3** (Snapshot-Export) zugeordnet und dort
-> als offene Entscheidung des Nutzers zu behandeln.
+> **Entschieden vom Nutzer (2026-09-13/14): im S0-Bereich zeigen.** Solche
+> Zeilen erscheinen im S0-Bereich der Rangliste, nicht ausschließlich auf der
+> Betriebsseite (Abschnitt 8) — konsistent mit der Behandlung anderer
+> Datenlücken (z. B. `wohnflaeche_fehlt`): sichtbar statt versteckt. Eine
+> `listings`-Zeile ohne Version hat auch **keinen `data_gaps`-Eintrag** und
+> damit keinen Klartext-Grund aus `DATA_GAP_LABELS`, den 3.7 für jedes
+> S0-Objekt verlangt — **offen bleibt nur noch**, welcher Klartext-Grund dort
+> für sie steht (z. B. ein neuer Lücken-Code für „kein Preis von der Quelle
+> genannt"). Das ist eine Umsetzungsdetail für Abschnitt 9, **Schritt 3**
+> (Snapshot-Export), keine erneute Grundsatzfrage.
 
 > **Was diese Zahlen nicht hergeben:** Sie sind eine Momentaufnahme vom
 > 2026-09-12 an einem Bestand, der in sieben Tagen von 2.108 auf 17.391
@@ -972,11 +974,11 @@ zurückgestellt — D-5).
 > **Ergänzt in der finalen Fix-Welle (2026-09-13):** Seit `ea8b731` und mit
 > `sdd/zvg-a4` legen `preis_auf_anfrage` und `preis_unlesbar` inzwischen doch
 > eine `listings`-Zeile an (ohne Version, S0 nach 3.3) — sie beschreiben also
-> nicht mehr nur den Lauf. **Ob sie deshalb zusätzlich im S0-Bereich der
-> Rangliste erscheinen oder wie hier ausschließlich auf dieser Betriebsseite
-> geführt werden, ist offen** und in 3.3 als Frage an den Nutzer notiert
-> (Abschnitt 9, Schritt 3). Die Zählung nach Fundort bleibt in jedem Fall
-> auf der Betriebsseite sinnvoll.
+> nicht mehr nur den Lauf. **Entschieden (2026-09-13/14, siehe 3.3): Sie
+> erscheinen zusätzlich im S0-Bereich der Rangliste**, nicht nur auf dieser
+> Betriebsseite. Die Zählung nach Fundort bleibt hier trotzdem sinnvoll — sie
+> beantwortet eine andere Frage (wie viele je Lauf, nach Fundort) als der
+> S0-Bereich (welche Objekte einzeln).
 
 Kosten: null zusätzliche Datenhaltung, alles ist bereits gespeichert oder
 steht im Lauf-Log. Nutzen: A13 nennt die getrennte Quote ausdrücklich als
@@ -1029,15 +1031,14 @@ den neuesten Stand je Objekt durch `ranking.ts` schickt und als Datei
 ablegt. Kein Schreibzugriff, keine Schemaänderung. Damit ist der Inhalt des
 Dashboards vollständig da, bevor eine einzige Zeile Oberfläche existiert —
 und prüfbar, indem man die Datei liest.
-**Hier fällt eine offene Frage an den Nutzer (ergänzt in der finalen
-Fix-Welle, 2026-09-13, siehe 3.3):** `listings`-Zeilen ohne
+**Entschieden vom Nutzer (2026-09-13/14, siehe 3.3):** `listings`-Zeilen ohne
 `listing_versions`-Zeile (`preis_auf_anfrage` / `preis_unlesbar`, seit
-`ea8b731` und `sdd/zvg-a4`) fallen nach der `rent_source`-Regel auf S0, haben
-aber keinen `data_gaps`-Eintrag und damit keinen Klartext-Grund nach 3.7. Ob
-der Export sie in den S0-Bereich aufnimmt oder ausschließlich auf die
-Betriebsseite (Abschnitt 8) legt, und welcher Klartext-Grund ihnen dort
-zugeschrieben wird, ist **nicht entschieden** — keine Zahl dazu ist gemessen
-oder erfunden.
+`ea8b731` und `sdd/zvg-a4`) fallen nach der `rent_source`-Regel auf S0 und
+nimmt der Export **in den S0-Bereich auf**, nicht nur auf die Betriebsseite
+(Abschnitt 8). Sie haben aber keinen `data_gaps`-Eintrag und damit keinen
+Klartext-Grund nach 3.7 — **offen bleibt nur noch** der genaue Klartext-Grund,
+den der Export ihnen zuschreibt; eine Umsetzungsentscheidung für diesen
+Schritt, keine erneute Grundsatzfrage.
 
 **Schritt 4 — Die Rangliste.**
 Blöcke nach Stufen (3.3), Schwellenlinie je Block (3.8), Band statt Punkt
