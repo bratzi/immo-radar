@@ -192,3 +192,163 @@ steht." Ein Such-/Titelfeld steht dort nicht und ist deshalb **nicht gebaut**
 | 6 | Vertragstest gegen die echte Datei | `expected length 0, received 1` — **echter Befund**, siehe Entscheidung 2 |
 
 Stand nach der Logikschicht: **84 Tests grün**, `tsc --noEmit` sauber.
+
+---
+
+## Die Oberfläche
+
+### Entscheidung 6 — Drei Zeichen für dreierlei Nichtwissen
+
+Die gestalterische Leitidee ist der Leitsatz aus Abschnitt 1. Weil der
+Entwurf **drei** verschiedene Arten von Nichtwissen kennt, bekommt jede ein
+**eigenes Zeichen** — und keine davon ist Grau:
+
+| Zustand | Zeichen | heißt |
+|---|---|---|
+| abgängig | ausgegraut, entsättigt | „beobachtet, dass es weg ist" |
+| unbestätigt | gestrichelte Kante (6.3: *nicht grau*) | „hier hat niemand hingesehen" |
+| nicht beurteilbar (S0) | diagonale Schraffur | „darüber ist nichts bekannt" |
+
+Damit heißt Grau genau **eine** Sache, und die Verwechslung, vor der 6.3
+warnt, ist gestalterisch unmöglich gemacht. Dieselbe gestrichelte Kante
+markiert im Filter die Bundesländer ohne Abgangserkennung — gleiches Zeichen,
+gleiche Bedeutung.
+
+### Entscheidung 7 — Eine gemeinsame Skala, ein Lot durch die Liste
+
+Der Bandstreifen (3.4) benutzt für **alle** Zeilen **eine** Skala mit festem
+Wertebereich 0,00–2,50. Dadurch steht die Meldeschwelle 1,30 in jeder Zeile
+an derselben Stelle und bildet über die ganze Liste eine durchgehende
+Senkrechte — ein Lot, an dem sich jedes Band von selbst misst. Man sieht
+ohne Legende, welches Band hält, welches darunter bleibt und welches die
+Linie überquert (Schwellenwechsler, 3.6 — zusätzlich mit einem gestrichelten
+Ring markiert).
+
+**Der Wertebereich ist gemessen, nicht gegriffen:** `rangzahl` hat ein
+Maximum von 2,40 und `band.unten` liegt konstruktionsbedingt nie darüber —
+**die untere Kante, nach der sortiert wird (3.5), wird also nie
+abgeschnitten**. Nur die obere, optimistische Kante kann über 2,50 hinaus
+(`band.oben` P99 3,14, max 4,00); solche Bänder blenden am rechten Rand aus,
+statt an einer harten Kante zu enden, die eine Grenze behauptet.
+
+Drei Fälle, drei Formen: Band mit Punktstrich (S1/S2) · Raute ohne Band (S3,
+belegte Miete — dort gibt es keine Schätzung, die gegen das Objekt laufen
+könnte) · **gar kein Streifen** (S0 — dort stehen die Klartext-Gründe an
+genau derselben Stelle). Es gibt keinen Zweig, in dem dort eine 0 steht.
+
+### Entscheidung 8 — Die Karte zeigt immer den ganzen Bestand
+
+Der erste Entwurf ließ die Punktschicht dem Filter folgen und die
+Flächenfärbung nicht — die Flächenwerte kommen aus `snapshot.bundeslaender`
+und sind Bestandszahlen. **Im Browser gesehen:** eine Kachel „4.471 Objekte"
+über einer leeren Liste, unter *einer* Legende, die Bestandszahlen nannte.
+Zwei Stände nebeneinander.
+
+Aufgelöst zugunsten des Bestands: Die Karte ist der **Einstieg** in die
+Liste, nicht ihr Ergebnis. Beide Schichten zeigen den ganzen Bestand, die
+Auswahl zeigt der goldene Rahmen, und die Tafel sagt das in einem Satz.
+
+### Entscheidung 9 — Die Kopfzeile und das Wort „Top-Treffer"
+
+Das Ruling ist umgesetzt: „Top-Treffer" heißt auf der Seite **ausschließlich**
+die Trefferklasse nach N1.1, und eine eigene Fußnote sagt das ausdrücklich —
+samt dem Hinweis, dass die Meldeklasse des Telegram-Wegs eine andere Größe ist
+und auf dieser Seite nicht vorkommt.
+
+**Abweichung von der vorgeschlagenen Formulierung, hier entschieden:** Der
+Satz „seit dem … wurde keine Meldung der höchsten Stufe verschickt" steht
+**nicht** in der Kopfzeile, weil der Snapshot diese Zahl nicht trägt.
+`topTrefferSeit` ist ausweislich des Exports das älteste `first_seen`, also
+der **Beginn des Beobachtungsfensters** — keine Aussage über verschickte
+Meldungen. Die Kopfzeile sagt deshalb „Beobachtet wird seit dem …", und über
+Meldungen sagt sie nur etwas, wenn `betrieb.meldebudget` belegt ist (ein
+Export innerhalb eines Laufs). Eine Aussage ohne Zahl wäre hier schlimmer als
+keine.
+
+**Die Zahl in der Kopfzeile ist ungefiltert.** Die übrigen Zahlen dort kommen
+aus `snapshot.kopfzeile` und gelten für den Bestand; eine gefilterte Zahl
+zwischen ungefilterten wäre wieder „zwei Stände nebeneinander".
+
+### Entscheidung 10 — Länder ohne Abgangserkennung werden gemessen, nicht aufgezählt
+
+Entwurf 6.3 verlangt den Grund im Klartext am Regionsfilter. Zwei Wege wurden
+verworfen, beide ausprobiert:
+
+- **Feste Liste `["nw","bw","mv"]`** — schon beim Schreiben veraltet (`sh` ist
+  seit dem 2026-09-15 die vierte und steht in keiner Spezifikation).
+- **`regionsstand.vollstaendig` des jüngsten Laufs** — markiert **15 von 16**
+  Regionen, weil fast jeder Lauf am Zeitbudget endet. Ein Merkmal, das 94 %
+  einer Liste trägt, markiert nichts (die Lehre aus 3.6). *Im Browser gesehen
+  und daraufhin verworfen.*
+
+**Gewählt: die Wirkung messen.** Ein Land, aus dem nie ein Abgang erkannt
+wird, hat keinen einzigen abgängigen Eintrag — das ist die Definition, nicht
+ihre Näherung, und sie braucht keine Schwelle. Die eine Feinheit: gezählt
+wird nur die **Hauptquelle** (Immowelt), weil ZVG von einem anderen Sweep
+bedient wird.
+
+**Gegenprobe am Bestand vom 2026-09-15:** Das Verfahren liefert genau
+**Baden-Württemberg, Mecklenburg-Vorpommern, Nordrhein-Westfalen und
+Schleswig-Holstein** — die drei aus A15 plus die vierte aus der Messung vom
+2026-09-15, ohne eine davon zu kennen. Über alle Quellen gezählt fiele NRW
+heraus (4.384 Immowelt-Objekte ohne einen einzigen Abgang, aber 2
+ZVG-Abgänge), also ausgerechnet die Region, die A15 als erste nennt.
+
+*Was das Verfahren nicht hergibt:* Es misst die Wirkung, nicht die Ursache.
+Ein Land, in dem zufällig nur nichts verschwunden ist, sähe genauso aus. Der
+Text am Filter behauptet deshalb keine Ursache.
+
+### Entscheidung 11 — Virtualisierung selbst geschrieben
+
+Alle Zeilen sind gleich hoch; für feste Zeilenhöhen ist die ganze Rechnung
+ein Dutzend Zeilen. Eine Bibliothek könnte zusätzlich variable Höhen messen —
+die gibt es hier nicht. Die Zeilenhöhe gehört dem JavaScript (sie geht in die
+Rechnung ein) und wird als CSS-Variable an den Behälter gesetzt, damit
+dieselbe Zahl nicht an zwei Stellen steht.
+
+---
+
+## Abhängigkeiten, jede einzeln begründet
+
+| Paket | warum |
+|---|---|
+| `react`, `react-dom` | von N5 vorgeschrieben |
+| `vite`, `@vitejs/plugin-react` | von N5 vorgeschrieben |
+| `typescript`, `@types/react`, `@types/react-dom`, `@types/node` | von N5 vorgeschrieben bzw. deren Typen |
+| `vitest` | dasselbe Werkzeug wie in `scraper/`, kein zweites gelernt |
+
+**Sonst nichts.** Keine Kartenbibliothek (Inline-SVG), keine
+Virtualisierungsbibliothek (selbst geschrieben), keine UI-Bibliothek, keine
+Zustandsbibliothek, keine Datumsbibliothek (`Intl`), keine Schriftart von
+einem fremden Server (Systemschriften mit voller Ersatzkette).
+
+## Im Browser tatsächlich geprüft (Chromium, lokal, kein fremder Server)
+
+| Fall | Ergebnis |
+|---|---|
+| Laden der echten 18,90-MB-Datei | **Abruf 304–507 ms, Parsen 23–24 ms**, Seite nach **1,15–1,23 s** bedienbar. Keine Konsolenausgabe. |
+| Golden Path 1600 px | 4 Bereiche, Zahlen summieren sich auf 18.335 |
+| S0-Objekt | Schraffur, **keine Kennzahl, keine 0**, Grund im Klartext an ihrer Stelle |
+| sehr breites Band | `1,29–3,30` — über die Skala hinaus, blendet am Rand aus; unter der Schwelle, also korrekt **nicht** „top" |
+| Schwellenwechsler | gestrichelter Ring auf der Lotlinie, im Bild bestätigt |
+| Kartenklick (Bremen) | filtert auf 108, Kachel bekommt goldenen Rahmen, Chip wird gewählt |
+| Kartengröße umschalten | Median-DSCR-Skala 0,47–1,13 |
+| leere Filtermenge (Baujahr 1500–1600) | **0 nach Filter**, alle vier Bereiche mit eigenem, erklärendem Leertext; das Spannenfeld sagt „18.277 von 18.335 Objekten tragen keine Angabe … sie sind gerade ausgeblendet" |
+| Abgänge | ausgegraut und entsättigt, Datum je Zeile, gemischt S0/S1 |
+| 400 px | kein Querlauf (`scrollWidth` 400), Zeile 370 px breit, 104 px hoch, zweizeilig |
+| 760 px | kein Querlauf |
+| Produktionsbau | `vite build` grün: 186 kB JS (60,5 kB gzip), 20,6 kB CSS (4,95 kB gzip) |
+
+**Im Browser gefunden und behoben** (nicht vermutet, gemessen): Preis und
+Fläche standen auf einer Zeile (`span` ist inline); der Zahlenwert des Bandes
+überdeckte genau die besten Bänder (jetzt eigene Spalte statt Verlauf); die
+Achsenbeschriftung „Meldeschwelle 1,30" stieß mit dem Strich bei 2,00
+zusammen (jetzt zweizeilige Achse); ein langer Grund schob die Stufenspalte
+aus dem Bild (`min-width: 0` am Rasterfeld); die DSCR-Achse stand auch über
+dem Bereich „Nicht beurteilbar", in dem kein Objekt eine Rangzahl trägt
+(jetzt „Warum keine Kennzahl").
+
+**Nicht geprüft:** andere Browser als Chromium (Firefox, Safari), echte
+Touch-Bedienung, Tastaturnavigation über die ganze Seite, Vorlesehilfen,
+Cloudflare Pages und Cloudflare Access (nicht Teil dieses Schritts),
+Verhalten bei sehr langsamer Leitung (lokal ist der Abruf Plattenzugriff).

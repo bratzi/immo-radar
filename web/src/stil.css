@@ -1,0 +1,1590 @@
+/*
+ * immo-radar -- Oberflaeche
+ *
+ * DIE GESTALTERISCHE LEITIDEE ist der Leitsatz des Entwurfs (Abschnitt 1):
+ *
+ *   "Nichtwissen bekommt einen eigenen Zustand. Es wird nie in Wissen
+ *    hineingerechnet und nie als schlechtes Wissen dargestellt."
+ *
+ * Daraus folgt DREIERLEI NICHTWISSEN mit DREI EIGENEN ZEICHEN -- das ist die
+ * Grammatik dieser Oberflaeche, und sie ist bewusst nicht dreimal Grau:
+ *
+ *   abgaengig          ausgegraut, matt      "beobachtet, dass es weg ist"
+ *   unbestaetigt       gestrichelte Kante    "hier hat niemand hingesehen"
+ *   nicht beurteilbar  Schraffur             "darueber ist nichts bekannt"
+ *
+ * Grau heisst also GENAU EINE Sache, und die schlimmste Verwechslung des
+ * Entwurfs -- eine graue 0,0 bei fehlender Wohnflaeche -- ist gestalterisch
+ * unmoeglich gemacht: Wo keine Kennzahl ist, steht kein Zahlenfeld.
+ *
+ * SCHRIFTEN: ausschliesslich Systemschriften mit vollstaendiger Ersatzkette.
+ * N5 verbietet jede Fremdanfrage zur Laufzeit, also auch eine Schriftart von
+ * einem fremden Server. Bahnschrift ist eine DIN-1451-Abkoemmling und liegt
+ * auf Windows; sie traegt den technischen, deutschen Ton, den diese Sache
+ * verdient. Die Prosa laeuft in einer Serifenschrift, weil der Entwurf seine
+ * Kopfzeile ausdruecklich "in Worten statt in Balken" verlangt.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Farben und Masse                                                     */
+/* ------------------------------------------------------------------ */
+
+:root {
+  color-scheme: dark;
+
+  /* Grund: warmes Fast-Schwarz, kein blaustichiges Grau. */
+  --grund: #131218;
+  --grund-tief: #0d0c11;
+  --flaeche: #1b1a22;
+  --flaeche-hoch: #23212c;
+  --flaeche-still: #191820;
+
+  --linie: #2f2c3a;
+  --linie-hell: #423e51;
+  --linie-zart: #232130;
+
+  --papier: #ece5d9;
+  --papier-gedaempft: #9d9587;
+  --papier-still: #6e675c;
+
+  /* Gold: die einzige Auszeichnungsfarbe. Sie heisst Top-Treffer, sonst nichts. */
+  --gold: #e3a545;
+  --gold-hell: #f0c37e;
+  --gold-tief: #7d5518;
+  --gold-hauch: rgba(227, 165, 69, 0.11);
+
+  /* Die Meldeschwelle. Kuehl, duenn, durch die ganze Liste. */
+  --schwelle: #7ea6c4;
+  --schwelle-still: rgba(126, 166, 196, 0.32);
+
+  /* Die drei Zeichen des Nichtwissens. */
+  --unbestaetigt: #79a6b4;   /* nicht hingesehen */
+  --unklar: #9d8cc4;         /* nichts bekannt (S0) */
+  --abgang: #6a6472;         /* beobachtet weg */
+
+  --gefahr: #d2705c;
+
+  --r-klein: 3px;
+  --r: 5px;
+  --r-gross: 9px;
+
+  --schrift-technisch: Bahnschrift, "DIN Alternate", "Segoe UI Variable Text",
+    "Segoe UI", Tahoma, sans-serif;
+  --schrift-prosa: "Sitka Text", Constantia, Cambria, Georgia, "Times New Roman", serif;
+  --schrift-zahl: Consolas, "Cascadia Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+
+  --rail: 296px;
+  --zeile-hoehe: 64px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--grund);
+  color: var(--papier);
+  font-family: var(--schrift-technisch);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  /* Ein sehr feines Raster im Grund -- Millimeterpapier, nicht Dekoration.
+     Es gibt der Flaeche Tiefe, ohne je die Aufmerksamkeit zu verlangen. */
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.014) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--gold-tief);
+  color: var(--papier);
+}
+
+/* Bildlaufleisten, damit sie nicht wie ein Fremdkoerper wirken */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--linie-hell) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--linie-hell);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ------------------------------------------------------------------ */
+/* Grundgeruest                                                         */
+/* ------------------------------------------------------------------ */
+
+.geruest {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: var(--rail) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "kopf kopf"
+    "rail haupt";
+}
+
+.kopf {
+  grid-area: kopf;
+  border-bottom: 1px solid var(--linie);
+  background: linear-gradient(180deg, var(--grund-tief), var(--flaeche-still));
+  padding: 18px 26px 16px;
+}
+
+.rail {
+  grid-area: rail;
+  border-right: 1px solid var(--linie);
+  background: var(--grund-tief);
+  overflow-y: auto;
+  max-height: calc(100vh - var(--kopf-hoehe, 132px));
+  position: sticky;
+  top: 0;
+}
+
+.haupt {
+  grid-area: haupt;
+  min-width: 0;
+  padding: 20px 26px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Kopf                                                                 */
+/* ------------------------------------------------------------------ */
+
+.marke {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.marke__name {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.marke__name em {
+  font-style: normal;
+  color: var(--gold);
+}
+
+.marke__stand {
+  font-size: 11.5px;
+  color: var(--papier-still);
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.kopfzeile {
+  font-family: var(--schrift-prosa);
+  font-size: 15.5px;
+  line-height: 1.62;
+  color: var(--papier-gedaempft);
+  max-width: 92ch;
+  margin: 12px 0 0;
+}
+
+.kopfzeile b {
+  color: var(--papier);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.kopfzeile .gold {
+  color: var(--gold-hell);
+}
+
+.kopfzeile__satz + .kopfzeile__satz {
+  margin-top: 4px;
+}
+
+/* Die Fussnote zur Doppeldeutigkeit von "Top-Treffer" */
+.worterklaerung {
+  margin-top: 12px;
+  border-left: 2px solid var(--gold-tief);
+  padding: 7px 0 7px 13px;
+  font-family: var(--schrift-prosa);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--papier-still);
+  max-width: 88ch;
+}
+
+.worterklaerung b {
+  color: var(--papier-gedaempft);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ladezustand                                                          */
+/* ------------------------------------------------------------------ */
+
+.laden {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 20px;
+  padding: 32px;
+  text-align: left;
+}
+
+.laden__marke {
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--papier-still);
+}
+
+.laden__phase {
+  font-family: var(--schrift-prosa);
+  font-size: 19px;
+  color: var(--papier);
+}
+
+.laden__balken {
+  width: min(460px, 76vw);
+  height: 3px;
+  background: var(--linie);
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.laden__balken i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width 0.12s linear;
+}
+
+.laden__balken--unbekannt i {
+  width: 34% !important;
+  animation: wandern 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes wandern {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(290%);
+  }
+}
+
+.laden__zahl {
+  font-family: var(--schrift-zahl);
+  font-size: 12px;
+  color: var(--papier-still);
+  font-variant-numeric: tabular-nums;
+}
+
+.fehler {
+  border-left: 3px solid var(--gefahr);
+  padding: 14px 18px;
+  background: rgba(210, 112, 92, 0.07);
+  font-family: var(--schrift-prosa);
+  max-width: 68ch;
+}
+
+.fehler h2 {
+  margin: 0 0 6px;
+  font-family: var(--schrift-technisch);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gefahr);
+}
+
+/* ------------------------------------------------------------------ */
+/* Tafeln (Karte, Betrieb)                                              */
+/* ------------------------------------------------------------------ */
+
+.tafeln {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.tafel {
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--r-gross);
+  overflow: hidden;
+}
+
+.tafel__kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--linie-zart);
+  background: var(--flaeche-still);
+}
+
+.tafel__titel {
+  margin: 0;
+  font-size: 11.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--papier-gedaempft);
+  font-weight: 600;
+}
+
+.tafel__inhalt {
+  padding: 15px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Karte                                                                */
+/* ------------------------------------------------------------------ */
+
+.karte__schalter {
+  display: flex;
+  gap: 2px;
+  background: var(--grund-tief);
+  border: 1px solid var(--linie);
+  border-radius: var(--r);
+  padding: 2px;
+}
+
+.karte__schalter button {
+  background: none;
+  border: 0;
+  padding: 4px 9px;
+  border-radius: 3px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--papier-still);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.karte__schalter button:hover {
+  color: var(--papier);
+}
+
+.karte__schalter button[aria-pressed="true"] {
+  background: var(--flaeche-hoch);
+  color: var(--gold-hell);
+}
+
+.karte__bild {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: manipulation;
+}
+
+.karte__umriss {
+  fill: var(--flaeche-still);
+  stroke: var(--linie-hell);
+  stroke-width: 1;
+}
+
+.kachel {
+  cursor: pointer;
+}
+
+.kachel__flaeche {
+  stroke: var(--linie-hell);
+  stroke-width: 1;
+  rx: 3;
+  transition:
+    stroke 0.12s,
+    filter 0.12s;
+}
+
+.kachel:hover .kachel__flaeche {
+  stroke: var(--papier);
+}
+
+.kachel--gewaehlt .kachel__flaeche {
+  stroke: var(--gold);
+  stroke-width: 1.75;
+}
+
+.kachel__kuerzel {
+  font-family: var(--schrift-technisch);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.kachel__faden {
+  stroke: var(--linie-hell);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  fill: none;
+}
+
+.kachel__anker {
+  fill: var(--linie-hell);
+}
+
+.plzpunkt {
+  fill: var(--gold);
+  fill-opacity: 0.85;
+  stroke: var(--grund-tief);
+  stroke-width: 0.75;
+  pointer-events: none;
+}
+
+.karte__legende {
+  margin-top: 13px;
+  border-top: 1px solid var(--linie-zart);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skala {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--schrift-zahl);
+  font-size: 10.5px;
+  color: var(--papier-still);
+  font-variant-numeric: tabular-nums;
+}
+
+.skala__band {
+  flex: 1;
+  height: 7px;
+  border-radius: 2px;
+  border: 1px solid var(--linie);
+}
+
+.abdeckung {
+  font-family: var(--schrift-prosa);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--papier-still);
+}
+
+.abdeckung b {
+  color: var(--papier-gedaempft);
+  font-family: var(--schrift-technisch);
+  font-variant-numeric: tabular-nums;
+}
+
+.abdeckung__punkt {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+
+.hinweis-schematisch {
+  font-size: 11px;
+  color: var(--papier-still);
+  letter-spacing: 0.02em;
+  border-top: 1px dashed var(--linie);
+  padding-top: 9px;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------------ */
+/* Betriebstafel                                                        */
+/* ------------------------------------------------------------------ */
+
+.betrieb__gitter {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 7px;
+}
+
+.region {
+  border: 1px solid var(--linie);
+  border-radius: var(--r);
+  padding: 7px 9px;
+  background: var(--grund-tief);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.region--unvollstaendig {
+  border-left: 2px solid var(--unbestaetigt);
+}
+
+.region__name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.region__zeit {
+  font-family: var(--schrift-zahl);
+  font-size: 10.5px;
+  color: var(--papier-still);
+  font-variant-numeric: tabular-nums;
+}
+
+.region__marke {
+  font-size: 10.5px;
+  color: var(--unbestaetigt);
+  letter-spacing: 0.03em;
+}
+
+.fehlanzeige {
+  font-family: var(--schrift-prosa);
+  font-size: 13px;
+  color: var(--papier-still);
+  line-height: 1.55;
+  border-left: 2px dashed var(--linie-hell);
+  padding-left: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Filterleiste                                                         */
+/* ------------------------------------------------------------------ */
+
+.filter {
+  padding: 16px 16px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter__kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.filter__titel {
+  margin: 0;
+  font-size: 11.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--papier-gedaempft);
+  font-weight: 600;
+}
+
+.filter__zuruecksetzen {
+  background: none;
+  border: 1px solid var(--linie-hell);
+  color: var(--papier-still);
+  border-radius: var(--r-klein);
+  padding: 3px 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.filter__zuruecksetzen:hover:not(:disabled) {
+  color: var(--papier);
+  border-color: var(--papier-still);
+}
+
+.filter__zuruecksetzen:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.gruppe {
+  border-top: 1px solid var(--linie-zart);
+}
+
+.gruppe__knopf {
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 10px 0 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--papier-gedaempft);
+}
+
+.gruppe__knopf:hover {
+  color: var(--papier);
+}
+
+.gruppe__pfeil {
+  font-size: 9px;
+  width: 9px;
+  color: var(--papier-still);
+  transition: transform 0.14s ease;
+}
+
+.gruppe--offen .gruppe__pfeil {
+  transform: rotate(90deg);
+}
+
+.gruppe__name {
+  flex: 1;
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.gruppe__zaehler {
+  font-family: var(--schrift-zahl);
+  font-size: 10px;
+  color: var(--gold);
+  background: var(--gold-hauch);
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+
+.gruppe__inhalt {
+  padding: 2px 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.wahl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.wahl__knopf {
+  background: var(--flaeche-still);
+  border: 1px solid var(--linie);
+  border-radius: var(--r-klein);
+  padding: 4px 9px;
+  font-size: 11.5px;
+  color: var(--papier-gedaempft);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  transition:
+    border-color 0.12s,
+    color 0.12s;
+}
+
+.wahl__knopf:hover {
+  border-color: var(--linie-hell);
+  color: var(--papier);
+}
+
+.wahl__knopf[aria-pressed="true"] {
+  border-color: var(--gold-tief);
+  background: var(--gold-hauch);
+  color: var(--gold-hell);
+}
+
+.wahl__knopf i {
+  font-style: normal;
+  font-family: var(--schrift-zahl);
+  font-size: 9.5px;
+  color: var(--papier-still);
+  font-variant-numeric: tabular-nums;
+}
+
+.wahl__knopf[aria-pressed="true"] i {
+  color: var(--gold);
+}
+
+.wahl__knopf--leer {
+  opacity: 0.42;
+}
+
+/*
+ * Gestrichelte Kante an einem Bundesland, aus dem ueber Immowelt noch kein
+ * einziger Abgang erkannt wurde -- dieselbe Strichelung wie an einer
+ * unbestaetigten Zeile, weil es dasselbe bedeutet: hier hat niemand
+ * hingesehen.
+ */
+.wahl__knopf--ohne-abgang {
+  border-style: dashed;
+  border-color: var(--unbestaetigt);
+}
+
+.wahl__knopf--ohne-abgang[aria-pressed="true"] {
+  border-color: var(--gold);
+}
+
+.spanne {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spanne__beschriftung {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--papier-gedaempft);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.spanne__felder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spanne__felder input {
+  flex: 1;
+  min-width: 0;
+  background: var(--grund);
+  border: 1px solid var(--linie);
+  border-radius: var(--r-klein);
+  padding: 5px 7px;
+  font-family: var(--schrift-zahl);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.spanne__felder input:focus {
+  outline: none;
+  border-color: var(--gold-tief);
+  background: var(--flaeche-still);
+}
+
+.spanne__bis {
+  color: var(--papier-still);
+  font-size: 11px;
+}
+
+/*
+ * Die Zeile, die diese Oberflaeche von einer beliebigen unterscheidet:
+ * Sie sagt an JEDEM Spannenfeld, wie viele Objekte gar keine Angabe tragen
+ * und deshalb herausfielen. Bei "Baujahr" sind das 18.277 von 18.335.
+ */
+.spanne__preis {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--papier-still);
+  font-family: var(--schrift-prosa);
+}
+
+.spanne__preis b {
+  font-family: var(--schrift-technisch);
+  color: var(--unklar);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.spanne--wirksam .spanne__preis b {
+  color: var(--gefahr);
+}
+
+.schalter {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  padding: 3px 0;
+  color: var(--papier-gedaempft);
+}
+
+.schalter:hover {
+  color: var(--papier);
+}
+
+.schalter input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 2px 0 0;
+  border: 1px solid var(--linie-hell);
+  border-radius: 3px;
+  background: var(--grund);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  flex: none;
+}
+
+.schalter input:checked {
+  border-color: var(--gold);
+  background: var(--gold-hauch);
+}
+
+.schalter input:checked::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: var(--gold);
+}
+
+.schalter span {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.schalter em {
+  display: block;
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--papier-still);
+  font-family: var(--schrift-zahl);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Klartext am Regionsfilter (Entwurf 6.3) */
+.regionsnotiz {
+  font-family: var(--schrift-prosa);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--papier-still);
+  border-left: 2px solid var(--unbestaetigt);
+  padding: 5px 0 5px 10px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Bereiche                                                             */
+/* ------------------------------------------------------------------ */
+
+.bereich {
+  border: 1px solid var(--linie);
+  border-radius: var(--r-gross);
+  background: var(--flaeche);
+  overflow: hidden;
+}
+
+.bereich--top {
+  border-color: var(--gold-tief);
+}
+
+.bereich__kopf {
+  width: 100%;
+  background: var(--flaeche-still);
+  border: 0;
+  border-bottom: 1px solid var(--linie-zart);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.bereich--top .bereich__kopf {
+  background: linear-gradient(90deg, var(--gold-hauch), transparent 62%);
+}
+
+.bereich__pfeil {
+  font-size: 9px;
+  color: var(--papier-still);
+  width: 9px;
+  transition: transform 0.14s ease;
+}
+
+.bereich--offen .bereich__pfeil {
+  transform: rotate(90deg);
+}
+
+.bereich__name {
+  margin: 0;
+  font-size: 13.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--papier);
+}
+
+.bereich--top .bereich__name {
+  color: var(--gold-hell);
+}
+
+.bereich__zahl {
+  font-family: var(--schrift-zahl);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--papier-gedaempft);
+}
+
+.bereich__erlaeuterung {
+  flex: 1;
+  font-family: var(--schrift-prosa);
+  font-size: 12px;
+  color: var(--papier-still);
+  line-height: 1.4;
+  text-align: right;
+  min-width: 0;
+}
+
+/* Die Kopfleiste mit der DSCR-Skala */
+.skalenkopf {
+  display: grid;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--linie-zart);
+  background: var(--grund-tief);
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--papier-still);
+}
+
+/*
+ * Die Achse ist ZWEIZEILIG: oben die Teilstriche, unten die Meldeschwelle.
+ * Auf einer Zeile stiessen "Meldeschwelle 1,30" und der Strich bei 2,00
+ * zusammen -- gemessen im Browser, nicht vermutet.
+ */
+.skalenkopf__achse {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+}
+
+.skalenkopf__strich {
+  position: absolute;
+  top: 11px;
+  bottom: 0;
+  border-left: 1px solid var(--linie);
+}
+
+.skalenkopf__marke {
+  position: absolute;
+  top: -11px;
+  transform: translateX(-50%);
+  font-family: var(--schrift-zahl);
+  font-size: 9.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--papier-still);
+  font-variant-numeric: tabular-nums;
+}
+
+.skalenkopf__schwelle {
+  position: absolute;
+  top: 11px;
+  bottom: -1px;
+  border-left: 1px solid var(--schwelle);
+}
+
+.skalenkopf__schwelle span {
+  position: absolute;
+  bottom: -3px;
+  left: -5px;
+  white-space: nowrap;
+  color: var(--schwelle);
+  font-family: var(--schrift-technisch);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.liste {
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.liste__fuellung {
+  position: relative;
+  width: 100%;
+}
+
+/* ------------------------------------------------------------------ */
+/* Objektzeile                                                          */
+/* ------------------------------------------------------------------ */
+
+.zeile {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--zeile-hoehe);
+  display: grid;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--linie-zart);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.1s;
+}
+
+.zeile:hover {
+  background: var(--flaeche-hoch);
+}
+
+.zeile:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: -1px;
+}
+
+/* --- Zustand: abgaengig = ausgegraut. Grau heisst genau DAS. --- */
+.zeile--abgaengig {
+  opacity: 0.5;
+  filter: saturate(0.25);
+}
+
+/* --- Zustand: unbestaetigt = gestrichelte Kante, NICHT grau (6.3). --- */
+.zeile--unbestaetigt {
+  border-left: 2px dashed var(--unbestaetigt);
+  padding-left: 14px;
+}
+
+/* --- S0: Schraffur. "Ueber sie ist nichts bekannt." --- */
+.zeile--unklar {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 7px,
+    rgba(157, 140, 196, 0.055) 7px 14px
+  );
+}
+
+.zeile__rang {
+  font-family: var(--schrift-zahl);
+  font-size: 10.5px;
+  color: var(--papier-still);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.zeile__sache {
+  min-width: 0;
+}
+
+.zeile__titel {
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--papier);
+}
+
+.zeile:hover .zeile__titel {
+  color: var(--gold-hell);
+}
+
+.zeile__ort {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--papier-still);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.zeile__zahlen {
+  text-align: right;
+  font-family: var(--schrift-zahl);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* `display:block`, sonst stehen Preis und Flaeche auf einer Zeile -- Spans
+   sind inline, und im Browser sah das aus wie "71.000 €150 m²". */
+.zeile__preis {
+  display: block;
+  font-size: 12.5px;
+  color: var(--papier);
+}
+
+.zeile__neben {
+  display: block;
+  font-size: 10.5px;
+  color: var(--papier-still);
+  margin-top: 2px;
+}
+
+.zeile__titel,
+.zeile__ort {
+  display: block;
+}
+
+.zeile__abzeichen {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* ------------------------------------------------------------------ */
+/* Bandstreifen -- die Rangzahl als Band, nicht als Punkt (3.4)          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Der Streifen ist zweigeteilt: links das Feld mit allen Marken, rechts der
+ * Zahlenwert in EIGENER Spalte. Beides uebereinanderzulegen und die Zahl mit
+ * einem Verlauf freizustellen war der erste Versuch -- im Browser ueberdeckte
+ * die Zahl genau die besten Baender, weil die am weitesten rechts liegen.
+ */
+.band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 30px;
+}
+
+.band__feld {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+/* Die Achse */
+.band__achse {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--linie);
+}
+
+/*
+ * Die Meldeschwelle. Sie steht in JEDER Zeile an derselben Stelle und
+ * bildet dadurch eine durchgehende Senkrechte durch die ganze Liste -- ein
+ * Lot, an dem sich jedes Band von selbst misst.
+ */
+.band__schwelle {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  width: 1px;
+  background: var(--schwelle-still);
+}
+
+.band__spanne {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 9px;
+  border-radius: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(126, 166, 196, 0.16),
+    rgba(126, 166, 196, 0.36)
+  );
+  border-left: 1px solid var(--schwelle);
+  border-right: 1px solid rgba(126, 166, 196, 0.5);
+}
+
+.zeile--top .band__spanne {
+  background: linear-gradient(90deg, rgba(227, 165, 69, 0.22), rgba(227, 165, 69, 0.46));
+  border-left-color: var(--gold);
+  border-right-color: rgba(227, 165, 69, 0.6);
+}
+
+/* Band reicht ueber das Ende der Skala hinaus -> abgeschnitten anzeigen */
+.band__spanne--offen {
+  border-right: 0;
+  -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent);
+  mask-image: linear-gradient(90deg, #000 78%, transparent);
+}
+
+/* Der Punktwert */
+.band__punkt {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 17px;
+  background: var(--papier);
+  border-radius: 1px;
+}
+
+.zeile--top .band__punkt {
+  background: var(--gold-hell);
+  box-shadow: 0 0 6px rgba(227, 165, 69, 0.45);
+}
+
+/* S3: ein Punktwert ohne Band -- eine Raute statt eines Strichs */
+.band__punkt--belegt {
+  width: 9px;
+  height: 9px;
+  border-radius: 1px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--papier);
+}
+
+.band__wechsler {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 15px;
+  height: 15px;
+  border: 1px dashed var(--schwelle);
+  border-radius: 50%;
+  opacity: 0.85;
+}
+
+.band__wert {
+  flex: none;
+  width: 74px;
+  text-align: right;
+  font-family: var(--schrift-zahl);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--papier-gedaempft);
+  white-space: nowrap;
+}
+
+.skalenkopf .band__wert {
+  font-family: var(--schrift-technisch);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.zeile--top .band__wert {
+  color: var(--gold-hell);
+}
+
+/*
+ * Die Stelle, an der ein S0-Objekt seinen Grund traegt. HIER STEHT NIE EINE
+ * ZAHL -- weder eine 0 noch ein leeres Feld. Entwurf 3.7.
+ */
+.gruende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  overflow: hidden;
+  max-height: 42px;
+  /* Ohne `min-width: 0` waechst ein Rasterfeld ueber seine Spur hinaus
+     (`min-width: auto` ist der Vorgabewert) -- im Browser schob der lange
+     Grund "Miete nicht belastbar schätzbar …" die Stufenspalte aus dem Bild. */
+  min-width: 0;
+}
+
+.grund {
+  font-size: 11px;
+  line-height: 1.3;
+  padding: 3px 8px;
+  border-radius: var(--r-klein);
+  border: 1px solid rgba(157, 140, 196, 0.38);
+  background: rgba(157, 140, 196, 0.1);
+  color: #c4b6e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Ein durchgereichter Code ist kein Satz -- und sieht auch nicht so aus. */
+.grund--code {
+  font-family: var(--schrift-zahl);
+  font-size: 10px;
+  border-style: dashed;
+  color: var(--papier-still);
+  background: none;
+  border-color: var(--linie-hell);
+}
+
+.grund--code::before {
+  content: "ohne Klartext: ";
+  opacity: 0.66;
+}
+
+/* ------------------------------------------------------------------ */
+/* Abzeichen                                                            */
+/* ------------------------------------------------------------------ */
+
+.abzeichen {
+  font-family: var(--schrift-zahl);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--linie-hell);
+  color: var(--papier-still);
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.abzeichen--s3 {
+  border-color: var(--papier-gedaempft);
+  color: var(--papier);
+}
+.abzeichen--s2 {
+  border-color: #5f7f66;
+  color: #93bb9c;
+}
+.abzeichen--s1 {
+  border-color: var(--linie-hell);
+  color: var(--papier-still);
+}
+.abzeichen--s0 {
+  border-color: rgba(157, 140, 196, 0.5);
+  color: var(--unklar);
+  background: rgba(157, 140, 196, 0.08);
+}
+
+.marker {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.marker--zvg {
+  border: 1px solid #6c6242;
+  color: #c9b477;
+}
+.marker--senkung {
+  border: 1px solid #5c7a52;
+  color: #9ac489;
+}
+.marker--termin {
+  border: 1px solid var(--linie-hell);
+  color: var(--papier-gedaempft);
+}
+.marker--angenommen {
+  border: 1px dashed var(--linie-hell);
+  color: var(--papier-still);
+}
+
+.zustandsmarke {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.zustandsmarke--unbestaetigt {
+  color: var(--unbestaetigt);
+}
+.zustandsmarke--abgaengig {
+  color: var(--abgang);
+}
+.zustandsmarke--verfuegbar {
+  color: var(--papier-still);
+}
+
+.zustandsmarke i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.zustandsmarke--unbestaetigt i {
+  background: none;
+  border: 1px dashed currentColor;
+  width: 8px;
+  height: 8px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Leere Mengen                                                         */
+/* ------------------------------------------------------------------ */
+
+.leer {
+  padding: 26px 20px;
+  font-family: var(--schrift-prosa);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--papier-still);
+  max-width: 70ch;
+}
+
+.leer b {
+  color: var(--papier-gedaempft);
+  font-family: var(--schrift-technisch);
+}
+
+/* ------------------------------------------------------------------ */
+/* Fusszeile                                                            */
+/* ------------------------------------------------------------------ */
+
+.fuss {
+  border-top: 1px solid var(--linie-zart);
+  padding-top: 14px;
+  font-family: var(--schrift-zahl);
+  font-size: 10.5px;
+  color: var(--papier-still);
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Spaltenmasse -- an EINER Stelle, damit Kopf und Zeile nie auseinander-
+   laufen                                                               */
+/* ------------------------------------------------------------------ */
+
+.skalenkopf,
+.zeile {
+  grid-template-columns:
+    38px
+    minmax(150px, 1.55fr)
+    112px
+    minmax(190px, 1.15fr)
+    128px;
+}
+
+/* Ohne Rangspalte: der S0-Bereich und die Abgaenge */
+.skalenkopf--ohne-rang,
+.zeile--ohne-rang {
+  grid-template-columns:
+    minmax(150px, 1.55fr)
+    112px
+    minmax(190px, 1.15fr)
+    128px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Schmale Fenster                                                      */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 1180px) {
+  .tafeln {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  :root {
+    --zeile-hoehe: 104px;
+  }
+
+  .geruest {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "kopf"
+      "rail"
+      "haupt";
+  }
+
+  .rail {
+    position: static;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--linie);
+  }
+
+  .haupt {
+    padding: 16px 14px 60px;
+  }
+
+  .kopf {
+    padding: 14px 14px 13px;
+  }
+
+  /* Die Zeile wird zweizeilig: Sache oben, Zahlen und Band darunter. */
+  .skalenkopf,
+  .skalenkopf--ohne-rang {
+    display: none;
+  }
+
+  .zeile,
+  .zeile--ohne-rang {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "sache abzeichen"
+      "band  zahlen";
+    align-content: center;
+    gap: 5px 10px;
+    padding: 9px 13px;
+  }
+
+  .zeile__rang {
+    display: none;
+  }
+  .zeile__sache {
+    grid-area: sache;
+  }
+  .zeile__abzeichen {
+    grid-area: abzeichen;
+  }
+  .zeile__zahlen {
+    grid-area: zahlen;
+  }
+  .band,
+  .gruende {
+    grid-area: band;
+  }
+
+  .band {
+    height: 22px;
+  }
+
+  .gruende {
+    max-height: none;
+  }
+
+  .bereich__erlaeuterung {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  body {
+    font-size: 13px;
+  }
+
+  .marke__name {
+    font-size: 16px;
+  }
+
+  .kopfzeile {
+    font-size: 14px;
+  }
+
+  .zeile__ort {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
