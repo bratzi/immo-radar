@@ -185,4 +185,15 @@ describe("mietSpanneBundesweit", () => {
     expect(spanne.minProzent).toBeCloseTo(-0.4599459945994599, 6);
     expect(spanne.maxProzent).toBeCloseTo(0.8451845184518453, 6);
   });
+
+  it("merkt sich das Ergebnis wie die Nachbarfunktionen -- zwei Aufrufe liefern dieselbe Referenz (A17)", () => {
+    // mieteProM2FuerBundesland und mietSpanneFuerBundesland merken sich ihr
+    // Ergebnis in einer Map und geben bei einem Treffer dasselbe Objekt
+    // zurueck, statt es neu zu bauen. mietSpanneBundesweit lief bisher bei
+    // jedem Aufruf erneut ueber die ganze REGIONALE_MIETE_PRO_M2-Tabelle und
+    // baute jedes Mal ein neues Objekt -- toEqual saehe das nicht, weil beide
+    // Objekte inhaltlich gleich sind. toBe (Referenzgleichheit) unterscheidet
+    // "wiederverwendet" zuverlaessig von "neu berechnet".
+    expect(mietSpanneBundesweit()).toBe(mietSpanneBundesweit());
+  });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { bestimmeSicherheitsstufe, bewerteFuerRangliste, bestimmeVerfuegbarkeitszustand } from "./ranking.js";
 import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
 
@@ -288,5 +288,89 @@ describe("bestimmeVerfuegbarkeitszustand", () => {
         jetzt
       )
     ).toBe("unbestaetigt");
+  });
+
+  it("ist unbestaetigt, wenn disappearedAt fehlt (undefined) -- auch bei FRISCHEM last_seen", () => {
+    // A17-Nachbesserung: Die erste Fassung dieses Fixes liess `undefined`
+    // durchfallen zur Frischepruefung. Bei frischem last_seen kam dann
+    // "verfuegbar" heraus -- das ersetzt nur eine Behauptung durch eine
+    // andere. "verfuegbar" behauptet genauso viel Wissen wie "abgaengig",
+    // nur in die Gegenrichtung: Ob ein Objekt ohne bekannten disappearedAt
+    // zwischenzeitlich als abgaengig markiert wurde, ist unbekannt, ganz
+    // gleich wie frisch last_seen ist. Deshalb hier ein last_seen, das WEIT
+    // UNTER der doppelten Kadenz liegt (1 Stunde vor `jetzt`, Kadenz 1 Tag)
+    // -- die Frischepruefung allein wuerde "verfuegbar" liefern. Kommt
+    // stattdessen "unbestaetigt" heraus, beweist das den Kurzschluss:
+    // `undefined` bei disappearedAt entscheidet sofort, ohne last_seen und
+    // Kadenz ueberhaupt erst zu befragen.
+    //
+    // Das `as` umgeht die engere Signatur absichtlich, um exakt den Fall
+    // einer Datenbankzeile nachzubilden, deren Spalte disappeared_at gar
+    // nicht mit ausgewaehlt wurde.
+    const objektOhneFeldFrisch = {
+      lastSeen: "2026-09-14T11:00:00Z",
+      kadenzTageDerRegion: 1,
+    } as unknown as { disappearedAt: string | null; lastSeen: string | null; kadenzTageDerRegion: number | null };
+
+    expect(bestimmeVerfuegbarkeitszustand(objektOhneFeldFrisch, jetzt)).toBe("unbestaetigt");
+  });
+
+  it("ist unbestaetigt, wenn disappearedAt fehlt (undefined) -- auch bei LAENGST ABGELAUFENEM last_seen", () => {
+    // Ergaenzt den Test oben um die Gegenprobe: Der Kurzschluss auf
+    // "unbestaetigt" gilt unabhaengig davon, was last_seen sagt -- nicht nur
+    // fuer frische, sondern auch fuer laengst abgelaufene Werte liefert
+    // dieselbe Ursache (disappearedAt unbekannt) dasselbe Ergebnis.
+    const objektOhneFeldAbgelaufen = {
+      lastSeen: "2026-09-11T23:00:00Z",
+      kadenzTageDerRegion: 1,
+    } as unknown as { disappearedAt: string | null; lastSeen: string | null; kadenzTageDerRegion: number | null };
+
+    expect(bestimmeVerfuegbarkeitszustand(objektOhneFeldAbgelaufen, jetzt)).toBe("unbestaetigt");
+  });
+});
+
+describe("DSCR_MELDESCHWELLE hat genau eine Quelle (A17)", () => {
+  it("bewerteFuerRangliste benutzt die aus metrics.ts exportierte Schwelle, keine eigene Kopie", async () => {
+    // Diese Schwelle darf nur an EINER Stelle im Quellcode stehen
+    // (metrics.ts, dort in `topTreffer`). ranking.ts muss sie importieren.
+    // Um das zu pruefen -- nicht nur, dass beide Stellen heute zufaellig
+    // denselben Wert 1,3 tragen -- wird metrics.ts hier durch eine Fassung
+    // mit einer ANDEREN Schwelle ersetzt. Haengt ranking.ts wirklich am
+    // Import, muss sich sein Verhalten mit der Faelschung aendern. Bleibt es
+    // gleich, benutzt ranking.ts eine eigene, unabhaengige Kopie -- genau der
+    // Fehler, den dieser Test verhindern soll.
+    vi.resetModules();
+    vi.doMock("./metrics.js", async (importOriginal) => {
+      const echte = await importOriginal<typeof import("./metrics.js")>();
+      return { ...echte, DSCR_MELDESCHWELLE: 2.0 };
+    });
+
+    const { bewerteFuerRangliste: bewerteMitGefaelschterSchwelle } = await import("./ranking.js");
+
+    const leipzig: KennzahlenInput = {
+      kaufpreis: 480_000,
+      jahreskaltmiete: 32_000,
+      einheiten: 3,
+      baujahr: 1998,
+      wohnflaecheM2: 240,
+    };
+
+    // Mit der echten Schwelle 1,3 ueberquert dieses Band (unten 0,524, oben
+    // 1,343) die Schwelle -- siehe "S1 mit bekanntem Bundesland..." oben in
+    // dieser Datei. Mit der gefaelschten Schwelle 2,0 liegt das ganze Band
+    // darunter, also KEIN Schwellenwechsel mehr.
+    const ergebnis = bewerteMitGefaelschterSchwelle(
+      { rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      5.5,
+      "Bayern"
+    );
+
+    expect(ergebnis.band!.unten).toBeLessThan(2.0);
+    expect(ergebnis.band!.oben).toBeLessThan(2.0);
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+
+    vi.doUnmock("./metrics.js");
+    vi.resetModules();
   });
 });

@@ -246,15 +246,26 @@ export const REGIONALE_SPANNE_S2: MietSpanne = {
  * zu `mietSpanneFuerBundesland`: die gemessene Spanne ALLER PLZ-Werte gegen
  * den Bundesschnitt. Betrifft nur sehr wenige Objekte (6 von 12.611,
  * gemessen 2026-09-12, Entwurf 3.3) -- Faelle ohne PLZ UND ohne Bundesland.
+ *
+ * Wird beim ersten Aufruf berechnet und gemerkt (A17), genau wie
+ * `mieteProM2FuerBundesland` und `mietSpanneFuerBundesland` -- ohne Argument
+ * gibt es hier nur ein Ergebnis, darum eine einzelne gemerkte Variable statt
+ * einer Map ueber ein Argument.
  */
+let bundesweiteSpanneGemerkt: MietSpanne | undefined;
+
 export function mietSpanneBundesweit(): MietSpanne {
+  if (bundesweiteSpanneGemerkt !== undefined) return bundesweiteSpanneGemerkt;
+
   const werte = Object.values(REGIONALE_MIETE_PRO_M2);
   const min = Math.min(...werte);
   const max = Math.max(...werte);
-  return {
+  const ergebnis: MietSpanne = {
     minProzent: (min - BUNDESWEITER_MIETPREIS_PRO_M2_MONAT) / BUNDESWEITER_MIETPREIS_PRO_M2_MONAT,
     maxProzent: (max - BUNDESWEITER_MIETPREIS_PRO_M2_MONAT) / BUNDESWEITER_MIETPREIS_PRO_M2_MONAT,
   };
+  bundesweiteSpanneGemerkt = ergebnis;
+  return ergebnis;
 }
 
 /** Naeherungs-Kaltmiete je m²/Monat fuer eine PLZ, sonst null. */

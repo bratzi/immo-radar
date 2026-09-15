@@ -8,7 +8,7 @@
  * selbst liest die Uhr nirgends direkt.
  */
 
-import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
+import { berechneKennzahlen, DSCR_MELDESCHWELLE, type KennzahlenInput } from "./metrics.js";
 import {
   mietSpanneFuerBundesland,
   mietSpanneBundesweit,
@@ -85,14 +85,6 @@ export interface Bandkanten {
   unten: number;
   oben: number;
 }
-
-/**
- * Schwelle, an der die Meldung haengt (`topTreffer` in `metrics.ts`,
- * `geschaetzterDscr >= 1,3`). Hier dupliziert statt importiert, weil
- * `metrics.ts` sie nirgends als eigenen Namen exportiert -- sie steckt dort
- * als Literal in `topTreffer`.
- */
-const DSCR_MELDESCHWELLE = 1.3;
 
 /**
  * Bandkanten durch einen zweiten und dritten Aufruf von `berechneKennzahlen`
@@ -208,6 +200,23 @@ export function bestimmeVerfuegbarkeitszustand(
   },
   jetzt: Date
 ): Verfuegbarkeitszustand {
+  // `null` und `undefined` sind hier NICHT dasselbe Nichtwissen. `null`
+  // heisst "die Spalte wurde gelesen, das Objekt ist nicht als abgaengig
+  // markiert" -- eine Aussage, die es rechtfertigt, ueber last_seen und
+  // Kadenz zu urteilen (weiter unten). `undefined` heisst "die Spalte lag
+  // gar nicht vor" (z. B. eine Datenbankzeile, in der disappeared_at nicht
+  // mit ausgewaehlt wurde) -- dazu gibt es keine Aussage. Die Signatur oben
+  // (`string | null`) ist dann ein Typvertrag, den TypeScript zur Laufzeit
+  // nicht durchsetzt.
+  //
+  // Deshalb zwei getrennte Ergebnisse statt eines gemeinsamen Fallthrough:
+  // Ein `undefined` darf nicht zu "abgaengig" UND nicht zu "verfuegbar"
+  // werden -- beides waeren Behauptungen ueber ein Feld, das nie gelesen
+  // wurde. Es entscheidet sofort auf "unbestaetigt", ohne last_seen oder
+  // Kadenz ueberhaupt erst zu befragen: Nichtwissen wird in diesem Projekt
+  // nie zu einer Behauptung (docs/superpowers/BACKLOG.md), in keine der
+  // beiden Richtungen.
+  if (objekt.disappearedAt === undefined) return "unbestaetigt";
   if (objekt.disappearedAt !== null) return "abgaengig";
   if (objekt.kadenzTageDerRegion === null) return "unbestaetigt";
   if (objekt.lastSeen === null) return "unbestaetigt";

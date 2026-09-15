@@ -32,6 +32,16 @@ export interface Kennzahlen {
  */
 export const MIN_PLAUSIBLER_KAUFPREISFAKTOR = 3;
 
+/**
+ * Schwelle, an der `topTreffer` unten haengt, und -- importiert -- auch
+ * `istSchwellenwechsler` in ranking.ts. Einzige Quelle fuer diese Zahl im
+ * ganzen Projekt (A17): vorher stand sie zusaetzlich als eigene Kopie in
+ * ranking.ts, weil sie hier nur als Literal in `topTreffer` steckte. Zwei
+ * Kopien derselben Zahl heisst: aendert jemand eine, bricht die andere
+ * lautlos.
+ */
+export const DSCR_MELDESCHWELLE = 1.3;
+
 const KAPITALDIENST_SATZ = 0.06;
 const NOTAR_GRUNDBUCH_SATZ = 0.015;
 const MAKLER_SATZ = 0.0357;
@@ -85,7 +95,7 @@ export function berechneKennzahlen(
   const topTreffer =
     !kaufpreisfaktorUnplausibel &&
     kaufpreisfaktor <= 15 &&
-    geschaetzterDscr >= 1.3 &&
+    geschaetzterDscr >= DSCR_MELDESCHWELLE &&
     !finanzierungsrisiko;
 
   return {

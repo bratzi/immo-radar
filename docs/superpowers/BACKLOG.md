@@ -1161,7 +1161,7 @@ erweitern.
 
 ---
 
-## A17. Vier kleinere Befunde aus der ranking-schritt2-Review, bewusst zurückgestellt
+## A17. Vier kleinere Befunde aus der ranking-schritt2-Review — drei ERLEDIGT (2026-09-15), einer offen
 
 **Herkunft:** Die abschließende Gesamtprüfung des Zweigs `sdd/ranking-schritt2`
 (gemergt `bf0ddf1`, Ledger
@@ -1171,39 +1171,56 @@ kleinen sind in der Fixwave (`96f3528`) behoben; vier weitere kleine Punkte
 wurden bewusst nicht mitgezogen, um die Fixwave nicht zu einer zweiten
 Implementierungsrunde zu machen. Hierher geroutet, wie im Ledger vermerkt.
 
-- **`DSCR_MELDESCHWELLE` ist doppelt.** `scraper/lib/ranking.ts:95` definiert
-  `DSCR_MELDESCHWELLE = 1.3` als eigenen Namen, weil `scraper/lib/metrics.ts:88`
-  denselben Wert nur als Literal in der `topTreffer`-Bedingung trägt und ihn
-  nirgends exportiert. Ändert sich die Meldeschwelle künftig an einer Stelle,
-  bricht die andere lautlos. Behoben würde das, indem `metrics.ts` die Zahl
-  als benannte Konstante exportiert und `ranking.ts` sie importiert statt
-  dupliziert — das hätte `metrics.ts` angefasst, was der Plan ausdrücklich
-  ausschloss.
-- **`undefined` vs. `null` an der DB-Grenze in `bestimmeVerfuegbarkeitszustand`.**
-  Die Signatur verlangt `disappearedAt: string | null`, und die Prüfung
-  `if (objekt.disappearedAt !== null) return "abgaengig";` behandelt jedes
+- [x] **`DSCR_MELDESCHWELLE` ist doppelt — ERLEDIGT (`6f2ce67`).**
+  `scraper/lib/ranking.ts:95` definierte `DSCR_MELDESCHWELLE = 1.3` als
+  eigenen Namen, weil `scraper/lib/metrics.ts:88` denselben Wert nur als
+  Literal in der `topTreffer`-Bedingung trug und ihn nirgends exportierte.
+  Ändert sich die Meldeschwelle künftig an einer Stelle, bricht die andere
+  lautlos. Behoben: `metrics.ts` exportiert die Zahl jetzt als benannte
+  Konstante und benutzt sie selbst in `topTreffer`, `ranking.ts` importiert
+  sie statt sie zu duplizieren. Test faelscht `metrics.ts` per `vi.doMock`
+  auf eine andere Schwelle und prueft, dass sich `bewerteFuerRangliste`
+  danach richtet — reine Wertgleichheit haette eine wiedereingefuehrte Kopie
+  nicht erkannt.
+- [x] **`undefined` vs. `null` an der DB-Grenze in `bestimmeVerfuegbarkeitszustand`
+  — ERLEDIGT (`47a08a4`, nachgebessert in `6fe993e`).** Die Signatur verlangte
+  `disappearedAt: string | null`, und die Prüfung
+  `if (objekt.disappearedAt !== null) return "abgaengig";` behandelte jedes
   `undefined` (z. B. eine Spalte, die eine SQL-Abfrage nicht mit auswählt)
-  wie einen gesetzten Zeitstempel — das Objekt gälte fälschlich als
-  abgängig. Reine Funktion, daher Sache des Aufrufers (Schritt 3,
-  Snapshot-Export); dort beim Zusammenbauen des Eingabeobjekts aus der
-  Datenbankzeile `?? null` erzwingen und mit einem Test belegen, der ein
-  Objekt ohne das Feld durchreicht.
-- **`mietSpanneBundesweit()` bleibt ohne Memoisierung.** Im Gegensatz zu
-  `mieteProM2FuerBundesland` und (seit der Fixwave) `mietSpanneFuerBundesland`
-  läuft hier bei jedem Aufruf erneut ein `Object.values()`/`Math.min`/`Math.max`
-  über die ganze `REGIONALE_MIETE_PRO_M2`-Tabelle. Trifft nur sehr wenige
-  Objekte (6 von 12.611, Entwurf 3.3) — deutlich seltener als der bereits
-  behobene Fall für `mietSpanneFuerBundesland`, der 11.308 S1-Objekte betraf.
-- **Ungenannte Grenzfälle der finalen Gesamtprüfung.** Der Prüfbericht nennt
-  in der Kurzfassung „Grenzfälle unfixiert", ohne sie im Ledger einzeln
-  auszuschreiben. Vor einer Bearbeitung zuerst das Diff
+  wie einen gesetzten Zeitstempel — das Objekt gälte fälschlich als abgängig.
+  **Anders behoben als hier vorgeschlagen:** nicht beim Aufrufer (Schritt 3,
+  Snapshot-Export existiert im Code noch gar nicht), sondern direkt in der
+  Funktion. **Der erste Versuch (`47a08a4`) war selbst noch fehlerhaft:** er
+  liess `undefined` zur Frischepruefung durchfallen, was bei frischem
+  `last_seen` "verfuegbar" lieferte — eine Behauptung in die andere
+  Richtung. `null` und `undefined` sind kein gleichwertiges Nichtwissen:
+  `null` heisst "Spalte gelesen, nicht abgängig" und rechtfertigt ein Urteil
+  über `last_seen`/Kadenz; `undefined` heisst "Spalte lag nicht vor" und
+  trägt keine Aussage. `6fe993e` entscheidet `undefined` deshalb sofort auf
+  `"unbestaetigt"`, ohne `last_seen` oder Kadenz zu befragen. Test mit
+  frischem `last_seen` nagelt das fest (die reine Frischepruefung hätte dort
+  "verfuegbar" geliefert).
+- [x] **`mietSpanneBundesweit()` bleibt ohne Memoisierung — ERLEDIGT (`d597ccd`).**
+  Im Gegensatz zu `mieteProM2FuerBundesland` und (seit der Fixwave)
+  `mietSpanneFuerBundesland` lief hier bei jedem Aufruf erneut ein
+  `Object.values()`/`Math.min`/`Math.max` über die ganze
+  `REGIONALE_MIETE_PRO_M2`-Tabelle. Trifft nur sehr wenige Objekte (6 von
+  12.611, Entwurf 3.3) — deutlich seltener als der bereits behobene Fall für
+  `mietSpanneFuerBundesland`, der 11.308 S1-Objekte betraf. Behoben nach
+  demselben Muster wie die Nachbarn (eine gemerkte Variable statt einer Map,
+  weil die Funktion kein Argument hat); Referenzgleichheits-Test (`toBe`)
+  belegt, dass zwei Aufrufe jetzt dasselbe Objekt liefern.
+- [ ] **Ungenannte Grenzfälle der finalen Gesamtprüfung — OFFEN.** Der
+  Prüfbericht nennt in der Kurzfassung „Grenzfälle unfixiert", ohne sie im
+  Ledger einzeln auszuschreiben. Vor einer Bearbeitung zuerst das Diff
   `.superpowers/sdd/2026-09-14-ranking-schritt2-abschluss/review-e4492a2..96f3528.diff`
   und die Fundstelle im Sitzungsprotokoll der finalen Gesamtprüfung
   nachschlagen — hier nicht aus der Erinnerung nacherzählt, um nichts zu
-  erfinden.
+  erfinden. Ohne den Originalbericht nicht bearbeitbar (Stand 2026-09-15).
 
 **Abnahme:** je Punkt ein eigener, zuerst rot gesehener Test, dann die
-minimale Behebung — wie überall in diesem Projekt.
+minimale Behebung — wie überall in diesem Projekt. Für die drei erledigten
+Punkte erfüllt (`6f2ce67`, `47a08a4`/`6fe993e`, `d597ccd`).
 
 # Teil B — Braucht erst einen Entwurf
 
