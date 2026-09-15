@@ -1,0 +1,7 @@
+node_modules/
+dist/
+
+# Die Entwicklungs-Snapshotdatei (18,9 MB) ist ein Erzeugnis des Laufs und
+# wird als Artefakt veroeffentlicht -- sie gehoert nicht ins Repo. Erzeugen:
+# siehe .superpowers/sdd/2026-09-15-web-dashboard/progress.md
+public/dashboard-snapshot.json
