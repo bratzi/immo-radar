@@ -32,6 +32,29 @@ export interface Kennzahlen {
  */
 export const MIN_PLAUSIBLER_KAUFPREISFAKTOR = 3;
 
+/**
+ * Obergrenze des Kaufpreisfaktors, ab der ein Objekt die Meldeschwelle nicht
+ * mehr passiert -- entspricht einer Bruttomietrendite von 6,67 %
+ * (Dashboard-Entwurf 2.1: `kaufpreisfaktor <= 15` ist woertlich dasselbe).
+ *
+ * Stand bis zum 2026-09-15 als blosse `15` in `topTreffer`. Sie bekommt einen
+ * Namen, weil der Snapshot-Export dieselbe Schwelle braucht (N1.1) und ihn
+ * sonst abschreiben muesste -- zwei Kopien derselben Zahl waren in diesem
+ * Projekt schon einmal der Fehler (siehe `bewertePreisplausibilitaet`).
+ */
+export const MAX_PLAUSIBLER_KAUFPREISFAKTOR = 15;
+
+/**
+ * Die Meldeschwelle. Aus demselben Grund benannt wie
+ * `MAX_PLAUSIBLER_KAUFPREISFAKTOR`: Der Snapshot-Export prueft sie an der
+ * unteren Bandkante (N1.1) und darf die Zahl nicht kopieren.
+ *
+ * `ranking.ts` fuehrt sie heute noch als eigene, private Konstante. Das ist
+ * bekannt und steht als BACKLOG A17; es wird hier NICHT nebenbei
+ * mitgeaendert, weil an `ranking.ts` parallel gearbeitet wird.
+ */
+export const DSCR_MELDESCHWELLE = 1.3;
+
 const KAPITALDIENST_SATZ = 0.06;
 const NOTAR_GRUNDBUCH_SATZ = 0.015;
 const MAKLER_SATZ = 0.0357;
@@ -84,8 +107,8 @@ export function berechneKennzahlen(
   const kaufpreisfaktorUnplausibel = kaufpreisfaktor < MIN_PLAUSIBLER_KAUFPREISFAKTOR;
   const topTreffer =
     !kaufpreisfaktorUnplausibel &&
-    kaufpreisfaktor <= 15 &&
-    geschaetzterDscr >= 1.3 &&
+    kaufpreisfaktor <= MAX_PLAUSIBLER_KAUFPREISFAKTOR &&
+    geschaetzterDscr >= DSCR_MELDESCHWELLE &&
     !finanzierungsrisiko;
 
   return {
