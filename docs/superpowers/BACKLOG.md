@@ -1183,15 +1183,23 @@ Implementierungsrunde zu machen. Hierher geroutet, wie im Ledger vermerkt.
   danach richtet — reine Wertgleichheit haette eine wiedereingefuehrte Kopie
   nicht erkannt.
 - [x] **`undefined` vs. `null` an der DB-Grenze in `bestimmeVerfuegbarkeitszustand`
-  — ERLEDIGT (`47a08a4`).** Die Signatur verlangte `disappearedAt: string | null`,
-  und die Prüfung `if (objekt.disappearedAt !== null) return "abgaengig";`
-  behandelte jedes `undefined` (z. B. eine Spalte, die eine SQL-Abfrage nicht
-  mit auswählt) wie einen gesetzten Zeitstempel — das Objekt gälte fälschlich
-  als abgängig. **Anders behoben als hier vorgeschlagen:** nicht beim Aufrufer
-  (Schritt 3, Snapshot-Export existiert im Code noch gar nicht), sondern
-  direkt in der Funktion — sie prueft jetzt ausdruecklich auf `undefined`
-  UND `null` und faellt sonst durch zur normalen Frischepruefung. Test belegt
-  ein Objekt, dem das Feld ganz fehlt.
+  — ERLEDIGT (`47a08a4`, nachgebessert in `6fe993e`).** Die Signatur verlangte
+  `disappearedAt: string | null`, und die Prüfung
+  `if (objekt.disappearedAt !== null) return "abgaengig";` behandelte jedes
+  `undefined` (z. B. eine Spalte, die eine SQL-Abfrage nicht mit auswählt)
+  wie einen gesetzten Zeitstempel — das Objekt gälte fälschlich als abgängig.
+  **Anders behoben als hier vorgeschlagen:** nicht beim Aufrufer (Schritt 3,
+  Snapshot-Export existiert im Code noch gar nicht), sondern direkt in der
+  Funktion. **Der erste Versuch (`47a08a4`) war selbst noch fehlerhaft:** er
+  liess `undefined` zur Frischepruefung durchfallen, was bei frischem
+  `last_seen` "verfuegbar" lieferte — eine Behauptung in die andere
+  Richtung. `null` und `undefined` sind kein gleichwertiges Nichtwissen:
+  `null` heisst "Spalte gelesen, nicht abgängig" und rechtfertigt ein Urteil
+  über `last_seen`/Kadenz; `undefined` heisst "Spalte lag nicht vor" und
+  trägt keine Aussage. `6fe993e` entscheidet `undefined` deshalb sofort auf
+  `"unbestaetigt"`, ohne `last_seen` oder Kadenz zu befragen. Test mit
+  frischem `last_seen` nagelt das fest (die reine Frischepruefung hätte dort
+  "verfuegbar" geliefert).
 - [x] **`mietSpanneBundesweit()` bleibt ohne Memoisierung — ERLEDIGT (`d597ccd`).**
   Im Gegensatz zu `mieteProM2FuerBundesland` und (seit der Fixwave)
   `mietSpanneFuerBundesland` lief hier bei jedem Aufruf erneut ein
@@ -1212,7 +1220,7 @@ Implementierungsrunde zu machen. Hierher geroutet, wie im Ledger vermerkt.
 
 **Abnahme:** je Punkt ein eigener, zuerst rot gesehener Test, dann die
 minimale Behebung — wie überall in diesem Projekt. Für die drei erledigten
-Punkte erfüllt (`6f2ce67`, `47a08a4`, `d597ccd`).
+Punkte erfüllt (`6f2ce67`, `47a08a4`/`6fe993e`, `d597ccd`).
 
 # Teil B — Braucht erst einen Entwurf
 
