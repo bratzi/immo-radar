@@ -1222,6 +1222,46 @@ Implementierungsrunde zu machen. Hierher geroutet, wie im Ledger vermerkt.
 minimale Behebung — wie überall in diesem Projekt. Für die drei erledigten
 Punkte erfüllt (`6f2ce67`, `47a08a4`/`6fe993e`, `d597ccd`).
 
+---
+
+## A18. Vier Befunde am Snapshot-Export, gefunden beim Bau der Oberfläche
+
+**Herkunft:** Die Weboberfläche (`web/`, gemergt 2026-09-15) liest den
+Snapshot und hat dabei einen Vertragstest gegen die **echte** Exportdatei
+laufen lassen. Der hat vier Dinge gefunden, die am Export liegen, nicht an der
+Anzeige. Die Oberfläche fängt alle vier ab, ohne eine Ursache zu erfinden —
+behoben sind sie damit nicht.
+
+- **Ein S0-Objekt ohne jeden Grund.** Das ZVG-Objekt `9327fbb0…` (Leverkusen)
+  ist S0, weil die Wohnfläche fehlt — trägt aber ein leeres `data_gaps` und
+  damit keinen Klartext-Grund. Entwurf **3.7** verlangt ausdrücklich einen:
+  *„an der Stelle steht der Grund im Klartext"*. Die Oberfläche schreibt
+  deshalb „der Export nennt zu diesem Objekt keinen Grund" — aus
+  `wohnflaecheM2 === null` ein „Wohnfläche fehlt" abzuleiten wäre eine im
+  Frontend nachgebaute Ableitung und damit eine zweite Kopie der Stufenregel.
+  **Der Export gehört so ergänzt, dass jedes S0-Objekt seinen Grund mitbringt.**
+- **Ein Lückencode ohne Klartext:** `kaufpreis_unplausibel` (2 Objekte) steht
+  in keiner `DATA_GAP_LABELS`-Zeile. Das ist der **alte Name** — A9 hat ihn
+  seinerzeit in `preis_miete_unvereinbar` umbenannt, weil er eine Behauptung
+  aufstellte, die die Messung nicht deckt. Diese beiden Zeilen stammen also
+  aus der Zeit davor und wurden nie nachgezogen. Zu entscheiden ist, ob der
+  Export alte Codes übersetzt oder ob die Daten selbst nachgezogen werden
+  (Letzteres ist ein Schreibzugriff auf Produktionsdaten und damit eine
+  Entscheidung des Nutzers).
+- **Der Snapshot trägt keinen Kaufpreisfaktor**, obwohl Entwurf **2.3** ihn
+  „daneben als zweite Zahl" vorsieht. Die Oberfläche zeigt stattdessen €/m²,
+  weil sich das aus zwei ohnehin angezeigten Werten ergibt. Kein Drama, aber
+  eine stille Abweichung vom Entwurf.
+- **Dritte Kopien von zwei Konstanten.** `web/` führt `KARENZ_TAGE` und
+  `DSCR_MELDESCHWELLE` als Anzeigekonstanten (kommentiert, und die Oberfläche
+  rechnet damit keine Schwelle nach). Formal ist es trotzdem dasselbe Muster,
+  das A17 gerade beseitigt hat. Der saubere Weg wäre ein Feld im Snapshot.
+
+**Abnahme:** je Punkt ein zuerst rot gesehener Test. Für Punkt 1 gilt zusätzlich:
+Der Vertragstest der Oberfläche
+(`web/src/daten/snapshot.vertrag.test.ts`) muss danach ohne Ausnahmeregel grün
+laufen — er ist der Wächter, der den Fund gemacht hat.
+
 # Teil B — Braucht erst einen Entwurf
 
 Nicht direkt implementieren. Reihenfolge: `superpowers:brainstorming` → Spec
