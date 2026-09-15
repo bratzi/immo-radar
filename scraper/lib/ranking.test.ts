@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { bestimmeSicherheitsstufe, bewerteFuerRangliste, bestimmeVerfuegbarkeitszustand } from "./ranking.js";
 import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
 
@@ -288,5 +288,51 @@ describe("bestimmeVerfuegbarkeitszustand", () => {
         jetzt
       )
     ).toBe("unbestaetigt");
+  });
+});
+
+describe("DSCR_MELDESCHWELLE hat genau eine Quelle (A17)", () => {
+  it("bewerteFuerRangliste benutzt die aus metrics.ts exportierte Schwelle, keine eigene Kopie", async () => {
+    // Diese Schwelle darf nur an EINER Stelle im Quellcode stehen
+    // (metrics.ts, dort in `topTreffer`). ranking.ts muss sie importieren.
+    // Um das zu pruefen -- nicht nur, dass beide Stellen heute zufaellig
+    // denselben Wert 1,3 tragen -- wird metrics.ts hier durch eine Fassung
+    // mit einer ANDEREN Schwelle ersetzt. Haengt ranking.ts wirklich am
+    // Import, muss sich sein Verhalten mit der Faelschung aendern. Bleibt es
+    // gleich, benutzt ranking.ts eine eigene, unabhaengige Kopie -- genau der
+    // Fehler, den dieser Test verhindern soll.
+    vi.resetModules();
+    vi.doMock("./metrics.js", async (importOriginal) => {
+      const echte = await importOriginal<typeof import("./metrics.js")>();
+      return { ...echte, DSCR_MELDESCHWELLE: 2.0 };
+    });
+
+    const { bewerteFuerRangliste: bewerteMitGefaelschterSchwelle } = await import("./ranking.js");
+
+    const leipzig: KennzahlenInput = {
+      kaufpreis: 480_000,
+      jahreskaltmiete: 32_000,
+      einheiten: 3,
+      baujahr: 1998,
+      wohnflaecheM2: 240,
+    };
+
+    // Mit der echten Schwelle 1,3 ueberquert dieses Band (unten 0,524, oben
+    // 1,343) die Schwelle -- siehe "S1 mit bekanntem Bundesland..." oben in
+    // dieser Datei. Mit der gefaelschten Schwelle 2,0 liegt das ganze Band
+    // darunter, also KEIN Schwellenwechsel mehr.
+    const ergebnis = bewerteMitGefaelschterSchwelle(
+      { rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: 240 },
+      leipzig,
+      5.5,
+      "Bayern"
+    );
+
+    expect(ergebnis.band!.unten).toBeLessThan(2.0);
+    expect(ergebnis.band!.oben).toBeLessThan(2.0);
+    expect(ergebnis.istSchwellenwechsler).toBe(false);
+
+    vi.doUnmock("./metrics.js");
+    vi.resetModules();
   });
 });

@@ -8,7 +8,7 @@
  * selbst liest die Uhr nirgends direkt.
  */
 
-import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
+import { berechneKennzahlen, DSCR_MELDESCHWELLE, type KennzahlenInput } from "./metrics.js";
 import {
   mietSpanneFuerBundesland,
   mietSpanneBundesweit,
@@ -85,14 +85,6 @@ export interface Bandkanten {
   unten: number;
   oben: number;
 }
-
-/**
- * Schwelle, an der die Meldung haengt (`topTreffer` in `metrics.ts`,
- * `geschaetzterDscr >= 1,3`). Hier dupliziert statt importiert, weil
- * `metrics.ts` sie nirgends als eigenen Namen exportiert -- sie steckt dort
- * als Literal in `topTreffer`.
- */
-const DSCR_MELDESCHWELLE = 1.3;
 
 /**
  * Bandkanten durch einen zweiten und dritten Aufruf von `berechneKennzahlen`
