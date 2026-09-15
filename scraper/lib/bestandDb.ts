@@ -21,7 +21,7 @@ import { HISTORIE_LAENGE } from "./plausibilitaet.js";
  * Absolute Decke 200_000 Zeilen -- bei Ueberschuss wird geworfen, nie ein
  * Teilergebnis zurueckgegeben.
  */
-async function ladeSeitenweise<T extends { id: string }>(
+export async function ladeSeitenweise<T extends { id: string }>(
   fetchSeite: (nachId: string | null, grenze: number) => Promise<{ data: T[] | null; error: any }>,
   tableName: string
 ): Promise<T[]> {

@@ -33,12 +33,26 @@ export interface Kennzahlen {
 export const MIN_PLAUSIBLER_KAUFPREISFAKTOR = 3;
 
 /**
- * Schwelle, an der `topTreffer` unten haengt, und -- importiert -- auch
- * `istSchwellenwechsler` in ranking.ts. Einzige Quelle fuer diese Zahl im
- * ganzen Projekt (A17): vorher stand sie zusaetzlich als eigene Kopie in
- * ranking.ts, weil sie hier nur als Literal in `topTreffer` steckte. Zwei
- * Kopien derselben Zahl heisst: aendert jemand eine, bricht die andere
- * lautlos.
+ * Obergrenze des Kaufpreisfaktors, ab der ein Objekt die Meldeschwelle nicht
+ * mehr passiert -- entspricht einer Bruttomietrendite von 6,67 %
+ * (Dashboard-Entwurf 2.1: `kaufpreisfaktor <= 15` ist woertlich dasselbe).
+ *
+ * Stand bis zum 2026-09-15 als blosse `15` in `topTreffer`. Sie bekommt einen
+ * Namen, weil der Snapshot-Export dieselbe Schwelle braucht (N1.1) und ihn
+ * sonst abschreiben muesste -- zwei Kopien derselben Zahl waren in diesem
+ * Projekt schon einmal der Fehler (siehe `bewertePreisplausibilitaet`).
+ */
+export const MAX_PLAUSIBLER_KAUFPREISFAKTOR = 15;
+
+/**
+ * Die Meldeschwelle -- einzige Quelle fuer diese Zahl im ganzen Projekt.
+ *
+ * Sie haengt an drei Stellen: `topTreffer` hier, `istSchwellenwechsler` in
+ * `ranking.ts` und die Trefferklasse des Snapshot-Exports, der sie an der
+ * unteren Bandkante prueft (N1.1). Bis zum 2026-09-15 stand sie hier als
+ * blosses Literal und in `ranking.ts` zusaetzlich als eigene Kopie (BACKLOG
+ * A17, inzwischen behoben) -- zwei Kopien derselben Zahl heisst: aendert
+ * jemand eine, bricht die andere lautlos.
  */
 export const DSCR_MELDESCHWELLE = 1.3;
 
@@ -94,7 +108,7 @@ export function berechneKennzahlen(
   const kaufpreisfaktorUnplausibel = kaufpreisfaktor < MIN_PLAUSIBLER_KAUFPREISFAKTOR;
   const topTreffer =
     !kaufpreisfaktorUnplausibel &&
-    kaufpreisfaktor <= 15 &&
+    kaufpreisfaktor <= MAX_PLAUSIBLER_KAUFPREISFAKTOR &&
     geschaetzterDscr >= DSCR_MELDESCHWELLE &&
     !finanzierungsrisiko;
 

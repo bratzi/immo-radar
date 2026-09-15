@@ -32,7 +32,28 @@ export interface KennzahlenSummary {
   mietQuelle: string;
 }
 
+/**
+ * Eine `listings`-Zeile ohne `listing_versions`-Zeile: Die Quelle hat das
+ * Objekt angeboten, aber keinen verwertbaren Kaufpreis genannt. Seit
+ * `ea8b731` (Immowelt) und `sdd/zvg-a4` (ZVG) erreichen solche Objekte die
+ * Datenbank und fallen nach der `rent_source`-Regel auf S0
+ * (Dashboard-Entwurf 3.3).
+ *
+ * WARUM NICHT `preis_auf_anfrage` UND `preis_unlesbar` GETRENNT: Welcher der
+ * beiden Faelle vorliegt, steht NICHT in der Datenbank. Die Unterscheidung
+ * trifft `ermittleLueckencodeOhnePreis` aus der Titelzeile der Ergebniskarte
+ * und lebt nur in der Log-Zeile des Laufs (A13). Eine Zeile ohne Version
+ * traegt sie nicht. Der Export duerfte hier also raten oder schweigen -- und
+ * er raet nicht: Der Klartext nennt die gemeinsame Aussage beider Faelle und
+ * behauptet keine Ursache.
+ *
+ * Diese Konstante ist der Code, nicht der Text -- der Text steht wie bei
+ * jeder anderen Luecke in DATA_GAP_LABELS.
+ */
+export const LUECKE_PREIS_FEHLT = "preis_fehlt";
+
 const DATA_GAP_LABELS: Record<string, string> = {
+  [LUECKE_PREIS_FEHLT]: "Preis fehlt — die Quelle nennt keinen verwertbaren Kaufpreis",
   units_unconfirmed: "Einheiten nicht bestätigt",
   location_unconfirmed: "Lage (PLZ/Ort) nicht bestätigt",
   rent_estimate_unreliable: "Miete nicht belastbar schätzbar — Faktor und DSCR unsicher",
@@ -45,6 +66,21 @@ const DATA_GAP_LABELS: Record<string, string> = {
   preis_miete_unvereinbar: "Preis und Miete unvereinbar — eine der beiden Zahlen stimmt nicht",
   plz_fehlt: "PLZ fehlt (Immowelt nennt sie in der Ergebnisliste nicht)",
 };
+
+/**
+ * Der Klartext-Grund zu einem Lueckencode, oder der rohe Code, wenn keiner
+ * hinterlegt ist.
+ *
+ * EINE Tabelle fuer alle Ausgabewege. Der Snapshot-Export braucht dieselben
+ * Texte wie die Telegram-Meldung (Dashboard-Entwurf 3.7 verweist
+ * ausdruecklich auf DATA_GAP_LABELS), und eine zweite Tabelle waere genau die
+ * Dopplung, an der diese Datei schon einmal auffiel: Drei Codes fehlten hier
+ * und standen als roher Maschinencode in der Nachricht -- ausgerechnet in der
+ * Zeile, die dem Empfaenger sagen soll, wie belastbar die Zahlen sind.
+ */
+export function datenlueckeKlartext(code: string): string {
+  return DATA_GAP_LABELS[code] ?? code;
+}
 
 const MIET_QUELLE_LABELS: Record<string, string> = {
   angegeben: "angegeben",
@@ -117,7 +153,7 @@ function formatDataGapsLine(listing: ListingSummary): string | null {
   const codes = [...(listing.dataGaps ?? [])];
   if (!(listing.zipCode ?? "").trim()) codes.push("plz_fehlt");
   if (codes.length === 0) return null;
-  const texte = codes.map((code) => DATA_GAP_LABELS[code] ?? code);
+  const texte = codes.map(datenlueckeKlartext);
   return `⚠️ <i>Fehlende Angaben: ${esc(texte.join(", "))}</i>`;
 }
 

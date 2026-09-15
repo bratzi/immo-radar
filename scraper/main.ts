@@ -45,7 +45,12 @@ import {
   type TelegramConfig,
 } from "./lib/telegram.js";
 import { sb } from "./lib/supabase.js";
-import { werteAusTitelzeile, fasseOhnePreisZusammen } from "./scrapers/immowelt/titelzeile.js";
+import {
+  werteAusTitelzeile,
+  fasseOhnePreisZusammen,
+  ermittleLueckencodeOhnePreis,
+} from "./scrapers/immowelt/titelzeile.js";
+import { erzeugeSnapshot } from "./lib/snapshotDb.js";
 import { erstelleMeldebudget, type Meldebudget } from "./lib/meldebudget.js";
 import { nurInCiAusfuehren } from "./lib/nurInCi.js";
 
@@ -164,6 +169,25 @@ function budgetiereDetailKandidaten(
 
 function schlafe(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Zaehlt die ohne Preis erfassten Immowelt-Objekte je Lueckencode fuer die
+ * Betriebsdaten des Snapshots (Entwurf, Abschnitt 8).
+ *
+ * Dieselbe Unterscheidung wie `fasseOhnePreisZusammen`, nur als Zahlen statt
+ * als Satz -- und ueber DIESELBE Funktion
+ * (`ermittleLueckencodeOhnePreis`), damit Logzeile und Snapshot nicht
+ * auseinanderlaufen koennen. A13 nennt die getrennte Quote ausdruecklich als
+ * Regressionsanzeige: eine steigende `preis_unlesbar`-Quote ist ein Fehler,
+ * eine steigende `preis_auf_anfrage`-Quote ist Markt.
+ */
+function zaehleOhnePreis(
+  faelle: { titleLine: string }[]
+): { preis_auf_anfrage: number; preis_unlesbar: number } {
+  const zaehler = { preis_auf_anfrage: 0, preis_unlesbar: 0 };
+  for (const fall of faelle) zaehler[ermittleLueckencodeOhnePreis(fall.titleLine)] += 1;
+  return zaehler;
 }
 
 /**
@@ -568,6 +592,49 @@ async function main() {
     if (geloescht > 0) console.log(`${geloescht} Objekte nach Ablauf der Karenz geloescht.`);
   } catch (err) {
     console.error("Loeschung fehlgeschlagen:", err);
+  }
+
+  // --- Snapshot-Export --------------------------------------------------
+  //
+  // GANZ AM ENDE und AUSSCHLIESSLICH LESEND (Dashboard-Entwurf, Abschnitt 9,
+  // Schritt 3). Zuletzt, weil der Snapshot den Zustand NACH Abgleich und
+  // Loeschung zeigen soll -- ein vorher erzeugter Snapshot zeigte Objekte als
+  // verfuegbar, die dieser Lauf gerade als abgaengig markiert hat.
+  //
+  // Gekapselt wie jeder andere Randschritt: Der Export ist ein Nebenprodukt.
+  // Scheitert er, ist der Lauf trotzdem erfolgreich gewesen -- alles
+  // Wesentliche steht bereits in der Datenbank.
+  try {
+    const ergebnis = await erzeugeSnapshot(
+      sb,
+      { id: process.env.GITHUB_RUN_ID ?? null, beendetAm: new Date().toISOString() },
+      {
+        // Laufkennwerte, die in KEINER Tabelle stehen (Abschnitt 8). Nur
+        // dieser Lauf kennt sie, deshalb werden sie hier hereingereicht --
+        // ein Export ohne Lauf schreibt an ihrer Stelle `null` und nicht 0.
+        //
+        // Gezaehlt wird, was `ermittleLueckencodeOhnePreis` aus der
+        // Titelzeile entscheidet, also der Immowelt-Fall. Die ZVG-Zeilen
+        // ohne Verkehrswert bleiben bewusst draussen: Die beiden Codes
+        // stammen aus A13s Titelzeilen-Unterscheidung, und welchem von
+        // beiden eine gelesene, aber wertlose ZVG-Bekanntmachung entspraeche,
+        // ist nicht entschieden. Sie hier einem der beiden zuzuschlagen waere
+        // geraten.
+        uebersprungeneJeLauf: zaehleOhnePreis(immoweltOhnePreis),
+        meldebudget: {
+          gesendet: meldebudget.verbraucht(),
+          hoechstens: MAX_MELDUNGEN_JE_LAUF,
+          zurueckgestellt: meldebudget.zurueckgestellt(),
+        },
+      },
+      new Date()
+    );
+    console.log(
+      `Snapshot geschrieben: ${ergebnis.pfad} — ${ergebnis.objekte} Objekte, ` +
+        `${(ergebnis.bytes / 1_048_576).toFixed(2)} MB (${ergebnis.bytes} Bytes).`
+    );
+  } catch (err) {
+    console.error("Snapshot-Export fehlgeschlagen:", err);
   }
 
   console.log("Lauf abgeschlossen.");

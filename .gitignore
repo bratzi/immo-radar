@@ -6,3 +6,6 @@ dist/
 
 # Arbeitskopien von Subagenten -- gehoeren nie ins Repo
 .claude/worktrees/
+
+# Erzeugnis des Snapshot-Exports -- gehoert als Artefakt veroeffentlicht, nicht ins Repo
+scraper/snapshot/
