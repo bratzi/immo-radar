@@ -1,38 +1,60 @@
-# Übergabe — Stand 2026-09-15
+# Übergabe — Stand 2026-09-16
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
 > (woran „die Basis steht" gemessen wird), dann [`BACKLOG.md`](BACKLOG.md) und
-> [`TODO.md`](TODO.md). Der zuletzt abgeschlossene SDD-Ledger steht unter
-> `.superpowers/sdd/2026-09-14-ranking-schritt2-abschluss/progress.md`
-> (Schritt 2 vollständig, gemergt); der davor unter
-> `.superpowers/sdd/2026-09-13-nachtrag-ranking-und-zvg-a4/progress.md`.
+> [`TODO.md`](TODO.md). Für das Dashboard gilt der Entwurf vom 2026-09-09
+> **plus** der Nachtrag
+> [`2026-09-15-dashboard-nachtrag-oberflaeche.md`](specs/2026-09-15-dashboard-nachtrag-oberflaeche.md),
+> der die Oberfläche entscheidet.
 
 ## Wo wir stehen
 
-**Schritt 2 des Dashboard-Entwurfs ist vollständig und gemergt.** `main` =
-`origin/main` = `bf0ddf1`, Arbeitsverzeichnis sauber, **470 Tests grün,
-`npx tsc --noEmit` sauber**, keine offenen Worktrees mehr.
+**Das Dashboard existiert.** `main` = `origin/main` = `9259562`,
+Arbeitsverzeichnis sauber, keine Worktrees, keine offenen Zweige.
+**504 Scraper-Tests und 84 Web-Tests grün**, `tsc` in beiden sauber,
+`vite build` grün.
 
-Die drei Zweige der letzten beiden Iterationen sind alle in `main`:
-`sdd/zvg-a4` (`db0a22e`), `sdd/nachtrag-korrektur` (`92504c5`) und
-`sdd/ranking-schritt2` (`bf0ddf1`, --no-ff). Alle Worktrees und Zweige sind
-aufgeräumt.
+Die Schritte 2 bis 7 des Entwurfs sind damit durch: `lib/ranking.ts`
+(Schritt 2), der Snapshot-Export (Schritt 3) und die Weboberfläche unter
+`web/` (Schritte 4–7). **A-4 ist belegt** — erstmals an echten Läufen.
 
-**Ein Produktionslauf läuft** (`34910160636`, per `gh workflow run scrape.yml
---ref main` am 2026-09-14 23:43 UTC ausgelöst). Er ist der ausstehende Beleg
-für A-4 (fällt wirklich kein Objekt still heraus?) und liefert zugleich
-frische Zahlen für B-1 und D-5. **Ergebnis noch nicht ausgewertet** — das ist
-der erste Griff der nächsten Sitzung.
+**Die Seite wurde im Browser angesehen, nicht nur getestet:** keine
+Konsolenfehler, kein Querlauf bei 400 px, Abruf der echten 19,8-MB-Datei in
+0,3–0,5 s, bedienbar nach 1,2 s.
 
 | Was | Stand |
 |---|---|
+| **A-4** kein Objekt fällt still heraus | **belegt für beide Quellen, aber nicht aus demselben Lauf.** Immowelt lückenlos an Lauf `34910160636` (23 neue Zeilen, deckungsgleich mit dem Log); ZVG an `34797538466` auf demselben Codestand. Herleitung in [`specs/2026-09-15-a4-produktionsbeleg.md`](specs/2026-09-15-a4-produktionsbeleg.md) |
 | **B-2** verschwundene Immowelt-Objekte | **erfüllt**, belegt am Lauf `34637349206` |
-| **A-4** kein Objekt fällt still heraus | **Code steht für beide Quellen** (Immowelt seit `ea8b731`, ZVG seit `db0a22e`); Produktionsbeleg **läuft** — Lauf `34910160636`, Auswertung offen |
-| **D-5** Meldebudget | weiter offen, und die Messung sagt warum (siehe unten) |
-| Dashboard-Entwurf, Nachtrag zu M1–M6 | **korrigiert und gemergt** — die Korrekturrunde (F-1..F-5) ist am Code nachverifiziert, kein Zwei-Stände-Problem mehr |
-| `lib/ranking.ts`, Sicherheitsstufe (`bestimmeSicherheitsstufe`) | **fertig und gemergt** (Teil von Schritt 2) |
-| `lib/ranking.ts`, Rest von Schritt 2 (Rangzahl, Bandkanten, Bandbreite je Bundesland, Schwellenwechsler, drei Verfügbarkeitszustände) | **fertig und gemergt** (`bf0ddf1`) — `bewerteFuerRangliste` und `bestimmeVerfuegbarkeitszustand`, Whole-Branch-Review plus Fixwave durch. Vier kleine Restbefunde als [`BACKLOG.md`](BACKLOG.md) A17 |
-| Snapshot-Export (Schritt 3) | **offen und jetzt an der Reihe** — die blockierende Nutzerfrage ist entschieden (siehe unten), Umsetzung fehlt noch |
+| **B-1** jedes Bundesland einmal erfasst | **offen** — ein Einzellauf kann es strukturell nicht zeigen |
+| **D-5** Meldebudget | **offen**, aber der Rückstand fällt: 71 → 47 → 39 zurückgestellt |
+| `lib/ranking.ts` (Schritt 2) | **fertig und gemergt** |
+| Snapshot-Export (Schritt 3) | **fertig und gemergt.** Rein + dünne Ladeschicht, nur lesend, Keyset-Blätterung, Aufruf am Ende des Laufs hinter dem Löschblock |
+| Weboberfläche (Schritte 4–7) | **fertig und gemergt** unter `web/` |
+| Veröffentlichung des Dashboards | **offen** — siehe „Was als Nächstes zu tun ist" |
+
+### Die Größenordnungen, gegen die gebaut wurde (2026-09-15)
+
+```
+18.335 Objekte      783 Top-Treffer · 15.580 normale · 1.704 nicht beurteilbar · 268 Abgänge
+ 9.265 "unbestaetigt" (50,5 %)      1 Objekt im ganzen Bestand mit belegter Miete
+   239 punktgenau verortbar (1,3 %) -- alle uebrigen nur ihrem Bundesland
+Snapshot: 18,3 MB unkomprimiert, 2,2 MB mit gzip
+```
+
+**Der Bestand wächst schnell** — 12.611 (2026-09-12), 17.078, 17.754, 18.335
+(2026-09-15). Jede Zahl in einem Dokument ist eine Momentaufnahme; die
+Oberfläche rechnet ihre Zahlen deshalb zur Anzeigezeit.
+
+### Zwei Funde, die niemand gesucht hat
+
+- **Schleswig-Holstein weist seine Trefferzahl nirgends aus** — genau wie
+  `nw`, `bw` und `mv`. Aus **vier** Regionen wird also nie ein Abgang erkannt,
+  nicht aus dreien. A15 und der Kommentar an `istRegionVollstaendig` kennen
+  nur drei. Zweimal unabhängig gemessen (Snapshot-Export und Oberfläche).
+- **`sweep_region_runs` trägt mehrfach `vollstaendig=true`, obwohl
+  `gemeldete_treffer` fehlt.** Das verdient eine eigene Nachprüfung: Die
+  Vollständigkeit ist die Wache vor der Massenlöschung.
 
 ---
 
@@ -158,24 +180,36 @@ Nutzer.
 
 ## Was als Nächstes zu tun ist
 
-1. **Den Produktionslauf `34910160636` auswerten** (ausgelöst 2026-09-14
-   23:43 UTC auf `bf0ddf1`). Er beantwortet, ob ZVG jetzt ebenfalls Zeilen
-   für Objekte ohne Verkehrswert schreibt — der ausstehende Beleg für A-4 —
-   und liefert frische Zahlen zu B-1 und D-5. Log über
-   `gh run view 34910160636 --log`, Gegenprobe in der Datenbank:
-   `listings`-Zeilen ohne `listing_versions`-Zeile je Quelle zählen.
-2. **Snapshot-Export bauen (Schritt 3).** `ranking.ts` ist damit fertig; der
-   Export schickt den neuesten Stand je Objekt durch `bewerteFuerRangliste`
-   und `bestimmeVerfuegbarkeitszustand` und legt ihn als Datei ab — lesend,
-   ohne Schemaänderung. Die blockierende Nutzerfrage ist entschieden
-   (S0-Bereich, siehe oben); nur der Klartext-Grund für Zeilen ohne
-   `data_gaps` ist beim Bau zu wählen. Zwei Dinge gehören dort mitgedacht:
-   das Nachschlagen der Regionskadenz (`sweep_region_runs`) und der Regionen
-   ohne Abgangserkennung (`nw`, `bw`, `mv`), beides bewusst aus `ranking.ts`
-   herausgehalten, sowie der `?? null`-Punkt aus [`BACKLOG.md`](BACKLOG.md)
-   A17. Danach erst die erste Zeile Oberfläche — Reihenfolge „Basis vor
-   Dashboard" gilt unverändert.
-3. **Kleinkram, wenn Luft ist:** die vier Restbefunde aus A17.
+1. **Der Snapshot muss aus dem Lauf herausfallen.** Der Export läuft am Ende
+   jedes Laufs, aber `.github/workflows/scrape.yml` veröffentlicht die Datei
+   noch nicht als Artefakt. **Bewusst offen gelassen:** Kein Agent durfte an
+   `.github/workflows/` — ein kaputter Workflow legt die Produktion still.
+   Das ist ein kleiner, eigener Schritt mit eigener Prüfung.
+2. **Veröffentlichung einrichten** (E-8 ist entschieden, nichts davon steht):
+   Cloudflare Pages für die gebaute Seite, davor Cloudflare Access mit
+   E-Mail-Einmalcode an genau die eine erlaubte Adresse. Braucht Zugänge, die
+   nur der Nutzer hat.
+3. **A18** — die vier Befunde am Export, die der Bau der Oberfläche
+   aufgedeckt hat. Der wichtigste: ein S0-Objekt ohne Klartext-Grund,
+   obwohl Entwurf 3.7 einen verlangt.
+4. **Die beiden ungesuchten Funde nachgehen** (siehe oben): `sh` als vierte
+   Region ohne Abgangserkennung — der Kommentar an `istRegionVollstaendig`
+   nennt nur drei — und `vollstaendig=true` ohne `gemeldete_treffer`.
+5. Danach der übliche Rückstand: A10 (Cron-Takt), A11 Schritt 3 und 4, B-1.
+
+## Wie man am Dashboard weiterarbeitet
+
+- `cd web && npm install` ist im Hauptcheckout bereits gelaufen.
+  `npx vite` startet den Entwicklungsserver, `npx vitest run` die Tests,
+  `npx vite build` den Produktionsbau.
+- **Die Snapshot-Datei liegt nicht im Repo** (19,8 MB, git-ignoriert). Zum
+  Entwickeln eine erzeugen: `erzeugeSnapshot` aus `scraper/lib/snapshotDb.ts`
+  über ein kleines `npx tsx`-Skript aufrufen, Ergebnis nach
+  `web/public/dashboard-snapshot.json`. **Nur lesend** — und niemals einen
+  Scraper-Lauf lokal starten.
+- Ohne diese Datei überspringt `web/src/daten/snapshot.vertrag.test.ts` acht
+  Prüfungen still (84 statt 92 grün). Genau dieser Test hat die A18-Befunde
+  gefunden — er ist der Wächter gegen einen Export, der sich unbemerkt ändert.
 
 ## Entscheidungen des Nutzers, gefallen am 2026-09-11
 
@@ -220,6 +254,31 @@ Das hat in dieser Sitzung fünf Aufgaben getragen. Die Prüfung nach jeder
 Aufgabe hat sich zweimal bezahlt gemacht: Sie fand den Deckel, der je Quelle
 statt je Lauf gilt, und sie hat den Nachtrag zu den Messfragen gestoppt, den
 ich sonst abgenommen hätte.
+
+**Ergänzt am 2026-09-15, drei Ansagen des Nutzers:**
+
+4. **Merge und Push laufen ohne Rückfrage.** Sobald ein Zweig geprüft und grün
+   ist, wird gemergt, auf dem gemergten Stand getestet und gepusht. Der Nutzer
+   wird informiert, nicht gefragt. *Die frühere Regel „Merge und Push gehören
+   dem Nutzer" ist damit aufgehoben.* Ohne Freigabe bleiben weiterhin:
+   `.github/workflows/`, Schreibzugriffe auf die Produktionsdatenbank.
+5. **Eine neue Priorität hält den Rest nicht an.** Was auf der offenen Liste
+   nicht daran hängt, läuft parallel in Subagenten weiter. Parallelität
+   entsteht über eine **festgeschriebene Schnittstelle**: erst das Format
+   festlegen, dann bauen Erzeuger und Verbraucher gleichzeitig dagegen. Genau
+   so sind Snapshot-Export und Oberfläche entstanden.
+6. **Modellwahl je Aufgabe:** schwere Aufgaben auf `opus` (Gesamtprüfungen,
+   Löschwachen, echter Ermessensspielraum), einfache auf `sonnet`
+   (ausgeschriebener Brief, Doku, Messskripte). Kein `haiku`. Der Koordinator
+   entscheidet das beim Losschicken, ohne zu fragen.
+
+**Was die Prüfung am 2026-09-15 wieder eingebracht hat:** Ein Agent meldete
+seine Aufgabe als erledigt, und der Fix war halb falsch — er hatte die eine
+Behauptung („abgängig") durch die andere ersetzt („verfügbar"), statt auf den
+Nichtwissens-Zustand zu gehen. Sein eigener Kommentar an der Funktion sagte
+das Richtige; nur der Code hielt sich nicht daran, und sein Test war so
+gewählt, dass er trotzdem grün wurde. **Sichtbar wurde das erst beim Lesen des
+Diffs, nicht im Bericht.**
 
 ---
 
@@ -314,3 +373,22 @@ Write-Werkzeug nehmen, nicht ein Heredoc.
 
 **`tsx` und `page.evaluate`.** Verschachtelte Funktionen im `evaluate`-Rumpf
 brechen mit `ReferenceError: __name is not defined`. Alles flach halten.
+
+**Niemals `rm -rf` auf einen Worktree, in dem eine `node_modules`-Junction
+liegt.** Die Junction zeigt auf das **echte** `scraper/node_modules` des
+Hauptcheckouts; ein rekursives Löschen kann ihr folgen und das Ziel
+mitnehmen. Erst die Junction mit `cmd //c "rmdir scraper\node_modules"`
+entfernen — das löst nur die Verknüpfung —, danach den Rest löschen und
+`ls scraper/node_modules | wc -l` als Gegenprobe.
+
+**Ein Worktree lässt sich nicht entfernen, solange ein Prozess darin läuft.**
+`git worktree remove` scheitert dann mit „Invalid argument" oder „Device or
+resource busy" — meist ein vergessener Entwicklungsserver. Den Prozess gezielt
+über seine Kommandozeile suchen und beenden, nicht pauschal alle `node`-
+Prozesse abschießen.
+
+**Subagenten werden von einem Watchdog gestoppt, wenn ein Kommando minutenlang
+still läuft.** Am 2026-09-15 hat es zwei getroffen, beide an einer Messung
+ohne Zwischenausgabe. Gegenmittel: Zwischenausgaben, `--limit`, große Logs in
+eine Datei umleiten statt ausgeben. **Die Arbeit ist dabei nicht verloren** —
+der Agent lässt sich mit einer Nachricht fortsetzen und behält seinen Kontext.
