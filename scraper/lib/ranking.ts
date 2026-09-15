@@ -200,7 +200,15 @@ export function bestimmeVerfuegbarkeitszustand(
   },
   jetzt: Date
 ): Verfuegbarkeitszustand {
-  if (objekt.disappearedAt !== null) return "abgaengig";
+  // Nicht nur gegen `null` pruefen: Kommt das Objekt aus einer
+  // Datenbankzeile, in der die Spalte disappeared_at nicht mit ausgewaehlt
+  // wurde, ist das Feld `undefined` -- die Signatur oben (`string | null`)
+  // ist dann ein Typvertrag, den TypeScript zur Laufzeit nicht durchsetzt.
+  // `!== null` allein erklaerte so ein Objekt faelschlich fuer abgaengig,
+  // obwohl schlicht nichts bekannt ist. "abgaengig" ist eine Behauptung,
+  // "unbestaetigt" ist der Nichtwissens-Zustand -- Nichtwissen wird in
+  // diesem Projekt nie zu einer Behauptung (docs/superpowers/BACKLOG.md).
+  if (objekt.disappearedAt !== null && objekt.disappearedAt !== undefined) return "abgaengig";
   if (objekt.kadenzTageDerRegion === null) return "unbestaetigt";
   if (objekt.lastSeen === null) return "unbestaetigt";
 
