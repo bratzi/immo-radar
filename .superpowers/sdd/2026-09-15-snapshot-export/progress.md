@@ -221,4 +221,78 @@ Behauptung aus Nichtwissen.
 
 ## Verlauf
 
-(fortlaufend, unten angehängt)
+### TDD-Zyklen (jeder zuerst rot gesehen)
+
+| # | Test zuerst | rote Ausgabe |
+|---|---|---|
+| 1 | `schaetzeRegionsKadenzen` / `kadenzFuerRegion` | `Error: Failed to load url ./snapshot.js … Does the file exist?` |
+| 2 | `waehleJuengsteVersionen`, `zuListingZeile`, `zuVersionZeile` | `TypeError: zuVersionZeile is not a function` — 6 failed \| 7 passed |
+| 3 | `bestimmeTrefferklasse` | `TypeError: bestimmeTrefferklasse is not a function` — 5 failed \| 13 passed |
+| 4 | `baueSnapshot` | `TypeError: baueSnapshot is not a function` — 10 failed \| 18 passed |
+| 5 | `schreibeSnapshot` | `Error: Failed to load url ./snapshotDb.js … Does the file exist?` |
+
+### Echter Export vom 2026-09-15, 09:18 UTC (Gegenprobe, nur lesend)
+
+Skript `scraper/scripts/messung-snapshot-groesse.mts` (committet).
+Geladen in **7,4 s**: 17.754 `listings`, 27.438 `listing_versions`, 187
+`sweep_region_runs`.
+
+**Dateigröße gemessen — N4s 6–10 MB waren zu niedrig:**
+
+| | Bytes | |
+|---|---:|---|
+| unkomprimiert | 19.184.778 | **18,30 MB**, 1.081 B je Objekt |
+| gzip -9 | 2.279.122 | 2,17 MB |
+| brotli | 1.681.834 | 1,60 MB |
+
+**Nicht geteilt** (N4: „erst messen, dann teilen"). Über die Leitung sind es
+2,2 MB; Cloudflare Pages komprimiert selbst. Der größte Einzelposten ist
+messbar und benannt: `url` trägt **32,2 % der Datei (5,89 MB)**, davon
+**4,73 MB allein der Query-String** der Immowelt-Trefferlisten-URL
+(`?serp_view=list&search=distributionTypes%3D…&page%3D123…`). Ihn zu kürzen
+wäre der erste Hebel, noch vor jeder Teilung — aber es ist eine
+Produktentscheidung (bleibt der Link ohne ihn gültig?), keine Messfrage, und
+deshalb hier **nicht** eigenmächtig gemacht.
+
+**Die Zahlen des Exports:**
+
+```
+kopfzeile   objekteGesamt 17754, mitBelegterMiete 1,
+            anteilBundeslandgenau 0,9759, topTrefferSeit 2026-09-05T17:52Z
+stufe       S1 15.975 | S0 1.710 | S2 68 | S3 1
+trefferkl.  normal 15.240 | top 804 | nichtBeurteilbar 1.710
+zustand     verfuegbar 9.017 | unbestaetigt 8.318 | abgaengig 419
+quelle      immowelt 17.552 | zvg-portal 202
+ohne Version 190   mit PLZ 242   ohne Bundesland 196
+Schwellenwechsler 3.907 von 16.044 bewertbaren = 24,4 %
+```
+
+**Drei Gegenproben, die stimmen:**
+
+1. `mitBelegterMiete = 1` — genau die Zahl aus M3 (Entwurf 3.1/3.3).
+2. Schwellenwechsler **24,4 %** — M5 hat 25,0 % gemessen, unabhängig
+   nachgerechnet über eine andere Codebasis.
+3. Der Zustand `unbestaetigt` trifft **8.318** Objekte. Zusammengezählt:
+   `nw` 4.173 + `bw` 2.821 + `sh` 728 + `mv` 236 + ZVG 202 + ohne Bundesland
+   196 ≈ 8.356. Das Kadenzverfahren hat also **genau die vier Regionen ohne
+   Trefferzahl herausgegriffen, ohne sie zu kennen**, und dazu die Quelle ohne
+   Regionshistorie.
+
+### Offene Punkte, die NICHT zu diesem Schritt gehören
+
+- **„804 Top-Treffer" gegen „0 Top-Treffer".** Entwurf 3.9 formuliert die
+  Kopfzeile als *„0 Top-Treffer seit dem 2026-09-07"*. Das ist die
+  **Meldeklasse** aus `bestimmeMeldeklasse` (die geschätzte Mieten
+  grundsätzlich herunterstuft), nicht die **Trefferklasse** aus N1.1. Der
+  Snapshot liefert 804 `top`. Beide Zahlen sind richtig und messen
+  Verschiedenes; welche in der Kopfzeile steht, entscheidet Schritt 4.
+- **Die Karenzgrenze aus 6.4** (innerhalb der Karenz an der Rangposition,
+  danach in den Bereich „Abgänge") ist in N4 kein Feld. Der Snapshot liefert
+  `abgaengigSeit`; die Grenze zieht die Oberfläche mit `KARENZ_TAGE`.
+  Bewusst kein erfundenes Feld.
+- **`ranking.ts` trägt eine zweite, private `DSCR_MELDESCHWELLE`** (BACKLOG
+  A17). Nicht angefasst, weil dort parallel gearbeitet wird.
+- **ZVG-Zeilen ohne Verkehrswert** zählen nicht in
+  `betrieb.uebersprungeneJeLauf` mit: Welchem der beiden Codes
+  (`preis_auf_anfrage` / `preis_unlesbar`) sie entsprächen, ist nicht
+  entschieden, und die Zuordnung wäre geraten.
