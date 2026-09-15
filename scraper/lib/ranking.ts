@@ -200,15 +200,24 @@ export function bestimmeVerfuegbarkeitszustand(
   },
   jetzt: Date
 ): Verfuegbarkeitszustand {
-  // Nicht nur gegen `null` pruefen: Kommt das Objekt aus einer
-  // Datenbankzeile, in der die Spalte disappeared_at nicht mit ausgewaehlt
-  // wurde, ist das Feld `undefined` -- die Signatur oben (`string | null`)
-  // ist dann ein Typvertrag, den TypeScript zur Laufzeit nicht durchsetzt.
-  // `!== null` allein erklaerte so ein Objekt faelschlich fuer abgaengig,
-  // obwohl schlicht nichts bekannt ist. "abgaengig" ist eine Behauptung,
-  // "unbestaetigt" ist der Nichtwissens-Zustand -- Nichtwissen wird in
-  // diesem Projekt nie zu einer Behauptung (docs/superpowers/BACKLOG.md).
-  if (objekt.disappearedAt !== null && objekt.disappearedAt !== undefined) return "abgaengig";
+  // `null` und `undefined` sind hier NICHT dasselbe Nichtwissen. `null`
+  // heisst "die Spalte wurde gelesen, das Objekt ist nicht als abgaengig
+  // markiert" -- eine Aussage, die es rechtfertigt, ueber last_seen und
+  // Kadenz zu urteilen (weiter unten). `undefined` heisst "die Spalte lag
+  // gar nicht vor" (z. B. eine Datenbankzeile, in der disappeared_at nicht
+  // mit ausgewaehlt wurde) -- dazu gibt es keine Aussage. Die Signatur oben
+  // (`string | null`) ist dann ein Typvertrag, den TypeScript zur Laufzeit
+  // nicht durchsetzt.
+  //
+  // Deshalb zwei getrennte Ergebnisse statt eines gemeinsamen Fallthrough:
+  // Ein `undefined` darf nicht zu "abgaengig" UND nicht zu "verfuegbar"
+  // werden -- beides waeren Behauptungen ueber ein Feld, das nie gelesen
+  // wurde. Es entscheidet sofort auf "unbestaetigt", ohne last_seen oder
+  // Kadenz ueberhaupt erst zu befragen: Nichtwissen wird in diesem Projekt
+  // nie zu einer Behauptung (docs/superpowers/BACKLOG.md), in keine der
+  // beiden Richtungen.
+  if (objekt.disappearedAt === undefined) return "unbestaetigt";
+  if (objekt.disappearedAt !== null) return "abgaengig";
   if (objekt.kadenzTageDerRegion === null) return "unbestaetigt";
   if (objekt.lastSeen === null) return "unbestaetigt";
 

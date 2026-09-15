@@ -290,27 +290,42 @@ describe("bestimmeVerfuegbarkeitszustand", () => {
     ).toBe("unbestaetigt");
   });
 
-  it("ist unbestaetigt statt abgaengig, wenn disappearedAt in der Eingabe fehlt (undefined)", () => {
-    // A17: Kommt das Objekt aus einer Datenbankzeile, in der die Spalte
-    // disappeared_at gar nicht mit ausgewaehlt wurde, ist das Feld
-    // `undefined`, nicht `null`. `undefined !== null` ist wahr -- eine
-    // Pruefung, die nur gegen `null` vergleicht, erklaerte ein Objekt ohne
-    // jede Kenntnis fuer abgaengig. Das ist eine Behauptung ueber Nichtwissen,
-    // und genau das verbietet dieses Projekt (siehe Kommentar an der
-    // Funktion). Das `as` umgeht hier absichtlich die engere Signatur, um
-    // exakt den Fall einer DB-Zeile ohne die Spalte nachzubilden.
+  it("ist unbestaetigt, wenn disappearedAt fehlt (undefined) -- auch bei FRISCHEM last_seen", () => {
+    // A17-Nachbesserung: Die erste Fassung dieses Fixes liess `undefined`
+    // durchfallen zur Frischepruefung. Bei frischem last_seen kam dann
+    // "verfuegbar" heraus -- das ersetzt nur eine Behauptung durch eine
+    // andere. "verfuegbar" behauptet genauso viel Wissen wie "abgaengig",
+    // nur in die Gegenrichtung: Ob ein Objekt ohne bekannten disappearedAt
+    // zwischenzeitlich als abgaengig markiert wurde, ist unbekannt, ganz
+    // gleich wie frisch last_seen ist. Deshalb hier ein last_seen, das WEIT
+    // UNTER der doppelten Kadenz liegt (1 Stunde vor `jetzt`, Kadenz 1 Tag)
+    // -- die Frischepruefung allein wuerde "verfuegbar" liefern. Kommt
+    // stattdessen "unbestaetigt" heraus, beweist das den Kurzschluss:
+    // `undefined` bei disappearedAt entscheidet sofort, ohne last_seen und
+    // Kadenz ueberhaupt erst zu befragen.
     //
-    // lastSeen liegt bewusst so weit zurueck wie im Fall "ist unbestaetigt,
-    // wenn last_seen aelter ist als die doppelte Regionskadenz" oben --
-    // sonst waere nicht erkennbar, ob die Funktion wirklich durchfaellt zur
-    // Frischepruefung (statt weiterhin faelschlich abgaengig zu behaupten)
-    // oder ob "verfuegbar" nur zufaellig herauskaeme.
-    const objektOhneFeld = {
+    // Das `as` umgeht die engere Signatur absichtlich, um exakt den Fall
+    // einer Datenbankzeile nachzubilden, deren Spalte disappeared_at gar
+    // nicht mit ausgewaehlt wurde.
+    const objektOhneFeldFrisch = {
+      lastSeen: "2026-09-14T11:00:00Z",
+      kadenzTageDerRegion: 1,
+    } as unknown as { disappearedAt: string | null; lastSeen: string | null; kadenzTageDerRegion: number | null };
+
+    expect(bestimmeVerfuegbarkeitszustand(objektOhneFeldFrisch, jetzt)).toBe("unbestaetigt");
+  });
+
+  it("ist unbestaetigt, wenn disappearedAt fehlt (undefined) -- auch bei LAENGST ABGELAUFENEM last_seen", () => {
+    // Ergaenzt den Test oben um die Gegenprobe: Der Kurzschluss auf
+    // "unbestaetigt" gilt unabhaengig davon, was last_seen sagt -- nicht nur
+    // fuer frische, sondern auch fuer laengst abgelaufene Werte liefert
+    // dieselbe Ursache (disappearedAt unbekannt) dasselbe Ergebnis.
+    const objektOhneFeldAbgelaufen = {
       lastSeen: "2026-09-11T23:00:00Z",
       kadenzTageDerRegion: 1,
     } as unknown as { disappearedAt: string | null; lastSeen: string | null; kadenzTageDerRegion: number | null };
 
-    expect(bestimmeVerfuegbarkeitszustand(objektOhneFeld, jetzt)).toBe("unbestaetigt");
+    expect(bestimmeVerfuegbarkeitszustand(objektOhneFeldAbgelaufen, jetzt)).toBe("unbestaetigt");
   });
 });
 
