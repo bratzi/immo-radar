@@ -6,7 +6,11 @@ import {
   zuListingZeile,
   zuVersionZeile,
   bestimmeTrefferklasse,
+  baueSnapshot,
 } from "./snapshot.js";
+import { bewerteFuerRangliste } from "./ranking.js";
+import { ermittleJahreskaltmiete } from "./rentEstimate.js";
+import { grunderwerbsteuerSatzFuerBundesland } from "./grunderwerbsteuer.js";
 
 const TAG_MS = 24 * 60 * 60 * 1000;
 const START = Date.parse("2026-09-08T00:00:00.000Z");
@@ -268,5 +272,261 @@ describe("bestimmeTrefferklasse (N1.1)", () => {
     // am Ende der Liste -- sie stehen nicht IN der Liste.
     const s0 = { stufe: "S0" as const, rangzahl: null, band: null, istSchwellenwechsler: false };
     expect(bestimmeTrefferklasse(s0, 11)).toBe("nichtBeurteilbar");
+  });
+});
+
+// --- baueSnapshot ----------------------------------------------------------
+
+const JETZT = new Date("2026-09-15T12:00:00.000Z");
+
+function listing(id: string, felder: Record<string, unknown> = {}) {
+  return zuListingZeile({
+    id,
+    source: "immowelt",
+    external_id: `ext-${id}`,
+    url: `https://immowelt.de/${id}`,
+    first_seen: "2026-09-08T00:00:00.000Z",
+    last_seen: "2026-09-15T06:00:00.000Z",
+    fundort: "by",
+    ...felder,
+  });
+}
+
+/** 100.000 EUR auf 150 m² in Bayern -- bundeslandgenau geschaetzt, also S1. */
+function version(listingId: string, felder: Record<string, unknown> = {}) {
+  return zuVersionZeile({
+    listing_id: listingId,
+    scanned_at: "2026-09-15T06:00:00.000Z",
+    price_cents: 10_000_000,
+    rent_cold_monthly_cents: null,
+    rent_source: "geschaetzt_bundesland",
+    living_area_m2: "150",
+    units: null,
+    units_confident: false,
+    bundesland: "Bayern",
+    city: "Peine",
+    title: "Mehrfamilienhaus",
+    data_gaps: ["miete_nur_bundeslandgenau", "units_unconfirmed"],
+    ...felder,
+  });
+}
+
+/** Drei vollstaendige `by`-Laeufe, der letzte kurz vor JETZT -> Kadenz ~1 Tag. */
+function regionsLaeufeBayern() {
+  return [
+    { source: "immowelt", partition: "by", startedAt: "2026-09-13T10:00:00.000Z", vollstaendig: true },
+    { source: "immowelt", partition: "by", startedAt: "2026-09-14T10:00:00.000Z", vollstaendig: true },
+    { source: "immowelt", partition: "by", startedAt: "2026-09-15T10:00:00.000Z", vollstaendig: true },
+  ];
+}
+
+function eingabe(teile: Record<string, unknown> = {}) {
+  return {
+    listings: [listing("a")],
+    versionen: [version("a")],
+    regionsLaeufe: regionsLaeufeBayern(),
+    lauf: { id: "34910160636", beendetAm: "2026-09-15T11:59:00.000Z" },
+    betrieb: { uebersprungeneJeLauf: null, meldebudget: null },
+    ...teile,
+  };
+}
+
+describe("baueSnapshot", () => {
+  it("nimmt ein Objekt ohne listing_versions-Zeile mit Klartext-Grund auf", () => {
+    // Entwurf 3.3 / Abschnitt 9 Schritt 3, Entscheidung des Nutzers: Solche
+    // Zeilen (preis_auf_anfrage / preis_unlesbar) erscheinen im Bereich
+    // "nicht beurteilbar", nicht nur auf der Betriebsseite. Sie tragen keinen
+    // data_gaps-Eintrag -- der Klartext-Grund muss hier entstehen.
+    const snapshot = baueSnapshot(
+      eingabe({ listings: [listing("a"), listing("ohne")], versionen: [version("a")] }),
+      JETZT
+    );
+
+    const ohne = snapshot.objekte.find((o) => o.id === "ohne");
+    expect(ohne).toBeDefined();
+    expect(ohne?.stufe).toBe("S0");
+    expect(ohne?.trefferklasse).toBe("nichtBeurteilbar");
+    expect(ohne?.rangzahl).toBeNull();
+    expect(ohne?.band).toBeNull();
+    expect(ohne?.kaufpreisEuro).toBeNull();
+    // Ein Klartext-Grund, kein roher Maschinencode -- 3.7 verlangt fuer jedes
+    // S0-Objekt einen Grund in Worten.
+    expect(ohne?.datenluecken).toHaveLength(1);
+    expect(ohne?.datenluecken[0]).toMatch(/Preis fehlt/);
+    expect(ohne?.datenluecken[0]).not.toMatch(/_/);
+  });
+
+  it("uebernimmt Stufe, Rangzahl und Band unveraendert aus ranking.ts", () => {
+    const snapshot = baueSnapshot(eingabe(), JETZT);
+    const objekt = snapshot.objekte[0];
+
+    const erwartet = bewerteFuerRangliste(
+      {
+        rentSource: "geschaetzt_bundesland",
+        dataGaps: ["miete_nur_bundeslandgenau", "units_unconfirmed"],
+        livingAreaM2: 150,
+      },
+      {
+        kaufpreis: 100_000,
+        jahreskaltmiete: ermittleJahreskaltmiete(null, 150, "", "Bayern").jahreskaltmiete,
+        einheiten: 3,
+        baujahr: null,
+        wohnflaecheM2: 150,
+      },
+      grunderwerbsteuerSatzFuerBundesland("Bayern"),
+      "Bayern"
+    );
+
+    expect(objekt.stufe).toBe(erwartet.stufe);
+    expect(objekt.rangzahl).toBeCloseTo(Number(erwartet.rangzahl), 9);
+    expect(objekt.band?.unten).toBeCloseTo(Number(erwartet.band?.unten), 9);
+    expect(objekt.band?.oben).toBeCloseTo(Number(erwartet.band?.oben), 9);
+    expect(objekt.istSchwellenwechsler).toBe(erwartet.istSchwellenwechsler);
+  });
+
+  it("gibt jedem Objekt einer Region ohne belegbare Kadenz den Zustand unbestaetigt", () => {
+    // `nw` weist seine Trefferzahl nie aus -> nie ein vollstaendiger Lauf ->
+    // keine Kadenz -> "unbestaetigt". Das Fehlen einer Abgangsmarkierung ist
+    // dort KEIN Beleg fuer Verfuegbarkeit (Entwurf 6.2).
+    const nw = baueSnapshot(
+      eingabe({
+        listings: [listing("a", { fundort: "nw" })],
+        versionen: [version("a", { bundesland: "Nordrhein-Westfalen" })],
+      }),
+      JETZT
+    );
+    expect(nw.objekte[0].zustand).toBe("unbestaetigt");
+
+    // Bayern hat drei vollstaendige Laeufe und einen frischen -> verfuegbar.
+    expect(baueSnapshot(eingabe(), JETZT).objekte[0].zustand).toBe("verfuegbar");
+  });
+
+  it("nennt ein markiertes Objekt abgaengig, mit Datum", () => {
+    const snapshot = baueSnapshot(
+      eingabe({ listings: [listing("a", { disappeared_at: "2026-09-14T00:00:00.000Z" })] }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].zustand).toBe("abgaengig");
+    expect(snapshot.objekte[0].abgaengigSeit).toBe("2026-09-14T00:00:00.000Z");
+  });
+
+  it("waehlt fuer die Stufe die UNGENAUERE der beiden Mietquellen", () => {
+    // Gespeichert steht `geschaetzt_regional` (S2, Band ±23,7 %), die Miete
+    // entsteht heute aber ohne PLZ bundeslandgenau (S1, in Bayern
+    // -34,8 %...+67,1 %). Das schmalere Band zu nehmen hiesse, ein Objekt
+    // sicherer darzustellen, als beide Beobachtungen zusammen hergeben -- und
+    // ein zu schmales Band kann einen Top-Treffer erzeugen.
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { rent_source: "geschaetzt_regional", zip_code: null })] }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].stufe).toBe("S1");
+  });
+
+  it("aggregiert je Bundesland Objekte, Top-Treffer, Median-DSCR und Standalter", () => {
+    const snapshot = baueSnapshot(
+      eingabe({
+        listings: [listing("a"), listing("b")],
+        // 100.000 EUR haelt die Schwelle auch unten, 250.000 EUR nicht.
+        versionen: [version("a"), version("b", { price_cents: 25_000_000 })],
+      }),
+      JETZT
+    );
+
+    const bayern = snapshot.bundeslaender.find((l) => l.name === "Bayern");
+    expect(bayern?.objekte).toBe(2);
+    expect(bayern?.topTreffer).toBe(1);
+    const dscrs = snapshot.objekte.map((o) => Number(o.rangzahl)).sort((x, y) => x - y);
+    expect(bayern?.medianDscr).toBeCloseTo((dscrs[0] + dscrs[1]) / 2, 9);
+    // Letzter `by`-Lauf: 2026-09-15T10:00Z, JETZT 12:00Z -> 2 Stunden.
+    expect(bayern?.standAlterTage).toBeCloseTo(2 / 24, 6);
+  });
+
+  it("schreibt die Betriebsgroessen des Laufs als null, nicht als 0", () => {
+    // `uebersprungeneJeLauf` und `meldebudget` sind Laufkennwerte und stehen
+    // nirgends in der Datenbank. Eine 0 hiesse "nichts uebersprungen, nichts
+    // gemeldet" -- eine Behauptung aus Nichtwissen.
+    const ohneLauf = baueSnapshot(eingabe(), JETZT);
+    expect(ohneLauf.betrieb.uebersprungeneJeLauf).toBeNull();
+    expect(ohneLauf.betrieb.meldebudget).toBeNull();
+
+    const mitLauf = baueSnapshot(
+      eingabe({
+        betrieb: {
+          uebersprungeneJeLauf: { preis_auf_anfrage: 12, preis_unlesbar: 3 },
+          meldebudget: { gesendet: 25, hoechstens: 25, zurueckgestellt: 117 },
+        },
+      }),
+      JETZT
+    );
+    expect(mitLauf.betrieb.uebersprungeneJeLauf).toEqual({
+      preis_auf_anfrage: 12,
+      preis_unlesbar: 3,
+    });
+    expect(mitLauf.betrieb.meldebudget?.zurueckgestellt).toBe(117);
+  });
+
+  it("fuehrt den Regionsstand je Region aus dem juengsten Lauf", () => {
+    const snapshot = baueSnapshot(
+      eingabe({
+        regionsLaeufe: [
+          ...regionsLaeufeBayern(),
+          {
+            source: "immowelt",
+            partition: "nw",
+            startedAt: "2026-09-14T21:00:00.000Z",
+            vollstaendig: false,
+          },
+          {
+            source: "immowelt",
+            partition: "nw",
+            startedAt: "2026-09-10T21:00:00.000Z",
+            vollstaendig: true,
+          },
+        ],
+      }),
+      JETZT
+    );
+    const nw = snapshot.betrieb.regionsstand.find((r) => r.region === "nw");
+    expect(nw?.letzterLauf).toBe("2026-09-14T21:00:00.000Z");
+    expect(nw?.vollstaendig).toBe(false);
+  });
+
+  it("rechnet die Kopfzeile aus den Daten", () => {
+    const snapshot = baueSnapshot(
+      eingabe({
+        listings: [listing("a"), listing("b"), listing("ohne")],
+        versionen: [
+          version("a"),
+          version("b", { rent_source: "angegeben", rent_cold_monthly_cents: 150_000 }),
+        ],
+      }),
+      JETZT
+    );
+    expect(snapshot.kopfzeile.objekteGesamt).toBe(3);
+    expect(snapshot.kopfzeile.mitBelegterMiete).toBe(1);
+    // 1 von 3 beruht auf einer bundeslandweiten Schaetzung.
+    expect(snapshot.kopfzeile.anteilBundeslandgenau).toBeCloseTo(1 / 3, 9);
+    expect(snapshot.kopfzeile.topTrefferSeit).toBe("2026-09-08T00:00:00.000Z");
+    expect(snapshot.erzeugtAm).toBe(JETZT.toISOString());
+    expect(snapshot.lauf.id).toBe("34910160636");
+  });
+
+  it("nimmt jedes Objekt genau einmal auf, auch bei mehreren Versionen", () => {
+    const snapshot = baueSnapshot(
+      eingabe({
+        listings: [listing("a"), listing("b")],
+        versionen: [
+          version("a", { scanned_at: "2026-09-10T00:00:00.000Z", price_cents: 9_900_000 }),
+          version("a"),
+          version("b"),
+        ],
+      }),
+      JETZT
+    );
+    expect(snapshot.objekte).toHaveLength(2);
+    expect(new Set(snapshot.objekte.map((o) => o.id)).size).toBe(2);
+    // Die juengste Version gewinnt: 100.000 EUR, nicht 99.000 EUR.
+    expect(snapshot.objekte.find((o) => o.id === "a")?.kaufpreisEuro).toBe(100_000);
   });
 });

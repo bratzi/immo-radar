@@ -12,11 +12,29 @@
  */
 
 import {
+  berechneKennzahlen,
   DSCR_MELDESCHWELLE,
   MAX_PLAUSIBLER_KAUFPREISFAKTOR,
   MIN_PLAUSIBLER_KAUFPREISFAKTOR,
+  type KennzahlenInput,
 } from "./metrics.js";
-import type { RangEinordnung } from "./ranking.js";
+import {
+  bewerteFuerRangliste,
+  bestimmeVerfuegbarkeitszustand,
+  type Bandkanten,
+  type RangEinordnung,
+  type Sicherheitsstufe,
+  type Verfuegbarkeitszustand,
+} from "./ranking.js";
+import { bewerteEinheiten } from "./pipeline.js";
+import { ermittleJahreskaltmiete, bundeslandFuerRegionscode } from "./rentEstimate.js";
+import {
+  grunderwerbsteuerSatz,
+  grunderwerbsteuerSatzFuerBundesland,
+  bundeslandFuerPlz,
+} from "./grunderwerbsteuer.js";
+import { partitionEinesListings } from "./bestand.js";
+import { datenlueckeKlartext, LUECKE_PREIS_FEHLT } from "./telegram.js";
 
 const MS_PRO_TAG = 24 * 60 * 60 * 1000;
 
@@ -218,13 +236,16 @@ function regionsSchluessel(source: string, partition: string): string {
   return `${source}/${partition}`;
 }
 
-function median(werte: number[]): number {
-  if (werte.length === 0) return Number.NaN;
-  const sortiert = [...werte].sort((a, b) => a - b);
-  const mitte = Math.floor(sortiert.length / 2);
-  return sortiert.length % 2 === 1
-    ? sortiert[mitte]
-    : (sortiert[mitte - 1] + sortiert[mitte]) / 2;
+/**
+ * Median, oder `null`, wenn es nichts zu mitteln gibt. Nicht-endliche Werte
+ * fallen vorher heraus: Ein `NaN` im Ergebnis waere schlimmer als `null`,
+ * weil jeder Vergleich damit `false` ergibt.
+ */
+function medianOderNull(werteRoh: number[]): number | null {
+  const werte = werteRoh.filter((wert) => Number.isFinite(wert)).sort((a, b) => a - b);
+  if (werte.length === 0) return null;
+  const mitte = Math.floor(werte.length / 2);
+  return werte.length % 2 === 1 ? werte[mitte] : (werte[mitte - 1] + werte[mitte]) / 2;
 }
 
 /**
@@ -287,13 +308,13 @@ export function schaetzeRegionsKadenzen(laeufe: RegionsLauf[], jetzt: Date): Reg
       abstaendeTage.push((sortiert[i] - sortiert[i - 1]) / MS_PRO_TAG);
     }
 
-    const kadenz = median(abstaendeTage);
+    const kadenz = medianOderNull(abstaendeTage);
     // Jede nicht-endliche oder nicht-positive Zahl faellt hier heraus. Ein
     // NaN, das als Zahl durchrutscht, waere schlimmer als `null`: In
     // `bestimmeVerfuegbarkeitszustand` ist `alterMs > NaN` immer `false`, das
     // Objekt gaelte still als "verfuegbar" -- genau die Fail-open-Bauart, die
     // dieses Projekt an vier Stellen geschlossen hat.
-    if (!Number.isFinite(kadenz) || kadenz <= 0) continue;
+    if (kadenz === null || kadenz <= 0) continue;
 
     const alterDesLetztenTage = (jetzt.getTime() - sortiert[sortiert.length - 1]) / MS_PRO_TAG;
     if (!Number.isFinite(alterDesLetztenTage)) continue;
@@ -374,4 +395,440 @@ export function bestimmeTrefferklasse(
     kaufpreisfaktor <= MAX_PLAUSIBLER_KAUFPREISFAKTOR;
 
   return haeltSchwelle && faktorPlausibel ? "top" : "normal";
+}
+
+// ---------------------------------------------------------------------------
+// Das Dateiformat aus N4 des Nachtrags vom 2026-09-15
+// ---------------------------------------------------------------------------
+
+export interface SnapshotObjekt {
+  id: string;
+  quelle: string;
+  url: string | null;
+  titel: string | null;
+  ort: string | null;
+  bundesland: string | null;
+  plz: string | null;
+  kaufpreisEuro: number | null;
+  wohnflaecheM2: number | null;
+  grundstueckM2: number | null;
+  baujahr: number | null;
+  einheiten: number | null;
+  einheitenAngenommen: boolean;
+  stufe: Sicherheitsstufe;
+  trefferklasse: Trefferklasse;
+  /** DSCR. `null` bei S0 -- ein nicht beurteilbares Objekt bekommt KEINE Kennzahl (3.7). */
+  rangzahl: number | null;
+  band: Bandkanten | null;
+  istSchwellenwechsler: boolean;
+  zustand: Verfuegbarkeitszustand;
+  /** Klartext-Gruende, nie rohe Lueckencodes (3.7). */
+  datenluecken: string[];
+  preisGesenkt: boolean;
+  zuletztGesehen: string | null;
+  abgaengigSeit: string | null;
+  /** Nur ZVG. */
+  termin: string | null;
+}
+
+export interface SnapshotBundesland {
+  name: string;
+  objekte: number;
+  topTreffer: number;
+  /** Median der Rangzahlen; `null`, wenn kein Objekt des Landes eine traegt. */
+  medianDscr: number | null;
+  /** Alter des juengsten Regionslaufs in Tagen; `null`, wenn es keinen gibt. */
+  standAlterTage: number | null;
+}
+
+export interface SnapshotKopfzeile {
+  objekteGesamt: number;
+  mitBelegterMiete: number;
+  topTrefferSeit: string | null;
+  anteilBundeslandgenau: number | null;
+}
+
+/** Laufkennwerte. `null` heisst "dieser Export lief nicht in einem Lauf". */
+export interface SnapshotBetriebEingabe {
+  uebersprungeneJeLauf: { preis_auf_anfrage: number; preis_unlesbar: number } | null;
+  meldebudget: { gesendet: number; hoechstens: number; zurueckgestellt: number } | null;
+}
+
+export interface SnapshotBetrieb extends SnapshotBetriebEingabe {
+  regionsstand: { region: string; letzterLauf: string | null; vollstaendig: boolean }[];
+}
+
+export interface Snapshot {
+  erzeugtAm: string;
+  lauf: { id: string | null; beendetAm: string | null };
+  kopfzeile: SnapshotKopfzeile;
+  bundeslaender: SnapshotBundesland[];
+  objekte: SnapshotObjekt[];
+  betrieb: SnapshotBetrieb;
+}
+
+export interface SnapshotEingabe {
+  listings: SnapshotListingZeile[];
+  /** ALLE Versionen; die juengste je Objekt waehlt diese Datei. */
+  versionen: SnapshotVersionZeile[];
+  regionsLaeufe: RegionsLauf[];
+  lauf: { id: string | null; beendetAm: string | null };
+  betrieb: SnapshotBetriebEingabe;
+}
+
+/**
+ * Rangfolge der Mietquellen nach Genauigkeit. Alles, was hier nicht steht --
+ * auch `null` --, ist 0 und damit die ungenaueste Stufe. Dieselbe
+ * Aufzaehlungsregel wie `bestimmeSicherheitsstufe`.
+ */
+const MIETQUELLE_GENAUIGKEIT: Record<string, number> = {
+  angegeben: 3,
+  geschaetzt_regional: 2,
+  geschaetzt_bundesland: 1,
+  geschaetzt_bundesweit: 1,
+};
+
+/**
+ * Die UNGENAUERE zweier Mietquellen.
+ *
+ * WOZU: Der Snapshot rechnet die Jahreskaltmiete mit `ermittleJahreskaltmiete`
+ * neu -- derselben Funktion, die die Pipeline benutzt, aus denselben
+ * gespeicherten Feldern. Die Stufe soll nach Entwurf 3.3 an der gespeicherten
+ * `rent_source` haengen. Beide koennen auseinanderlaufen, sobald sich
+ * `REGIONALE_MIETE_PRO_M2` aendert.
+ *
+ * Und das ist nicht harmlos: Die Stufe waehlt die BANDBREITE. Stuende
+ * gespeichert `geschaetzt_regional` (S2, ±23,7 %), waehrend die Miete heute
+ * bundeslandgenau entsteht (S1, in Bayern -34,8 %...+67,1 %), bekaeme das
+ * Objekt ein zu schmales Band -- und ein zu schmales Band kann einen
+ * Top-Treffer erzeugen, den die Datenlage nicht traegt (N1.1 haengt genau an
+ * der unteren Bandkante). Darum zaehlt die schlechtere der beiden
+ * Beobachtungen.
+ */
+function ungenauereMietquelle(
+  gespeichert: string | null,
+  neuGerechnet: string | null
+): string | null {
+  const a = gespeichert === null ? 0 : (MIETQUELLE_GENAUIGKEIT[gespeichert] ?? 0);
+  const b = neuGerechnet === null ? 0 : (MIETQUELLE_GENAUIGKEIT[neuGerechnet] ?? 0);
+  return a <= b ? gespeichert : neuGerechnet;
+}
+
+function endlichOderNull(wert: number): number | null {
+  return Number.isFinite(wert) ? wert : null;
+}
+
+/**
+ * Baut das Snapshot-Objekt aus bereits geladenen Zeilen (Dateiformat N4).
+ *
+ * REIN: kein Supabase, kein Netz, keine Uhr von sich aus -- `jetzt` kommt
+ * herein, wie bei `istHartLoeschbar` (`bestand.ts`). Dadurch ist der ganze
+ * Inhalt des Dashboards mit Fixtures pruefbar, ohne Datenbank.
+ *
+ * ALLE ABGELEITETEN GROESSEN KOMMEN AUS `ranking.ts` -- `bewerteFuerRangliste`
+ * fuer Stufe, Rangzahl, Band und Schwellenwechsler,
+ * `bestimmeVerfuegbarkeitszustand` fuer den Zustand. Hier wird keine Schwelle
+ * nachgebaut (Entwurf 5.3, Punkt 4); die drei Zahlen, die die Trefferklasse
+ * zusaetzlich braucht, sind aus `metrics.ts` importiert.
+ */
+export function baueSnapshot(eingabe: SnapshotEingabe, jetzt: Date): Snapshot {
+  const juengsteVersionen = waehleJuengsteVersionen(eingabe.versionen);
+  const kadenzen = schaetzeRegionsKadenzen(eingabe.regionsLaeufe, jetzt);
+
+  const objekte = eingabe.listings.map((listing) =>
+    baueObjekt(listing, juengsteVersionen.get(listing.id) ?? null, kadenzen, jetzt)
+  );
+
+  return {
+    erzeugtAm: jetzt.toISOString(),
+    lauf: eingabe.lauf,
+    kopfzeile: baueKopfzeile(eingabe.listings, juengsteVersionen),
+    bundeslaender: baueBundeslaender(objekte, eingabe.regionsLaeufe, jetzt),
+    objekte,
+    betrieb: {
+      uebersprungeneJeLauf: eingabe.betrieb.uebersprungeneJeLauf,
+      meldebudget: eingabe.betrieb.meldebudget,
+      regionsstand: baueRegionsstand(eingabe.regionsLaeufe),
+    },
+  };
+}
+
+function baueObjekt(
+  listing: SnapshotListingZeile,
+  version: SnapshotVersionZeile | null,
+  kadenzen: RegionsKadenzen,
+  jetzt: Date
+): SnapshotObjekt {
+  // Die Region wird genauso bestimmt wie fuer die Abgangserkennung --
+  // gespeicherter Fundort vor ZVG-Praefix, sonst `null` (bestand.ts). Eine
+  // eigene Herleitung hier waere eine zweite Wahrheit ueber denselben Begriff.
+  const partition = partitionEinesListings(listing.source, {
+    id: listing.id,
+    externalId: listing.externalId ?? "",
+    disappearedAt: listing.disappearedAt,
+    fundort: listing.fundort,
+  });
+  const zustand = bestimmeVerfuegbarkeitszustand(
+    {
+      disappearedAt: listing.disappearedAt,
+      lastSeen: listing.lastSeen,
+      kadenzTageDerRegion: kadenzFuerRegion(kadenzen, listing.source, partition),
+    },
+    jetzt
+  );
+
+  const gemeinsam = {
+    id: listing.id,
+    quelle: listing.source,
+    url: listing.url,
+    zustand,
+    zuletztGesehen: listing.lastSeen,
+    abgaengigSeit: listing.disappearedAt,
+  };
+
+  if (version === null) {
+    // Eine `listings`-Zeile ohne Version: kein Preis, keine Flaeche, keine
+    // Mietquelle. Die Stufe wird trotzdem GERECHNET und nicht als "S0"
+    // hingeschrieben -- es gibt genau eine Funktion, die ueber Stufen
+    // entscheidet, und das ist `bestimmeSicherheitsstufe` (hier ueber
+    // `bewerteFuerRangliste`).
+    const einordnung = bewerteFuerRangliste(
+      { rentSource: null, dataGaps: [], livingAreaM2: null },
+      { kaufpreis: 0, jahreskaltmiete: 0, einheiten: 0, baujahr: null, wohnflaecheM2: 0 },
+      grunderwerbsteuerSatzFuerBundesland(null),
+      null
+    );
+    return {
+      ...gemeinsam,
+      titel: null,
+      ort: null,
+      bundesland: null,
+      plz: null,
+      kaufpreisEuro: null,
+      wohnflaecheM2: null,
+      grundstueckM2: null,
+      baujahr: null,
+      einheiten: null,
+      einheitenAngenommen: false,
+      stufe: einordnung.stufe,
+      trefferklasse: bestimmeTrefferklasse(einordnung, null),
+      rangzahl: einordnung.rangzahl,
+      band: einordnung.band,
+      istSchwellenwechsler: einordnung.istSchwellenwechsler,
+      datenluecken: [datenlueckeKlartext(LUECKE_PREIS_FEHLT)],
+      preisGesenkt: false,
+      termin: null,
+    };
+  }
+
+  const bundesland = version.bundesland;
+  const plz = version.zipCode;
+  const einheiten = bewerteEinheiten(version.units, version.unitsConfident);
+
+  // Die Miete wird mit derselben Funktion neu gerechnet, die die Pipeline
+  // benutzt, aus denselben gespeicherten Feldern. Sie steht in keiner Spalte.
+  const miete = ermittleJahreskaltmiete(
+    version.rentColdMonthlyCents === null ? null : version.rentColdMonthlyCents / 100,
+    version.livingAreaM2 ?? 0,
+    plz ?? "",
+    bundesland
+  );
+
+  // Genau die Fallunterscheidung aus `processCandidate`: ohne brauchbare PLZ
+  // ueber das Bundesland gehen, statt auf den Bundesschnitt zu fallen.
+  const satz =
+    plz === null || bundeslandFuerPlz(plz) === null
+      ? grunderwerbsteuerSatzFuerBundesland(bundesland)
+      : grunderwerbsteuerSatz(plz);
+
+  const kennzahlenInput: KennzahlenInput = {
+    kaufpreis: (version.priceCents ?? 0) / 100,
+    jahreskaltmiete: miete.jahreskaltmiete,
+    einheiten: einheiten.einheitenFuerBerechnung,
+    baujahr: version.yearBuilt,
+    wohnflaecheM2: version.livingAreaM2 ?? 0,
+  };
+
+  const einordnung = bewerteFuerRangliste(
+    {
+      rentSource: ungenauereMietquelle(version.rentSource, miete.quelle),
+      dataGaps: version.dataGaps,
+      livingAreaM2: version.livingAreaM2,
+    },
+    kennzahlenInput,
+    satz,
+    bundesland
+  );
+
+  // Der Kaufpreisfaktor nur fuer bewertbare Objekte: Bei S0 waere die Miete 0
+  // und der Faktor Infinity. Dieselbe Reihenfolge wie in
+  // `bewerteFuerRangliste` -- erst pruefen, dann rechnen, nie eine Zahl
+  // durchrechnen, die spaeter verworfen wird.
+  const kaufpreisfaktor =
+    einordnung.rangzahl === null
+      ? null
+      : endlichOderNull(berechneKennzahlen(kennzahlenInput, satz).kaufpreisfaktor);
+
+  return {
+    ...gemeinsam,
+    titel: version.title,
+    ort: version.city,
+    bundesland,
+    plz,
+    kaufpreisEuro: version.priceCents === null ? null : version.priceCents / 100,
+    wohnflaecheM2: version.livingAreaM2,
+    grundstueckM2: version.plotAreaM2,
+    baujahr: version.yearBuilt,
+    einheiten: version.units,
+    // `units_confident` ist der Beleg. Ohne ihn ist die Zahl angenommen --
+    // 99,3 % des Bestands (Entwurf 3.1), darum steht es am Objekt.
+    einheitenAngenommen: !version.unitsConfident,
+    stufe: einordnung.stufe,
+    trefferklasse: bestimmeTrefferklasse(einordnung, kaufpreisfaktor),
+    rangzahl: einordnung.rangzahl,
+    band: einordnung.band,
+    istSchwellenwechsler: einordnung.istSchwellenwechsler,
+    datenluecken: version.dataGaps.map(datenlueckeKlartext),
+    preisGesenkt: version.priceDropped,
+    termin: version.auctionAt,
+  };
+}
+
+/**
+ * Die Kopfzeile aus Entwurf 3.9. Alle Zahlen zur Anzeigezeit aus den Daten
+ * gerechnet und nie im Text festgeschrieben -- zwischen dem 2026-09-08 und
+ * dem 2026-09-12 sind aus "2 Objekten mit belegter Miete" 1 geworden.
+ *
+ * `topTrefferSeit` ist der Beginn des Beobachtungsfensters, auf das sich die
+ * Aussage "n Top-Treffer seit ..." bezieht: das aelteste `first_seen` im
+ * Bestand. Der Bestand ist juenger als das Projekt, und eine Aussage ueber
+ * Top-Treffer kann nicht weiter zurueckreichen als die Beobachtung.
+ *
+ * `anteilBundeslandgenau` ist die DRITTE Aussage aus 3.9 -- der Anteil der
+ * Bewertungen, die auf einer bundeslandweiten Mietschaetzung beruhen ("98 %",
+ * roh ueber alle Objekte gezaehlt). NICHT der Ortsanteil aus N2; der Name ist
+ * missverstaendlich, die Herkunft nicht.
+ */
+function baueKopfzeile(
+  listings: SnapshotListingZeile[],
+  juengsteVersionen: Map<string, SnapshotVersionZeile>
+): SnapshotKopfzeile {
+  let mitBelegterMiete = 0;
+  let nurBundeslandgenau = 0;
+  let aeltestesFirstSeen: number | null = null;
+  let aeltestesFirstSeenText: string | null = null;
+
+  for (const listing of listings) {
+    const version = juengsteVersionen.get(listing.id);
+    if (version !== undefined) {
+      if (version.rentSource === "angegeben") mitBelegterMiete += 1;
+      if (
+        version.rentSource === "geschaetzt_bundesland" ||
+        version.rentSource === "geschaetzt_bundesweit"
+      ) {
+        nurBundeslandgenau += 1;
+      }
+    }
+    if (listing.firstSeen === null) continue;
+    const zeit = Date.parse(listing.firstSeen);
+    if (!Number.isFinite(zeit)) continue;
+    if (aeltestesFirstSeen === null || zeit < aeltestesFirstSeen) {
+      aeltestesFirstSeen = zeit;
+      aeltestesFirstSeenText = listing.firstSeen;
+    }
+  }
+
+  return {
+    objekteGesamt: listings.length,
+    mitBelegterMiete,
+    topTrefferSeit: aeltestesFirstSeenText,
+    anteilBundeslandgenau: listings.length === 0 ? null : nurBundeslandgenau / listings.length,
+  };
+}
+
+/**
+ * Die Grundschicht der Karte (N2): je Bundesland Anzahl Objekte, Anzahl
+ * Top-Treffer, Median-DSCR und das Alter des letzten Regionslaufs.
+ *
+ * Aufgenommen wird jedes Bundesland, das in den Objekten ODER in den
+ * Regionslaeufen vorkommt -- nicht eine hier aufgezaehlte Liste der 16. Ein
+ * Land ohne Objekte, das aber gesweept wurde, gehoert mit seinem Standalter
+ * auf die Karte; ein Land ohne beides hat nichts auszusagen.
+ *
+ * Objekte ohne Bundesland fallen heraus. Sie verschwinden dadurch nicht: Die
+ * Kopfzeile zaehlt sie mit, und die Differenz zur Summe ueber die Laender ist
+ * genau die Abdeckung, die die Kartenlegende nennen soll (N2).
+ */
+function baueBundeslaender(
+  objekte: SnapshotObjekt[],
+  regionsLaeufe: RegionsLauf[],
+  jetzt: Date
+): SnapshotBundesland[] {
+  const jeLand = new Map<string, { objekte: number; topTreffer: number; dscrs: number[] }>();
+
+  const hole = (name: string) => {
+    const vorhanden = jeLand.get(name);
+    if (vorhanden !== undefined) return vorhanden;
+    const neu = { objekte: 0, topTreffer: 0, dscrs: [] as number[] };
+    jeLand.set(name, neu);
+    return neu;
+  };
+
+  for (const objekt of objekte) {
+    if (objekt.bundesland === null) continue;
+    const eintrag = hole(objekt.bundesland);
+    eintrag.objekte += 1;
+    if (objekt.trefferklasse === "top") eintrag.topTreffer += 1;
+    if (objekt.rangzahl !== null) eintrag.dscrs.push(objekt.rangzahl);
+  }
+
+  const letzterLaufJeLand = new Map<string, number>();
+  for (const lauf of regionsLaeufe) {
+    const name = bundeslandFuerRegionscode(lauf.partition);
+    if (name === null) continue;
+    hole(name);
+    const zeit = Date.parse(lauf.startedAt);
+    if (!Number.isFinite(zeit)) continue;
+    const bisher = letzterLaufJeLand.get(name);
+    if (bisher === undefined || zeit > bisher) letzterLaufJeLand.set(name, zeit);
+  }
+
+  return [...jeLand.entries()]
+    .map(([name, eintrag]) => {
+      const letzter = letzterLaufJeLand.get(name);
+      return {
+        name,
+        objekte: eintrag.objekte,
+        topTreffer: eintrag.topTreffer,
+        medianDscr: medianOderNull(eintrag.dscrs),
+        standAlterTage: letzter === undefined ? null : (jetzt.getTime() - letzter) / MS_PRO_TAG,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "de"));
+}
+
+/**
+ * Stand je Region aus `sweep_region_runs` (Entwurf 4.4 und Abschnitt 8):
+ * der JUENGSTE Lauf je Region, samt seiner Vollstaendigkeit. Bewusst der
+ * juengste und nicht der juengste vollstaendige -- die Frage lautet "wann
+ * wurde hier zuletzt hingesehen", und die Antwort "am 14.09., unvollstaendig"
+ * ist genau die Auskunft, die N2 und 4.4 verlangen.
+ */
+function baueRegionsstand(
+  regionsLaeufe: RegionsLauf[]
+): { region: string; letzterLauf: string | null; vollstaendig: boolean }[] {
+  const juengste = new Map<string, { zeit: number; lauf: RegionsLauf }>();
+  for (const lauf of regionsLaeufe) {
+    const zeitRoh = Date.parse(lauf.startedAt);
+    const zeit = Number.isFinite(zeitRoh) ? zeitRoh : Number.NEGATIVE_INFINITY;
+    const bisher = juengste.get(lauf.partition);
+    if (bisher === undefined || zeit > bisher.zeit) juengste.set(lauf.partition, { zeit, lauf });
+  }
+  return [...juengste.entries()]
+    .map(([region, { zeit, lauf }]) => ({
+      region,
+      letzterLauf: Number.isFinite(zeit) ? lauf.startedAt : null,
+      vollstaendig: lauf.vollstaendig,
+    }))
+    .sort((a, b) => a.region.localeCompare(b.region));
 }
