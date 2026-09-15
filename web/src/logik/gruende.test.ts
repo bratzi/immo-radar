@@ -1,0 +1,83 @@
+import { describe, expect, it } from "vitest";
+import type { SnapshotObjekt } from "../daten/snapshot.ts";
+import { gruendeFuerAnzeige } from "./gruende.ts";
+
+function objekt(teil: Partial<SnapshotObjekt> = {}): SnapshotObjekt {
+  return {
+    id: "a",
+    quelle: "immowelt",
+    url: null,
+    titel: null,
+    ort: null,
+    bundesland: null,
+    plz: null,
+    kaufpreisEuro: null,
+    wohnflaecheM2: null,
+    grundstueckM2: null,
+    baujahr: null,
+    einheiten: null,
+    einheitenAngenommen: true,
+    stufe: "S0",
+    trefferklasse: "nichtBeurteilbar",
+    rangzahl: null,
+    band: null,
+    istSchwellenwechsler: false,
+    zustand: "verfuegbar",
+    datenluecken: [],
+    preisGesenkt: false,
+    zuletztGesehen: null,
+    abgaengigSeit: null,
+    termin: null,
+    ...teil,
+  };
+}
+
+describe("gruendeFuerAnzeige", () => {
+  it("gibt die Klartext-Gruende des Exports unveraendert weiter", () => {
+    const gruende = gruendeFuerAnzeige(
+      objekt({ datenluecken: ["Wohnfläche fehlt", "Preis und Miete unvereinbar"] })
+    );
+    expect(gruende).toEqual([
+      { text: "Wohnfläche fehlt", istKlartext: true },
+      { text: "Preis und Miete unvereinbar", istKlartext: true },
+    ]);
+  });
+
+  it("markiert einen ROHEN Lueckencode als solchen, statt ihn als Satz auszugeben", () => {
+    // Befund am echten Bestand: `kaufpreis_unplausibel` steht in
+    // `data_gaps`, hat aber keinen Eintrag in DATA_GAP_LABELS
+    // (scraper/lib/telegram.ts) und kommt deshalb ROH im Snapshot an.
+    // Die Oberflaeche baut KEINE zweite Klartext-Tabelle -- sie zeigt den
+    // Code und sagt dazu, dass er keiner ist.
+    const gruende = gruendeFuerAnzeige(objekt({ datenluecken: ["kaufpreis_unplausibel"] }));
+    expect(gruende).toEqual([{ text: "kaufpreis_unplausibel", istKlartext: false }]);
+  });
+
+  it("erkennt einen Klartext auch dann, wenn er Unterstriche im Satz haette", () => {
+    expect(gruendeFuerAnzeige(objekt({ datenluecken: ["Preis fehlt — die Quelle nennt nichts"] }))[0])
+      .toEqual({ text: "Preis fehlt — die Quelle nennt nichts", istKlartext: true });
+  });
+
+  it("laesst ein Objekt OHNE Kennzahl niemals ohne Text dastehen (3.7)", () => {
+    // Befund am echten Bestand: ein ZVG-Objekt ist S0 (keine Wohnflaeche),
+    // traegt aber gar keinen `data_gaps`-Eintrag -- die Stufe haengt am FELD,
+    // der Klartext an der ABLEITUNG. Eine leere Zelle saehe aus wie
+    // "geprueft und nichts gefunden". Sie darf nicht leer bleiben.
+    const gruende = gruendeFuerAnzeige(objekt({ rangzahl: null, datenluecken: [] }));
+    expect(gruende).toHaveLength(1);
+    expect(gruende[0]!.istKlartext).toBe(false);
+    expect(gruende[0]!.text.length).toBeGreaterThan(0);
+  });
+
+  it("raet dabei KEINE Ursache, sondern sagt, dass der Export keine nennt", () => {
+    const text = gruendeFuerAnzeige(objekt({ rangzahl: null, datenluecken: [] }))[0]!.text;
+    // Kein erfundener Grund -- insbesondere nicht die im Frontend
+    // nachgebaute Ableitung "Wohnflaeche fehlt" (Entwurf 5.3, Punkt 4).
+    expect(text).not.toMatch(/Wohnfläche/);
+    expect(text).toMatch(/kein(en)? Grund/i);
+  });
+
+  it("erfindet fuer ein Objekt MIT Kennzahl keinen Ersatztext", () => {
+    expect(gruendeFuerAnzeige(objekt({ rangzahl: 1.2, datenluecken: [] }))).toEqual([]);
+  });
+});
