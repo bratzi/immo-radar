@@ -61,10 +61,13 @@ describe("gruendeFuerAnzeige", () => {
   });
 
   it("laesst ein Objekt OHNE Kennzahl niemals ohne Text dastehen (3.7)", () => {
-    // Befund am echten Bestand: ein ZVG-Objekt ist S0 (keine Wohnflaeche),
-    // traegt aber gar keinen `data_gaps`-Eintrag -- die Stufe haengt am FELD,
-    // der Klartext an der ABLEITUNG. Eine leere Zelle saehe aus wie
-    // "geprueft und nichts gefunden". Sie darf nicht leer bleiben.
+    // Befund am Bestand vom 2026-09-15: ein ZVG-Objekt war S0 (keine
+    // Wohnflaeche), trug aber gar keinen `data_gaps`-Eintrag -- die Stufe
+    // hing am FELD, der Klartext an der ABLEITUNG. BEHOBEN seit A18-1
+    // (2026-09-16): `s0Gruende` (`scraper/lib/ranking.ts`) liefert den Grund
+    // seither selbst. Diese Pruefung bleibt als Wache stehen -- eine leere
+    // Zelle saehe aus wie "geprueft und nichts gefunden", falls der Export
+    // die Zusage doch einmal verletzt.
     const gruende = gruendeFuerAnzeige(objekt({ rangzahl: null, datenluecken: [] }));
     expect(gruende).toHaveLength(1);
     expect(gruende[0]!.istKlartext).toBe(false);
