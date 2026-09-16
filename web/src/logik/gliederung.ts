@@ -30,12 +30,17 @@ export interface Gliederung {
 /**
  * Ist die Karenz nach einem Abgang vorbei?
  *
- * FAIL-CLOSED: Ein unlesbares `abgaengigSeit` heisst "Karenz vorbei" und
- * nicht "kein Abgang". Ein Objekt, dessen Abgangsdatum kaputt ist, darf nicht
- * still in die Rangliste kaufbarer Objekte zurueckrutschen -- dieselbe Regel,
- * mit der `waehleJuengsteVersionen` eine unlesbare Zeit behandelt.
+ * FAIL-CLOSED, in ZWEI Richtungen: Ein unlesbares `abgaengigSeit` heisst
+ * "Karenz vorbei" und nicht "kein Abgang" -- dieselbe Regel, mit der
+ * `waehleJuengsteVersionen` eine unlesbare Zeit behandelt. Und ein
+ * unbrauchbares `karenzTage` (Review I-1, zweite Wache -- `laden.ts` prueft
+ * die erste an der Dateigrenze) heisst ebenfalls "Karenz vorbei": Ohne diese
+ * Zeile wuerde `karenzTage * MS_PRO_TAG` zu `NaN`, der Vergleich waere immer
+ * `false`, und KEIN abgaengiges Objekt verliesse je die Rangliste --
+ * fail-open, genau das Gegenteil der Absicht dieser Funktion.
  */
 function karenzVorbei(abgaengigSeit: string, jetzt: Date, karenzTage: number): boolean {
+  if (!Number.isFinite(karenzTage)) return true;
   const zeit = Date.parse(abgaengigSeit);
   if (!Number.isFinite(zeit)) return true;
   return jetzt.getTime() - zeit > karenzTage * MS_PRO_TAG;

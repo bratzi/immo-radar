@@ -102,10 +102,22 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle }: Eigens
         <span className="zeile__neben">
           {formatiereFlaeche(objekt.wohnflaecheM2)}
           {jeQm !== null && ` · ${formatiereEuro(Math.round(jeQm))}/m²`}
-          {/* Kaufpreisfaktor: die dritte nuetzliche Zahl neben dem DSCR
-              (Entwurf 2.3) -- steht daneben, ordnet aber nicht (2.3). */}
-          {objekt.kaufpreisfaktor !== null &&
-            ` · ${formatiereKaufpreisfaktor(objekt.kaufpreisfaktor)}`}
+          {/*
+            Der Kaufpreisfaktor: die dritte nuetzliche Zahl (Entwurf 2.3 --
+            "steht daneben, ordnet aber nicht"). Er haengt an dieser Spalte
+            (Preis · Flaeche), NICHT an der DSCR-Spalte -- die Spaltenkopf-
+            Ueberschrift ("Preis · Fläche") wuerde bei drei Begriffen in der
+            festen 112px-Spalte umbrechen (Review M-1), deshalb traegt die
+            Zahl selbst ein `title`, statt die Ueberschrift zu erweitern.
+          */}
+          {objekt.kaufpreisfaktor !== null && (
+            <>
+              {" · "}
+              <span title="Kaufpreisfaktor">
+                {formatiereKaufpreisfaktor(objekt.kaufpreisfaktor)}
+              </span>
+            </>
+          )}
         </span>
       </span>
 

@@ -85,6 +85,30 @@ describe("bestimmeBereich -- N1 plus die Karenzgrenze aus 6.4", () => {
     });
     expect(bestimmeBereich(weg, JETZT, KARENZ_TAGE)).toBe("abgaenge");
   });
+
+  it("behandelt eine unlesbare Karenz fail-closed -- das Objekt gilt als abgegangen (Review I-1, zweite Wache)", () => {
+    // `laden.ts` prueft `konstanten` schon an der Dateigrenze (erste Wache).
+    // Diese hier ist die zweite: Kommt trotzdem ein unbrauchbares
+    // `karenzTage` bis hierher (z.B. NaN), darf daraus NIE "Karenz nie
+    // vorbei" werden -- sonst verliesse kein abgaengiges Objekt mehr die
+    // Rangliste (fail-open).
+    const geradeEben = objekt({
+      trefferklasse: "top",
+      abgaengigSeit: "2026-09-15T11:59:59Z", // eine Sekunde her
+      zustand: "abgaengig",
+    });
+    expect(bestimmeBereich(geradeEben, JETZT, Number.NaN)).toBe("abgaenge");
+  });
+
+  it("nimmt WIRKLICH das uebergebene karenzTage-Argument, nicht einen internen Wert (Review M-3)", () => {
+    const objektMitAbgang = objekt({
+      trefferklasse: "top",
+      abgaengigSeit: "2026-09-12T12:00:00Z", // 3 Tage vor JETZT
+      zustand: "abgaengig",
+    });
+    expect(bestimmeBereich(objektMitAbgang, JETZT, 5)).toBe("top"); // Karenz (5 Tage) noch nicht vorbei
+    expect(bestimmeBereich(objektMitAbgang, JETZT, 2)).toBe("abgaenge"); // Karenz (2 Tage) laengst vorbei
+  });
 });
 
 describe("sortierschluessel -- sortiert wird nach der UNTEREN Bandkante (3.5)", () => {
