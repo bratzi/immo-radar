@@ -5,15 +5,22 @@
  * > der Stelle steht der Grund im Klartext."
  *
  * Diese Datei fing urspruenglich ZWEI BEFUNDE am echten Bestand vom
- * 2026-09-15 auf, beide im Export entstanden:
+ * 2026-09-15 auf, beide im Export entstanden und inzwischen (2026-09-16, A18)
+ * in `scraper/` behoben. Beide Kennzeichnungen bleiben trotzdem als WACHEN
+ * stehen, nicht als Behauptung eines weiterhin offenen Befunds:
  *
- * 1. **Ein roher Lueckencode.** `kaufpreis_unplausibel` steht bei 2 Objekten
- *    in `data_gaps`, hat aber keinen Eintrag in `DATA_GAP_LABELS`
- *    (`scraper/lib/telegram.ts`); `datenlueckeKlartext` reicht ihn deshalb
- *    unveraendert durch. Die Oberflaeche baut dafuer KEINE zweite
- *    Klartext-Tabelle -- das war die ausdrueckliche Entscheidung 2 des
- *    Snapshot-Schritts ("damit es EINE Tabelle gibt und nicht zwei"). Sie
- *    zeigt den Code und kennzeichnet ihn als unbeschrifteten Code.
+ * 1. BEHOBEN (A18-2, 2026-09-16): **Ein roher Lueckencode.** `kaufpreis_unplausibel`
+ *    stand bei Objekten in `data_gaps`, hatte aber keinen Eintrag in
+ *    `DATA_GAP_LABELS` (`scraper/lib/telegram.ts`); `datenlueckeKlartext`
+ *    reichte ihn deshalb unveraendert durch. `DATA_GAP_LABELS` traegt den
+ *    Altnamen seither als Alias auf denselben Klartext wie
+ *    `preis_miete_unvereinbar` (die A9-Umbenennung) -- der Export uebersetzt,
+ *    die Produktionsdaten blieben unangetastet. Die Erkennung eines
+ *    unbeschrifteten Codes bleibt dennoch bestehen: Die Oberflaeche baut
+ *    dafuer KEINE zweite Klartext-Tabelle -- das war die ausdrueckliche
+ *    Entscheidung 2 des Snapshot-Schritts ("damit es EINE Tabelle gibt und
+ *    nicht zwei"). Sie ist jetzt die Wache fuer die naechste Umbenennung ohne
+ *    nachgezogenes Label, nicht mehr der Befund selbst.
  *
  * 2. BEHOBEN (A18-1, 2026-09-16): **Ein Objekt ohne jeden Grund.** Ein
  *    ZVG-Objekt (Leverkusen) war S0, weil ihm die Wohnflaeche fehlte, trug
