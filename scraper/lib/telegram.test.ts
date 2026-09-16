@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen, formatAbgangMessage, formatSweepWarnungMessage, sendTelegramMessage } from "./telegram.js";
+import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen, formatAbgangMessage, formatSweepWarnungMessage, sendTelegramMessage, datenlueckeKlartext } from "./telegram.js";
+import { S0_LUECKEN, LUECKE_MIETQUELLE_UNBEKANNT } from "./ranking.js";
 
 const listing = {
   title: "Mehrfamilienhaus zum Kauf",
@@ -528,5 +529,32 @@ describe("sendTelegramMessage", () => {
     vi.stubGlobal("fetch", vi.fn(async () => antwort(200, "kein-json")));
 
     await expect(sendTelegramMessage(config, "Hallo")).resolves.toBeNull();
+  });
+});
+
+describe("Altcodes tragen denselben Klartext wie ihr heutiger Name (A18-2)", () => {
+  it("uebersetzt kaufpreis_unplausibel wie preis_miete_unvereinbar", () => {
+    // 2 Objekte im Bestand (Messung 2026-09-15) tragen den Namen von vor der
+    // A9-Umbenennung. Der Export uebersetzt, statt die Daten anzufassen.
+    expect(datenlueckeKlartext("kaufpreis_unplausibel")).toBe(
+      datenlueckeKlartext("preis_miete_unvereinbar")
+    );
+  });
+
+  it("beschriftet mietquelle_unbekannt", () => {
+    // Die Konstante, nicht das Literal (Pruefung Runde 1, M-6): Wird der Code
+    // in `ranking.ts` umbenannt, ohne dass `DATA_GAP_LABELS` folgt, soll
+    // dieser Test fallen -- mit einem Literal auf beiden Seiten bliebe er gruen.
+    expect(datenlueckeKlartext(LUECKE_MIETQUELLE_UNBEKANNT)).not.toBe(LUECKE_MIETQUELLE_UNBEKANNT);
+  });
+
+  it("gibt jedem S0-Code und dem Rueckfall mietquelle_unbekannt einen Klartext", () => {
+    // Jeder Code, den `s0Gruende` liefern kann, landet im Export in der Zeile,
+    // die den Grund fuer "nicht beurteilbar" nennt. Dort darf kein roher
+    // Maschinencode stehen (Entwurf 3.7). Die Liste kommt aus `ranking.ts`,
+    // damit ein neuer S0-Code hier ohne Zutun mitgeprueft wird.
+    for (const code of [...S0_LUECKEN, LUECKE_MIETQUELLE_UNBEKANNT]) {
+      expect(datenlueckeKlartext(code), code).not.toBe(code);
+    }
   });
 });

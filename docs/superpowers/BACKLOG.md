@@ -1232,7 +1232,9 @@ laufen lassen. Der hat vier Dinge gefunden, die am Export liegen, nicht an der
 Anzeige. Die Oberfläche fängt alle vier ab, ohne eine Ursache zu erfinden —
 behoben sind sie damit nicht.
 
-- **Ein S0-Objekt ohne jeden Grund.** Das ZVG-Objekt `9327fbb0…` (Leverkusen)
+- [x] **Ein S0-Objekt ohne jeden Grund — ERLEDIGT (2026-09-16; Scraper
+  `080812a`, nach der Prüfung auf einen Durchlauf umgebaut; Web `b13c09f`,
+  `128d76c`; Merge `5931300`).** Das ZVG-Objekt `9327fbb0…` (Leverkusen)
   ist S0, weil die Wohnfläche fehlt — trägt aber ein leeres `data_gaps` und
   damit keinen Klartext-Grund. Entwurf **3.7** verlangt ausdrücklich einen:
   *„an der Stelle steht der Grund im Klartext"*. Die Oberfläche schreibt
@@ -1240,7 +1242,38 @@ behoben sind sie damit nicht.
   `wohnflaecheM2 === null` ein „Wohnfläche fehlt" abzuleiten wäre eine im
   Frontend nachgebaute Ableitung und damit eine zweite Kopie der Stufenregel.
   **Der Export gehört so ergänzt, dass jedes S0-Objekt seinen Grund mitbringt.**
-- **Ein Lückencode ohne Klartext:** `kaufpreis_unplausibel` (2 Objekte) steht
+  **Behoben in `ranking.ts`, nicht im Export:** `s0Gruende(objekt)` liefert
+  die Lückencodes, die S0 tragen. Fehlt die Fläche ohne `wohnflaeche_fehlt`
+  in `data_gaps`, nennt sie `wohnflaeche_fehlt`; führt allein eine Mietquelle
+  außerhalb der Aufzählung nach S0, nennt sie den neuen Code
+  `mietquelle_unbekannt` (Klartext in `DATA_GAP_LABELS`). `baueSnapshot`
+  verschmilzt `data_gaps` mit diesen Gründen (ohne Dopplung, gemeldete Lücken
+  zuerst) und gibt Stufe und Gründen dieselbe Eingabe. Die Zeile ohne Version
+  behält „Preis fehlt".
+  **Nachgebessert nach der Prüfung von Runde 1 (I-1):** Die erste Fassung
+  (`080812a`) entschied die Stufe in `bestimmeSicherheitsstufe` und leitete
+  die Gründe in `s0Gruende` ein zweites Mal ab, mit `mietquelle_unbekannt` als
+  Rückfall durch Ausschluss. Ein neuer Weg nach S0 in nur einer der beiden
+  Kopien hätte der Export still als „Mietquelle unbekannt" ausgegeben — eine
+  erfundene Ursache. Jetzt bestimmt die interne Funktion `stufeUndGruende`
+  Stufe und Gründe in **einem** Durchlauf: Jede Prüfung, die S0 auslöst, legt
+  ihren Code ab, der Rückfall am Ende `mietquelle_unbekannt`.
+  `bestimmeSicherheitsstufe` und `s0Gruende` sind dünne Hüllen darum (Signaturen
+  unverändert). Der Typ `StufeUndGruende` verlangt für S0 eine nicht leere
+  Gründeliste, sodass ein künftiger S0-Weg ohne eigenen Code `tsc` nicht
+  besteht. Ein Rastertest prüft, dass `mietquelle_unbekannt` nur bei einer
+  Mietquelle außerhalb der Aufzählung steht. Außerdem entdoppelt der Export
+  jetzt **nach** der Übersetzung in Klartext (M-4): Altname und heutiger Name
+  an einem Objekt ergeben einen Satz, nicht zwei.
+  **Abnahme Punkt 1 erfüllt:** Die Vertragswache der Oberfläche
+  (`web/src/daten/snapshot.vertrag.test.ts`, Web-Commits `b13c09f` und
+  `128d76c`, Merge `5931300`) lief gegen die mit dem gemergten Scraper neu
+  erzeugte Exportdatei grün, ohne Ausnahmeregel: voller Web-Lauf **92
+  Prüfungen** grün (92 passed, 1 skipped). Die Zahl 92 statt 84 belegt, dass
+  die Datei gelesen wurde. Direkt an der Datei gezählt: 0 S0-Objekte ohne
+  Grund, 0 rohe Codes (Beleg: `.superpowers/sdd/2026-09-16-a18-und-die-zwei-funde/runde1-W-report.md`).
+- [x] **Ein Lückencode ohne Klartext — ERLEDIGT (2026-09-16, `f1b99f0`).**
+  `kaufpreis_unplausibel` (2 Objekte am 2026-09-15, 1 am 2026-09-16) steht
   in keiner `DATA_GAP_LABELS`-Zeile. Das ist der **alte Name** — A9 hat ihn
   seinerzeit in `preis_miete_unvereinbar` umbenannt, weil er eine Behauptung
   aufstellte, die die Messung nicht deckt. Diese beiden Zeilen stammen also
@@ -1248,6 +1281,30 @@ behoben sind sie damit nicht.
   Export alte Codes übersetzt oder ob die Daten selbst nachgezogen werden
   (Letzteres ist ein Schreibzugriff auf Produktionsdaten und damit eine
   Entscheidung des Nutzers).
+  **Entscheidung: Der Export übersetzt, die Daten bleiben unberührt.** Ein
+  `update` auf die Produktionszeilen (2 am 2026-09-15, 1 am 2026-09-16) wäre
+  ein Schreibzugriff und löste nur diese Zeilen, nicht die nächste
+  Umbenennung; ein Alias in
+  `DATA_GAP_LABELS` (`telegram.ts`) wirkt dauerhaft und ist rückgängig zu
+  machen. Der Altname trägt zeichengleich den Klartext von
+  `preis_miete_unvereinbar` — der Test vergleicht beide gegeneinander, nicht
+  gegen ein Literal.
+  **Der schwerere Fund dabei: `S0_LUECKEN` (`ranking.ts`) kannte nur den neuen
+  Namen.** Der Altname löste die S0-Einstufung also nicht aus — ein Objekt,
+  das allein über `kaufpreis_unplausibel` nach S0 gehört, bekam eine
+  Rangzahl, die auf genau den als unvereinbar gemeldeten Zahlen beruht (mit
+  angegebener Miete sogar S3; so im roten Test gesehen). Der Altname steht
+  jetzt auch in `S0_LUECKEN`; ein Test nagelt Stufe S0 und den Grund
+  `kaufpreis_unplausibel` fest. **Für die Bestandszeilen selbst** sagt
+  Entwurf 13.1, Punkt 5 („Nebenbefund, ohne Folgen"; damals zwei Zeilen):
+  Beide tragen zusätzlich `rent_estimate_unreliable` und waren deshalb
+  ohnehin S0. Das ist die Messung des Entwurfs, hier nicht neu gemessen; die
+  Prüfung von Runde 1 fand die S0-Zahl in der Exportdatei vor und nach der
+  Behebung gleich (1.841). Der Eintrag gehört trotzdem nach
+  `S0_LUECKEN`: Die Stufe darf nicht davon abhängen, dass zufällig eine zweite
+  Lücke mitkommt, und `s0Gruende` nennt den Altnamen jetzt als Grund.
+  `pipeline.ts` erzeugt nur den neuen Namen (`bewertePreisplausibilitaet`)
+  und liest den Code nirgends — dort ist nichts nachzuziehen.
 - **Der Snapshot trägt keinen Kaufpreisfaktor**, obwohl Entwurf **2.3** ihn
   „daneben als zweite Zahl" vorsieht. Die Oberfläche zeigt stattdessen €/m²,
   weil sich das aus zwei ohnehin angezeigten Werten ergibt. Kein Drama, aber
@@ -1261,6 +1318,16 @@ behoben sind sie damit nicht.
 Der Vertragstest der Oberfläche
 (`web/src/daten/snapshot.vertrag.test.ts`) muss danach ohne Ausnahmeregel grün
 laufen — er ist der Wächter, der den Fund gemacht hat.
+
+**Notiz aus der Prüfung von Runde 1 (M-8), bewusst ohne Codeänderung:** Die
+Vertragswache prüft `stufe === "S0"`, nicht `rangzahl === null`. `rangzahl`
+wird in `baueSnapshot` (`snapshot.ts`) ohne `endlichOderNull` exportiert,
+anders als der Kaufpreisfaktor, und `geschaetzterDscr` ist nach oben
+unbegrenzt (`metrics.ts`, Division durch Kaufpreis plus Nebenkosten). Ein
+unendlicher Wert würde beim Schreiben der Datei (`JSON.stringify`) still zu
+`null` — bei einem Objekt, das **nicht** S0 ist. In der Oberfläche sähe das
+aus wie „keine Kennzahl", und die Wache bemerkte es nicht. Heute 0 Fälle
+(Zählung der Prüfung). Offen, nicht Teil von A18-1/A18-2.
 
 # Teil B — Braucht erst einen Entwurf
 

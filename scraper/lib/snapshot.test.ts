@@ -530,3 +530,75 @@ describe("baueSnapshot", () => {
     expect(snapshot.objekte.find((o) => o.id === "a")?.kaufpreisEuro).toBe(100_000);
   });
 });
+
+describe("baueSnapshot: jedes S0-Objekt traegt seinen Grund (A18-1)", () => {
+  it("gibt jedem S0-Objekt einen Klartext-Grund, auch ohne data_gaps (A18)", () => {
+    // Nachbau des ZVG-Objekts 9327fbb0 (Leverkusen): Wohnflaeche fehlt,
+    // data_gaps leer.
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { living_area_m2: null, data_gaps: [] })] }),
+      JETZT
+    );
+    const objekt = snapshot.objekte[0];
+    expect(objekt.stufe).toBe("S0");
+    expect(objekt.datenluecken).toEqual(["Wohnfläche fehlt"]);
+  });
+
+  it("verdoppelt einen bereits vorhandenen Grund nicht", () => {
+    const snapshot = baueSnapshot(
+      eingabe({
+        versionen: [version("a", { living_area_m2: null, data_gaps: ["wohnflaeche_fehlt"] })],
+      }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].datenluecken).toEqual(["Wohnfläche fehlt"]);
+  });
+
+  it("behaelt Luecken, die nicht S0 begruenden", () => {
+    // `location_unconfirmed` traegt keine S0-Einstufung, gehoert aber
+    // weiterhin in die Liste -- der Export kuerzt keine Auskunft weg.
+    const snapshot = baueSnapshot(
+      eingabe({
+        versionen: [version("a", { living_area_m2: null, data_gaps: ["location_unconfirmed"] })],
+      }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].datenluecken).toEqual([
+      "Lage (PLZ/Ort) nicht bestätigt",
+      "Wohnfläche fehlt",
+    ]);
+  });
+
+  it("nennt denselben Klartext nur einmal, auch wenn Altname und heutiger Name zusammen stehen", () => {
+    // Pruefung Runde 1, M-4: Zwei VERSCHIEDENE Codes mit demselben Klartext
+    // (`kaufpreis_unplausibel` ist der Altname von `preis_miete_unvereinbar`)
+    // ueberstehen eine Entdopplung auf Code-Ebene und stuenden als derselbe
+    // Satz zweimal da. Heute 0 Faelle im Bestand.
+    const snapshot = baueSnapshot(
+      eingabe({
+        versionen: [
+          version("a", { data_gaps: ["kaufpreis_unplausibel", "preis_miete_unvereinbar"] }),
+        ],
+      }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].stufe).toBe("S0");
+    expect(snapshot.objekte[0].datenluecken).toEqual([
+      "Preis und Miete unvereinbar — eine der beiden Zahlen stimmt nicht",
+    ]);
+  });
+
+  it("nennt den Weg ueber eine unbekannte Mietquelle im Klartext", () => {
+    // Pruefung Runde 1, M-6: Der einzige S0-Weg, dessen Grund in keiner
+    // `data_gaps`-Zeile steht und nur aus `s0Gruende` kommt. Flaeche vorhanden,
+    // keine Luecke, `rent_source` leer.
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { rent_source: null, data_gaps: [] })] }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].stufe).toBe("S0");
+    expect(snapshot.objekte[0].datenluecken).toEqual([
+      "Mietquelle unbekannt — die Miete ist nicht einzuordnen",
+    ]);
+  });
+});

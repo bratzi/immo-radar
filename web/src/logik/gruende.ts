@@ -4,24 +4,34 @@
  * > "Sie tragen keine Kennzahl. Kein DSCR, kein Faktor, keine Rendite -- an
  * > der Stelle steht der Grund im Klartext."
  *
- * Diese Datei loest ZWEI BEFUNDE am echten Bestand vom 2026-09-15, beide im
- * Export entstanden und beide hier nur AUFGEFANGEN, nicht repariert -- an
- * `scraper/` wird in diesem Schritt nichts geaendert:
+ * Diese Datei fing urspruenglich ZWEI BEFUNDE am echten Bestand vom
+ * 2026-09-15 auf, beide im Export entstanden und inzwischen (2026-09-16, A18)
+ * in `scraper/` behoben. Beide Kennzeichnungen bleiben trotzdem als WACHEN
+ * stehen, nicht als Behauptung eines weiterhin offenen Befunds:
  *
- * 1. **Ein roher Lueckencode.** `kaufpreis_unplausibel` steht bei 2 Objekten
- *    in `data_gaps`, hat aber keinen Eintrag in `DATA_GAP_LABELS`
- *    (`scraper/lib/telegram.ts`); `datenlueckeKlartext` reicht ihn deshalb
- *    unveraendert durch. Die Oberflaeche baut dafuer KEINE zweite
- *    Klartext-Tabelle -- das war die ausdrueckliche Entscheidung 2 des
- *    Snapshot-Schritts ("damit es EINE Tabelle gibt und nicht zwei"). Sie
- *    zeigt den Code und kennzeichnet ihn als unbeschrifteten Code.
+ * 1. BEHOBEN (A18-2, 2026-09-16): **Ein roher Lueckencode.** `kaufpreis_unplausibel`
+ *    stand bei Objekten in `data_gaps`, hatte aber keinen Eintrag in
+ *    `DATA_GAP_LABELS` (`scraper/lib/telegram.ts`); `datenlueckeKlartext`
+ *    reichte ihn deshalb unveraendert durch. `DATA_GAP_LABELS` traegt den
+ *    Altnamen seither als Alias auf denselben Klartext wie
+ *    `preis_miete_unvereinbar` (die A9-Umbenennung) -- der Export uebersetzt,
+ *    die Produktionsdaten blieben unangetastet. Die Erkennung eines
+ *    unbeschrifteten Codes bleibt dennoch bestehen: Die Oberflaeche baut
+ *    dafuer KEINE zweite Klartext-Tabelle -- das war die ausdrueckliche
+ *    Entscheidung 2 des Snapshot-Schritts ("damit es EINE Tabelle gibt und
+ *    nicht zwei"). Sie ist jetzt die Wache fuer die naechste Umbenennung ohne
+ *    nachgezogenes Label, nicht mehr der Befund selbst.
  *
- * 2. **Ein Objekt ohne jeden Grund.** Ein ZVG-Objekt (Leverkusen) ist S0,
- *    weil ihm die Wohnflaeche fehlt, traegt aber keinen `data_gaps`-Eintrag:
- *    Die Stufe haengt am FELD `living_area_m2`, der Klartext an der
- *    ABLEITUNG `wohnflaeche_fehlt` -- genau die Luecke, die Entwurf 3.3 fuer
- *    148 Objekte beschreibt. Eine leere Zelle dort saehe aus wie "geprueft
- *    und nichts gefunden", also wie ein Urteil.
+ * 2. BEHOBEN (A18-1, 2026-09-16): **Ein Objekt ohne jeden Grund.** Ein
+ *    ZVG-Objekt (Leverkusen) war S0, weil ihm die Wohnflaeche fehlte, trug
+ *    aber keinen `data_gaps`-Eintrag: Die Stufe hing am FELD
+ *    `living_area_m2`, der Klartext an der ABLEITUNG `wohnflaeche_fehlt`.
+ *    Seither liefert `s0Gruende` (`scraper/lib/ranking.ts`) den Grund an der
+ *    Stelle, die ueber S0 entscheidet, und `scraper/lib/snapshot.ts`
+ *    verschmilzt ihn in `datenluecken` -- kein S0-Objekt verlaesst den
+ *    Export mehr ohne Grund. Diese Datei bleibt trotzdem: `OHNE_GENANNTEN_GRUND`
+ *    ist weiterhin die richtige Antwort, sollte der Export die Zusage doch
+ *    einmal verletzen -- sie ist jetzt die Wache, nicht der Befund.
  *
  * WAS HIER BEWUSST NICHT GESCHIEHT: Der Ersatztext RAET KEINE URSACHE. Aus
  * `wohnflaecheM2 === null` im Frontend ein "Wohnfläche fehlt" abzuleiten

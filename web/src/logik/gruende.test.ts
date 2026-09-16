@@ -44,13 +44,15 @@ describe("gruendeFuerAnzeige", () => {
   });
 
   it("markiert einen ROHEN Lueckencode als solchen, statt ihn als Satz auszugeben", () => {
-    // Befund am echten Bestand: `kaufpreis_unplausibel` steht in
-    // `data_gaps`, hat aber keinen Eintrag in DATA_GAP_LABELS
-    // (scraper/lib/telegram.ts) und kommt deshalb ROH im Snapshot an.
-    // Die Oberflaeche baut KEINE zweite Klartext-Tabelle -- sie zeigt den
+    // `irgendein_neuer_code` ist ERFUNDEN, kein Beispiel aus dem Bestand:
+    // Der bisherige Beleg `kaufpreis_unplausibel` traegt seit A18-2 einen
+    // Eintrag in DATA_GAP_LABELS (scraper/lib/telegram.ts) und liefe hier am
+    // falschen Anlass weiter. Die Wache bleibt trotzdem noetig -- die
+    // naechste Umbenennung ohne nachgezogenes Label faellt genauso auf. Die
+    // Oberflaeche baut dafuer KEINE zweite Klartext-Tabelle -- sie zeigt den
     // Code und sagt dazu, dass er keiner ist.
-    const gruende = gruendeFuerAnzeige(objekt({ datenluecken: ["kaufpreis_unplausibel"] }));
-    expect(gruende).toEqual([{ text: "kaufpreis_unplausibel", istKlartext: false }]);
+    const gruende = gruendeFuerAnzeige(objekt({ datenluecken: ["irgendein_neuer_code"] }));
+    expect(gruende).toEqual([{ text: "irgendein_neuer_code", istKlartext: false }]);
   });
 
   it("erkennt einen Klartext auch dann, wenn er Unterstriche im Satz haette", () => {
@@ -59,10 +61,13 @@ describe("gruendeFuerAnzeige", () => {
   });
 
   it("laesst ein Objekt OHNE Kennzahl niemals ohne Text dastehen (3.7)", () => {
-    // Befund am echten Bestand: ein ZVG-Objekt ist S0 (keine Wohnflaeche),
-    // traegt aber gar keinen `data_gaps`-Eintrag -- die Stufe haengt am FELD,
-    // der Klartext an der ABLEITUNG. Eine leere Zelle saehe aus wie
-    // "geprueft und nichts gefunden". Sie darf nicht leer bleiben.
+    // Befund am Bestand vom 2026-09-15: ein ZVG-Objekt war S0 (keine
+    // Wohnflaeche), trug aber gar keinen `data_gaps`-Eintrag -- die Stufe
+    // hing am FELD, der Klartext an der ABLEITUNG. BEHOBEN seit A18-1
+    // (2026-09-16): `s0Gruende` (`scraper/lib/ranking.ts`) liefert den Grund
+    // seither selbst. Diese Pruefung bleibt als Wache stehen -- eine leere
+    // Zelle saehe aus wie "geprueft und nichts gefunden", falls der Export
+    // die Zusage doch einmal verletzt.
     const gruende = gruendeFuerAnzeige(objekt({ rangzahl: null, datenluecken: [] }));
     expect(gruende).toHaveLength(1);
     expect(gruende[0]!.istKlartext).toBe(false);
