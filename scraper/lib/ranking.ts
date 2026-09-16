@@ -20,12 +20,22 @@ export type Sicherheitsstufe = "S3" | "S2" | "S1" | "S0";
 
 /**
  * Lueckencodes, die eine Kennzahl ohne Grundlage anzeigen -- nicht nur eine
- * schlechte Kennzahl. Jede der drei heisst "die Kennzahl hat keine
- * Grundlage": `wohnflaeche_fehlt` (Miete/Rendite faellt auf 0),
- * `preis_miete_unvereinbar` (Preis oder Miete ist falsch),
+ * schlechte Kennzahl. Vier Codes fuer drei Befunde, und jeder der drei heisst
+ * "die Kennzahl hat keine Grundlage": `wohnflaeche_fehlt` (Miete/Rendite
+ * faellt auf 0), `preis_miete_unvereinbar` (Preis oder Miete ist falsch; im
+ * Bestand auch noch unter dem Altnamen `kaufpreis_unplausibel`, siehe unten),
  * `rent_estimate_unreliable` (die Vermietbarkeits-Annahme traegt nicht).
  */
-const S0_LUECKEN = ["wohnflaeche_fehlt", "preis_miete_unvereinbar", "rent_estimate_unreliable"] as const;
+const S0_LUECKEN = [
+  "wohnflaeche_fehlt",
+  "preis_miete_unvereinbar",
+  // ALTNAME desselben Befunds (A9-Umbenennung, 2 Zeilen im Bestand). Er
+  // gehoert hierher und nicht nur in die Klartexttabelle: Ohne ihn traegt
+  // ein Objekt mit nachweislich unvereinbaren Zahlen eine Rangzahl, die
+  // genau auf diesen Zahlen beruht.
+  "kaufpreis_unplausibel",
+  "rent_estimate_unreliable",
+] as const;
 
 /**
  * Bestimmt die Sicherheitsstufe eines Objekts. S0 wird zuerst geprueft und

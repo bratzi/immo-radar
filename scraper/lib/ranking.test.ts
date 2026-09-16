@@ -41,6 +41,14 @@ describe("bestimmeSicherheitsstufe", () => {
     ).toBe("S0");
   });
 
+  it("stuft den Altnamen kaufpreis_unplausibel genauso auf S0 wie den heutigen (A18-2)", () => {
+    // Ohne diesen Eintrag bekommen die 2 Altzeilen eine Rangzahl, die auf
+    // genau der Zahl beruht, die als unvereinbar gemeldet wurde.
+    const objekt = { rentSource: "angegeben", dataGaps: ["kaufpreis_unplausibel"], livingAreaM2: 80 };
+    expect(bestimmeSicherheitsstufe(objekt)).toBe("S0");
+    expect(s0Gruende(objekt)).toEqual(["kaufpreis_unplausibel"]);
+  });
+
   it("ordnet die drei bewertbaren Stufen zu", () => {
     const flaeche = { dataGaps: [], livingAreaM2: 120 };
     expect(bestimmeSicherheitsstufe({ ...flaeche, rentSource: "angegeben" })).toBe("S3");

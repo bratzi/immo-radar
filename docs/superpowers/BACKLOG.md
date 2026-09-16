@@ -1232,7 +1232,8 @@ laufen lassen. Der hat vier Dinge gefunden, die am Export liegen, nicht an der
 Anzeige. Die Oberfläche fängt alle vier ab, ohne eine Ursache zu erfinden —
 behoben sind sie damit nicht.
 
-- **Ein S0-Objekt ohne jeden Grund.** Das ZVG-Objekt `9327fbb0…` (Leverkusen)
+- [x] **Ein S0-Objekt ohne jeden Grund — ERLEDIGT (Scraper-Seite `080812a`,
+  2026-09-16).** Das ZVG-Objekt `9327fbb0…` (Leverkusen)
   ist S0, weil die Wohnfläche fehlt — trägt aber ein leeres `data_gaps` und
   damit keinen Klartext-Grund. Entwurf **3.7** verlangt ausdrücklich einen:
   *„an der Stelle steht der Grund im Klartext"*. Die Oberfläche schreibt
@@ -1240,7 +1241,18 @@ behoben sind sie damit nicht.
   `wohnflaecheM2 === null` ein „Wohnfläche fehlt" abzuleiten wäre eine im
   Frontend nachgebaute Ableitung und damit eine zweite Kopie der Stufenregel.
   **Der Export gehört so ergänzt, dass jedes S0-Objekt seinen Grund mitbringt.**
-- **Ein Lückencode ohne Klartext:** `kaufpreis_unplausibel` (2 Objekte) steht
+  **Behoben in `ranking.ts`, nicht im Export:** `s0Gruende(objekt)` liefert
+  die Lückencodes, die S0 tragen, direkt neben `bestimmeSicherheitsstufe` —
+  der einzigen Stelle, die über S0 entscheidet. Fehlt die Fläche ohne
+  `wohnflaeche_fehlt` in `data_gaps`, nennt sie `wohnflaeche_fehlt`; führt
+  allein eine Mietquelle außerhalb der Aufzählung nach S0, nennt sie den neuen
+  Code `mietquelle_unbekannt` (Klartext in `DATA_GAP_LABELS`). `baueSnapshot`
+  verschmilzt `data_gaps` mit diesen Gründen (ohne Dopplung, gemeldete Lücken
+  zuerst) und gibt Stufe und Gründen dieselbe Eingabe. Die Zeile ohne Version
+  behält „Preis fehlt". Der Vertragstest der Oberfläche und der Kommentar in
+  `web/src/logik/gruende.ts` gehören zum `web/`-Teil derselben Runde.
+- [x] **Ein Lückencode ohne Klartext — ERLEDIGT (2026-09-16).**
+  `kaufpreis_unplausibel` (2 Objekte) steht
   in keiner `DATA_GAP_LABELS`-Zeile. Das ist der **alte Name** — A9 hat ihn
   seinerzeit in `preis_miete_unvereinbar` umbenannt, weil er eine Behauptung
   aufstellte, die die Messung nicht deckt. Diese beiden Zeilen stammen also
@@ -1248,6 +1260,27 @@ behoben sind sie damit nicht.
   Export alte Codes übersetzt oder ob die Daten selbst nachgezogen werden
   (Letzteres ist ein Schreibzugriff auf Produktionsdaten und damit eine
   Entscheidung des Nutzers).
+  **Entscheidung: Der Export übersetzt, die Daten bleiben unberührt.** Ein
+  `update` auf die zwei Produktionszeilen wäre ein Schreibzugriff und löste
+  nur diese zwei Zeilen, nicht die nächste Umbenennung; ein Alias in
+  `DATA_GAP_LABELS` (`telegram.ts`) wirkt dauerhaft und ist rückgängig zu
+  machen. Der Altname trägt zeichengleich den Klartext von
+  `preis_miete_unvereinbar` — der Test vergleicht beide gegeneinander, nicht
+  gegen ein Literal.
+  **Der schwerere Fund dabei: `S0_LUECKEN` (`ranking.ts`) kannte nur den neuen
+  Namen.** Der Altname löste die S0-Einstufung also nicht aus — ein Objekt,
+  das allein über `kaufpreis_unplausibel` nach S0 gehört, bekam eine
+  Rangzahl, die auf genau den als unvereinbar gemeldeten Zahlen beruht (mit
+  angegebener Miete sogar S3; so im roten Test gesehen). Der Altname steht
+  jetzt auch in `S0_LUECKEN`; ein Test nagelt Stufe S0 und den Grund
+  `kaufpreis_unplausibel` fest. **Für die zwei Bestandszeilen selbst** sagt
+  Entwurf 13.1, Punkt 5 („Nebenbefund, ohne Folgen"): Beide tragen zusätzlich
+  `rent_estimate_unreliable` und waren deshalb ohnehin S0. Das ist die Messung
+  des Entwurfs, hier nicht neu gemessen. Der Eintrag gehört trotzdem nach
+  `S0_LUECKEN`: Die Stufe darf nicht davon abhängen, dass zufällig eine zweite
+  Lücke mitkommt, und `s0Gruende` nennt den Altnamen jetzt als Grund.
+  `pipeline.ts` erzeugt nur den neuen Namen (`bewertePreisplausibilitaet`)
+  und liest den Code nirgends — dort ist nichts nachzuziehen.
 - **Der Snapshot trägt keinen Kaufpreisfaktor**, obwohl Entwurf **2.3** ihn
   „daneben als zweite Zahl" vorsieht. Die Oberfläche zeigt stattdessen €/m²,
   weil sich das aus zwei ohnehin angezeigten Werten ergibt. Kein Drama, aber
