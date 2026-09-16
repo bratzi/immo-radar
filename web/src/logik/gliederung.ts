@@ -8,8 +8,12 @@
  * WAS HIER NICHT GESCHIEHT: Es wird keine Schwelle nachgerechnet. Welche
  * Trefferklasse ein Objekt traegt, hat `bestimmeTrefferklasse` (N1.1) im
  * Export entschieden; hier wird sie nur gelesen. Entwurf 5.3, Punkt 4.
+ *
+ * Die Karenz kommt als ARGUMENT herein (`snapshot.konstanten.karenzTage`,
+ * A18-4) statt als globaler Zugriff auf den Snapshot: Diese Datei bleibt eine
+ * reine Funktionssammlung.
  */
-import { KARENZ_TAGE, type SnapshotObjekt } from "../daten/snapshot.ts";
+import type { SnapshotObjekt } from "../daten/snapshot.ts";
 
 const MS_PRO_TAG = 24 * 60 * 60 * 1000;
 
@@ -31,10 +35,10 @@ export interface Gliederung {
  * still in die Rangliste kaufbarer Objekte zurueckrutschen -- dieselbe Regel,
  * mit der `waehleJuengsteVersionen` eine unlesbare Zeit behandelt.
  */
-function karenzVorbei(abgaengigSeit: string, jetzt: Date): boolean {
+function karenzVorbei(abgaengigSeit: string, jetzt: Date, karenzTage: number): boolean {
   const zeit = Date.parse(abgaengigSeit);
   if (!Number.isFinite(zeit)) return true;
-  return jetzt.getTime() - zeit > KARENZ_TAGE * MS_PRO_TAG;
+  return jetzt.getTime() - zeit > karenzTage * MS_PRO_TAG;
 }
 
 /**
@@ -46,8 +50,8 @@ function karenzVorbei(abgaengigSeit: string, jetzt: Date): boolean {
  * hebt die Markierung ohne vollstaendigen Sweep wieder auf
  * (`ermittleRueckkehrer`). Erst danach verlaesst es die Rangliste.
  */
-export function bestimmeBereich(objekt: SnapshotObjekt, jetzt: Date): Bereich {
-  if (objekt.abgaengigSeit !== null && karenzVorbei(objekt.abgaengigSeit, jetzt)) {
+export function bestimmeBereich(objekt: SnapshotObjekt, jetzt: Date, karenzTage: number): Bereich {
+  if (objekt.abgaengigSeit !== null && karenzVorbei(objekt.abgaengigSeit, jetzt, karenzTage)) {
     return "abgaenge";
   }
   return objekt.trefferklasse;
@@ -113,14 +117,14 @@ function zeitOderNull(text: string | null): number | null {
  * | Nicht beurteilbar | zuletzt gesehen, absteigend | 3.7 -- sie tragen keine Kennzahl, nach der man sie ordnen koennte |
  * | Abgaenge | Abgangsdatum, absteigend | 6.4 |
  */
-export function gliedere(objekte: SnapshotObjekt[], jetzt: Date): Gliederung {
+export function gliedere(objekte: SnapshotObjekt[], jetzt: Date, karenzTage: number): Gliederung {
   const top: SnapshotObjekt[] = [];
   const normal: SnapshotObjekt[] = [];
   const nichtBeurteilbar: SnapshotObjekt[] = [];
   const abgaenge: SnapshotObjekt[] = [];
 
   for (const objekt of objekte) {
-    switch (bestimmeBereich(objekt, jetzt)) {
+    switch (bestimmeBereich(objekt, jetzt, karenzTage)) {
       case "top":
         top.push(objekt);
         break;

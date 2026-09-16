@@ -97,25 +97,12 @@ export interface Snapshot {
   bundeslaender: SnapshotBundesland[];
   objekte: SnapshotObjekt[];
   betrieb: SnapshotBetrieb;
+  /**
+   * Zahlen, die die Oberflaeche nur zum ZEICHNEN braucht (A18-4): die Karenz
+   * fuer `gliedere`/`bestimmeBereich` und die Meldeschwelle fuer den
+   * Bandstreifen. Beide entscheiden hier NICHTS -- ueber Trefferklasse und
+   * Stufe hat der Export bereits entschieden (Entwurf 5.3, Punkt 4). Die
+   * Oberflaeche haelt sie nicht mehr als eigene Kopie, sondern liest sie hier.
+   */
+  konstanten: { karenzTage: number; dscrMeldeschwelle: number };
 }
-
-/**
- * Die Meldeschwelle auf dem DSCR (`DSCR_MELDESCHWELLE`, `scraper/lib/metrics.ts`).
- *
- * Sie steht hier NUR zum ZEICHNEN -- die Schwellenlinie im Bandstreifen und
- * ihre Beschriftung. Ueber die Trefferklasse entscheidet sie NICHT: Das hat
- * der Export bereits getan (`bestimmeTrefferklasse`, N1.1), und die
- * Oberflaeche rechnet keine Schwelle nach (Entwurf 5.3, Punkt 4 -- "zwei
- * Kopien derselben Zahl waren in diesem Projekt schon einmal der Fehler").
- */
-export const DSCR_MELDESCHWELLE_ANZEIGE = 1.3;
-
-/**
- * Karenz nach einem Abgang in Tagen (`KARENZ_TAGE`, `scraper/lib/bestand.ts`).
- *
- * Entwurf 6.4: Innerhalb der Karenz bleibt ein abgaengiges Objekt AN SEINER
- * RANGPOSITION und wird ausgegraut; erst danach wandert es in den Bereich
- * "Abgaenge". Der Snapshot liefert bewusst kein Feld dafuer (er liefert
- * `abgaengigSeit`), also zieht die Oberflaeche die Grenze.
- */
-export const KARENZ_TAGE = 2;

@@ -33,6 +33,8 @@ interface Eigenschaften {
   umschalten: () => void;
   jetzt: Date;
   zeilenhoehe: number;
+  /** `snapshot.konstanten.dscrMeldeschwelle` (A18-4) -- durchgereicht, nicht neu geholt. */
+  dscrMeldeschwelle: number;
   /** Was steht da, wenn nichts da ist. Nie "keine Treffer" ohne Grund. */
   leertext: React.ReactNode;
 }
@@ -49,6 +51,7 @@ export function Bereich({
   jetzt,
   zeilenhoehe,
   leertext,
+  dscrMeldeschwelle,
 }: Eigenschaften) {
   const kennung = `bereich-${name.replace(/\W+/g, "-").toLowerCase()}`;
 
@@ -77,7 +80,7 @@ export function Bereich({
             <div className="leer">{leertext}</div>
           ) : (
             <>
-              <Skalenkopf mitRang={mitRang} mitSkala={mitSkala} />
+              <Skalenkopf mitRang={mitRang} mitSkala={mitSkala} dscrMeldeschwelle={dscrMeldeschwelle} />
               <VirtuelleListe
                 eintraege={objekte}
                 zeilenhoehe={zeilenhoehe}
@@ -89,6 +92,7 @@ export function Bereich({
                     rang={mitRang ? index + 1 : null}
                     jetzt={jetzt}
                     oben={oben}
+                    dscrMeldeschwelle={dscrMeldeschwelle}
                   />
                 )}
               />

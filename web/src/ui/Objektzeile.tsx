@@ -50,9 +50,11 @@ interface Eigenschaften {
   rang: number | null;
   jetzt: Date;
   oben: number;
+  /** `snapshot.konstanten.dscrMeldeschwelle` (A18-4) -- durchgereicht an den Bandstreifen. */
+  dscrMeldeschwelle: number;
 }
 
-function ObjektzeileRoh({ objekt, rang, jetzt, oben }: Eigenschaften) {
+function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle }: Eigenschaften) {
   const ohneKennzahl = objekt.rangzahl === null;
   const alter = alterInTagen(objekt.zuletztGesehen, jetzt);
   const jeQm = preisJeQuadratmeter(objekt.kaufpreisEuro, objekt.wohnflaecheM2);
@@ -125,7 +127,7 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben }: Eigenschaften) {
           ))}
         </span>
       ) : (
-        <Bandstreifen objekt={objekt} />
+        <Bandstreifen objekt={objekt} dscrMeldeschwelle={dscrMeldeschwelle} />
       )}
 
       <span className="zeile__abzeichen">
