@@ -1305,14 +1305,23 @@ behoben sind sie damit nicht.
   Lücke mitkommt, und `s0Gruende` nennt den Altnamen jetzt als Grund.
   `pipeline.ts` erzeugt nur den neuen Namen (`bewertePreisplausibilitaet`)
   und liest den Code nirgends — dort ist nichts nachzuziehen.
-- **Der Snapshot trägt keinen Kaufpreisfaktor**, obwohl Entwurf **2.3** ihn
-  „daneben als zweite Zahl" vorsieht. Die Oberfläche zeigt stattdessen €/m²,
-  weil sich das aus zwei ohnehin angezeigten Werten ergibt. Kein Drama, aber
-  eine stille Abweichung vom Entwurf.
-- **Dritte Kopien von zwei Konstanten.** `web/` führt `KARENZ_TAGE` und
-  `DSCR_MELDESCHWELLE` als Anzeigekonstanten (kommentiert, und die Oberfläche
-  rechnet damit keine Schwelle nach). Formal ist es trotzdem dasselbe Muster,
-  das A17 gerade beseitigt hat. Der saubere Weg wäre ein Feld im Snapshot.
+- [x] **Der Snapshot trägt keinen Kaufpreisfaktor — ERLEDIGT (2026-09-16,
+  `d032b53`).** `kaufpreisfaktor: number | null` am Objekt, `null` bei S0.
+  Die Oberfläche zeigt ihn in der Spalte „Preis · Fläche“ als „24,3×“ mit
+  `title="Kaufpreisfaktor"`. Am frischen Export: 19.574 Objekte, 17.674 mit
+  Faktor, 1.900 S0, davon keines mit Faktor. Die Zeile wurde noch **nicht
+  im Browser angesehen**.
+  *Ursprünglicher Befund:* Entwurf 2.3 sieht den Faktor „daneben als zweite
+  Zahl“ vor, die Oberfläche zeigte stattdessen €/m².
+- [x] **Dritte Kopien von zwei Konstanten — ERLEDIGT (2026-09-16,
+  `d032b53`).** Der Snapshot hat den siebten Ast `konstanten: { karenzTage,
+  dscrMeldeschwelle }`, gespeist aus `KARENZ_TAGE` und `DSCR_MELDESCHWELLE`.
+  `web/` hat die eigenen Kopien entfernt und reicht die Werte als Argument
+  bzw. Property durch. Aus der Prüfung kamen zwei Wachen dazu:
+  `hatGueltigeKonstanten` lehnt eine Datei ohne gültige Konstanten beim Laden
+  ab (vorher: weiße Seite). `karenzVorbei` ist fail-closed, eine nicht
+  endliche Karenz gilt als abgelaufen (vorher: NaN, und kein Abgang verließ
+  die Rangliste).
 
 **Abnahme:** je Punkt ein zuerst rot gesehener Test. Für Punkt 1 gilt zusätzlich:
 Der Vertragstest der Oberfläche

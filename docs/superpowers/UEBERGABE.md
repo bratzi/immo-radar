@@ -9,13 +9,18 @@
 
 ## Wo wir stehen
 
-**Das Dashboard existiert.** `main` = `origin/main` = `8025a42`,
+**Das Dashboard existiert.** `main` = `origin/main` = `d032b53`,
 Arbeitsverzeichnis sauber, keine Worktrees, keine offenen Zweige.
-**520 Scraper-Tests und 93 Web-Tests grün** (mit Snapshot-Datei; ohne sie
-84 und 10 übersprungen), `tsc` in beiden sauber, `vite build` grün.
+**524 Scraper-Tests und 103 Web-Tests grün** (1 übersprungen; mit
+Snapshot-Datei), `tsc` in beiden sauber, `vite build` grün.
 
 **Laufender Plan:** [`plans/2026-09-16-a18-und-die-zwei-funde.md`](plans/2026-09-16-a18-und-die-zwei-funde.md).
-Runde 1 (A18-1, A18-2) ist gemergt. **Als Nächstes Runde 2** (Aufgabe 3+4).
+Runde 1 (A18-1, A18-2) und Runde 2 (A18-3, A18-4, `d032b53`) sind gemergt.
+**Als Nächstes Runde 3** (Aufgabe 5+6). **Die Snapshot-Datei hat seit Runde 2
+ein neues Format** (Ast `konstanten`, Feld `kaufpreisfaktor`). Eine ältere
+Datei lehnt die Oberfläche jetzt mit einer Fehlermeldung ab, also neu
+erzeugen. **Offen aus Runde 2:** Die Zeile mit dem Kaufpreisfaktor wurde
+noch nicht im Browser angesehen, weil der Browserzugriff gesperrt war.
 Der Fortschritt steht im git-ignorierten Ledger
 `.superpowers/sdd/2026-09-16-a18-und-die-zwei-funde/progress.md`, Abschnitt
 „SITZUNGSENDE". Dort liegt auch das Skript, das den Snapshot erzeugt.
@@ -196,9 +201,11 @@ Nutzer.
    E-Mail-Einmalcode an genau die eine erlaubte Adresse. Braucht Zugänge, die
    nur der Nutzer hat.
 3. **A18** — die vier Befunde am Export, die der Bau der Oberfläche
-   aufgedeckt hat. **Punkt 1 und 2 sind erledigt** (`8025a42`): Jedes
-   S0-Objekt trägt seinen Grund, und `tsc` lässt kein S0 ohne Grund mehr zu.
-   Offen sind Punkt 3 (Kaufpreisfaktor) und 4 (Konstanten aus dem Snapshot).
+   aufgedeckt hat. **Alle vier Punkte sind erledigt.** Punkt 1 und 2
+   (`8025a42`): Jedes S0-Objekt trägt seinen Grund. Punkt 3 und 4
+   (`d032b53`): Kaufpreisfaktor am Objekt, Karenz und Meldeschwelle kommen
+   aus dem Export. Offen bleibt die Notiz M-8 (`rangzahl` ohne
+   `endlichOderNull`, siehe BACKLOG A18).
 4. **Die beiden ungesuchten Funde nachgehen** (siehe oben): `sh` als vierte
    Region ohne Abgangserkennung — der Kommentar an `istRegionVollstaendig`
    nennt nur drei — und `vollstaendig=true` ohne `gemeldete_treffer`.
