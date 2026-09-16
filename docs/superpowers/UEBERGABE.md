@@ -272,6 +272,19 @@ ich sonst abgenommen hätte.
    (ausgeschriebener Brief, Doku, Messskripte). Kein `haiku`. Der Koordinator
    entscheidet das beim Losschicken, ohne zu fragen.
 
+**Neu festgelegt am 2026-09-16, gilt für alle weiteren Aufgaben des Projekts:**
+
+7. **Große Aufgaben laufen nacheinander, nie mehrere gleichzeitig.** Regel 5
+   ist damit für die großen Aufgaben aufgehoben — der Rest der Liste läuft
+   nicht mehr nebenher.
+8. **Parallel wird innerhalb einer Aufgabe gearbeitet**, mit Superpowers.
+   Jeder parallele Arbeiter bekommt Superpowers und wählt selbst, welche zu
+   seinem Teil passt (wie Regel 3).
+9. **Nach jeder abgeschlossenen großen Aufgabe endet die Sitzung.** Vorher
+   Ledger, Gedächtnis und bei Bedarf dieses Dokument und `BACKLOG.md` auf
+   Stand bringen, dann aufhören. Grund: Mehrere große Aufgaben in einer
+   Sitzung verbrauchten zu viele Token.
+
 **Was die Prüfung am 2026-09-15 wieder eingebracht hat:** Ein Agent meldete
 seine Aufgabe als erledigt, und der Fix war halb falsch — er hatte die eine
 Behauptung („abgängig") durch die andere ersetzt („verfügbar"), statt auf den
