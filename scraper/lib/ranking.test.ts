@@ -420,6 +420,11 @@ describe("s0Gruende nennt den Grund, aus dem S0 entstanden ist (A18)", () => {
       { rentSource: "geschaetzt_regional", dataGaps: ["preis_miete_unvereinbar"], livingAreaM2: 80 },
       { rentSource: "unbekannt", dataGaps: [], livingAreaM2: 0 },
       { rentSource: "angegeben", dataGaps: ["rent_estimate_unreliable"], livingAreaM2: 80 },
+      // Der Weg ueber die Mietquelle allein: Flaeche vorhanden, keine Luecke.
+      // Ohne diesen Fall landeten alle anderen schon ueber Luecke oder Flaeche
+      // in S0, und ein fehlender Rueckfall auf `mietquelle_unbekannt` fiele
+      // dieser Schleife nicht auf.
+      { rentSource: "irgendwas_neues", dataGaps: [], livingAreaM2: 80 },
     ];
     for (const fall of faelle) {
       expect(bestimmeSicherheitsstufe(fall)).toBe("S0");
