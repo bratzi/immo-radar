@@ -28,6 +28,7 @@
  *      nachprüfbar bleibt und nicht geglaubt werden muss.
  */
 import type { Snapshot } from "./snapshot.ts";
+import { hatGueltigeKonstanten } from "../logik/snapshotpruefung.ts";
 
 /** Wo die Datei liegt. Relativ, damit die Seite unter jedem Pfad laeuft. */
 export const SNAPSHOT_URL = "dashboard-snapshot.json";
@@ -115,6 +116,13 @@ export async function ladeSnapshot(
 
   if (!Array.isArray(snapshot.objekte)) {
     throw new Error("Die Datei enthaelt keine Objektliste -- ist es ein Snapshot?");
+  }
+  // Zweite Feldpruefung an der Dateigrenze (Review I-1): `konstanten` kam
+  // erst mit A18-4 dazu. Ohne diese Wache liesse eine Datei im alten Format
+  // entweder das Rendern mit einem TypeError abstuerzen oder -- schlimmer --
+  // die Karenzpruefung lautlos fail-open werden (`snapshotpruefung.ts`).
+  if (!hatGueltigeKonstanten(snapshot)) {
+    throw new Error("Snapshot ohne Konstanten -- Export zu alt?");
   }
 
   return {

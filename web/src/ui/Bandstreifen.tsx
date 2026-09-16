@@ -21,8 +21,13 @@
  * WAS HIER NICHT STEHT: keine 0, kein leeres Zahlenfeld. Ein Objekt ohne
  * Kennzahl bekommt diesen Streifen ueberhaupt nicht -- an seiner Stelle
  * stehen die Klartext-Gruende (3.7, siehe `Objektzeile`).
+ *
+ * Die Meldeschwelle (`snapshot.konstanten.dscrMeldeschwelle`, A18-4) kommt
+ * als PROPERTY herein, nicht als eigene Kopie: Sie steht hier NUR zum
+ * ZEICHNEN -- ueber die Trefferklasse entscheidet sie nicht, das hat der
+ * Export bereits getan (Entwurf 5.3, Punkt 4).
  */
-import { DSCR_MELDESCHWELLE_ANZEIGE, type SnapshotObjekt } from "../daten/snapshot.ts";
+import type { SnapshotObjekt } from "../daten/snapshot.ts";
 import { formatiereDscr } from "../logik/formate.ts";
 
 export const SKALA_MIN = 0;
@@ -40,8 +45,6 @@ export function prozentAufSkala(wert: number): string {
   return `${(anteilAufSkala(wert) * 100).toFixed(2)}%`;
 }
 
-export const SCHWELLE_PROZENT = prozentAufSkala(DSCR_MELDESCHWELLE_ANZEIGE);
-
 /**
  * Die Kopfleiste -- einmal je Bereich, nicht je Zeile.
  *
@@ -50,7 +53,16 @@ export const SCHWELLE_PROZENT = prozentAufSkala(DSCR_MELDESCHWELLE_ANZEIGE);
  * zu zeichnen, in der ausschliesslich Klartext steht, waere ein Massstab an
  * etwas Unmessbarem -- dieselbe Behauptung wie eine graue 0,0.
  */
-export function Skalenkopf({ mitRang, mitSkala }: { mitRang: boolean; mitSkala: boolean }) {
+export function Skalenkopf({
+  mitRang,
+  mitSkala,
+  dscrMeldeschwelle,
+}: {
+  mitRang: boolean;
+  mitSkala: boolean;
+  dscrMeldeschwelle: number;
+}) {
+  const schwelleProzent = prozentAufSkala(dscrMeldeschwelle);
   return (
     <div className={`skalenkopf${mitRang ? "" : " skalenkopf--ohne-rang"}`}>
       {mitRang && <span style={{ textAlign: "right" }}>Rang</span>}
@@ -68,8 +80,8 @@ export function Skalenkopf({ mitRang, mitSkala }: { mitRang: boolean; mitSkala: 
                 <span className="skalenkopf__marke">{formatiereDscr(wert)}</span>
               </span>
             ))}
-            <span className="skalenkopf__schwelle" style={{ left: SCHWELLE_PROZENT }}>
-              <span>▲ Meldeschwelle {formatiereDscr(DSCR_MELDESCHWELLE_ANZEIGE)}</span>
+            <span className="skalenkopf__schwelle" style={{ left: schwelleProzent }}>
+              <span>▲ Meldeschwelle {formatiereDscr(dscrMeldeschwelle)}</span>
             </span>
           </div>
           <span className="band__wert">DSCR-Band</span>
@@ -96,11 +108,18 @@ export function Skalenkopf({ mitRang, mitSkala }: { mitRang: boolean; mitSkala: 
  *   ohne dass man eine Legende braucht.
  * - **Keine Kennzahl** (S0): Diese Komponente wird gar nicht erst aufgerufen.
  */
-export function Bandstreifen({ objekt }: { objekt: SnapshotObjekt }) {
+export function Bandstreifen({
+  objekt,
+  dscrMeldeschwelle,
+}: {
+  objekt: SnapshotObjekt;
+  dscrMeldeschwelle: number;
+}) {
   if (objekt.rangzahl === null) return null;
 
   const band = objekt.band;
   const abgeschnitten = band !== null && band.oben > SKALA_MAX;
+  const schwelleProzent = prozentAufSkala(dscrMeldeschwelle);
 
   const beschreibung =
     band === null
@@ -121,7 +140,7 @@ export function Bandstreifen({ objekt }: { objekt: SnapshotObjekt }) {
       */}
       <div className="band__feld">
         <span className="band__achse" />
-        <span className="band__schwelle" style={{ left: SCHWELLE_PROZENT }} />
+        <span className="band__schwelle" style={{ left: schwelleProzent }} />
 
         {band !== null && (
           <span
@@ -135,7 +154,7 @@ export function Bandstreifen({ objekt }: { objekt: SnapshotObjekt }) {
 
         {/* Das Merkmal aus 3.6: Der Rang selbst steht zur Disposition. */}
         {objekt.istSchwellenwechsler && (
-          <span className="band__wechsler" style={{ left: SCHWELLE_PROZENT }} />
+          <span className="band__wechsler" style={{ left: schwelleProzent }} />
         )}
 
         <span

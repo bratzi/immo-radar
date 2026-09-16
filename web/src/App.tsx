@@ -129,8 +129,14 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
     return Number.isFinite(zeit) ? new Date(zeit) : new Date();
   }, [snapshot.erzeugtAm]);
 
+  const karenzTage = snapshot.konstanten.karenzTage;
+  const dscrMeldeschwelle = snapshot.konstanten.dscrMeldeschwelle;
+
   const gefiltert = useMemo(() => wendeFilterAn(alleObjekte, filter), [alleObjekte, filter]);
-  const gliederung = useMemo(() => gliedere(gefiltert, jetzt), [gefiltert, jetzt]);
+  const gliederung = useMemo(
+    () => gliedere(gefiltert, jetzt, karenzTage),
+    [gefiltert, jetzt, karenzTage]
+  );
 
   // Die Zaehlungen an den Filterknoepfen gelten fuer den GESAMTEN Bestand,
   // nicht fuer die laufende Auswahl: Sie sollen sagen, was es gibt, nicht
@@ -181,8 +187,12 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
    * dieses Projekt "zwei Staende nebeneinander" nennt.
    */
   const topImBestand = useMemo(
-    () => alleObjekte.reduce((summe, o) => summe + (bestimmeBereich(o, jetzt) === "top" ? 1 : 0), 0),
-    [alleObjekte, jetzt]
+    () =>
+      alleObjekte.reduce(
+        (summe, o) => summe + (bestimmeBereich(o, jetzt, karenzTage) === "top" ? 1 : 0),
+        0
+      ),
+    [alleObjekte, jetzt, karenzTage]
   );
 
   const schalteLand = (name: string) =>
@@ -253,6 +263,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           umschalten={() => umschalten("top")}
           jetzt={jetzt}
           zeilenhoehe={zeilenhoehe}
+          dscrMeldeschwelle={dscrMeldeschwelle}
           leertext={
             <>
               <b>Kein Objekt hält die Schwelle an der unteren Bandkante.</b> Das ist eine Aussage
@@ -272,6 +283,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           umschalten={() => umschalten("normal")}
           jetzt={jetzt}
           zeilenhoehe={zeilenhoehe}
+          dscrMeldeschwelle={dscrMeldeschwelle}
           leertext={<b>Kein Objekt mit Rangzahl passt zu dieser Auswahl.</b>}
         />
 
@@ -285,6 +297,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           umschalten={() => umschalten("nichtBeurteilbar")}
           jetzt={jetzt}
           zeilenhoehe={zeilenhoehe}
+          dscrMeldeschwelle={dscrMeldeschwelle}
           leertext={
             <>
               <b>Kein Objekt ohne Kennzahl in dieser Auswahl.</b> Über diese Objekte ist nichts
@@ -302,6 +315,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           umschalten={() => umschalten("abgaenge")}
           jetzt={jetzt}
           zeilenhoehe={zeilenhoehe}
+          dscrMeldeschwelle={dscrMeldeschwelle}
           leertext={
             <>
               <b>Kein Abgang in dieser Auswahl.</b> Aus Regionen, die ihre Trefferzahl nicht

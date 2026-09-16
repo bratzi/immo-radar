@@ -34,7 +34,7 @@ import {
   grunderwerbsteuerSatzFuerBundesland,
   bundeslandFuerPlz,
 } from "./grunderwerbsteuer.js";
-import { partitionEinesListings } from "./bestand.js";
+import { partitionEinesListings, KARENZ_TAGE } from "./bestand.js";
 import { datenlueckeKlartext, LUECKE_PREIS_FEHLT } from "./telegram.js";
 
 const MS_PRO_TAG = 24 * 60 * 60 * 1000;
@@ -420,6 +420,14 @@ export interface SnapshotObjekt {
   trefferklasse: Trefferklasse;
   /** DSCR. `null` bei S0 -- ein nicht beurteilbares Objekt bekommt KEINE Kennzahl (3.7). */
   rangzahl: number | null;
+  /**
+   * Kaufpreisfaktor, die zweite Zahl neben dem DSCR (Entwurf 2.3).
+   *
+   * `null` bei S0: Dort ist die Miete 0 und der Faktor `Infinity` -- und ein
+   * `Infinity` ueberlebt `JSON.stringify` als `null` ohnehin nicht. Lieber
+   * ein ausdrueckliches `null` als eine Zahl, die unterwegs kippt.
+   */
+  kaufpreisfaktor: number | null;
   band: Bandkanten | null;
   istSchwellenwechsler: boolean;
   zustand: Verfuegbarkeitszustand;
@@ -466,6 +474,20 @@ export interface Snapshot {
   bundeslaender: SnapshotBundesland[];
   objekte: SnapshotObjekt[];
   betrieb: SnapshotBetrieb;
+  /**
+   * Zahlen, die die Oberflaeche zum ZEICHNEN braucht und deshalb sonst
+   * abschreiben muesste (A18-4).
+   *
+   * Sie stehen hier, damit es sie EINMAL gibt. `web/` fuehrte beide als
+   * eigene Konstanten -- kommentiert und ohne Nachrechnen, aber formal
+   * dieselbe Dopplung, die A17 beseitigt hat: Aendert sich die Meldeschwelle,
+   * bricht die andere Kopie lautlos.
+   *
+   * Sie sind ausdruecklich KEINE Einladung zum Nachrechnen. Ueber die
+   * Trefferklasse entscheidet der Export (`bestimmeTrefferklasse`), nicht die
+   * Oberflaeche (Entwurf 5.3, Punkt 4).
+   */
+  konstanten: { karenzTage: number; dscrMeldeschwelle: number };
 }
 
 export interface SnapshotEingabe {
@@ -551,6 +573,7 @@ export function baueSnapshot(eingabe: SnapshotEingabe, jetzt: Date): Snapshot {
       meldebudget: eingabe.betrieb.meldebudget,
       regionsstand: baueRegionsstand(eingabe.regionsLaeufe),
     },
+    konstanten: { karenzTage: KARENZ_TAGE, dscrMeldeschwelle: DSCR_MELDESCHWELLE },
   };
 }
 
@@ -614,6 +637,7 @@ function baueObjekt(
       stufe: einordnung.stufe,
       trefferklasse: bestimmeTrefferklasse(einordnung, null),
       rangzahl: einordnung.rangzahl,
+      kaufpreisfaktor: null,
       band: einordnung.band,
       istSchwellenwechsler: einordnung.istSchwellenwechsler,
       datenluecken: [datenlueckeKlartext(LUECKE_PREIS_FEHLT)],
@@ -687,6 +711,7 @@ function baueObjekt(
     stufe: einordnung.stufe,
     trefferklasse: bestimmeTrefferklasse(einordnung, kaufpreisfaktor),
     rangzahl: einordnung.rangzahl,
+    kaufpreisfaktor,
     band: einordnung.band,
     istSchwellenwechsler: einordnung.istSchwellenwechsler,
     // Die S0-Gruende kommen aus `ranking.ts` dazu, damit KEIN S0-Objekt ohne

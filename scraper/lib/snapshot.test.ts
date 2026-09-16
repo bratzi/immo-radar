@@ -11,6 +11,8 @@ import {
 import { bewerteFuerRangliste } from "./ranking.js";
 import { ermittleJahreskaltmiete } from "./rentEstimate.js";
 import { grunderwerbsteuerSatzFuerBundesland } from "./grunderwerbsteuer.js";
+import { KARENZ_TAGE } from "./bestand.js";
+import { DSCR_MELDESCHWELLE, berechneKennzahlen } from "./metrics.js";
 
 const TAG_MS = 24 * 60 * 60 * 1000;
 const START = Date.parse("2026-09-08T00:00:00.000Z");
@@ -600,5 +602,73 @@ describe("baueSnapshot: jedes S0-Objekt traegt seinen Grund (A18-1)", () => {
     expect(snapshot.objekte[0].datenluecken).toEqual([
       "Mietquelle unbekannt — die Miete ist nicht einzuordnen",
     ]);
+  });
+});
+
+describe("baueSnapshot: Kaufpreisfaktor am Objekt (A18-3)", () => {
+  it("traegt den Kaufpreisfaktor am Objekt (Entwurf 2.3, A18-3)", () => {
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { living_area_m2: "80" })] }),
+      JETZT
+    );
+    const objekt = snapshot.objekte[0];
+
+    // Derselbe Rechenweg wie `baueObjekt`, von Hand aus der Fixture
+    // hergeleitet (Pruefung Runde 2, M-4): 100.000 EUR Kaufpreis (Default aus
+    // `version()`), 80 m² statt der ueblichen 150, 3 angenommene Einheiten
+    // (units unconfirmed -> MIN_EINHEITEN aus pipeline.ts), keine PLZ -> die
+    // Miete wird bundeslandgenau fuer Bayern geschaetzt, der Satz ebenso.
+    // Ein Vergleich nur auf "ist eine endliche Zahl" haette eine Verwechslung
+    // mit einer anderen Kennzahl (z. B. `rangzahl`) nicht gefangen.
+    const erwarteterFaktor = berechneKennzahlen(
+      {
+        kaufpreis: 100_000,
+        jahreskaltmiete: ermittleJahreskaltmiete(null, 80, "", "Bayern").jahreskaltmiete,
+        einheiten: 3,
+        baujahr: null,
+        wohnflaecheM2: 80,
+      },
+      grunderwerbsteuerSatzFuerBundesland("Bayern")
+    ).kaufpreisfaktor;
+
+    expect(objekt.kaufpreisfaktor).toBeTypeOf("number");
+    expect(objekt.kaufpreisfaktor).toBeCloseTo(erwarteterFaktor, 9);
+  });
+
+  it("laesst den Kaufpreisfaktor bei S0 leer, statt Infinity zu schreiben", () => {
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { living_area_m2: null })] }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].stufe).toBe("S0");
+    expect(snapshot.objekte[0].kaufpreisfaktor).toBeNull();
+  });
+
+  it("laesst den Kaufpreisfaktor auch bei S0 MIT Flaeche leer, wo der Faktor endlich waere (Pruefung Runde 2, M-2)", () => {
+    // Der vorige Test baut S0 ueber `living_area_m2: null` -- dort ist die
+    // Miete 0 und der Faktor `Infinity`, und `endlichOderNull` machte daraus
+    // ohnehin `null`. Er haette eine entfernte Nullung
+    // (`einordnung.rangzahl === null ? null : ...`) nicht gemerkt. Diese
+    // Fixture (aus dem A18-1-Test "Mietquelle unbekannt") ist S0 ueber eine
+    // Mietquelle ausserhalb der Aufzaehlung, bei vorhandener Flaeche -- die
+    // Miete wird trotzdem bundeslandgenau geschaetzt (`ermittleJahreskaltmiete`
+    // fragt `rent_source` nicht ab) und der Faktor ist daher ENDLICH. Nur die
+    // ausdrueckliche Pruefung auf `rangzahl === null` schuetzt hier.
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { rent_source: null, data_gaps: [] })] }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].stufe).toBe("S0");
+    expect(snapshot.objekte[0].kaufpreisfaktor).toBeNull();
+  });
+});
+
+describe("baueSnapshot: Konstanten aus dem Export statt als dritte Kopie (A18-4)", () => {
+  it("liefert Karenz und Meldeschwelle mit, statt sie der Oberflaeche zu ueberlassen (A18-4)", () => {
+    const snapshot = baueSnapshot(eingabe(), JETZT);
+    // Gegen die Quellen geprueft, nicht gegen Literale: Aendert jemand
+    // KARENZ_TAGE, muss der Snapshot mitgehen -- genau darum geht es.
+    expect(snapshot.konstanten.karenzTage).toBe(KARENZ_TAGE);
+    expect(snapshot.konstanten.dscrMeldeschwelle).toBe(DSCR_MELDESCHWELLE);
   });
 });

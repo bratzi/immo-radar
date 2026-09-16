@@ -25,6 +25,7 @@ import {
   formatiereDatum,
   formatiereEuro,
   formatiereFlaeche,
+  formatiereKaufpreisfaktor,
   formatiereTagesalter,
   preisJeQuadratmeter,
 } from "../logik/formate.ts";
@@ -49,9 +50,11 @@ interface Eigenschaften {
   rang: number | null;
   jetzt: Date;
   oben: number;
+  /** `snapshot.konstanten.dscrMeldeschwelle` (A18-4) -- durchgereicht an den Bandstreifen. */
+  dscrMeldeschwelle: number;
 }
 
-function ObjektzeileRoh({ objekt, rang, jetzt, oben }: Eigenschaften) {
+function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle }: Eigenschaften) {
   const ohneKennzahl = objekt.rangzahl === null;
   const alter = alterInTagen(objekt.zuletztGesehen, jetzt);
   const jeQm = preisJeQuadratmeter(objekt.kaufpreisEuro, objekt.wohnflaecheM2);
@@ -99,6 +102,22 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben }: Eigenschaften) {
         <span className="zeile__neben">
           {formatiereFlaeche(objekt.wohnflaecheM2)}
           {jeQm !== null && ` · ${formatiereEuro(Math.round(jeQm))}/m²`}
+          {/*
+            Der Kaufpreisfaktor: die dritte nuetzliche Zahl (Entwurf 2.3 --
+            "steht daneben, ordnet aber nicht"). Er haengt an dieser Spalte
+            (Preis · Flaeche), NICHT an der DSCR-Spalte -- die Spaltenkopf-
+            Ueberschrift ("Preis · Fläche") wuerde bei drei Begriffen in der
+            festen 112px-Spalte umbrechen (Review M-1), deshalb traegt die
+            Zahl selbst ein `title`, statt die Ueberschrift zu erweitern.
+          */}
+          {objekt.kaufpreisfaktor !== null && (
+            <>
+              {" · "}
+              <span title="Kaufpreisfaktor">
+                {formatiereKaufpreisfaktor(objekt.kaufpreisfaktor)}
+              </span>
+            </>
+          )}
         </span>
       </span>
 
@@ -120,7 +139,7 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben }: Eigenschaften) {
           ))}
         </span>
       ) : (
-        <Bandstreifen objekt={objekt} />
+        <Bandstreifen objekt={objekt} dscrMeldeschwelle={dscrMeldeschwelle} />
       )}
 
       <span className="zeile__abzeichen">

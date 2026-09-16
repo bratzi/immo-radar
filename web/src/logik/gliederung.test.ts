@@ -3,6 +3,8 @@ import type { SnapshotObjekt } from "../daten/snapshot.ts";
 import { bestimmeBereich, gliedere, sortierschluessel } from "./gliederung.ts";
 
 const JETZT = new Date("2026-09-15T12:00:00Z");
+/** Die Karenz kommt jetzt als Argument herein (A18-4), nicht mehr global. */
+const KARENZ_TAGE = 2;
 
 function objekt(teil: Partial<SnapshotObjekt> = {}): SnapshotObjekt {
   return {
@@ -22,6 +24,7 @@ function objekt(teil: Partial<SnapshotObjekt> = {}): SnapshotObjekt {
     stufe: "S1",
     trefferklasse: "normal",
     rangzahl: 1,
+    kaufpreisfaktor: 10,
     band: { unten: 0.8, oben: 1.4 },
     istSchwellenwechsler: false,
     zustand: "verfuegbar",
@@ -36,10 +39,10 @@ function objekt(teil: Partial<SnapshotObjekt> = {}): SnapshotObjekt {
 
 describe("bestimmeBereich -- N1 plus die Karenzgrenze aus 6.4", () => {
   it("ordnet nach Trefferklasse, nicht nach Sicherheitsstufe", () => {
-    expect(bestimmeBereich(objekt({ trefferklasse: "top", stufe: "S1" }), JETZT)).toBe("top");
-    expect(bestimmeBereich(objekt({ trefferklasse: "normal", stufe: "S3" }), JETZT)).toBe("normal");
+    expect(bestimmeBereich(objekt({ trefferklasse: "top", stufe: "S1" }), JETZT, KARENZ_TAGE)).toBe("top");
+    expect(bestimmeBereich(objekt({ trefferklasse: "normal", stufe: "S3" }), JETZT, KARENZ_TAGE)).toBe("normal");
     expect(
-      bestimmeBereich(objekt({ trefferklasse: "nichtBeurteilbar", stufe: "S0" }), JETZT)
+      bestimmeBereich(objekt({ trefferklasse: "nichtBeurteilbar", stufe: "S0" }), JETZT, KARENZ_TAGE)
     ).toBe("nichtBeurteilbar");
   });
 
@@ -49,7 +52,7 @@ describe("bestimmeBereich -- N1 plus die Karenzgrenze aus 6.4", () => {
       abgaengigSeit: "2026-09-14T12:00:00Z", // 1 Tag her, Karenz sind 2
       zustand: "abgaengig",
     });
-    expect(bestimmeBereich(geradeEben, JETZT)).toBe("top");
+    expect(bestimmeBereich(geradeEben, JETZT, KARENZ_TAGE)).toBe("top");
   });
 
   it("schiebt es NACH der Karenz in den Bereich Abgaenge (6.4)", () => {
@@ -58,20 +61,20 @@ describe("bestimmeBereich -- N1 plus die Karenzgrenze aus 6.4", () => {
       abgaengigSeit: "2026-09-10T12:00:00Z", // 5 Tage her
       zustand: "abgaengig",
     });
-    expect(bestimmeBereich(laengerWeg, JETZT)).toBe("abgaenge");
+    expect(bestimmeBereich(laengerWeg, JETZT, KARENZ_TAGE)).toBe("abgaenge");
   });
 
   it("zieht die Karenzgrenze genau bei zwei Tagen", () => {
     const knappDrin = objekt({ abgaengigSeit: "2026-09-13T12:00:01Z" });
     const knappDraussen = objekt({ abgaengigSeit: "2026-09-13T11:59:59Z" });
-    expect(bestimmeBereich(knappDrin, JETZT)).toBe("normal");
-    expect(bestimmeBereich(knappDraussen, JETZT)).toBe("abgaenge");
+    expect(bestimmeBereich(knappDrin, JETZT, KARENZ_TAGE)).toBe("normal");
+    expect(bestimmeBereich(knappDraussen, JETZT, KARENZ_TAGE)).toBe("abgaenge");
   });
 
   it("behandelt ein unlesbares Abgangsdatum als Abgang und nie als verfuegbar", () => {
     // Fail-closed: Was sich nicht datieren laesst, darf nicht durch die
     // Karenzpruefung zurueck in die Rangliste rutschen.
-    expect(bestimmeBereich(objekt({ abgaengigSeit: "kaputt" }), JETZT)).toBe("abgaenge");
+    expect(bestimmeBereich(objekt({ abgaengigSeit: "kaputt" }), JETZT, KARENZ_TAGE)).toBe("abgaenge");
   });
 
   it("laesst ein nicht beurteilbares Objekt nach der Karenz ebenfalls in die Abgaenge", () => {
@@ -80,7 +83,31 @@ describe("bestimmeBereich -- N1 plus die Karenzgrenze aus 6.4", () => {
       stufe: "S0",
       abgaengigSeit: "2026-09-01T00:00:00Z",
     });
-    expect(bestimmeBereich(weg, JETZT)).toBe("abgaenge");
+    expect(bestimmeBereich(weg, JETZT, KARENZ_TAGE)).toBe("abgaenge");
+  });
+
+  it("behandelt eine unlesbare Karenz fail-closed -- das Objekt gilt als abgegangen (Review I-1, zweite Wache)", () => {
+    // `laden.ts` prueft `konstanten` schon an der Dateigrenze (erste Wache).
+    // Diese hier ist die zweite: Kommt trotzdem ein unbrauchbares
+    // `karenzTage` bis hierher (z.B. NaN), darf daraus NIE "Karenz nie
+    // vorbei" werden -- sonst verliesse kein abgaengiges Objekt mehr die
+    // Rangliste (fail-open).
+    const geradeEben = objekt({
+      trefferklasse: "top",
+      abgaengigSeit: "2026-09-15T11:59:59Z", // eine Sekunde her
+      zustand: "abgaengig",
+    });
+    expect(bestimmeBereich(geradeEben, JETZT, Number.NaN)).toBe("abgaenge");
+  });
+
+  it("nimmt WIRKLICH das uebergebene karenzTage-Argument, nicht einen internen Wert (Review M-3)", () => {
+    const objektMitAbgang = objekt({
+      trefferklasse: "top",
+      abgaengigSeit: "2026-09-12T12:00:00Z", // 3 Tage vor JETZT
+      zustand: "abgaengig",
+    });
+    expect(bestimmeBereich(objektMitAbgang, JETZT, 5)).toBe("top"); // Karenz (5 Tage) noch nicht vorbei
+    expect(bestimmeBereich(objektMitAbgang, JETZT, 2)).toBe("abgaenge"); // Karenz (2 Tage) laengst vorbei
   });
 });
 
@@ -112,7 +139,8 @@ describe("gliedere -- die vier Bereiche mit ihrer je eigenen Ordnung", () => {
         objekt({ id: "hoch", trefferklasse: "top", band: { unten: 1.9, oben: 2.4 } }),
         objekt({ id: "tief", trefferklasse: "top", band: { unten: 1.31, oben: 1.8 } }),
       ],
-      JETZT
+      JETZT,
+      KARENZ_TAGE
     );
     expect(g.top.map((o) => o.id)).toEqual(["hoch", "mitte", "tief"]);
   });
@@ -137,7 +165,8 @@ describe("gliedere -- die vier Bereiche mit ihrer je eigenen Ordnung", () => {
           zuletztGesehen: "2026-09-14T00:00:00Z",
         }),
       ],
-      JETZT
+      JETZT,
+      KARENZ_TAGE
     );
     expect(g.nichtBeurteilbar.map((o) => o.id)).toEqual(["neu", "alt"]);
   });
@@ -148,7 +177,8 @@ describe("gliedere -- die vier Bereiche mit ihrer je eigenen Ordnung", () => {
         objekt({ id: "frueher", abgaengigSeit: "2026-09-01T00:00:00Z" }),
         objekt({ id: "spaeter", abgaengigSeit: "2026-09-08T00:00:00Z" }),
       ],
-      JETZT
+      JETZT,
+      KARENZ_TAGE
     );
     expect(g.abgaenge.map((o) => o.id)).toEqual(["spaeter", "frueher"]);
   });
@@ -157,7 +187,8 @@ describe("gliedere -- die vier Bereiche mit ihrer je eigenen Ordnung", () => {
     const gleich = { trefferklasse: "top" as const, band: { unten: 1.4, oben: 1.8 } };
     const g = gliedere(
       [objekt({ id: "b", ...gleich }), objekt({ id: "a", ...gleich })],
-      JETZT
+      JETZT,
+      KARENZ_TAGE
     );
     expect(g.top.map((o) => o.id)).toEqual(["b", "a"]);
   });
@@ -169,7 +200,7 @@ describe("gliedere -- die vier Bereiche mit ihrer je eigenen Ordnung", () => {
       objekt({ id: "3", trefferklasse: "nichtBeurteilbar", stufe: "S0", rangzahl: null, band: null }),
       objekt({ id: "4", abgaengigSeit: "2026-09-01T00:00:00Z" }),
     ];
-    const g = gliedere(eingabe, JETZT);
+    const g = gliedere(eingabe, JETZT, KARENZ_TAGE);
     expect(g.top.length + g.normal.length + g.nichtBeurteilbar.length + g.abgaenge.length).toBe(4);
   });
 
@@ -181,7 +212,8 @@ describe("gliedere -- die vier Bereiche mit ihrer je eigenen Ordnung", () => {
         objekt({ id: "ohne", trefferklasse: "normal", rangzahl: null, band: null }),
         objekt({ id: "schlecht", trefferklasse: "normal", band: { unten: 0.01, oben: 0.2 } }),
       ],
-      JETZT
+      JETZT,
+      KARENZ_TAGE
     );
     expect(g.normal.map((o) => o.id)).toEqual(["schlecht", "ohne"]);
     expect(g.normal[1]!.rangzahl).toBeNull();

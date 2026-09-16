@@ -49,13 +49,16 @@ describe.skipIf(!vorhanden)("Vertrag: die echte Snapshot-Datei passt zu den Type
     ? (JSON.parse(readFileSync(DATEI, "utf8")) as Snapshot)
     : (null as unknown as Snapshot);
 
-  it("traegt die sechs Aeste des Dateiformats aus N4", () => {
+  it("traegt die sieben Aeste des Dateiformats (N4 plus konstanten, A18-4)", () => {
     expect(typeof snapshot.erzeugtAm).toBe("string");
     expect(snapshot.lauf).toBeTypeOf("object");
     expect(snapshot.kopfzeile).toBeTypeOf("object");
     expect(Array.isArray(snapshot.bundeslaender)).toBe(true);
     expect(Array.isArray(snapshot.objekte)).toBe(true);
     expect(snapshot.betrieb).toBeTypeOf("object");
+    expect(snapshot.konstanten).toBeTypeOf("object");
+    expect(snapshot.konstanten.karenzTage).toBeTypeOf("number");
+    expect(snapshot.konstanten.dscrMeldeschwelle).toBeTypeOf("number");
   });
 
   it("liefert eine Kopfzeile, deren Zahlen gerechnet und nicht geschrieben sind", () => {
@@ -98,6 +101,8 @@ describe.skipIf(!vorhanden)("Vertrag: die echte Snapshot-Datei passt zu den Type
       pruefe(STUFEN.has(objekt.stufe), "stufe");
       pruefe(TREFFERKLASSEN.has(objekt.trefferklasse), "trefferklasse");
       pruefe(istZahlOderNull(objekt.rangzahl), "rangzahl");
+      pruefe(istZahlOderNull(objekt.kaufpreisfaktor), "kaufpreisfaktor");
+      if (objekt.stufe === "S0") pruefe(objekt.kaufpreisfaktor === null, "kaufpreisfaktor bei S0 null");
       pruefe(
         objekt.band === null ||
           (typeof objekt.band.unten === "number" && typeof objekt.band.oben === "number"),

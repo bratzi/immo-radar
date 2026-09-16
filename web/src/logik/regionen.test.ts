@@ -20,6 +20,7 @@ function objekt(teil: Partial<SnapshotObjekt> = {}): SnapshotObjekt {
     stufe: "S1",
     trefferklasse: "normal",
     rangzahl: 1,
+    kaufpreisfaktor: 10,
     band: null,
     istSchwellenwechsler: false,
     zustand: "verfuegbar",
