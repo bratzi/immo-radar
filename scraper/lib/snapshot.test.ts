@@ -602,3 +602,24 @@ describe("baueSnapshot: jedes S0-Objekt traegt seinen Grund (A18-1)", () => {
     ]);
   });
 });
+
+describe("baueSnapshot: Kaufpreisfaktor am Objekt (A18-3)", () => {
+  it("traegt den Kaufpreisfaktor am Objekt (Entwurf 2.3, A18-3)", () => {
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { living_area_m2: "80" })] }),
+      JETZT
+    );
+    const objekt = snapshot.objekte[0];
+    expect(objekt.kaufpreisfaktor).toBeTypeOf("number");
+    expect(Number.isFinite(objekt.kaufpreisfaktor)).toBe(true);
+  });
+
+  it("laesst den Kaufpreisfaktor bei S0 leer, statt Infinity zu schreiben", () => {
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { living_area_m2: null })] }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].stufe).toBe("S0");
+    expect(snapshot.objekte[0].kaufpreisfaktor).toBeNull();
+  });
+});

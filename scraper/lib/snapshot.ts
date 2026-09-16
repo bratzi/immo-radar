@@ -420,6 +420,14 @@ export interface SnapshotObjekt {
   trefferklasse: Trefferklasse;
   /** DSCR. `null` bei S0 -- ein nicht beurteilbares Objekt bekommt KEINE Kennzahl (3.7). */
   rangzahl: number | null;
+  /**
+   * Kaufpreisfaktor, die zweite Zahl neben dem DSCR (Entwurf 2.3).
+   *
+   * `null` bei S0: Dort ist die Miete 0 und der Faktor `Infinity` -- und ein
+   * `Infinity` ueberlebt `JSON.stringify` als `null` ohnehin nicht. Lieber
+   * ein ausdrueckliches `null` als eine Zahl, die unterwegs kippt.
+   */
+  kaufpreisfaktor: number | null;
   band: Bandkanten | null;
   istSchwellenwechsler: boolean;
   zustand: Verfuegbarkeitszustand;
@@ -614,6 +622,7 @@ function baueObjekt(
       stufe: einordnung.stufe,
       trefferklasse: bestimmeTrefferklasse(einordnung, null),
       rangzahl: einordnung.rangzahl,
+      kaufpreisfaktor: null,
       band: einordnung.band,
       istSchwellenwechsler: einordnung.istSchwellenwechsler,
       datenluecken: [datenlueckeKlartext(LUECKE_PREIS_FEHLT)],
@@ -687,6 +696,7 @@ function baueObjekt(
     stufe: einordnung.stufe,
     trefferklasse: bestimmeTrefferklasse(einordnung, kaufpreisfaktor),
     rangzahl: einordnung.rangzahl,
+    kaufpreisfaktor,
     band: einordnung.band,
     istSchwellenwechsler: einordnung.istSchwellenwechsler,
     // Die S0-Gruende kommen aus `ranking.ts` dazu, damit KEIN S0-Objekt ohne
