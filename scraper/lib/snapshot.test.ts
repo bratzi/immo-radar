@@ -11,6 +11,8 @@ import {
 import { bewerteFuerRangliste } from "./ranking.js";
 import { ermittleJahreskaltmiete } from "./rentEstimate.js";
 import { grunderwerbsteuerSatzFuerBundesland } from "./grunderwerbsteuer.js";
+import { KARENZ_TAGE } from "./bestand.js";
+import { DSCR_MELDESCHWELLE } from "./metrics.js";
 
 const TAG_MS = 24 * 60 * 60 * 1000;
 const START = Date.parse("2026-09-08T00:00:00.000Z");
@@ -621,5 +623,15 @@ describe("baueSnapshot: Kaufpreisfaktor am Objekt (A18-3)", () => {
     );
     expect(snapshot.objekte[0].stufe).toBe("S0");
     expect(snapshot.objekte[0].kaufpreisfaktor).toBeNull();
+  });
+});
+
+describe("baueSnapshot: Konstanten aus dem Export statt als dritte Kopie (A18-4)", () => {
+  it("liefert Karenz und Meldeschwelle mit, statt sie der Oberflaeche zu ueberlassen (A18-4)", () => {
+    const snapshot = baueSnapshot(eingabe(), JETZT);
+    // Gegen die Quellen geprueft, nicht gegen Literale: Aendert jemand
+    // KARENZ_TAGE, muss der Snapshot mitgehen -- genau darum geht es.
+    expect(snapshot.konstanten.karenzTage).toBe(KARENZ_TAGE);
+    expect(snapshot.konstanten.dscrMeldeschwelle).toBe(DSCR_MELDESCHWELLE);
   });
 });

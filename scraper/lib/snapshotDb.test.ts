@@ -31,6 +31,7 @@ const LEERER_SNAPSHOT: Snapshot = {
   bundeslaender: [],
   objekte: [],
   betrieb: { uebersprungeneJeLauf: null, meldebudget: null, regionsstand: [] },
+  konstanten: { karenzTage: 2, dscrMeldeschwelle: 1.3 },
 };
 
 describe("schreibeSnapshot", () => {
