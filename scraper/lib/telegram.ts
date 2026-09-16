@@ -66,12 +66,14 @@ const DATA_GAP_LABELS: Record<string, string> = {
   preis_miete_unvereinbar: "Preis und Miete unvereinbar — eine der beiden Zahlen stimmt nicht",
   // ALTNAME, nicht doppelter Begriff: A9 hat `kaufpreis_unplausibel` in
   // `preis_miete_unvereinbar` umbenannt, weil der alte Name eine Ursache
-  // behauptete, die die Messung nicht deckt. 2 Zeilen im Bestand stammen von
-  // davor. Der Export uebersetzt sie, statt Produktionsdaten zu aendern --
-  // das waere ein Schreibzugriff und loeste nur diese zwei Zeilen.
+  // behauptete, die die Messung nicht deckt. Zeilen im Bestand stammen von
+  // davor (2 am 2026-09-15, 1 am 2026-09-16). Der Export uebersetzt sie,
+  // statt Produktionsdaten zu aendern -- das waere ein Schreibzugriff und
+  // loeste nur diese Zeilen, nicht die naechste Umbenennung.
   kaufpreis_unplausibel: "Preis und Miete unvereinbar — eine der beiden Zahlen stimmt nicht",
-  // Entsteht nicht in `data_gaps`, sondern in `s0Gruende` (A18-1): eine
-  // Mietquelle ausserhalb der Aufzaehlung aus Entwurf 3.3.
+  // Entsteht nicht in `data_gaps`, sondern in `ranking.ts` (A18-1, geliefert
+  // ueber `s0Gruende`): eine Mietquelle ausserhalb der Aufzaehlung aus
+  // Entwurf 3.3.
   mietquelle_unbekannt: "Mietquelle unbekannt — die Miete ist nicht einzuordnen",
   plz_fehlt: "PLZ fehlt (Immowelt nennt sie in der Ergebnisliste nicht)",
 };

@@ -4,6 +4,9 @@ import {
   bewerteFuerRangliste,
   bestimmeVerfuegbarkeitszustand,
   s0Gruende,
+  S0_LUECKEN,
+  LUECKE_MIETQUELLE_UNBEKANNT,
+  type StufeUndGruende,
 } from "./ranking.js";
 import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
 
@@ -42,8 +45,11 @@ describe("bestimmeSicherheitsstufe", () => {
   });
 
   it("stuft den Altnamen kaufpreis_unplausibel genauso auf S0 wie den heutigen (A18-2)", () => {
-    // Ohne diesen Eintrag bekommen die 2 Altzeilen eine Rangzahl, die auf
-    // genau der Zahl beruht, die als unvereinbar gemeldet wurde.
+    // Ohne diesen Eintrag bekaeme ein Objekt, das allein den Altnamen traegt,
+    // eine Rangzahl, die auf genau der Zahl beruht, die als unvereinbar
+    // gemeldet wurde. (Die Bestandszeilen mit dem Altnamen -- 2 am
+    // 2026-09-15, 1 am 2026-09-16 -- tragen laut Entwurf 13.1, Punkt 5
+    // zusaetzlich `rent_estimate_unreliable` und waren ohnehin S0.)
     const objekt = { rentSource: "angegeben", dataGaps: ["kaufpreis_unplausibel"], livingAreaM2: 80 };
     expect(bestimmeSicherheitsstufe(objekt)).toBe("S0");
     expect(s0Gruende(objekt)).toEqual(["kaufpreis_unplausibel"]);
@@ -413,8 +419,12 @@ describe("s0Gruende nennt den Grund, aus dem S0 entstanden ist (A18)", () => {
   });
 
   it("nennt fuer JEDES S0-Objekt mindestens einen Grund", () => {
-    // Die eigentliche Zusage. Wer bestimmeSicherheitsstufe um einen
-    // fuenften S0-Weg erweitert und s0Gruende vergisst, faellt hier auf.
+    // Die eigentliche Zusage, fuer jeden heutigen Weg nach S0. Stufe und
+    // Gruende entstehen in EINEM Durchlauf (`stufeUndGruende`), es gibt also
+    // kein `s0Gruende` mehr, das man beim Erweitern vergessen koennte. Einen
+    // KUENFTIGEN Weg ohne eigenen Code faengt der Typ (Test "laesst ein S0
+    // ohne Grund gar nicht erst typpruefen"), einen, der sich den Rueckfall
+    // borgt, das Raster ("nennt mietquelle_unbekannt nur, wenn ...").
     const faelle = [
       { rentSource: null, dataGaps: [], livingAreaM2: null },
       { rentSource: "geschaetzt_regional", dataGaps: ["preis_miete_unvereinbar"], livingAreaM2: 80 },
@@ -430,5 +440,66 @@ describe("s0Gruende nennt den Grund, aus dem S0 entstanden ist (A18)", () => {
       expect(bestimmeSicherheitsstufe(fall)).toBe("S0");
       expect(s0Gruende(fall).length).toBeGreaterThan(0);
     }
+  });
+
+  it("nennt mietquelle_unbekannt nur, wenn die Mietquelle wirklich unbekannt ist", () => {
+    // Der Rueckfall darf keine Ursache erfinden (Pruefung Runde 1, I-1). Kaeme
+    // ein weiterer Weg nach S0 dazu und landete beim Rueckfall, stuende bei
+    // einem Objekt mit BEKANNTER Mietquelle "Mietquelle unbekannt" -- eine
+    // geratene Ursache, genau das, was `web/src/logik/gruende.ts` fuer die
+    // Oberflaeche ausschliesst ("Der Ersatztext RAET KEINE URSACHE"). Das
+    // Raster kreuzt jede Mietquelle mit jeder Lueckenart und jeder
+    // Flaechenlage und prueft dreierlei: S0 genau dann, wenn es einen Grund
+    // gibt; jeder Grund ist ein S0-Code oder der Rueckfall; der Rueckfall
+    // steht nur allein und nur bei einer Mietquelle ausserhalb der Aufzaehlung.
+    const bekannteQuellen: (string | null)[] = [
+      "angegeben",
+      "geschaetzt_regional",
+      "geschaetzt_bundesland",
+      "geschaetzt_bundesweit",
+    ];
+    const quellen = [...bekannteQuellen, null, "irgendwas_neues"];
+    const lueckenlisten: string[][] = [
+      [],
+      ["location_unconfirmed"],
+      ["units_unconfirmed", "miete_nur_bundeslandgenau"],
+      ...S0_LUECKEN.map((code) => [code]),
+    ];
+    const flaechen = [null, 0, -1, 80];
+    const erlaubteGruende: string[] = [...S0_LUECKEN, LUECKE_MIETQUELLE_UNBEKANNT];
+
+    for (const rentSource of quellen) {
+      for (const dataGaps of lueckenlisten) {
+        for (const livingAreaM2 of flaechen) {
+          const fall = { rentSource, dataGaps, livingAreaM2 };
+          const name = JSON.stringify(fall);
+          const gruende = s0Gruende(fall);
+
+          expect(gruende.length > 0, name).toBe(bestimmeSicherheitsstufe(fall) === "S0");
+          for (const grund of gruende) expect(erlaubteGruende, name).toContain(grund);
+          if (gruende.includes(LUECKE_MIETQUELLE_UNBEKANNT)) {
+            expect(gruende, name).toEqual([LUECKE_MIETQUELLE_UNBEKANNT]);
+            expect(bekannteQuellen, name).not.toContain(rentSource);
+          }
+        }
+      }
+    }
+  });
+
+  it("laesst ein S0 ohne Grund gar nicht erst typpruefen", () => {
+    // Die Wache fuer KUENFTIGE Wege nach S0 sitzt im Typ, denn ein Raster
+    // kennt nur die Bedingungen, die es heute gibt. `tsc --noEmit` (Pflicht
+    // vor jedem Commit) lehnt ein S0 mit leerer Gruendeliste ab -- wer einen
+    // neuen S0-Weg ohne eigenen Code einbaut, kommt nicht durch die
+    // Typpruefung. Wird der Typ aufgeweicht, sind die beiden Direktiven
+    // ueberfluessig, und tsc meldet GENAU DAS als Fehler. vitest selbst prueft
+    // hier keine Typen; rot wird dieser Test in `tsc`.
+    // @ts-expect-error -- S0 verlangt mindestens einen Grund.
+    const s0OhneGrund: StufeUndGruende = { stufe: "S0", gruende: [] };
+    // @ts-expect-error -- eine bewertbare Stufe traegt keinen S0-Grund.
+    const s3MitGrund: StufeUndGruende = { stufe: "S3", gruende: [LUECKE_MIETQUELLE_UNBEKANNT] };
+    const s0MitGrund: StufeUndGruende = { stufe: "S0", gruende: [LUECKE_MIETQUELLE_UNBEKANNT] };
+
+    expect([s0OhneGrund.stufe, s3MitGrund.stufe, s0MitGrund.stufe]).toEqual(["S0", "S3", "S0"]);
   });
 });

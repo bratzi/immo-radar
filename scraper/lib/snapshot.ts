@@ -695,9 +695,16 @@ function baueObjekt(
     // soll den Grund einmal tragen, nicht zweimal. Reihenfolge: erst die
     // gemeldeten Luecken, dann die abgeleiteten -- was in der Datenbank
     // steht, steht zuerst.
-    datenluecken: [...new Set([...version.dataGaps, ...s0Gruende(stufenEingabe)])].map(
-      datenlueckeKlartext
-    ),
+    //
+    // Das `Set` greift NACH der Uebersetzung in Klartext, nicht davor: Der
+    // Altname `kaufpreis_unplausibel` und `preis_miete_unvereinbar` sind zwei
+    // Codes mit demselben Satz. Stehen beide an einem Objekt, soll der Satz
+    // einmal dastehen (Pruefung Runde 1, M-4).
+    datenluecken: [
+      ...new Set(
+        [...version.dataGaps, ...s0Gruende(stufenEingabe)].map(datenlueckeKlartext)
+      ),
+    ],
     preisGesenkt: version.priceDropped,
     termin: version.auctionAt,
   };

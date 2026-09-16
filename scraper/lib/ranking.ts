@@ -26,13 +26,13 @@ export type Sicherheitsstufe = "S3" | "S2" | "S1" | "S0";
  * Bestand auch noch unter dem Altnamen `kaufpreis_unplausibel`, siehe unten),
  * `rent_estimate_unreliable` (die Vermietbarkeits-Annahme traegt nicht).
  */
-const S0_LUECKEN = [
+export const S0_LUECKEN = [
   "wohnflaeche_fehlt",
   "preis_miete_unvereinbar",
-  // ALTNAME desselben Befunds (A9-Umbenennung, 2 Zeilen im Bestand). Er
-  // gehoert hierher und nicht nur in die Klartexttabelle: Ohne ihn traegt
-  // ein Objekt mit nachweislich unvereinbaren Zahlen eine Rangzahl, die
-  // genau auf diesen Zahlen beruht.
+  // ALTNAME desselben Befunds (A9-Umbenennung; im Bestand 2 Zeilen am
+  // 2026-09-15, 1 am 2026-09-16). Er gehoert hierher und nicht nur in die
+  // Klartexttabelle: Ohne ihn traegt ein Objekt mit nachweislich
+  // unvereinbaren Zahlen eine Rangzahl, die genau auf diesen Zahlen beruht.
   "kaufpreis_unplausibel",
   "rent_estimate_unreliable",
 ] as const;
@@ -60,34 +60,17 @@ const S0_LUECKEN = [
  * beurteilbar", nie "vermutlich bundeslandgenau geschaetzt" -- alles andere
  * verwandelte Nichtwissen in eine Behauptung, und genau das nennt Abschnitt
  * 3.7 des Entwurfs den gefaehrlichsten Fall fuer ein Ranking-Dashboard.
+ *
+ * Die Pruefungen selbst stehen in `stufeUndGruende`, weil jede von ihnen im
+ * selben Schritt ihren Grund ablegt (A18-1) -- diese Funktion ist nur die
+ * Huelle, die davon die Stufe zurueckgibt.
  */
 export function bestimmeSicherheitsstufe(objekt: {
   rentSource: string | null;
   dataGaps: string[];
   livingAreaM2: number | null;
 }): Sicherheitsstufe {
-  const hatS0Luecke = objekt.dataGaps.some((luecke) =>
-    (S0_LUECKEN as readonly string[]).includes(luecke)
-  );
-  const flaecheFehlt = objekt.livingAreaM2 === null || objekt.livingAreaM2 <= 0;
-
-  if (hatS0Luecke || flaecheFehlt) {
-    return "S0";
-  }
-
-  if (objekt.rentSource === "angegeben") {
-    return "S3";
-  }
-
-  if (objekt.rentSource === "geschaetzt_regional") {
-    return "S2";
-  }
-
-  if (objekt.rentSource === "geschaetzt_bundesland" || objekt.rentSource === "geschaetzt_bundesweit") {
-    return "S1";
-  }
-
-  return "S0";
+  return stufeUndGruende(objekt).stufe;
 }
 
 /** Der vierte Weg nach S0: eine Mietquelle ausserhalb der Aufzaehlung in
@@ -95,44 +78,92 @@ export function bestimmeSicherheitsstufe(objekt: {
 export const LUECKE_MIETQUELLE_UNBEKANNT = "mietquelle_unbekannt";
 
 /**
- * Die Lueckencodes, die die S0-Einstufung TRAGEN -- fuer jede andere Stufe
- * leer.
- *
- * WARUM HIER UND NICHT IM EXPORT: `bestimmeSicherheitsstufe` ist die einzige
- * Stelle, die ueber S0 entscheidet, und sie kennt den Grund in dem Moment, in
- * dem sie ihn anwendet. Aus `livingAreaM2 === null` im Export oder gar in der
- * Oberflaeche einen Grund abzuleiten waere eine zweite Kopie derselben Regel
- * (Entwurf 5.3, Punkt 4) -- genau die Dopplung, die A17 beseitigt hat.
- *
- * DIE ZUSAGE: Jedes S0-Objekt bekommt mindestens einen Grund. Entwurf 3.7
- * verlangt ihn ("an der Stelle steht der Grund im Klartext"), und eine leere
- * Zelle saehe aus wie "geprueft und nichts gefunden" -- also wie ein Urteil.
- * Ein Test nagelt das ueber alle vier Wege nach S0 fest.
+ * Stufe und S0-Gruende aus EINEM Durchlauf. Der Typ haelt die Zusage fest:
+ * S0 traegt mindestens einen Grund, jede andere Stufe keinen. Ein neuer Weg
+ * nach S0 mit leerer Gruendeliste besteht `tsc` nicht.
  */
-export function s0Gruende(objekt: {
+export type StufeUndGruende =
+  | { stufe: "S0"; gruende: [string, ...string[]] }
+  | { stufe: Exclude<Sicherheitsstufe, "S0">; gruende: [] };
+
+/**
+ * Die EINE Stelle, die ueber S0 entscheidet. Jede Pruefung, die S0 ausloest,
+ * legt dabei ihren Code ab; S0 heisst hier "es liegt ein Grund vor", nicht
+ * "es liegt ein Grund vor, und daneben wird er noch einmal gesucht".
+ *
+ * WARUM EIN DURCHLAUF (Pruefung Runde 1, I-1): Die erste Fassung (`080812a`)
+ * entschied die Stufe hier und leitete die Gruende in `s0Gruende` ein zweites
+ * Mal ab, mit `mietquelle_unbekannt` als Rueckfall durch Ausschluss. Ein neuer
+ * Weg nach S0 in nur einer der beiden Kopien haette der Export still als
+ * "Mietquelle unbekannt" ausgegeben -- eine erfundene Ursache.
+ */
+function stufeUndGruende(objekt: {
   rentSource: string | null;
   dataGaps: string[];
   livingAreaM2: number | null;
-}): string[] {
-  if (bestimmeSicherheitsstufe(objekt) !== "S0") return [];
-
+}): StufeUndGruende {
   const gruende = objekt.dataGaps.filter((luecke) =>
     (S0_LUECKEN as readonly string[]).includes(luecke)
   );
 
   // Das Feld, nicht die Ableitung: `wohnflaeche_fehlt` gibt es erst seit dem
   // 2026-09-08, aeltere Versionen tragen die Luecke nicht, obwohl ihnen die
-  // Flaeche fehlt (siehe Kommentar an `bestimmeSicherheitsstufe`).
+  // Flaeche fehlt (siehe Kommentar an `bestimmeSicherheitsstufe`). Steht die
+  // Luecke schon da, wird sie nicht verdoppelt.
   const flaecheFehlt = objekt.livingAreaM2 === null || objekt.livingAreaM2 <= 0;
   if (flaecheFehlt && !gruende.includes("wohnflaeche_fehlt")) {
     gruende.push("wohnflaeche_fehlt");
   }
 
-  // Bleibt nichts uebrig, war die Mietquelle der Grund -- der einzige Weg
-  // nach S0, der ohne Luecke und ohne fehlende Flaeche auskommt.
-  if (gruende.length === 0) gruende.push(LUECKE_MIETQUELLE_UNBEKANNT);
+  if (gruende.length > 0) {
+    const [ersterGrund, ...weitereGruende] = gruende;
+    return { stufe: "S0", gruende: [ersterGrund, ...weitereGruende] };
+  }
 
-  return gruende;
+  if (objekt.rentSource === "angegeben") {
+    return { stufe: "S3", gruende: [] };
+  }
+
+  if (objekt.rentSource === "geschaetzt_regional") {
+    return { stufe: "S2", gruende: [] };
+  }
+
+  if (objekt.rentSource === "geschaetzt_bundesland" || objekt.rentSource === "geschaetzt_bundesweit") {
+    return { stufe: "S1", gruende: [] };
+  }
+
+  // Keine Luecke, Flaeche vorhanden, Mietquelle ausserhalb der Aufzaehlung:
+  // Hier und NUR hier ist die Mietquelle der Grund.
+  return { stufe: "S0", gruende: [LUECKE_MIETQUELLE_UNBEKANNT] };
+}
+
+/**
+ * Die Lueckencodes, die die S0-Einstufung TRAGEN -- fuer jede andere Stufe
+ * leer.
+ *
+ * WARUM HIER UND NICHT IM EXPORT: Aus `livingAreaM2 === null` im Export oder
+ * gar in der Oberflaeche einen Grund abzuleiten waere eine zweite Kopie der
+ * Stufenregel (Entwurf 5.3, Punkt 4) -- genau die Dopplung, die A17
+ * beseitigt hat.
+ *
+ * DIE REGEL GIBT ES NUR EINMAL: Diese Funktion ist wie
+ * `bestimmeSicherheitsstufe` eine Huelle um `stufeUndGruende`. Stufe und
+ * Gruende entstehen dort im selben Durchlauf; es gibt keine zweite Ableitung,
+ * die hinter der ersten zurueckbleiben koennte.
+ *
+ * DIE ZUSAGE: Jedes S0-Objekt bekommt mindestens einen Grund. Entwurf 3.7
+ * verlangt ihn ("an der Stelle steht der Grund im Klartext"), und eine leere
+ * Zelle saehe aus wie "geprueft und nichts gefunden" -- also wie ein Urteil.
+ * Der Typ `StufeUndGruende` erzwingt das fuer jeden Rueckgabeweg; die Tests
+ * pruefen es ueber alle heutigen Wege nach S0 und dass `mietquelle_unbekannt`
+ * nur bei einer Mietquelle ausserhalb der Aufzaehlung steht.
+ */
+export function s0Gruende(objekt: {
+  rentSource: string | null;
+  dataGaps: string[];
+  livingAreaM2: number | null;
+}): string[] {
+  return stufeUndGruende(objekt).gruende;
 }
 
 /** DSCR bei der unguenstigsten (`unten`) und der guenstigsten (`oben`) Mietannahme im Band. */
