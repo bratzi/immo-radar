@@ -25,6 +25,7 @@ import {
   formatiereDatum,
   formatiereEuro,
   formatiereFlaeche,
+  formatiereKaufpreisfaktor,
   formatiereTagesalter,
   preisJeQuadratmeter,
 } from "../logik/formate.ts";
@@ -99,6 +100,10 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben }: Eigenschaften) {
         <span className="zeile__neben">
           {formatiereFlaeche(objekt.wohnflaecheM2)}
           {jeQm !== null && ` · ${formatiereEuro(Math.round(jeQm))}/m²`}
+          {/* Kaufpreisfaktor: die dritte nuetzliche Zahl neben dem DSCR
+              (Entwurf 2.3) -- steht daneben, ordnet aber nicht (2.3). */}
+          {objekt.kaufpreisfaktor !== null &&
+            ` · ${formatiereKaufpreisfaktor(objekt.kaufpreisfaktor)}`}
         </span>
       </span>
 

@@ -53,6 +53,8 @@ export interface SnapshotObjekt {
   trefferklasse: Trefferklasse;
   /** DSCR. `null` bei S0 -- ein nicht beurteilbares Objekt bekommt KEINE Kennzahl (3.7). */
   rangzahl: number | null;
+  /** Kaufpreisfaktor, die zweite Zahl neben dem DSCR (Entwurf 2.3). `null` bei S0. */
+  kaufpreisfaktor: number | null;
   /** `null` bei S0 (keine Kennzahl) und bei S3 (dort steht ein Punktwert, 3.4). */
   band: Bandkanten | null;
   istSchwellenwechsler: boolean;

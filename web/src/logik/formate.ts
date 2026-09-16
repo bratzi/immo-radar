@@ -19,6 +19,10 @@ const DSCR = new Intl.NumberFormat("de-DE", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+const KAUFPREISFAKTOR = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 const DATUM = new Intl.DateTimeFormat("de-DE", {
   day: "2-digit",
   month: "2-digit",
@@ -52,6 +56,15 @@ export function formatiereFlaeche(wert: number | null): string {
 export function formatiereDscr(wert: number | null): string {
   if (wert === null || !Number.isFinite(wert)) return OHNE_ANGABE;
   return DSCR.format(wert);
+}
+
+/**
+ * Der Kaufpreisfaktor, die zweite Zahl neben dem DSCR (Entwurf 2.3).
+ * `null` heisst "keine Kennzahl" (S0), nicht "Kennzahl null".
+ */
+export function formatiereKaufpreisfaktor(wert: number | null): string {
+  if (wert === null || !Number.isFinite(wert)) return OHNE_ANGABE;
+  return `${KAUFPREISFAKTOR.format(wert)}×`;
 }
 
 export function formatiereProzent(anteil: number | null, stellen = 0): string {

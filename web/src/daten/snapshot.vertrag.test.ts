@@ -98,6 +98,8 @@ describe.skipIf(!vorhanden)("Vertrag: die echte Snapshot-Datei passt zu den Type
       pruefe(STUFEN.has(objekt.stufe), "stufe");
       pruefe(TREFFERKLASSEN.has(objekt.trefferklasse), "trefferklasse");
       pruefe(istZahlOderNull(objekt.rangzahl), "rangzahl");
+      pruefe(istZahlOderNull(objekt.kaufpreisfaktor), "kaufpreisfaktor");
+      if (objekt.stufe === "S0") pruefe(objekt.kaufpreisfaktor === null, "kaufpreisfaktor bei S0 null");
       pruefe(
         objekt.band === null ||
           (typeof objekt.band.unten === "number" && typeof objekt.band.oben === "number"),

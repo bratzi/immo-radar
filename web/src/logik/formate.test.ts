@@ -6,6 +6,7 @@ import {
   formatiereDscr,
   formatiereEuro,
   formatiereFlaeche,
+  formatiereKaufpreisfaktor,
   formatiereTagesalter,
   preisJeQuadratmeter,
 } from "./formate.ts";
@@ -46,6 +47,20 @@ describe("formatiereDscr", () => {
 
   it("gibt fuer KEINE Kennzahl einen Gedankenstrich und niemals '0,00' (3.7)", () => {
     expect(formatiereDscr(null)).toBe("—");
+  });
+});
+
+describe("formatiereKaufpreisfaktor", () => {
+  it("zeigt eine Nachkommastelle mit dem Malzeichen", () => {
+    expect(formatiereKaufpreisfaktor(24.3125)).toBe("24,3×");
+  });
+
+  it("gibt fuer KEINE Kennzahl (S0) einen Gedankenstrich und niemals '0,0×' (3.7)", () => {
+    expect(formatiereKaufpreisfaktor(null)).toBe("—");
+  });
+
+  it("setzt bei einer sehr grossen Zahl Tausenderpunkte statt in Exponentialschreibweise zu kippen", () => {
+    expect(formatiereKaufpreisfaktor(1234567.89)).toBe("1.234.567,9×");
   });
 });
 
