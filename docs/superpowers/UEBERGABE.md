@@ -9,10 +9,16 @@
 
 ## Wo wir stehen
 
-**Das Dashboard existiert.** `main` = `origin/main` = `9259562`,
+**Das Dashboard existiert.** `main` = `origin/main` = `8025a42`,
 Arbeitsverzeichnis sauber, keine Worktrees, keine offenen Zweige.
-**504 Scraper-Tests und 84 Web-Tests grün**, `tsc` in beiden sauber,
-`vite build` grün.
+**520 Scraper-Tests und 93 Web-Tests grün** (mit Snapshot-Datei; ohne sie
+84 und 10 übersprungen), `tsc` in beiden sauber, `vite build` grün.
+
+**Laufender Plan:** [`plans/2026-09-16-a18-und-die-zwei-funde.md`](plans/2026-09-16-a18-und-die-zwei-funde.md).
+Runde 1 (A18-1, A18-2) ist gemergt. **Als Nächstes Runde 2** (Aufgabe 3+4).
+Der Fortschritt steht im git-ignorierten Ledger
+`.superpowers/sdd/2026-09-16-a18-und-die-zwei-funde/progress.md`, Abschnitt
+„SITZUNGSENDE". Dort liegt auch das Skript, das den Snapshot erzeugt.
 
 Die Schritte 2 bis 7 des Entwurfs sind damit durch: `lib/ranking.ts`
 (Schritt 2), der Snapshot-Export (Schritt 3) und die Weboberfläche unter
@@ -190,8 +196,9 @@ Nutzer.
    E-Mail-Einmalcode an genau die eine erlaubte Adresse. Braucht Zugänge, die
    nur der Nutzer hat.
 3. **A18** — die vier Befunde am Export, die der Bau der Oberfläche
-   aufgedeckt hat. Der wichtigste: ein S0-Objekt ohne Klartext-Grund,
-   obwohl Entwurf 3.7 einen verlangt.
+   aufgedeckt hat. **Punkt 1 und 2 sind erledigt** (`8025a42`): Jedes
+   S0-Objekt trägt seinen Grund, und `tsc` lässt kein S0 ohne Grund mehr zu.
+   Offen sind Punkt 3 (Kaufpreisfaktor) und 4 (Konstanten aus dem Snapshot).
 4. **Die beiden ungesuchten Funde nachgehen** (siehe oben): `sh` als vierte
    Region ohne Abgangserkennung — der Kommentar an `istRegionVollstaendig`
    nennt nur drei — und `vollstaendig=true` ohne `gemeldete_treffer`.
