@@ -20,12 +20,22 @@ export type Sicherheitsstufe = "S3" | "S2" | "S1" | "S0";
 
 /**
  * Lueckencodes, die eine Kennzahl ohne Grundlage anzeigen -- nicht nur eine
- * schlechte Kennzahl. Jede der drei heisst "die Kennzahl hat keine
- * Grundlage": `wohnflaeche_fehlt` (Miete/Rendite faellt auf 0),
- * `preis_miete_unvereinbar` (Preis oder Miete ist falsch),
+ * schlechte Kennzahl. Vier Codes fuer drei Befunde, und jeder der drei heisst
+ * "die Kennzahl hat keine Grundlage": `wohnflaeche_fehlt` (Miete/Rendite
+ * faellt auf 0), `preis_miete_unvereinbar` (Preis oder Miete ist falsch; im
+ * Bestand auch noch unter dem Altnamen `kaufpreis_unplausibel`, siehe unten),
  * `rent_estimate_unreliable` (die Vermietbarkeits-Annahme traegt nicht).
  */
-const S0_LUECKEN = ["wohnflaeche_fehlt", "preis_miete_unvereinbar", "rent_estimate_unreliable"] as const;
+const S0_LUECKEN = [
+  "wohnflaeche_fehlt",
+  "preis_miete_unvereinbar",
+  // ALTNAME desselben Befunds (A9-Umbenennung, 2 Zeilen im Bestand). Er
+  // gehoert hierher und nicht nur in die Klartexttabelle: Ohne ihn traegt
+  // ein Objekt mit nachweislich unvereinbaren Zahlen eine Rangzahl, die
+  // genau auf diesen Zahlen beruht.
+  "kaufpreis_unplausibel",
+  "rent_estimate_unreliable",
+] as const;
 
 /**
  * Bestimmt die Sicherheitsstufe eines Objekts. S0 wird zuerst geprueft und
@@ -78,6 +88,51 @@ export function bestimmeSicherheitsstufe(objekt: {
   }
 
   return "S0";
+}
+
+/** Der vierte Weg nach S0: eine Mietquelle ausserhalb der Aufzaehlung in
+ *  Entwurf 3.3. Kein `data_gaps`-Eintrag traegt ihn, er entsteht erst hier. */
+export const LUECKE_MIETQUELLE_UNBEKANNT = "mietquelle_unbekannt";
+
+/**
+ * Die Lueckencodes, die die S0-Einstufung TRAGEN -- fuer jede andere Stufe
+ * leer.
+ *
+ * WARUM HIER UND NICHT IM EXPORT: `bestimmeSicherheitsstufe` ist die einzige
+ * Stelle, die ueber S0 entscheidet, und sie kennt den Grund in dem Moment, in
+ * dem sie ihn anwendet. Aus `livingAreaM2 === null` im Export oder gar in der
+ * Oberflaeche einen Grund abzuleiten waere eine zweite Kopie derselben Regel
+ * (Entwurf 5.3, Punkt 4) -- genau die Dopplung, die A17 beseitigt hat.
+ *
+ * DIE ZUSAGE: Jedes S0-Objekt bekommt mindestens einen Grund. Entwurf 3.7
+ * verlangt ihn ("an der Stelle steht der Grund im Klartext"), und eine leere
+ * Zelle saehe aus wie "geprueft und nichts gefunden" -- also wie ein Urteil.
+ * Ein Test nagelt das ueber alle vier Wege nach S0 fest.
+ */
+export function s0Gruende(objekt: {
+  rentSource: string | null;
+  dataGaps: string[];
+  livingAreaM2: number | null;
+}): string[] {
+  if (bestimmeSicherheitsstufe(objekt) !== "S0") return [];
+
+  const gruende = objekt.dataGaps.filter((luecke) =>
+    (S0_LUECKEN as readonly string[]).includes(luecke)
+  );
+
+  // Das Feld, nicht die Ableitung: `wohnflaeche_fehlt` gibt es erst seit dem
+  // 2026-09-08, aeltere Versionen tragen die Luecke nicht, obwohl ihnen die
+  // Flaeche fehlt (siehe Kommentar an `bestimmeSicherheitsstufe`).
+  const flaecheFehlt = objekt.livingAreaM2 === null || objekt.livingAreaM2 <= 0;
+  if (flaecheFehlt && !gruende.includes("wohnflaeche_fehlt")) {
+    gruende.push("wohnflaeche_fehlt");
+  }
+
+  // Bleibt nichts uebrig, war die Mietquelle der Grund -- der einzige Weg
+  // nach S0, der ohne Luecke und ohne fehlende Flaeche auskommt.
+  if (gruende.length === 0) gruende.push(LUECKE_MIETQUELLE_UNBEKANNT);
+
+  return gruende;
 }
 
 /** DSCR bei der unguenstigsten (`unten`) und der guenstigsten (`oben`) Mietannahme im Band. */

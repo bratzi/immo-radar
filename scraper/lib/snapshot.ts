@@ -21,6 +21,7 @@ import {
 import {
   bewerteFuerRangliste,
   bestimmeVerfuegbarkeitszustand,
+  s0Gruende,
   type Bandkanten,
   type RangEinordnung,
   type Sicherheitsstufe,
@@ -649,16 +650,16 @@ function baueObjekt(
     wohnflaecheM2: version.livingAreaM2 ?? 0,
   };
 
-  const einordnung = bewerteFuerRangliste(
-    {
-      rentSource: ungenauereMietquelle(version.rentSource, miete.quelle),
-      dataGaps: version.dataGaps,
-      livingAreaM2: version.livingAreaM2,
-    },
-    kennzahlenInput,
-    satz,
-    bundesland
-  );
+  // EINE Eingabe fuer Stufe UND Gruende: `s0Gruende` muss dieselbe Mietquelle
+  // sehen, nach der `bewerteFuerRangliste` die Stufe bestimmt hat -- sonst
+  // koennten Stufe und Begruendung auseinanderlaufen.
+  const stufenEingabe = {
+    rentSource: ungenauereMietquelle(version.rentSource, miete.quelle),
+    dataGaps: version.dataGaps,
+    livingAreaM2: version.livingAreaM2,
+  };
+
+  const einordnung = bewerteFuerRangliste(stufenEingabe, kennzahlenInput, satz, bundesland);
 
   // Der Kaufpreisfaktor nur fuer bewertbare Objekte: Bei S0 waere die Miete 0
   // und der Faktor Infinity. Dieselbe Reihenfolge wie in
@@ -688,7 +689,15 @@ function baueObjekt(
     rangzahl: einordnung.rangzahl,
     band: einordnung.band,
     istSchwellenwechsler: einordnung.istSchwellenwechsler,
-    datenluecken: version.dataGaps.map(datenlueckeKlartext),
+    // Die S0-Gruende kommen aus `ranking.ts` dazu, damit KEIN S0-Objekt ohne
+    // Grund dasteht (Entwurf 3.7, Befund A18-1). `Set` statt Filter: Ein
+    // Objekt mit `wohnflaeche_fehlt` in `data_gaps` UND fehlender Flaeche
+    // soll den Grund einmal tragen, nicht zweimal. Reihenfolge: erst die
+    // gemeldeten Luecken, dann die abgeleiteten -- was in der Datenbank
+    // steht, steht zuerst.
+    datenluecken: [...new Set([...version.dataGaps, ...s0Gruende(stufenEingabe)])].map(
+      datenlueckeKlartext
+    ),
     preisGesenkt: version.priceDropped,
     termin: version.auctionAt,
   };

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen, formatAbgangMessage, formatSweepWarnungMessage, sendTelegramMessage } from "./telegram.js";
+import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen, formatAbgangMessage, formatSweepWarnungMessage, sendTelegramMessage, datenlueckeKlartext } from "./telegram.js";
 
 const listing = {
   title: "Mehrfamilienhaus zum Kauf",
@@ -528,5 +528,19 @@ describe("sendTelegramMessage", () => {
     vi.stubGlobal("fetch", vi.fn(async () => antwort(200, "kein-json")));
 
     await expect(sendTelegramMessage(config, "Hallo")).resolves.toBeNull();
+  });
+});
+
+describe("Altcodes tragen denselben Klartext wie ihr heutiger Name (A18-2)", () => {
+  it("uebersetzt kaufpreis_unplausibel wie preis_miete_unvereinbar", () => {
+    // 2 Objekte im Bestand (Messung 2026-09-15) tragen den Namen von vor der
+    // A9-Umbenennung. Der Export uebersetzt, statt die Daten anzufassen.
+    expect(datenlueckeKlartext("kaufpreis_unplausibel")).toBe(
+      datenlueckeKlartext("preis_miete_unvereinbar")
+    );
+  });
+
+  it("beschriftet mietquelle_unbekannt", () => {
+    expect(datenlueckeKlartext("mietquelle_unbekannt")).not.toBe("mietquelle_unbekannt");
   });
 });

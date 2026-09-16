@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { bestimmeSicherheitsstufe, bewerteFuerRangliste, bestimmeVerfuegbarkeitszustand } from "./ranking.js";
+import {
+  bestimmeSicherheitsstufe,
+  bewerteFuerRangliste,
+  bestimmeVerfuegbarkeitszustand,
+  s0Gruende,
+} from "./ranking.js";
 import { berechneKennzahlen, type KennzahlenInput } from "./metrics.js";
 
 describe("bestimmeSicherheitsstufe", () => {
@@ -34,6 +39,14 @@ describe("bestimmeSicherheitsstufe", () => {
         livingAreaM2: 120,
       })
     ).toBe("S0");
+  });
+
+  it("stuft den Altnamen kaufpreis_unplausibel genauso auf S0 wie den heutigen (A18-2)", () => {
+    // Ohne diesen Eintrag bekommen die 2 Altzeilen eine Rangzahl, die auf
+    // genau der Zahl beruht, die als unvereinbar gemeldet wurde.
+    const objekt = { rentSource: "angegeben", dataGaps: ["kaufpreis_unplausibel"], livingAreaM2: 80 };
+    expect(bestimmeSicherheitsstufe(objekt)).toBe("S0");
+    expect(s0Gruende(objekt)).toEqual(["kaufpreis_unplausibel"]);
   });
 
   it("ordnet die drei bewertbaren Stufen zu", () => {
@@ -372,5 +385,50 @@ describe("DSCR_MELDESCHWELLE hat genau eine Quelle (A17)", () => {
 
     vi.doUnmock("./metrics.js");
     vi.resetModules();
+  });
+});
+
+describe("s0Gruende nennt den Grund, aus dem S0 entstanden ist (A18)", () => {
+  it("nennt wohnflaeche_fehlt, wenn die Flaeche fehlt und data_gaps leer ist", () => {
+    // Genau der Befund am ZVG-Objekt 9327fbb0 (Leverkusen, 2026-09-15):
+    // S0 wegen des FELDES living_area_m2, ohne Eintrag in data_gaps.
+    expect(s0Gruende({ rentSource: "geschaetzt_bundesland", dataGaps: [], livingAreaM2: null }))
+      .toEqual(["wohnflaeche_fehlt"]);
+  });
+
+  it("nennt die vorhandene S0-Luecke, ohne sie zu verdoppeln", () => {
+    expect(
+      s0Gruende({ rentSource: "angegeben", dataGaps: ["wohnflaeche_fehlt"], livingAreaM2: null })
+    ).toEqual(["wohnflaeche_fehlt"]);
+  });
+
+  it("nennt eine unbekannte Mietquelle als eigenen Grund", () => {
+    // Der vierte Weg nach S0: rentSource ausserhalb der Aufzaehlung.
+    expect(s0Gruende({ rentSource: null, dataGaps: [], livingAreaM2: 80 }))
+      .toEqual(["mietquelle_unbekannt"]);
+  });
+
+  it("liefert fuer jede andere Stufe eine leere Liste", () => {
+    expect(s0Gruende({ rentSource: "angegeben", dataGaps: [], livingAreaM2: 80 })).toEqual([]);
+  });
+
+  it("nennt fuer JEDES S0-Objekt mindestens einen Grund", () => {
+    // Die eigentliche Zusage. Wer bestimmeSicherheitsstufe um einen
+    // fuenften S0-Weg erweitert und s0Gruende vergisst, faellt hier auf.
+    const faelle = [
+      { rentSource: null, dataGaps: [], livingAreaM2: null },
+      { rentSource: "geschaetzt_regional", dataGaps: ["preis_miete_unvereinbar"], livingAreaM2: 80 },
+      { rentSource: "unbekannt", dataGaps: [], livingAreaM2: 0 },
+      { rentSource: "angegeben", dataGaps: ["rent_estimate_unreliable"], livingAreaM2: 80 },
+      // Der Weg ueber die Mietquelle allein: Flaeche vorhanden, keine Luecke.
+      // Ohne diesen Fall landeten alle anderen schon ueber Luecke oder Flaeche
+      // in S0, und ein fehlender Rueckfall auf `mietquelle_unbekannt` fiele
+      // dieser Schleife nicht auf.
+      { rentSource: "irgendwas_neues", dataGaps: [], livingAreaM2: 80 },
+    ];
+    for (const fall of faelle) {
+      expect(bestimmeSicherheitsstufe(fall)).toBe("S0");
+      expect(s0Gruende(fall).length).toBeGreaterThan(0);
+    }
   });
 });
