@@ -127,34 +127,30 @@ describe.skipIf(!vorhanden)("Vertrag: die echte Snapshot-Datei passt zu den Type
 
   it("laesst KEIN Objekt ohne Kennzahl ohne Text dastehen (3.7) -- gegen alle Objekte", () => {
     // Das ist die Zusicherung, auf die es ankommt: Was der Nutzer sieht.
-    // Sie haelt auch dort, wo der Export selbst keinen Grund liefert (siehe
-    // den Befund unten) -- `gruendeFuerAnzeige` faengt das ab.
+    // Sie haelt auch dort, wo der Export selbst einmal keinen Grund liefern
+    // sollte (siehe die Wache unten) -- `gruendeFuerAnzeige` faengt das ab.
     const ohneText = (snapshot.objekte as SnapshotObjekt[]).filter(
       (o) => o.rangzahl === null && gruendeFuerAnzeige(o).length === 0
     );
     expect(ohneText).toHaveLength(0);
   });
 
-  it("BEFUND: der Export selbst laesst Objekte ohne Grund und reicht rohe Codes durch", () => {
-    // Zwei Befunde am Bestand vom 2026-09-15, beide in `scraper/` zu
-    // beheben und in diesem Schritt ausdruecklich NICHT angefasst. Der Test
-    // misst sie, statt sie zu behaupten, und meldet sie im Fehlertext --
-    // er wird gruen bleiben, wenn sie behoben sind.
+  it("WACHE (A18): jedes S0-Objekt traegt einen Grund, kein Grund ist ein roher Code", () => {
+    // Ehemals ein BEFUND-Test (maass zwei bekannte Verstoesse, statt sie
+    // auszuschliessen). Nach A18-1 (`s0Gruende` in `scraper/lib/ranking.ts`)
+    // und A18-2 (Altname `kaufpreis_unplausibel` beschriftet) gilt beides als
+    // Zusage des Exports, nicht mehr nur als gemessener Zustand -- deshalb
+    // die strenge Form. IDs bzw. Codes als LISTE vergleichen, nicht nur die
+    // Laenge: Faellt die Wache, nennt der Fehlertext genau die Verstoesse.
     const objekte = snapshot.objekte as SnapshotObjekt[];
-    const ohneGrund = objekte.filter((o) => o.rangzahl === null && o.datenluecken.length === 0);
-    const roheCodes = new Set(
-      objekte.flatMap((o) => o.datenluecken).filter((l) => /^[a-z0-9]+(_[a-z0-9]+)+$/.test(l))
-    );
 
-    // Keine Obergrenze, die den Fehler festschreibt -- nur die Zusicherung,
-    // dass die Oberflaeche jeden dieser Faelle auffaengt.
-    for (const objekt of ohneGrund) {
-      expect(gruendeFuerAnzeige(objekt)).toHaveLength(1);
-      expect(gruendeFuerAnzeige(objekt)[0]!.istKlartext).toBe(false);
-    }
-    for (const code of roheCodes) {
-      expect(istRoherCodeImKlartextfeld(code)).toBe(true);
-    }
+    const ohneGrund = objekte.filter((o) => o.stufe === "S0" && o.datenluecken.length === 0);
+    expect(ohneGrund.map((o) => o.id)).toEqual([]);
+
+    const roheCodes = objekte
+      .flatMap((o) => o.datenluecken)
+      .filter((l) => istRoherCodeImKlartextfeld(l));
+    expect([...new Set(roheCodes)]).toEqual([]);
   });
 
   it("haelt bei jedem Band die untere Kante unter oder auf der oberen", () => {

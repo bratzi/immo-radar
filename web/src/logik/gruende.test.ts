@@ -44,13 +44,15 @@ describe("gruendeFuerAnzeige", () => {
   });
 
   it("markiert einen ROHEN Lueckencode als solchen, statt ihn als Satz auszugeben", () => {
-    // Befund am echten Bestand: `kaufpreis_unplausibel` steht in
-    // `data_gaps`, hat aber keinen Eintrag in DATA_GAP_LABELS
-    // (scraper/lib/telegram.ts) und kommt deshalb ROH im Snapshot an.
-    // Die Oberflaeche baut KEINE zweite Klartext-Tabelle -- sie zeigt den
+    // `irgendein_neuer_code` ist ERFUNDEN, kein Beispiel aus dem Bestand:
+    // Der bisherige Beleg `kaufpreis_unplausibel` traegt seit A18-2 einen
+    // Eintrag in DATA_GAP_LABELS (scraper/lib/telegram.ts) und liefe hier am
+    // falschen Anlass weiter. Die Wache bleibt trotzdem noetig -- die
+    // naechste Umbenennung ohne nachgezogenes Label faellt genauso auf. Die
+    // Oberflaeche baut dafuer KEINE zweite Klartext-Tabelle -- sie zeigt den
     // Code und sagt dazu, dass er keiner ist.
-    const gruende = gruendeFuerAnzeige(objekt({ datenluecken: ["kaufpreis_unplausibel"] }));
-    expect(gruende).toEqual([{ text: "kaufpreis_unplausibel", istKlartext: false }]);
+    const gruende = gruendeFuerAnzeige(objekt({ datenluecken: ["irgendein_neuer_code"] }));
+    expect(gruende).toEqual([{ text: "irgendein_neuer_code", istKlartext: false }]);
   });
 
   it("erkennt einen Klartext auch dann, wenn er Unterstriche im Satz haette", () => {
