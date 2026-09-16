@@ -568,4 +568,37 @@ describe("baueSnapshot: jedes S0-Objekt traegt seinen Grund (A18-1)", () => {
       "Wohnfläche fehlt",
     ]);
   });
+
+  it("nennt denselben Klartext nur einmal, auch wenn Altname und heutiger Name zusammen stehen", () => {
+    // Pruefung Runde 1, M-4: Zwei VERSCHIEDENE Codes mit demselben Klartext
+    // (`kaufpreis_unplausibel` ist der Altname von `preis_miete_unvereinbar`)
+    // ueberstehen eine Entdopplung auf Code-Ebene und stuenden als derselbe
+    // Satz zweimal da. Heute 0 Faelle im Bestand.
+    const snapshot = baueSnapshot(
+      eingabe({
+        versionen: [
+          version("a", { data_gaps: ["kaufpreis_unplausibel", "preis_miete_unvereinbar"] }),
+        ],
+      }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].stufe).toBe("S0");
+    expect(snapshot.objekte[0].datenluecken).toEqual([
+      "Preis und Miete unvereinbar — eine der beiden Zahlen stimmt nicht",
+    ]);
+  });
+
+  it("nennt den Weg ueber eine unbekannte Mietquelle im Klartext", () => {
+    // Pruefung Runde 1, M-6: Der einzige S0-Weg, dessen Grund in keiner
+    // `data_gaps`-Zeile steht und nur aus `s0Gruende` kommt. Flaeche vorhanden,
+    // keine Luecke, `rent_source` leer.
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { rent_source: null, data_gaps: [] })] }),
+      JETZT
+    );
+    expect(snapshot.objekte[0].stufe).toBe("S0");
+    expect(snapshot.objekte[0].datenluecken).toEqual([
+      "Mietquelle unbekannt — die Miete ist nicht einzuordnen",
+    ]);
+  });
 });
