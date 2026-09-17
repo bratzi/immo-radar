@@ -289,7 +289,20 @@ export function regionsLaufZeile(source: string, lauf: RegionLauf): Record<strin
     partition: lauf.partition,
     gesehene_objekte: lauf.gesehene,
     gemeldete_treffer: lauf.gemeldeteTreffer,
-    vollstaendig: lauf.vollstaendig,
+    // FAIL-CLOSED AN DER SCHREIBSTELLE, nicht nur beim Rechnen. Ohne
+    // Trefferzahl gibt es keinen Massstab, an dem Vollstaendigkeit zu messen
+    // waere -- die Kombination ist in sich widerspruechlich. Heute kann
+    // `istRegionVollstaendig` sie nicht mehr erzeugen (fail-closed seit
+    // Commit ed46f36, 2026-09-09 08:27 UTC); die acht Altzeilen in
+    // `sweep_region_runs` stammen saemtlich von davor, gemessen in
+    // specs/2026-09-16-vollstaendig-ohne-trefferzahl.md.
+    //
+    // WARNUNG AN A16: Der zweite Vollstaendigkeitsmassstab fuer Regionen ohne
+    // ausgewiesene Menge laeuft hier gegen eine Sperre. Das ist Absicht. Wer
+    // ihn baut, muss diese Zeile AUSDRUECKLICH aufheben und dabei sagen,
+    // woran Vollstaendigkeit dann gemessen wird -- `vollstaendig` ist die
+    // Wache vor der Massenloeschung, sie darf nicht nebenbei aufgehen.
+    vollstaendig: lauf.gemeldeteTreffer === null ? false : lauf.vollstaendig,
   };
 }
 

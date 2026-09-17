@@ -269,11 +269,20 @@ function medianOderNull(werteRoh: number[]): number | null {
  * Schritt 4 ist der Kern und keine Kosmetik. Gemessen am 2026-09-15 tragen
  * `nw`, `bw`, `mv` und `sh` in `sweep_region_runs` NULL Zeilen mit
  * `gemeldete_treffer`; `istRegionVollstaendig` kann fuer sie seit der
- * Fail-closed-Umstellung nie mehr `true` liefern. Ihre `vollstaendig`-Zeilen
- * stammen alle vom 2026-09-08/09, also von davor. Ohne Schritt 4 bekaeme `nw`
- * aus drei solchen Altzeilen eine Kadenz von 0,44 Tagen und der ganze
+ * Fail-closed-Umstellung nie mehr `true` liefern. Dass ihre
+ * `vollstaendig`-Zeilen alle von davor stammen, ist seit dem 2026-09-16
+ * gemessen und nicht mehr nur behauptet: acht Zeilen, die juengste vom
+ * 2026-09-09T08:10:35Z, also 16 Minuten vor der Umstellung (Commit ed46f36,
+ * 2026-09-09 08:27 UTC). Seitdem sind 184 weitere Zeilen entstanden, 51 davon
+ * `vollstaendig = true` -- jede mit Trefferzahl. Belege und Abfrage:
+ * specs/2026-09-16-vollstaendig-ohne-trefferzahl.md. Ohne Schritt 4 bekaeme
+ * `nw` aus drei solchen Altzeilen eine Kadenz von 0,44 Tagen und der ganze
  * NRW-Bestand hiesse "verfuegbar" -- aus einer Region, aus der nie ein Abgang
  * erkannt wird.
+ *
+ * Die Altzeilen koennen seit dem 2026-09-16 auch nicht mehr neu entstehen:
+ * `regionsLaufZeile` sperrt die Kombination an der Schreibstelle. Schritt 4
+ * bleibt trotzdem, denn die acht Altzeilen stehen weiter in der Tabelle.
  *
  * WELCHE REGION KEINE VOLLSTAENDIGKEIT BELEGEN KANN, WIRD DAMIT AUS DEN DATEN
  * ABGELEITET und nirgends aufgezaehlt. Eine Liste `["nw","bw","mv"]` waere
