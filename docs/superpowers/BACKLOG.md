@@ -1047,17 +1047,47 @@ mit genau diesem Titel schreiben, dann das Muster erweitern.
 **Abnahme:** erfüllt — die Frage ist beantwortet. Sie liefert weiterhin `null`,
 und jetzt ist belegt, dass das an der Quelle liegt und nicht am Code.
 
+**NACHTRAG 2026-09-16 — es sind VIER Regionen, nicht drei.** Diese Aufgabe
+und der lange Kommentar an `istRegionVollstaendig`
+(`scraper/scrapers/immowelt/index.ts`) kannten nur `nw`, `bw` und `mv`. Eine
+erneute, breitere Messung gegen `sweep_region_runs` (16 Regionen, 210 Zeilen,
+2026-09-08 bis 2026-09-16) zeigt: **`sh` gehört dazu.** Für `nw`, `bw`, `mv`
+und `sh` trägt jede Zeile `gemeldete_treffer = null`, für alle zwölf übrigen
+Regionen nie. Details, Abfrage und Tabelle je Region:
+`docs/superpowers/specs/2026-09-16-regionen-ohne-trefferzahl.md`.
+
+Die alte Zahl „5 von 21 Regionsläufen" oben bleibt als Stand 2026-09-09
+stehen — sie stammt aus einem einzelnen Produktionslauf und wurde nicht neu
+gemessen, nur eingeordnet.
+
+**Folge für A16:** Der dort entworfene zweite Vollständigkeitsmaßstab braucht
+jetzt einen Bestand mehr, als A16 annimmt — nicht drei Regionen ohne
+ausgewiesene Menge, sondern vier (`nw`, `bw`, `mv`, `sh`). Jede Formulierung
+in A16, die von „den drei Regionen" ausgeht, gilt sinngemäß auch für `sh`.
+
+**Folge für B1:** Der dort geforderte Filter „`nw`, `bw` und `mv` zählen erst
+wieder mit, wenn ihre Trefferzahl parst" muss `sh` einschließen — sonst
+zählt B1 eine vierte Region fälschlich als möglichen Referenzlauf-Kandidaten,
+sobald sie zufällig `vollstaendig=true` mit `null`-Trefferzahl aus der
+Altzeit vor 2026-09-09 trägt (B1 listet `sh` unter den Altzeilen bereits
+auf, nennt es aber im Fließtext nicht).
+
 ---
 
 ## A16. Ein zweiter Vollständigkeitsmaßstab für Regionen ohne ausgewiesene Menge
 
 **Entsteht aus dem A15-Befund** und ist die Voraussetzung für B1, seit
-feststeht, dass `nw`, `bw` und `mv` ihre Trefferzahl nie nennen.
+feststeht, dass `nw`, `bw`, `mv` und `sh` ihre Trefferzahl nie nennen
+(Nachtrag 2026-09-16 zu A15: ursprünglich waren nur drei Regionen bekannt,
+`sh` kam bei einer breiteren Messung dazu — siehe
+`docs/superpowers/specs/2026-09-16-regionen-ohne-trefferzahl.md`). Der
+folgende Text spricht noch von „den drei Regionen"; gemeint sind seit dem
+Nachtrag vier.
 
 **Das Problem:** `istRegionVollstaendig` misst die eingesammelte Menge gegen
 die vom Portal gemeldete. Nennt das Portal keine, ist die Region fail-closed
-unvollständig — richtig, aber dauerhaft. Die drei größten Regionen sammeln so
-nie Referenzläufe an.
+unvollständig — richtig, aber dauerhaft. Die (heute: vier) größten von der
+Trefferzahl abgeschnittenen Regionen sammeln so nie Referenzläufe an.
 
 **Der naheliegende zweite Maßstab: die eigene Historie derselben Region.**
 `sweep_region_runs` sammelt sie bereits. Für `nw` steht dort 6823, 6895, 6965 —
@@ -1394,8 +1424,9 @@ existierte, und zwar ausgerechnet für die größte Region. `started_at >=
 Stand 2026-09-08: vier Regionen mit je einem Lauf (`br`, `st`, `th`, `sl`).
 Die Fortsetzungsrotation lässt diese Zahl seit 2026-09-09 planbar wachsen —
 Median 5,7 statt 13,1 Tage bis drei Referenzläufe je Region. **A15 ist
-Voraussetzung:** `nw`, `bw` und `mv` zählen erst wieder mit, wenn ihre
-Trefferzahl parst.
+Voraussetzung:** `nw`, `bw`, `mv` und `sh` zählen erst wieder mit, wenn ihre
+Trefferzahl parst (Nachtrag 2026-09-16 zu A15: `sh` gehört zu dieser Menge
+dazu, siehe `docs/superpowers/specs/2026-09-16-regionen-ohne-trefferzahl.md`).
 
 **Zu entwerfen:** Die Mengenplausibilität ist heute quellenweit
 (`lib/plausibilitaet.ts`, Median aus `sweep_runs`). Für regionsgenaues Löschen

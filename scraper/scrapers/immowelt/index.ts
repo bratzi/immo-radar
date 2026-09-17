@@ -154,18 +154,29 @@ const REGION_FEHLBETRAG_TOLERANZ = 0.25;
  * - `gemeldet === null`: immer `false`, seit 2026-09-09 auch bei
  *   `gesammelt > 0`. Vorher stand hier `true`, und das war die zweite der
  *   drei Fail-open-Stellen aus dem B-2-Entwurf. Ohne Trefferzahl gibt es
- *   keinen Massstab, an dem sich die eingesammelte Menge messen liesse, und
- *   der Titel parst ausgerechnet fuer `nw`, `bw` und `mv` nicht -- 5 von 21
- *   Regionslaeufen, darunter die beiden groessten Regionen. Deren
- *   Vollstaendigkeit ruhte damit auf "mehr als null Karten": Ein Lauf, der
- *   `nw` soft-geblockt mit einer einzigen Karte einsammelt, galt als
- *   vollstaendig -- und haette bei regionsgenauer Loeschhoheit 1.160 echte
- *   Objekte zu Abgaengen erklaert (am Saettigungspunkt ~6.900).
+ *   keinen Massstab, an dem sich die eingesammelte Menge messen liesse.
+ *   Betroffen sind AKTUELL VIER Regionen, nicht drei: `nw`, `bw`, `mv` und
+ *   `sh` -- gemessen am 2026-09-16 gegen `sweep_region_runs`, siehe
+ *   `docs/superpowers/specs/2026-09-16-regionen-ohne-trefferzahl.md`. Die
+ *   aeltere Zahl "5 von 21 Regionslaeufen" (ohne `sh`) ist Stand 2026-09-09
+ *   und stammt aus einem einzelnen Produktionslauf, nicht aus dieser
+ *   Messung -- siehe A15 im Backlog. Deren Vollstaendigkeit ruhte damit auf
+ *   "mehr als null Karten": Ein Lauf, der `nw` soft-geblockt mit einer
+ *   einzigen Karte einsammelt, galt als vollstaendig -- und haette bei
+ *   regionsgenauer Loeschhoheit 1.160 echte Objekte zu Abgaengen erklaert
+ *   (am Saettigungspunkt ~6.900).
+ *
+ *   WICHTIG: Diese vier Regionen stehen hier nur als Beleg fuer die Messung
+ *   vom 2026-09-16, nicht als Liste, auf die sich Code verlassen darf. Die
+ *   Menge wird an keiner Stelle im Code aufgezaehlt -- `schaetzeRegionsKadenzen`
+ *   (`scraper/lib/snapshot.ts:265-280`) leitet sie bewusst aus den Daten ab,
+ *   weil eine feste Liste schon beim Schreiben veraltet waere (so geschehen
+ *   mit `sh`, das erst am 2026-09-16 zu dieser Aufzaehlung dazukam).
  *
  *   Was das heute kostet: nichts an den Daten. `vollstaendig` ist im
  *   Immowelt-Sweep-Ergebnis ohnehin hart `false`, es wird nichts geloescht.
  *   Es verhindert nur, dass unbelegte Regionen als Referenzlaeufe zaehlen --
- *   und macht damit sichtbar, dass die Trefferzahl fuer diese drei Regionen
+ *   und macht damit sichtbar, dass die Trefferzahl fuer diese Regionen
  *   erst gemessen werden muss. WARUM der Titel dort nicht parst, ist bis
  *   heute nicht gemessen; deshalb wird das Muster hier auch nicht geraten
  *   angepasst, sondern der echte Titel protokolliert (siehe
@@ -197,8 +208,9 @@ const TITEL_LOG_LAENGE = 140;
  *
  * Eigene Funktion, damit sie unter Test steht -- der wichtigste Fall ist die
  * FEHLENDE Trefferzahl, und der ist heute ein Messauftrag, keine Diagnose:
- * Fuer `nw`, `bw` und `mv` liefert `trefferzahlAusTitel` null, und warum, ist
- * nicht gemessen. Timing ist eine Hypothese (der Titel wird unmittelbar nach
+ * Fuer `nw`, `bw`, `mv` und `sh` liefert `trefferzahlAusTitel` null (Stand
+ * 2026-09-16, siehe `istRegionVollstaendig` oben), und warum, ist nicht
+ * gemessen. Timing ist eine Hypothese (der Titel wird unmittelbar nach
  * `domcontentloaded` gelesen, siehe `regionErfassen`), ein Formatwechsel eine
  * zweite. Deshalb steht der Titel hier WOERTLICH im Log: Ein einziger Lauf
  * entscheidet die Frage, ohne dass jemand ein neues Muster raten muss.
@@ -385,8 +397,9 @@ export async function regionErfassen(
   // Seite 1 pro Region ein (siehe scrapers/consent.ts).
   if (!consentBereitsBestaetigt) await bestaetigeConsentBanner(page);
   // Der Titel wird auch dann festgehalten, wenn er nicht parst -- er ist der
-  // einzige Weg, die offene Frage zu `nw`, `bw` und `mv` zu messen statt sie
-  // zu raten (siehe `regionUnvollstaendigMeldung`).
+  // einzige Weg, die offene Frage zu den betroffenen Regionen (Stand
+  // 2026-09-16: `nw`, `bw`, `mv`, `sh` -- siehe `istRegionVollstaendig`) zu
+  // messen statt sie zu raten (siehe `regionUnvollstaendigMeldung`).
   const titel = await page.title();
   const gemeldet = trefferzahlAusTitel(titel);
 
