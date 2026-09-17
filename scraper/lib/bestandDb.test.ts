@@ -48,6 +48,23 @@ describe("regionsLaufZeile", () => {
     expect(zeile.gemeldete_treffer).toBeNull();
     expect(zeile.gesehene_objekte).toBe(0);
   });
+
+  it("schreibt nie vollstaendig=true ohne gemeldete Trefferzahl", () => {
+    // Der Befund vom 2026-09-15: solche Zeilen stehen in der Datenbank -- acht
+    // Stueck, aus `nw`, `mv`, `bw` und `sh`. Sie stammen alle von vor der
+    // Fail-closed-Umstellung (Commit ed46f36, 2026-09-09 08:27 UTC; die
+    // juengste Zeile liegt 16 Minuten davor, belegt in
+    // specs/2026-09-16-vollstaendig-ohne-trefferzahl.md). Dieser Test haelt
+    // fest, dass sie nicht wiederkommen koennen -- die Kombination ist in sich
+    // widerspruechlich: "vollstaendig" ohne Massstab.
+    const zeile = regionsLaufZeile("immowelt", {
+      partition: "nw",
+      gesehene: 1160,
+      gemeldeteTreffer: null,
+      vollstaendig: true,
+    });
+    expect(zeile.vollstaendig).toBe(false);
+  });
 });
 
 /**

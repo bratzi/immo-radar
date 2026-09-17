@@ -1115,6 +1115,17 @@ auf; genau das ist der Fall, den die Wache abfangen muss.
 vollständig gilt, und daran hängt später die regionsgenaue Löschhoheit. Ein
 Fail-open hier kostet bei `nw` bis zu 6.900 Objekte.
 
+**Eine Sperre steht seit A18-6 ausdrücklich im Weg.** `regionsLaufZeile`
+(`scraper/lib/bestandDb.ts`) schreibt seit dem 2026-09-16 `vollstaendig: false`,
+sobald `gemeldeteTreffer === null` ist — fail-closed an der Schreibstelle, nicht
+nur im Rechenweg. Genau die Regionen, für die A16 einen zweiten Maßstab bauen
+will, nennen ihre Trefferzahl nie; ihre Zeilen laufen also gegen diese Sperre.
+**Das ist Absicht:** A16 muss sie ausdrücklich aufheben und dabei benennen,
+woran Vollständigkeit dann stattdessen gemessen wird — und wo der neue Maßstab
+in der Zeile landet, damit `vollstaendig = true` nie wieder ohne Maßstab
+dasteht. Hintergrund und Messung:
+`specs/2026-09-16-vollstaendig-ohne-trefferzahl.md`.
+
 ## GEMESSEN am 2026-09-09 — und es ist keine der drei Vermutungen
 
 Zwei Prüfläufe gegen `nw` über `pruefung.yml`, je **eine** Ergebnisseite.
