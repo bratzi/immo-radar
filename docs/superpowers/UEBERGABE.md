@@ -1,4 +1,4 @@
-# Übergabe — Stand 2026-09-16
+# Übergabe — Stand 2026-09-17
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
 > (woran „die Basis steht" gemessen wird), dann [`BACKLOG.md`](BACKLOG.md) und
@@ -9,17 +9,18 @@
 
 ## Wo wir stehen
 
-**Das Dashboard existiert.** `main` = `origin/main` = `d032b53`,
+**Das Dashboard existiert.** `main` = `origin/main` = `fb4ceaa` (Runde 3
+abgeschlossen),
 Arbeitsverzeichnis sauber, keine Worktrees, keine offenen Zweige.
-**524 Scraper-Tests und 103 Web-Tests grün** (1 übersprungen; mit
+**525 Scraper-Tests und 103 Web-Tests grün** (1 übersprungen; mit
 Snapshot-Datei), `tsc` in beiden sauber, `vite build` grün.
 
 **Laufender Plan:** [`plans/2026-09-16-a18-und-die-zwei-funde.md`](plans/2026-09-16-a18-und-die-zwei-funde.md).
-Runde 1 (A18-1, A18-2) und Runde 2 (A18-3, A18-4, `d032b53`) sind gemergt.
-**Als Nächstes Runde 3** (Aufgabe 5+6). **Die Snapshot-Datei hat seit Runde 2
-ein neues Format** (Ast `konstanten`, Feld `kaufpreisfaktor`). Eine ältere
-Datei lehnt die Oberfläche jetzt mit einer Fehlermeldung ab, also neu
-erzeugen. **Offen aus Runde 2:** Die Zeile mit dem Kaufpreisfaktor wurde
+Runde 1 (A18-1, A18-2), Runde 2 (A18-3, A18-4) und **Runde 3 (A18-5, A18-6, `fb4ceaa`) sind gemergt.**
+**Als Nächstes Runde 4** (Aufgabe 7, CI-Artefakt, braucht Freigabe). **Runde 3-Befunde sind dokumentiert:**
+- A18-5: Schleswig-Holstein ist die vierte Region ohne Trefferzahl-Auszeichnung (neben nw, bw, mv). Spec: `specs/2026-09-16-regionen-ohne-trefferzahl.md`.
+- A18-6: Acht Zeilen mit `vollstaendig=true` ohne `gemeldete_treffer` waren Altlast von vor der Fail-closed-Umstellung. Wache eingebaut: `regionsLaufZeile` schreibt nie mehr diese Kombination. Spec: `specs/2026-09-16-vollstaendig-ohne-trefferzahl.md`.
+**Offen aus Runde 2:** Die Zeile mit dem Kaufpreisfaktor wurde
 noch nicht im Browser angesehen, weil der Browserzugriff gesperrt war.
 Der Fortschritt steht im git-ignorierten Ledger
 `.superpowers/sdd/2026-09-16-a18-und-die-zwei-funde/progress.md`, Abschnitt
