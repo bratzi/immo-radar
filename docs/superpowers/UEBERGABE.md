@@ -322,15 +322,61 @@ Nutzers oder ein Brainstorming brauchen:
 1. **Veröffentlichung einrichten — ERLEDIGT am 2026-09-19**, live und
    verifiziert unter <https://immo-radar-dashboard.pages.dev>. Details im
    Abschnitt „Dashboard-Veröffentlichung" oben.
-2. **A16** — zweiter Vollständigkeitsmaßstab für die vier Regionen ohne
+2. **Karte als Dreh- und Angelpunkt — Entwurf fertig, ausdrücklich vom
+   Nutzer priorisiert.** Spec:
+   [`specs/2026-09-19-karte-dreh-und-angelpunkt-design.md`](specs/2026-09-19-karte-dreh-und-angelpunkt-design.md).
+   Hover in der Tabelle hebt den PLZ-Punkt bzw. die Bundesland-Kachel
+   hervor, sofortiges gestyltes Tooltip, Klick auf einen PLZ-Punkt filtert,
+   Karte wird eigene sticky Spalte. **Noch nicht vom Nutzer gegengelesen**
+   (Sitzung endete direkt nach dem Schreiben) — kurz bestätigen lassen,
+   dann `superpowers:writing-plans`, dann Umsetzung. **Dabei die neu
+   installierten Skills `web-design-guidelines` und `react-best-practices`
+   verwenden** (Nutzerauftrag, siehe „Neu installierte Skills" unten) —
+   das gilt für diese Aufgabe UND als Standardpraxis für jede künftige
+   Arbeit an `web/`.
+3. **A16** — zweiter Vollständigkeitsmaßstab für die vier Regionen ohne
    Trefferzahl (`nw`, `bw`, `mv`, `sh`). **Der einzige verbleibende Block
    für B1**: alle anderen 12 Immowelt-Regionen und alle 16 ZVG-Regionen
    erfüllen die Drei-Referenzläufe-Schwelle bereits (gemessen 2026-09-18).
    Brainstorming am 2026-09-19 begonnen und bewusst zurückgestellt zugunsten
-   der Veröffentlichung — bei Wiederaufnahme neu anfangen, die drei offenen
-   Themen sind nicht schriftlich festgehalten (siehe oben).
-3. Danach der übliche Rückstand: A10 (Cron-Takt, Abwägung des Nutzers),
+   der Veröffentlichung und dann der Karte — bei Wiederaufnahme neu
+   anfangen, die drei offenen Themen sind nicht schriftlich festgehalten
+   (siehe oben).
+4. Danach der übliche Rückstand: A10 (Cron-Takt, Abwägung des Nutzers),
    A11 Schritt 4 (darf eine bundeslandgenaue Schätzung überhaupt melden?).
+
+## Neu installierte Skills (2026-09-19)
+
+Auf Nutzerauftrag von <https://collectivebrain.de/skills/> ausgesucht.
+**Wichtiger Befund zu dieser Seite:** Es ist ein **Drittanbieter-Verzeichnis**
+(deutsche Agentur), keine offizielle Anthropic-Quelle, und **eine
+Herkunftsangabe stimmte nachweislich nicht** — der dort als „stammt von
+Anthropic, offizielles Repository" beworbene „Accessibility Review
+(WCAG 2.1 AA)"-Skill existiert im echten `github.com/anthropics/skills`
+nicht (geprüft durch Klonen des Repos und Abgleich der Skill-Liste). **Nicht
+installiert.** Bei künftigem Interesse an Skills von dieser Seite: erst die
+Herkunftsangabe an der genannten Quelle nachprüfen, nicht blind installieren
+— siehe [[collectivebrain-drittanbieter-skills]].
+
+**Zwei Skills mit echter, verifizierter Herkunft installiert** — direkt aus
+`github.com/vercel-labs/agent-skills`, nicht über collectivebrains Spiegel:
+
+- **`web-design-guidelines`** — prüft UI-Code gegen Vercels „Web Interface
+  Guidelines" (Layout, UX, Formulare, Barrierefreiheit). Holt die
+  Richtlinien bei jedem Aufruf frisch von
+  `raw.githubusercontent.com/vercel-labs/web-interface-guidelines`.
+- **`react-best-practices`** — 70 Performance-/DX-Regeln für React in
+  8 Kategorien, passend zu `web/`.
+
+Beide liegen in `~/.claude/skills/<name>/` (User-Scope, nicht im Repo) und
+sind **bereits aktiv getestet** — anders als das Cloudflare-Plugin aus
+Runde davor kamen sie ohne Sitzungsneustart in die Skill-Liste.
+
+**Standing Approach (Nutzerauftrag 2026-09-19):** Diese Skills bei jeder
+Web-Arbeit einsetzen, nicht nur beim Karten-Feature — und bei künftigen
+Aufgaben allgemein prüfen, ob ein passender Skill (von collectivebrain.de
+oder anderswo) einen echten Vorteil für Webseite, Scraper oder das
+Gesamtprojekt bringt, dann einsetzen.
 
 ## Wie man am Dashboard weiterarbeitet
 
