@@ -1,4 +1,4 @@
-# Übergabe — Stand 2026-09-17
+# Übergabe — Stand 2026-09-18
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
 > (woran „die Basis steht" gemessen wird), dann [`BACKLOG.md`](BACKLOG.md) und
@@ -9,22 +9,51 @@
 
 ## Wo wir stehen
 
-**Das Dashboard existiert.** `main` = `origin/main` = `fb4ceaa` (Runde 3
-abgeschlossen),
-Arbeitsverzeichnis sauber, keine Worktrees, keine offenen Zweige.
-**525 Scraper-Tests und 103 Web-Tests grün** (1 übersprungen; mit
-Snapshot-Datei), `tsc` in beiden sauber, `vite build` grün.
+**Das Dashboard existiert und der Snapshot fällt jetzt aus dem Lauf heraus.**
+`main` = `origin/main` = `0f3465d`, Arbeitsverzeichnis sauber, keine
+Worktrees mit eigenen Änderungen, keine offenen Zweige.
+**526 Scraper-Tests und 103 Web-Tests grün** (1 übersprungen), `tsc` in
+beiden sauber, `vite build` grün — frisch gegen `main` geprüft, nicht nur
+behauptet.
 
-**Laufender Plan:** [`plans/2026-09-16-a18-und-die-zwei-funde.md`](plans/2026-09-16-a18-und-die-zwei-funde.md).
-Runde 1 (A18-1, A18-2), Runde 2 (A18-3, A18-4) und **Runde 3 (A18-5, A18-6, `fb4ceaa`) sind gemergt.**
-**Als Nächstes Runde 4** (Aufgabe 7, CI-Artefakt, braucht Freigabe). **Runde 3-Befunde sind dokumentiert:**
-- A18-5: Schleswig-Holstein ist die vierte Region ohne Trefferzahl-Auszeichnung (neben nw, bw, mv). Spec: `specs/2026-09-16-regionen-ohne-trefferzahl.md`.
-- A18-6: Acht Zeilen mit `vollstaendig=true` ohne `gemeldete_treffer` waren Altlast von vor der Fail-closed-Umstellung. Wache eingebaut: `regionsLaufZeile` schreibt nie mehr diese Kombination. Spec: `specs/2026-09-16-vollstaendig-ohne-trefferzahl.md`.
-**Offen aus Runde 2:** Die Zeile mit dem Kaufpreisfaktor wurde
-noch nicht im Browser angesehen, weil der Browserzugriff gesperrt war.
-Der Fortschritt steht im git-ignorierten Ledger
+**Der Plan [`plans/2026-09-16-a18-und-die-zwei-funde.md`](plans/2026-09-16-a18-und-die-zwei-funde.md)
+ist mit Runde 4 vollständig abgeschlossen** — alle sieben Aufgaben gemergt.
+**Runde 4 (Aufgabe 7, CI-Artefakt, `f64a724`):** `scrape.yml` lädt
+`dashboard-snapshot.json` jetzt als Artefakt `dashboard-snapshot` hoch
+(`retention-days: 7`, `if-no-files-found: warn`). **An einem echten,
+manuell ausgelösten Lauf verifiziert** (`35394015407`, 2026-09-18
+20:54–21:27 UTC, `conclusion=success`): Artefakt vorhanden, 3.184.899 Bytes
+komprimiert, Logzeile `Snapshot geschrieben: ... 22130 Objekte, 23.56 MB
+(24705879 Bytes)` deckungsgleich mit den Metadaten der API
+(`gh api .../actions/runs/35394015407/artifacts`). Diese Aufgabe lag beim
+Koordinator, nicht bei einem Subagenten — `.github/workflows/` bleibt ohne
+Freigabe des Nutzers gesperrt, hier lag die Freigabe vor.
+
+**Parallel dazu, während der Verifikationslauf im Hintergrund lief, erledigt:**
+- **A18 Notiz M-8** (`ce44cab`/`cc3be33`): `rangzahl` trägt jetzt dieselbe
+  `endlichOderNull`-Absicherung wie der Kaufpreisfaktor — ein gespeicherter
+  Nullpreis konnte den DSCR sonst nach `Infinity` treiben, was die
+  Vertragswache (prüft nur `stufe === "S0"`) nicht bemerkt hätte. Per
+  Subagent + TDD, vom Koordinator unabhängig nachverifiziert (Diff gelesen,
+  Fix temporär zurückgesetzt, roten Zustand selbst gesehen).
+- **Kaufpreisfaktor im Browser angesehen** (Rest aus Runde 2): lokaler
+  Snapshot frisch aus der Produktions-DB (21.897 Objekte), Dev-Server,
+  headless per Playwright geprüft — die Zelle „150 m² · 473 €/m² · 5,0×"
+  erscheint wie vorgesehen, keine Konsolenfehler.
+- **BACKLOG-Korrekturen ohne Codeänderung:** A13 Schritt 2 war seit `ea8b731`
+  (2026-09-11) längst erledigt, nur die Checkbox stand offen. **B1-Messung:**
+  12 von 16 Immowelt-Regionen und alle 16 ZVG-Regionen erreichen inzwischen
+  die Drei-Referenzläufe-Schwelle — **A16 ist damit der einzige verbleibende
+  Block für B1**, nicht mehr „zu wenig Läufe". **D-5** zweite Hälfte:
+  seit 2026-09-11 sind über 1.184 Meldungen erstmals 12 ZVG-Meldungen und
+  12 Objekte mit `geschaetzt_regional` aufgetaucht (6 von 981
+  Prüfkandidat-Meldungen) — nicht mehr rein hypothetisch, weiterhin kleine
+  Minderheit.
+
+**Offen aus Runde 2** (Kaufpreisfaktor) ist damit erledigt. Der Fortschritt
+der Runde 1–3 steht weiterhin im git-ignorierten Ledger
 `.superpowers/sdd/2026-09-16-a18-und-die-zwei-funde/progress.md`, Abschnitt
-„SITZUNGSENDE". Dort liegt auch das Skript, das den Snapshot erzeugt.
+„SITZUNGSENDE".
 
 Die Schritte 2 bis 7 des Entwurfs sind damit durch: `lib/ranking.ts`
 (Schritt 2), der Snapshot-Export (Schritt 3) und die Weboberfläche unter
@@ -192,25 +221,26 @@ Nutzer.
 
 ## Was als Nächstes zu tun ist
 
-1. **Der Snapshot muss aus dem Lauf herausfallen.** Der Export läuft am Ende
-   jedes Laufs, aber `.github/workflows/scrape.yml` veröffentlicht die Datei
-   noch nicht als Artefakt. **Bewusst offen gelassen:** Kein Agent durfte an
-   `.github/workflows/` — ein kaputter Workflow legt die Produktion still.
-   Das ist ein kleiner, eigener Schritt mit eigener Prüfung.
-2. **Veröffentlichung einrichten** (E-8 ist entschieden, nichts davon steht):
+**A18 ist jetzt vollständig erledigt** — alle vier ursprünglichen Befunde
+plus die Notiz M-8 (`rangzahl` ohne `endlichOderNull`). Der Plan
+`2026-09-16-a18-und-die-zwei-funde.md` ist mit Runde 4 (CI-Artefakt)
+abgeschlossen. Übrig sind nur noch Punkte, die eine Entscheidung des
+Nutzers oder ein Brainstorming brauchen:
+
+1. **Veröffentlichung einrichten** (E-8 ist entschieden, nichts davon steht):
    Cloudflare Pages für die gebaute Seite, davor Cloudflare Access mit
    E-Mail-Einmalcode an genau die eine erlaubte Adresse. Braucht Zugänge, die
-   nur der Nutzer hat.
-3. **A18** — die vier Befunde am Export, die der Bau der Oberfläche
-   aufgedeckt hat. **Alle vier Punkte sind erledigt.** Punkt 1 und 2
-   (`8025a42`): Jedes S0-Objekt trägt seinen Grund. Punkt 3 und 4
-   (`d032b53`): Kaufpreisfaktor am Objekt, Karenz und Meldeschwelle kommen
-   aus dem Export. Offen bleibt die Notiz M-8 (`rangzahl` ohne
-   `endlichOderNull`, siehe BACKLOG A18).
-4. **Die beiden ungesuchten Funde nachgehen** (siehe oben): `sh` als vierte
-   Region ohne Abgangserkennung — der Kommentar an `istRegionVollstaendig`
-   nennt nur drei — und `vollstaendig=true` ohne `gemeldete_treffer`.
-5. Danach der übliche Rückstand: A10 (Cron-Takt), A11 Schritt 3 und 4, B-1.
+   nur der Nutzer hat. **Der Snapshot ist jetzt abholbar** (Artefakt
+   `dashboard-snapshot` an jedem Lauf) — nichts Technisches blockiert das
+   mehr.
+2. **A16** — zweiter Vollständigkeitsmaßstab für die vier Regionen ohne
+   Trefferzahl (`nw`, `bw`, `mv`, `sh`). **Jetzt der einzige verbleibende
+   Block für B1**: alle anderen 12 Immowelt-Regionen und alle 16
+   ZVG-Regionen erfüllen die Drei-Referenzläufe-Schwelle bereits (gemessen
+   2026-09-18). Braucht zuerst `superpowers:brainstorming` — berührt die
+   Löschhoheit.
+3. Danach der übliche Rückstand: A10 (Cron-Takt, Abwägung des Nutzers),
+   A11 Schritt 4 (darf eine bundeslandgenaue Schätzung überhaupt melden?).
 
 ## Wie man am Dashboard weiterarbeitet
 
