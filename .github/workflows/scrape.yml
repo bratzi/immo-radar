@@ -73,3 +73,15 @@ jobs:
       # virtuelles Display bereit, sonst kann kein Fenstermodus starten.
       - run: xvfb-run --auto-servernum npm run scrape
         working-directory: scraper
+      # Der Snapshot ist ein Nebenprodukt des Laufs (scraper/main.ts, ganz am
+      # Ende, nur lesend). `if: always()` weil er auch dann brauchbar ist,
+      # wenn ein spaeterer Schritt scheitert -- und `if-no-files-found: warn`,
+      # weil ein fehlender Snapshot einen sonst erfolgreichen Lauf nicht rot
+      # faerben darf: Alles Wesentliche steht bereits in der Datenbank.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dashboard-snapshot
+          path: scraper/snapshot/dashboard-snapshot.json
+          if-no-files-found: warn
+          retention-days: 7
