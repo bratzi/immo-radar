@@ -1350,8 +1350,14 @@ behoben sind sie damit nicht.
   `d032b53`).** `kaufpreisfaktor: number | null` am Objekt, `null` bei S0.
   Die Oberfläche zeigt ihn in der Spalte „Preis · Fläche“ als „24,3×“ mit
   `title="Kaufpreisfaktor"`. Am frischen Export: 19.574 Objekte, 17.674 mit
-  Faktor, 1.900 S0, davon keines mit Faktor. Die Zeile wurde noch **nicht
-  im Browser angesehen**.
+  Faktor, 1.900 S0, davon keines mit Faktor.
+  **Im Browser angesehen (2026-09-18):** Lokaler Snapshot frisch aus der
+  Produktions-DB erzeugt (21.897 Objekte, 19.681 mit Kaufpreisfaktor),
+  Dev-Server gestartet, headless per Playwright geprüft. Die Zelle
+  „150 m² · 473 €/m² · 5,0×" erscheint wie vorgesehen, `<span
+  title="Kaufpreisfaktor">5,0×</span>` steht im DOM, keine Konsolenfehler.
+  Screenshot bestätigt die Platzierung neben Fläche und €/m² in der Spalte
+  „PREIS · FLÄCHE".
   *Ursprünglicher Befund:* Entwurf 2.3 sieht den Faktor „daneben als zweite
   Zahl“ vor, die Oberfläche zeigte stattdessen €/m².
 - [x] **Dritte Kopien von zwei Konstanten — ERLEDIGT (2026-09-16,
@@ -1369,15 +1375,21 @@ Der Vertragstest der Oberfläche
 (`web/src/daten/snapshot.vertrag.test.ts`) muss danach ohne Ausnahmeregel grün
 laufen — er ist der Wächter, der den Fund gemacht hat.
 
-**Notiz aus der Prüfung von Runde 1 (M-8), bewusst ohne Codeänderung:** Die
-Vertragswache prüft `stufe === "S0"`, nicht `rangzahl === null`. `rangzahl`
-wird in `baueSnapshot` (`snapshot.ts`) ohne `endlichOderNull` exportiert,
-anders als der Kaufpreisfaktor, und `geschaetzterDscr` ist nach oben
-unbegrenzt (`metrics.ts`, Division durch Kaufpreis plus Nebenkosten). Ein
-unendlicher Wert würde beim Schreiben der Datei (`JSON.stringify`) still zu
-`null` — bei einem Objekt, das **nicht** S0 ist. In der Oberfläche sähe das
-aus wie „keine Kennzahl", und die Wache bemerkte es nicht. Heute 0 Fälle
-(Zählung der Prüfung). Offen, nicht Teil von A18-1/A18-2.
+**Notiz aus der Prüfung von Runde 1 (M-8) — ERLEDIGT (2026-09-18,
+`ce44cab`).** Die Vertragswache prüft `stufe === "S0"`, nicht
+`rangzahl === null`. `rangzahl` wurde in `baueSnapshot` (`snapshot.ts`) ohne
+`endlichOderNull` exportiert, anders als der Kaufpreisfaktor, und
+`geschaetzterDscr` ist nach oben unbegrenzt (`metrics.ts`, Division durch
+Kaufpreis plus Nebenkosten). Ein unendlicher Wert würde beim Schreiben der
+Datei (`JSON.stringify`) still zu `null` — bei einem Objekt, das **nicht** S0
+ist. In der Oberfläche sähe das aus wie „keine Kennzahl", und die Wache
+bemerkte es nicht. Behoben: `endlichOderNull` nimmt jetzt `number | null`
+und gibt `null` unveraendert durch; beide `rangzahl`-Exportstellen in
+`baueSnapshot` benutzen sie. Test zuerst rot gesehen (`price_cents: 0` bei
+sonst gesundem S1-Objekt treibt `geschaetzterDscr` nach `Infinity`, gemessen
+vor dem Fix), danach gruen. 526 Scraper-Tests, `tsc` sauber, 94 Web-Tests
+unveraendert. War 0 Fälle im Bestand zum Zeitpunkt des Fixes — praeventiv,
+kein akuter Datenfehler.
 
 # Teil B — Braucht erst einen Entwurf
 
