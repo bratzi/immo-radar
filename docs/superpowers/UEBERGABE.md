@@ -20,6 +20,31 @@ Cloudflare Access, nicht offen einsehbar. Ein Abruf ohne Anmeldung liefert
 behauptet), vorher (kurz, zwischen erstem Deploy und Access-Einrichtung)
 **HTTP 200** ohne Sperre.
 
+### Der Fund, der die erste Fassung widerlegt hat: die Sperre war löchrig
+
+**Ein paar Stunden nach der Einrichtung gemessen** — und es war gut, dass
+jemand nachgesehen hat, statt es zu glauben:
+
+```
+immo-radar-dashboard.pages.dev             HTTP 302   (geschützt)
+8d4f31b2.immo-radar-dashboard.pages.dev    HTTP 200   (OFFEN)
+```
+
+**Cloudflare Pages veröffentlicht jedes Deployment zusätzlich unter einer
+eigenen Hash-Adresse** (dazu Zweig-Aliase). Die Access-Anwendung galt nur
+für den exakten Hostnamen — jede dieser Nebenadressen war also für jeden
+erreichbar, der sie kennt. **E-2 („nur ich") war damit faktisch nicht
+erfüllt**, obwohl die Prüfung an der Hauptadresse sauber grün war. Die
+Lehre ist dieselbe wie bei der Blätterung ohne Sortierung: *Eine Prüfung,
+die nur den erwarteten Weg abgeht, ist keine Prüfung.*
+
+Behoben in `cb243c2`: Der Einrichtungs-Workflow legt jetzt **zwei**
+Anwendungen an — den exakten Namen **und** `*.immo-radar-dashboard.pages.dev`.
+Ein Platzhalter allein genügt nicht, er passt nicht auf die Wurzeldomain.
+Nachgemessen: beide Adressen liefern **302**. Die Ausrollzeit von Cloudflare
+beträgt dabei rund eine Minute — die Gegenprobe im Workflow prüfte zu früh
+und schlug deshalb fehl, obwohl der Schutz griff.
+
 **Aufgebaut, alles gegen echte Läufe verifiziert:**
 
 - **`scraper/scripts/erzeuge-dashboard-snapshot.mts`** (neu) — ruft
@@ -522,6 +547,14 @@ dafür eine Kopie von `scraper/.env`.
 **Eine seitenweise Abfrage ohne stabile Sortierung ist eine Stichprobe.**
 Gemessen: 1.762 von 12.158 Zeilen doppelt, 1.762 nie. Wer `.range()` benutzt,
 sortiert vorher — besser noch: blättert per Keyset.
+
+**Eine Zugriffssperre gilt nur für den Hostnamen, auf den sie ausgestellt
+ist.** Cloudflare Pages veröffentlicht jedes Deployment zusätzlich unter
+einer eigenen Hash-Adresse; die Access-Regel auf `immo-radar-dashboard.pages.dev`
+ließ die alle offen (gemessen 2026-09-19: Hauptadresse 302, Hash-Adresse
+200). Wer eine Sperre baut, prüft sie auf **allen** Wegen zum selben Inhalt,
+nicht nur auf dem erwarteten. Und er wartet dabei auf das Ausrollen — hier
+rund eine Minute.
 
 **Nie einen Live-Lauf lokal.** [`lib/nurInCi.ts`](../../scraper/lib/nurInCi.ts)
 bricht `npm run scrape` und jedes Prüfskript ohne `CI` ab. Der Anschluss des
