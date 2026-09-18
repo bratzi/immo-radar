@@ -1456,6 +1456,17 @@ Voraussetzung:** `nw`, `bw`, `mv` und `sh` zählen erst wieder mit, wenn ihre
 Trefferzahl parst (Nachtrag 2026-09-16 zu A15: `sh` gehört zu dieser Menge
 dazu, siehe `docs/superpowers/specs/2026-09-16-regionen-ohne-trefferzahl.md`).
 
+**Nachgemessen 2026-09-18 (waehrend Runde 4 lief, reine Lesequery gegen
+`sweep_region_runs`):** Die Voraussetzung ist fuer die Mehrheit **bereits
+erfuellt**. Immowelt: **12 von 16 Regionen** stehen bei **>= 3**
+Referenzlaeufen (`by` 10, `st` 8, `br`/`th`/`sl`/`hb` 7, `hh`/`ni`/`rp` 6,
+`be`/`he`/`sn` 5). **Nur noch `mv`, `nw`, `bw`, `sh` stehen bei 0** — exakt
+die vier Regionen aus A15/A16, keine weiteren. ZVG: **alle 16 Regionen**
+erfuellen die Schwelle, keine Ausnahme. Die harte Voraussetzung fuer B1 ist
+damit fuer 28 von 32 Quelle-Region-Paaren bereits da; der einzige
+verbleibende Block ist A16 (zweiter Vollstaendigkeitsmassstab fuer die vier
+Regionen ohne Trefferzahl).
+
 **Zu entwerfen:** Die Mengenplausibilität ist heute quellenweit
 (`lib/plausibilitaet.ts`, Median aus `sweep_runs`). Für regionsgenaues Löschen
 muss sie je Partition rechnen, und `ermittleAbgaenge` muss über
