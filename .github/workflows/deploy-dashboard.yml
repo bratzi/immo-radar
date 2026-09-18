@@ -12,6 +12,16 @@ name: deploy-dashboard
 on:
   push:
     branches: [main]
+    # REINE DOKUMENTATIONSAENDERUNGEN LOESEN KEIN DEPLOY AUS. Gemessen am
+    # 2026-09-19: 5 der ersten 8 Laeufe kamen von Pushes, die nur `docs/`
+    # angefasst hatten. Jeder davon las den gesamten Bestand aus der
+    # Produktionsdatenbank (rund 23 MB) und baute die Seite neu -- fuer
+    # Text, der nie auf der Seite landet. `paths-ignore` greift nur, wenn
+    # ALLE geaenderten Dateien passen; ein Push mit Doku UND Code laeuft
+    # also weiterhin.
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   workflow_run:
     workflows: [scrape]
     types: [completed]
