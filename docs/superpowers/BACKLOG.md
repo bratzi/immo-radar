@@ -844,13 +844,16 @@ schiefging, nicht dass ein Fehlschlag richtig behandelt wuerde.
 
 ---
 
-## A13. „39 von 600 ohne Preis" ist die Quelle, nicht der Parser
+## A13. „39 von 600 ohne Preis" ist die Quelle, nicht der Parser — ERLEDIGT (2026-09-11)
 
 **Untersucht am 2026-09-08** für Abnahmekriterium A-4. Der Verdacht lautete
 Parserfehler in der Titelzeile. **Er ist stark entkraeftet, aber nicht
-abschliessend bewiesen** — und der Grund dafuer ist genau der A-4-Verstoss:
-Die 39 Titelzeilen sind nirgends gespeichert. Der `continue` steht vor jedem
-Schreibzugriff, `sweep_runs` haelt nur Zaehlwerte.
+abschliessend bewiesen** — und der Grund dafuer war zum Untersuchungszeitpunkt
+genau der A-4-Verstoss: Die 39 Titelzeilen waren nirgends gespeichert, der
+`continue` stand vor jedem Schreibzugriff, `sweep_runs` hielt nur Zaehlwerte.
+**Seit `ea8b731` (Schritt 2 unten) ist das behoben:** Jede Titelzeile ohne
+Preis bekommt eine `listings`-Zeile ohne `listing_versions`-Zeile, bevor der
+`continue` greift.
 
 **Der Parser liest 1758 von 1758 echten Listentiteln richtig.** Alle
 Listentitel aus drei Produktionslaeufen (`listing_versions.title`, 08.09.
@@ -913,14 +916,16 @@ kein Titel. Strukturell geht es heute auch nicht:
       liegen die echten Zeilen im Actions-Log — dann ist die Klassifikation
       bewiesen statt begruendet. Das ist die A6-Lehre: messen statt behaupten.
       **Erledigt:** `Immowelt ohne Preis [bw]: "..."` je Fall.
-- [ ] **Schritt 2 — Entscheidung des Nutzers, wie A-4 dauerhaft erfuellt wird:**
-      **(a)** eine `listings`-Zeile ohne `listing_versions`-Zeile anlegen —
-      ohne Schemaaenderung, das Objekt bleibt sichtbar und taucht im Abgleich
-      auf, wird aber nicht bewertet. Beruehrt `bestandDb.ts` und damit die
-      Loeschwachen. **(b)** `price_cents` nullbar machen plus Lueckencode
-      `preis_auf_anfrage` analog zu `wohnflaeche_fehlt` — sauber, aber eine
-      **Migration auf Produktionsdaten** und sie beruehrt jede Metrik, die
-      `priceCents / 100` rechnet (`pipeline.ts:270`).
+- [x] **Schritt 2 — ERLEDIGT (`ea8b731`, 2026-09-11).** Entscheidung des
+      Nutzers: Option **(a)**, eine `listings`-Zeile ohne
+      `listing_versions`-Zeile, keine Migration. `main.ts` ruft
+      `upsertListingOhneBewertung` jetzt auch im Sweep-Zweig auf, sobald
+      `werteAusTitelzeile` `preisCents === null` liefert (Zeile ~452), bevor
+      der `continue` greift — das Objekt bleibt auffindbar und taucht im
+      Bestandsabgleich auf, wird aber nicht bewertet. Derselbe Commit hat
+      auch den ABNAHME-BASIS-A-4-Fall (Immowelt-Detailseite ohne Preis)
+      gelöst; hier war es dieselbe Änderung, nur die Checkbox stand noch auf
+      offen.
 - [x] **Schritt 3:** Zwei Lueckencodes statt einem — `preis_auf_anfrage`
       (Quelle nennt keinen Preis) und `preis_unlesbar` (Titel enthaelt `€`,
       Muster greift nicht). **Erledigt (2026-09-09).** Die Trennschaerfe ist
@@ -946,10 +951,10 @@ kein Titel. Strukturell geht es heute auch nicht:
 „39 von 600" ueberhaupt keine stabile Kennzahl — jede Quote misst dann die
 Region, nicht die Datenqualitaet.
 
-**Abnahme:** Nach Schritt 1 zeigt ein Lauf die echten Titelzeilen, und die
-Klassifikation „Quelle nennt keinen Preis" gegen „Parser hat versagt" steht
-mit Zahlen fest. A-4 gilt erst mit Schritt 2 als erfuellt: Ein Objekt ohne
-Preis ist nach dem Lauf noch auffindbar.
+**Abnahme erfuellt:** Nach Schritt 1 zeigt ein Lauf die echten Titelzeilen, und
+die Klassifikation „Quelle nennt keinen Preis" gegen „Parser hat versagt"
+steht mit Zahlen fest. Mit Schritt 2 (`ea8b731`) ist auch der zweite Teil
+erfuellt: Ein Objekt ohne Preis ist nach dem Lauf noch auffindbar.
 
 ---
 
