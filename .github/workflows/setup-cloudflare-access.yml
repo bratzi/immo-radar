@@ -1,12 +1,19 @@
 name: setup-cloudflare-access
 
 # EINMALIGE Einrichtung, kein wiederkehrender Betriebsschritt -- deshalb
-# bewusst nicht Teil von deploy-dashboard.yml. Beide Schritte sind
-# idempotent (pruefen vor dem Anlegen), ein erneuter Aufruf richtet nichts
-# doppelt ein.
+# bewusst nicht Teil von deploy-dashboard.yml. Alle Schritte sind idempotent
+# (pruefen vor dem Anlegen), ein erneuter Aufruf richtet nichts doppelt ein.
 #
-# Ziel: nur w.helwich@googlemail.com kommt per E-Mail-Einmalcode auf
-# immo-radar-dashboard.pages.dev (E-2/E-8, Entscheidung 2026-09-13/19).
+# Ziel: nur w.helwich@googlemail.com kommt per E-Mail-Einmalcode auf das
+# Dashboard (E-2/E-8, Entscheidung 2026-09-13/19).
+#
+# ZWEI HOSTNAMEN, NICHT EINER -- das war der Fehler der ersten Fassung:
+# Cloudflare Pages veroeffentlicht jedes Deployment ZUSAETZLICH unter einer
+# eigenen Adresse (`<hash>.immo-radar-dashboard.pages.dev`, dazu Zweig-Aliase).
+# Eine Access-Regel auf den exakten Hostnamen laesst die alle offen. Am
+# 2026-09-19 gemessen: Produktionsadresse HTTP 302 (geschuetzt),
+# `8d4f31b2.immo-radar-dashboard.pages.dev` HTTP 200 (offen). Deshalb
+# zusaetzlich eine Anwendung auf `*.immo-radar-dashboard.pages.dev`.
 on:
   workflow_dispatch: {}
 
@@ -16,7 +23,6 @@ jobs:
     env:
       CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      DOMAIN: immo-radar-dashboard.pages.dev
       ERLAUBTE_EMAIL: w.helwich@googlemail.com
     steps:
       - name: One-Time-PIN Identity Provider sicherstellen
@@ -36,40 +42,61 @@ jobs:
             echo "Existiert bereits: $bestehend"
           fi
 
-      - name: Access Application sicherstellen
+      - name: Access Application und Policy je Hostname sicherstellen
         run: |
           set -e
-          liste=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps")
-          echo "$liste" | jq -c '{success, errors}'
-          bestehend=$(echo "$liste" | jq -r --arg d "$DOMAIN" '.result[]? | select(.domain==$d) | .id' | head -1)
-          if [ -z "$bestehend" ]; then
-            echo "Lege Access Application an ..."
-            curl -s -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
-              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps" \
-              -d "{\"name\":\"immo-radar Dashboard\",\"domain\":\"$DOMAIN\",\"destinations\":[{\"type\":\"public\",\"uri\":\"$DOMAIN\"}],\"type\":\"self_hosted\",\"session_duration\":\"24h\"}" \
-              | tee app.json
-            jq -e '.success == true' app.json
-            echo "app_id=$(jq -r '.result.id' app.json)" >> "$GITHUB_ENV"
-          else
-            echo "Existiert bereits: $bestehend"
-            echo "app_id=$bestehend" >> "$GITHUB_ENV"
-          fi
+          # Der Platzhalter deckt Deployment- und Zweigadressen ab, der exakte
+          # Name die Produktionsadresse. Ein Platzhalter allein genuegt NICHT:
+          # `*.example.com` passt nicht auf `example.com` selbst.
+          for domain in "immo-radar-dashboard.pages.dev" "*.immo-radar-dashboard.pages.dev"; do
+            echo "=== $domain ==="
+            liste=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps")
+            echo "$liste" | jq -c '{success, errors}'
+            app_id=$(echo "$liste" | jq -r --arg d "$domain" '.result[]? | select(.domain==$d) | .id' | head -1)
 
-      - name: Policy sicherstellen -- nur die eine erlaubte Adresse
+            if [ -z "$app_id" ]; then
+              echo "Lege Access Application an ..."
+              curl -s -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+                "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps" \
+                -d "{\"name\":\"immo-radar Dashboard ($domain)\",\"domain\":\"$domain\",\"destinations\":[{\"type\":\"public\",\"uri\":\"$domain\"}],\"type\":\"self_hosted\",\"session_duration\":\"24h\"}" \
+                | tee app.json
+              jq -e '.success == true' app.json
+              app_id=$(jq -r '.result.id' app.json)
+            else
+              echo "Application existiert bereits: $app_id"
+            fi
+
+            policies=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies")
+            echo "$policies" | jq -c '{success, errors}'
+            policy_id=$(echo "$policies" | jq -r --arg e "$ERLAUBTE_EMAIL" \
+              '.result[]? | select(.include[]?.email.email==$e) | .id' | head -1)
+
+            if [ -z "$policy_id" ]; then
+              echo "Lege Policy an ..."
+              curl -s -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+                "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies" \
+                -d "{\"name\":\"Nur der Nutzer\",\"decision\":\"allow\",\"include\":[{\"email\":{\"email\":\"$ERLAUBTE_EMAIL\"}}]}" \
+                | tee policy.json
+              jq -e '.success == true' policy.json
+            else
+              echo "Policy existiert bereits: $policy_id"
+            fi
+          done
+
+      - name: Gegenprobe -- beide Adressen muessen zur Anmeldung umleiten
         run: |
           set -e
-          liste=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies")
-          echo "$liste" | jq -c '{success, errors}'
-          bestehend=$(echo "$liste" | jq -r --arg e "$ERLAUBTE_EMAIL" '.result[]? | select(.include[]?.email.email==$e) | .id' | head -1)
-          if [ -z "$bestehend" ]; then
-            echo "Lege Policy an ..."
-            curl -s -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
-              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies" \
-              -d "{\"name\":\"Nur der Nutzer\",\"decision\":\"allow\",\"include\":[{\"email\":{\"email\":\"$ERLAUBTE_EMAIL\"}}]}" \
-              | tee policy.json
-            jq -e '.success == true' policy.json
-          else
-            echo "Existiert bereits: $bestehend"
-          fi
+          # Kein `curl -f`: 302 ist hier das GEWUENSCHTE Ergebnis, 200 der
+          # Fehlerfall. Geprueft wird der Statuscode selbst.
+          schutz_fehlt=0
+          for url in "https://immo-radar-dashboard.pages.dev/" "https://8d4f31b2.immo-radar-dashboard.pages.dev/"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            echo "$url -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "::error::$url ist ohne Anmeldung erreichbar -- Access greift dort nicht."
+              schutz_fehlt=1
+            fi
+          done
+          exit $schutz_fehlt
