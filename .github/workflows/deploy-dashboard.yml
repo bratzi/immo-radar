@@ -1,0 +1,63 @@
+name: deploy-dashboard
+
+# Zwei Ausloeser, ein Ziel: die veroeffentlichte Seite soll nie hinter dem
+# Code UND nie hinter den Daten zurueckbleiben.
+#   - push auf main: jede gemergte Aufgabe aktualisiert die Seite.
+#   - workflow_run nach "scrape": auch reiner Datenzuwachs ohne Codeaenderung
+#     erscheint automatisch, ohne auf den naechsten Commit zu warten.
+# Der Snapshot wird bei JEDEM Lauf dieses Workflows frisch gegen die
+# Produktionsdatenbank erzeugt (nur lesend, scripts/erzeuge-dashboard-snapshot.mts)
+# statt aus dem Artefakt des scrape-Laufs kopiert -- ein Weg fuer beide
+# Ausloeser, keine Sonderbehandlung, immer der aktuellste Stand.
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: [scrape]
+    types: [completed]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: |
+            scraper/package-lock.json
+            web/package-lock.json
+
+      - run: npm ci
+        working-directory: scraper
+      - run: npx tsx scripts/erzeuge-dashboard-snapshot.mts
+        working-directory: scraper
+
+      - run: npm ci
+        working-directory: web
+      - run: npx vite build
+        working-directory: web
+
+      # Idempotent: existiert das Projekt schon, schlaegt dieser Schritt
+      # fehl und wird ignoriert. Kein separater "existiert es schon"-Aufruf
+      # noetig.
+      - uses: cloudflare/wrangler-action@v4
+        continue-on-error: true
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create immo-radar-dashboard --production-branch main
+
+      - uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy web/dist --project-name=immo-radar-dashboard

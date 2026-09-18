@@ -1,0 +1,68 @@
+name: setup-cloudflare-access
+
+# EINMALIGE Einrichtung, kein wiederkehrender Betriebsschritt -- deshalb
+# bewusst nicht Teil von deploy-dashboard.yml. Beide Schritte sind
+# idempotent (pruefen vor dem Anlegen), ein erneuter Aufruf richtet nichts
+# doppelt ein.
+#
+# Ziel: nur w.helwich@googlemail.com kommt per E-Mail-Einmalcode auf
+# immo-radar-dashboard.pages.dev (E-2/E-8, Entscheidung 2026-09-13/19).
+on:
+  workflow_dispatch: {}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DOMAIN: immo-radar-dashboard.pages.dev
+      ERLAUBTE_EMAIL: w.helwich@googlemail.com
+    steps:
+      - name: One-Time-PIN Identity Provider sicherstellen
+        run: |
+          set -e
+          bestehend=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/identity_providers" \
+            | jq -r '.result[]? | select(.type=="onetimepin") | .id' | head -1)
+          if [ -z "$bestehend" ]; then
+            echo "Lege One-Time-PIN Identity Provider an ..."
+            curl -sf -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/identity_providers" \
+              -d '{"name":"One-time PIN login","type":"onetimepin","config":{}}'
+          else
+            echo "Existiert bereits: $bestehend"
+          fi
+
+      - name: Access Application sicherstellen
+        run: |
+          set -e
+          bestehend=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps" \
+            | jq -r --arg d "$DOMAIN" '.result[]? | select(.domain==$d) | .id' | head -1)
+          if [ -z "$bestehend" ]; then
+            echo "Lege Access Application an ..."
+            curl -sf -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps" \
+              -d "{\"name\":\"immo-radar Dashboard\",\"domain\":\"$DOMAIN\",\"destinations\":[{\"type\":\"public\",\"uri\":\"$DOMAIN\"}],\"type\":\"self_hosted\",\"session_duration\":\"24h\"}" \
+              | tee app.json
+            echo "app_id=$(jq -r '.result.id' app.json)" >> "$GITHUB_ENV"
+          else
+            echo "Existiert bereits: $bestehend"
+            echo "app_id=$bestehend" >> "$GITHUB_ENV"
+          fi
+
+      - name: Policy sicherstellen -- nur die eine erlaubte Adresse
+        run: |
+          set -e
+          bestehend=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies" \
+            | jq -r --arg e "$ERLAUBTE_EMAIL" '.result[]? | select(.include[]?.email.email==$e) | .id' | head -1)
+          if [ -z "$bestehend" ]; then
+            echo "Lege Policy an ..."
+            curl -sf -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies" \
+              -d "{\"name\":\"Nur der Nutzer\",\"decision\":\"allow\",\"include\":[{\"email\":{\"email\":\"$ERLAUBTE_EMAIL\"}}]}"
+          else
+            echo "Existiert bereits: $bestehend"
+          fi
