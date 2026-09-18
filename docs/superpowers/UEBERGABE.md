@@ -1,4 +1,4 @@
-# Übergabe — Stand 2026-09-18
+# Übergabe — Stand 2026-09-19
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
 > (woran „die Basis steht" gemessen wird), dann [`BACKLOG.md`](BACKLOG.md) und
@@ -6,6 +6,95 @@
 > **plus** der Nachtrag
 > [`2026-09-15-dashboard-nachtrag-oberflaeche.md`](specs/2026-09-15-dashboard-nachtrag-oberflaeche.md),
 > der die Oberfläche entscheidet.
+
+## Dashboard-Veröffentlichung — begonnen, pausiert an einer Umgebungsvariable
+
+**Stand 2026-09-19.** A16 (siehe unten) wurde angebrainstormt und dann bewusst
+zurückgestellt: Der Nutzer wollte stattdessen sofort die Veröffentlichung
+(Punkt 1 der alten „Was als Nächstes"-Liste) angehen, weil ein sichtbares
+Dashboard die weitere Entwicklung antreibt. Das ist jetzt die aktive große
+Aufgabe der Sitzung, A16 folgt danach.
+
+**Entschieden in dieser Sitzung:**
+
+- **Kein Custom-Domain, der kostenlose `*.pages.dev`-Subdomain genügt** —
+  Nutzerentscheidung, spart die DNS-Umstellung.
+- **Cloudflare-Pages-Projektname:** `immo-radar-dashboard` (Vorschlag des
+  Koordinators, nicht widersprochen).
+- **Direct Upload per Wrangler in einem eigenen GitHub-Actions-Workflow,
+  NICHT Cloudflares eigene Git-Integration.** Begründung: Der Snapshot
+  (23 MB, absichtlich `.gitignore`t) entsteht nur zur Laufzeit gegen die
+  Live-Datenbank, nie im Repo. Cloudflares eigener Build-Server sieht das
+  Repo, aber nie den frischen Snapshot — Git-Integration würde die Seite nie
+  mit echten Daten bauen. Direct Upload und Git-Integration lassen sich
+  NICHT nachträglich mischen (einmal gewählt, bräuchte ein Wechsel ein neues
+  Projekt).
+- **Geplanter Workflow `deploy-dashboard.yml`** (noch nicht geschrieben),
+  zwei Auslöser: `push` auf `main` (jede gemergte Aufgabe aktualisiert die
+  Seite) und `workflow_run` nach jedem erfolgreichen `scrape.yml`-Lauf (auch
+  reiner Datenzuwachs ohne Codeänderung erscheint automatisch). Schritte:
+  `erzeugeSnapshot` gegen die Live-DB (schreibgeschützt, derselbe Aufruf wie
+  lokal/`scrape.yml`) → `web/public/dashboard-snapshot.json` →
+  `npx vite build` → `cloudflare/wrangler-action@v4` mit
+  `pages deploy dist --project-name=immo-radar-dashboard`.
+- **Neuer Standing Approach (Nutzerwunsch 2026-09-19):** Bei jeder größeren
+  Aufgabe, die mit einem Sitzungsende/Clear einhergeht, gehört ab jetzt ein
+  Dashboard-Update zur Fertigstellung dazu — sobald der Workflow oben steht,
+  passiert das ohnehin automatisch bei jedem Push auf `main`.
+- **E-2 (wer darf sehen):** Cloudflare Access, Identity Provider
+  One-Time-PIN, Policy erlaubt ausschließlich `w.helwich@googlemail.com`.
+- **E-3 (Rechtsfrage, ob die Seite trotz übernommener Immowelt-Titel/-Bilder
+  öffentlich erreichbar sein darf):** vom Nutzer ausdrücklich bewusst
+  zurückgestellt — „ist egal", weil ohnehin nur er selbst reinkommt.
+- **Cloudflare-API-Token:** Nutzer hat einen Token mit vollem Konto-Zugriff
+  angelegt (breiter als die schmale Empfehlung des Koordinators, trägt auch
+  R2-Zugangsdaten mit) und ausdrücklich als **streng geheim** markiert — nie
+  öffentlich, auf keiner Plattform. Der Koordinator fasst nur Pages/Access
+  an, nichts sonst, und hält den Wert ausschließlich in einer temporären
+  Shell-Umgebungsvariable, nie in einer Datei im Repo, nie im
+  Gedächtnissystem.
+- **Offizielles Cloudflare-Skill-Plugin installiert** (User-Scope, alle
+  Projekte): `claude plugin marketplace add cloudflare/skills` +
+  `claude plugin install cloudflare@cloudflare`. 14 Skills (u. a.
+  `cloudflare-one` für Access, `wrangler`) plus ein MCP-Server mit 2.500+
+  Endpunkten. **Braucht einen Sitzungsneustart, um zu wirken** — in der
+  Installations-Sitzung schlug `Skill({skill: "cloudflare-one"})` noch mit
+  `Unknown skill` fehl. Siehe [[cloudflare-skill-installiert]].
+
+**Woran es gerade hängt:** Ein Versuch, den Cloudflare-Token in einem
+Bash-Befehl zu verwenden (GitHub-Secrets setzen, Token-Gültigkeit prüfen),
+wurde von der Auto-Mode-Sicherung als Credential-Leakage abgelehnt — zu
+Recht, der Wert stand wörtlich im Befehl. **Nächster Schritt:** Der Nutzer
+setzt zwei dauerhafte Windows-Benutzer-Umgebungsvariablen
+(`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, Konto-ID bereits bekannt:
+`cd848694bd925a07b4257fc01078b426`) über
+`[System.Environment]::SetEnvironmentVariable(...)`. Danach kann per **Name**
+referenziert werden (`$CLOUDFLARE_API_TOKEN`), nie per Literal — das sollte
+die Sicherung nicht mehr auslösen. Das deckt sich mit dem ohnehin nötigen
+Sitzungsneustart für das Skill-Plugin.
+
+**Noch zu tun, sobald die Umgebungsvariable gesetzt ist:**
+1. GitHub-Secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` setzen
+   (per Namensreferenz, nicht per Literal).
+2. Cloudflare-Pages-Projekt `immo-radar-dashboard` anlegen
+   (`wrangler pages project create`).
+3. Cloudflare-Access-Application + -Policy einrichten (Domain
+   `immo-radar-dashboard.pages.dev`, One-Time-PIN-IdP, Policy nur für
+   `w.helwich@googlemail.com`) — dafür idealerweise das jetzt installierte
+   `cloudflare-one`-Skill nutzen statt Dokumentation von Hand zu erraten;
+   die offiziellen Docs geben die exakte API-JSON-Struktur für
+   Access-Applications nicht vollständig her.
+4. `.github/workflows/deploy-dashboard.yml` schreiben (Freigabe für
+   `.github/workflows/` liegt vor, siehe oben).
+5. Mit einem echten `workflow_dispatch`-Lauf verifizieren, nicht nur
+   behaupten — Projektkonvention (siehe Runde 4, CI-Artefakt).
+6. Danach: **A16 wieder aufnehmen** (Brainstorming war schon im Gange, drei
+   offene Themen: Bootstrap-Frage für Regionen ohne Trefferzahl,
+   Mindest-Referenzläufe, Toleranzband — Details nur im Chat der
+   2026-09-19-Sitzung, nicht schriftlich festgehalten, da zurückgestellt vor
+   der schriftlichen Ausarbeitung).
+
+---
 
 ## Wo wir stehen
 
@@ -227,18 +316,17 @@ plus die Notiz M-8 (`rangzahl` ohne `endlichOderNull`). Der Plan
 abgeschlossen. Übrig sind nur noch Punkte, die eine Entscheidung des
 Nutzers oder ein Brainstorming brauchen:
 
-1. **Veröffentlichung einrichten** (E-8 ist entschieden, nichts davon steht):
-   Cloudflare Pages für die gebaute Seite, davor Cloudflare Access mit
-   E-Mail-Einmalcode an genau die eine erlaubte Adresse. Braucht Zugänge, die
-   nur der Nutzer hat. **Der Snapshot ist jetzt abholbar** (Artefakt
-   `dashboard-snapshot` an jedem Lauf) — nichts Technisches blockiert das
-   mehr.
+1. **Veröffentlichung einrichten — IN ARBEIT seit 2026-09-19**, siehe
+   Abschnitt „Dashboard-Veröffentlichung" oben für den genauen Stand und die
+   verbleibenden Schritte (Umgebungsvariable setzen → Secrets → Pages-Projekt
+   → Access → Workflow → echter Verifikationslauf).
 2. **A16** — zweiter Vollständigkeitsmaßstab für die vier Regionen ohne
-   Trefferzahl (`nw`, `bw`, `mv`, `sh`). **Jetzt der einzige verbleibende
-   Block für B1**: alle anderen 12 Immowelt-Regionen und alle 16
-   ZVG-Regionen erfüllen die Drei-Referenzläufe-Schwelle bereits (gemessen
-   2026-09-18). Braucht zuerst `superpowers:brainstorming` — berührt die
-   Löschhoheit.
+   Trefferzahl (`nw`, `bw`, `mv`, `sh`). **Der einzige verbleibende Block
+   für B1**: alle anderen 12 Immowelt-Regionen und alle 16 ZVG-Regionen
+   erfüllen die Drei-Referenzläufe-Schwelle bereits (gemessen 2026-09-18).
+   Brainstorming am 2026-09-19 begonnen und bewusst zurückgestellt zugunsten
+   der Veröffentlichung — bei Wiederaufnahme neu anfangen, die drei offenen
+   Themen sind nicht schriftlich festgehalten.
 3. Danach der übliche Rückstand: A10 (Cron-Takt, Abwägung des Nutzers),
    A11 Schritt 4 (darf eine bundeslandgenaue Schätzung überhaupt melden?).
 
@@ -282,6 +370,19 @@ Nicht wieder aufbringen.
 | Frage | Entscheidung |
 |---|---|
 | Objekt ohne Preis im Dashboard zeigen? (Ruling 9, Entwurf 3.3/9) | **Im S0-Bereich** „Nicht beurteilbar" — nicht nur auf der Betriebsseite. Konsistent mit anderen Datenlücken (z. B. `wohnflaeche_fehlt`). Offen bleibt nur der genaue Klartext-Grund, ein Umsetzungsdetail für den Snapshot-Export (Schritt 3) |
+
+## Entscheidungen des Nutzers, gefallen am 2026-09-19
+
+| Frage | Entscheidung |
+|---|---|
+| Custom-Domain oder `*.pages.dev` (Teil von E-8) | **Kostenloser `*.pages.dev`-Subdomain**, keine eigene Domain |
+| Cloudflare-Pages-Projektname | `immo-radar-dashboard` |
+| Deployment-Weg | **Direct Upload per Wrangler in GitHub Actions**, nicht Cloudflares Git-Integration — Begründung im Abschnitt „Dashboard-Veröffentlichung" oben |
+| E-2, konkreter Empfänger des Access-Einmalcodes | `w.helwich@googlemail.com` |
+| E-3 (Rechtsfrage öffentliche Erreichbarkeit) | **Bewusst zurückgestellt** — „ist egal", weil ohnehin nur der Nutzer selbst reinkommt |
+| Standing Approach: Dashboard-Update bei Sitzungsende | Jede größere Aufgabe, die mit einem Clear endet, soll ab jetzt auch das Dashboard aktualisieren — sobald der Auto-Deploy-Workflow steht, automatisch bei jedem Push auf `main` |
+| Cloudflare-API-Token-Scope | Nutzer hat **vollen Kontozugriff** gewählt statt der schmaleren Empfehlung des Koordinators — ausdrücklich als streng geheim markiert, nie öffentlich |
+| Cloudflare-Skill-Plugin installieren | **Ja**, offizielles `cloudflare/skills`-Plugin, User-Scope, projektübergreifend nutzen sobald aktiv |
 
 ## Wie in diesem Projekt gearbeitet wird
 
