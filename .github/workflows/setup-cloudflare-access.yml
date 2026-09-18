@@ -22,14 +22,16 @@ jobs:
       - name: One-Time-PIN Identity Provider sicherstellen
         run: |
           set -e
-          bestehend=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/identity_providers" \
-            | jq -r '.result[]? | select(.type=="onetimepin") | .id' | head -1)
+          liste=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/identity_providers")
+          echo "$liste" | jq -c '{success, errors}'
+          bestehend=$(echo "$liste" | jq -r '.result[]? | select(.type=="onetimepin") | .id' | head -1)
           if [ -z "$bestehend" ]; then
             echo "Lege One-Time-PIN Identity Provider an ..."
-            curl -sf -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+            curl -s -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
               "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/identity_providers" \
-              -d '{"name":"One-time PIN login","type":"onetimepin","config":{}}'
+              -d '{"name":"One-time PIN login","type":"onetimepin","config":{}}' | tee idp.json
+            jq -e '.success == true' idp.json
           else
             echo "Existiert bereits: $bestehend"
           fi
@@ -37,15 +39,17 @@ jobs:
       - name: Access Application sicherstellen
         run: |
           set -e
-          bestehend=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps" \
-            | jq -r --arg d "$DOMAIN" '.result[]? | select(.domain==$d) | .id' | head -1)
+          liste=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps")
+          echo "$liste" | jq -c '{success, errors}'
+          bestehend=$(echo "$liste" | jq -r --arg d "$DOMAIN" '.result[]? | select(.domain==$d) | .id' | head -1)
           if [ -z "$bestehend" ]; then
             echo "Lege Access Application an ..."
-            curl -sf -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+            curl -s -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
               "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps" \
               -d "{\"name\":\"immo-radar Dashboard\",\"domain\":\"$DOMAIN\",\"destinations\":[{\"type\":\"public\",\"uri\":\"$DOMAIN\"}],\"type\":\"self_hosted\",\"session_duration\":\"24h\"}" \
               | tee app.json
+            jq -e '.success == true' app.json
             echo "app_id=$(jq -r '.result.id' app.json)" >> "$GITHUB_ENV"
           else
             echo "Existiert bereits: $bestehend"
@@ -55,14 +59,17 @@ jobs:
       - name: Policy sicherstellen -- nur die eine erlaubte Adresse
         run: |
           set -e
-          bestehend=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies" \
-            | jq -r --arg e "$ERLAUBTE_EMAIL" '.result[]? | select(.include[]?.email.email==$e) | .id' | head -1)
+          liste=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies")
+          echo "$liste" | jq -c '{success, errors}'
+          bestehend=$(echo "$liste" | jq -r --arg e "$ERLAUBTE_EMAIL" '.result[]? | select(.include[]?.email.email==$e) | .id' | head -1)
           if [ -z "$bestehend" ]; then
             echo "Lege Policy an ..."
-            curl -sf -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+            curl -s -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
               "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies" \
-              -d "{\"name\":\"Nur der Nutzer\",\"decision\":\"allow\",\"include\":[{\"email\":{\"email\":\"$ERLAUBTE_EMAIL\"}}]}"
+              -d "{\"name\":\"Nur der Nutzer\",\"decision\":\"allow\",\"include\":[{\"email\":{\"email\":\"$ERLAUBTE_EMAIL\"}}]}" \
+              | tee policy.json
+            jq -e '.success == true' policy.json
           else
             echo "Existiert bereits: $bestehend"
           fi
