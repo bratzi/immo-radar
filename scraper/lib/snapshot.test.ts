@@ -644,6 +644,54 @@ describe("baueSnapshot: Kaufpreisfaktor am Objekt (A18-3)", () => {
     expect(snapshot.objekte[0].kaufpreisfaktor).toBeNull();
   });
 
+  it("laesst rangzahl endlich, wenn ein gespeicherter Nullpreis den DSCR nach Infinity treibt (Pruefung Runde 1, M-8)", () => {
+    // `kaufpreisfaktor` ist an dieser Stelle schon abgesichert
+    // (`einordnung.rangzahl === null ? null : endlichOderNull(...)`), aber
+    // `rangzahl` selbst -- der DSCR aus `ranking.ts` -- wurde bisher
+    // unbesehen durchgereicht. `price_cents: 0` ist ein GESPEICHERTER
+    // Nullpreis, keine fehlende Angabe: `price_cents === null` liefe ueber
+    // den S0-Pfad (Datenluecke `wohnflaeche_fehlt`/kein Preis) und waere
+    // hier nicht der gemeinte Fall. Flaeche und Mietquelle bleiben wie in
+    // der Basisfixture -- das Objekt landet also auf S1, nicht S0.
+    const snapshot = baueSnapshot(
+      eingabe({ versionen: [version("a", { price_cents: 0 })] }),
+      JETZT
+    );
+    const objekt = snapshot.objekte[0];
+    expect(objekt.stufe).not.toBe("S0");
+
+    // Beleg VOR dem Fix: derselbe Rechenweg wie `baueObjekt`, von Hand
+    // nachgerechnet. Kaufpreis 0 macht sowohl den Klammerterm als auch
+    // `kaufnebenkosten` zu 0 -- der Nenner von `geschaetzterDscr` ist 0. Die
+    // Miete (bundeslandgenau fuer Bayern geschaetzt, wie im Test "uebernimmt
+    // Stufe, Rangzahl und Band unveraendert") ist positiv, `noi` bleibt es
+    // auch (Bewirtschaftungskosten sind auf hoechstens 35 % der Miete
+    // gedeckelt) -- der DSCR wird `Infinity`, nicht `NaN`.
+    const jahreskaltmiete = ermittleJahreskaltmiete(null, 150, "", "Bayern").jahreskaltmiete;
+    expect(jahreskaltmiete).toBeGreaterThan(0);
+    const kennzahlen = berechneKennzahlen(
+      {
+        kaufpreis: 0,
+        jahreskaltmiete,
+        einheiten: 3,
+        baujahr: null,
+        wohnflaecheM2: 150,
+      },
+      grunderwerbsteuerSatzFuerBundesland("Bayern")
+    );
+    expect(kennzahlen.geschaetzterDscr).toBe(Infinity);
+
+    // Die eigentliche Behauptung: das JS-Objekt VOR jeder Serialisierung
+    // (JSON.stringify macht aus Infinity ohnehin null und verschleiert genau
+    // die Verwechslung mit einem echten S0-null, um die es hier geht) traegt
+    // nie Infinity. Mit dem heutigen Code (ohne Fix) ist `rangzahl` an dieser
+    // Stelle Infinity, und dieser Test schlaegt fehl.
+    expect(objekt.rangzahl).not.toBe(Infinity);
+    expect(
+      objekt.rangzahl === null || Number.isFinite(objekt.rangzahl)
+    ).toBe(true);
+  });
+
   it("laesst den Kaufpreisfaktor auch bei S0 MIT Flaeche leer, wo der Faktor endlich waere (Pruefung Runde 2, M-2)", () => {
     // Der vorige Test baut S0 ueber `living_area_m2: null` -- dort ist die
     // Miete 0 und der Faktor `Infinity`, und `endlichOderNull` machte daraus

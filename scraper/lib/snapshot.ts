@@ -546,8 +546,12 @@ function ungenauereMietquelle(
   return a <= b ? gespeichert : neuGerechnet;
 }
 
-function endlichOderNull(wert: number): number | null {
-  return Number.isFinite(wert) ? wert : null;
+// Nimmt bewusst `number | null`: `rangzahl` aus `ranking.ts` ist fuer S0
+// bereits `null` (kein Datenfehler, sondern "keine Kennzahl", Entwurf 3.7).
+// Ein `null` soll hier unveraendert durchgehen, waehrend jede tatsaechliche
+// Zahl -- auch ein durch Kaufpreis 0 erzeugtes `Infinity` -- auf `null` faellt.
+function endlichOderNull(wert: number | null): number | null {
+  return wert === null ? null : Number.isFinite(wert) ? wert : null;
 }
 
 /**
@@ -645,7 +649,7 @@ function baueObjekt(
       einheitenAngenommen: false,
       stufe: einordnung.stufe,
       trefferklasse: bestimmeTrefferklasse(einordnung, null),
-      rangzahl: einordnung.rangzahl,
+      rangzahl: endlichOderNull(einordnung.rangzahl),
       kaufpreisfaktor: null,
       band: einordnung.band,
       istSchwellenwechsler: einordnung.istSchwellenwechsler,
@@ -719,7 +723,7 @@ function baueObjekt(
     einheitenAngenommen: !version.unitsConfident,
     stufe: einordnung.stufe,
     trefferklasse: bestimmeTrefferklasse(einordnung, kaufpreisfaktor),
-    rangzahl: einordnung.rangzahl,
+    rangzahl: endlichOderNull(einordnung.rangzahl),
     kaufpreisfaktor,
     band: einordnung.band,
     istSchwellenwechsler: einordnung.istSchwellenwechsler,
