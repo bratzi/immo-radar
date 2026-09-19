@@ -1,4 +1,95 @@
-# Übergabe — Stand 2026-09-19
+# Übergabe — Stand 2026-09-19 (zweite Sitzung des Tages)
+
+## Die Karte als Dreh- und Angelpunkt — Block A erledigt, Block B lief noch
+
+**Die große Aufgabe dieser Sitzung.** Der Entwurf vom 2026-09-19 wurde zum
+Plan [`plans/2026-09-19-karte-dreh-und-angelpunkt.md`](plans/2026-09-19-karte-dreh-und-angelpunkt.md)
+(10 Aufgaben), dann vom Nutzer per Grilling gegen die echten Zahlen
+durchgesprochen, dann in zwei Blöcken gebaut.
+
+**Block A (Tasks 1–5) ist fertig, gemergt und gepusht** — fünf Subagenten
+gleichzeitig in eigenen Worktrees, alle auf `sonnet`, alle ohne Konflikt:
+
+| Task | Ergebnis |
+|---|---|
+| 1 — Ladetext | **Befund A und B behoben.** Der Fehler wurde im echten Browser erst reproduziert („**23.3 von 3.0 MB**"), dann behoben, dann nachgemessen: komprimiert nur noch „… MB gelesen", unkomprimiert „x von 23.3 MB". Meldungen auf eine je 100 ms gedrosselt |
+| 2 — virtuelle Liste | **Befund C behoben** (Objektliteral auf Modulebene). **`onScroll` wurde gemessen statt umgebaut:** p95 1,3–1,4 ms bei 120 Scroll-Ereignissen, Schwelle war 2 ms → **kein Befund, nichts geändert** |
+| 3 — Markierung | `markierungFuer`/`beschreibeMarkierung` in `logik/karte.ts`, 8 Tests |
+| 4 — PLZ-Filter | `Filter.plzZweisteller`, `schalteEintrag`, `OhneAngabe.plz`, 10 Tests |
+| 5 — Tooltip-Bausteine | `logik/kartentexte.ts` und `logik/tooltipPosition.ts`, 14 Tests |
+
+**Stand danach: 145 Web-Tests grün, 1 übersprungen**, `tsc` und `vite build`
+sauber, gepusht, Deploy-Lauf `35469050557` grün, Zugriffsschutz nachgemessen
+(302 auf `delicate-bar-e1ca.cloudflareaccess.com`).
+
+**Die drei Audit-Befunde der Weboberfläche (A, B, C) sind damit erledigt** —
+siehe den Abschnitt weiter unten, der sie als offen führte.
+
+### Die Antwort auf die Frage, die der Plan offenließ
+
+**Gibt Chromium `Content-Encoding` über `fetch` preis? Ja** — gemessen an
+Playwright-Chromium 1.63. `erwarteteBytes` greift also; `gueltigesZiel` blieb
+als zweite Wache ungenutzt. Beide bleiben im Code, weil sie verschiedene
+Fehler abfangen. **Firefox und Safari sind nicht geprüft.**
+
+### Was das Grilling geändert hat
+
+Der Nutzer hat den Plan gegen die echten Zahlen durchgesprochen, **während
+Block A lief**. Drei Entscheidungen haben den Plan wirklich verändert:
+
+- **Der Nutzer schaut auch vom Handy.** Der Plan löste den schmalen Fall nur
+  mit „fällt in den Fluss zurück". Dort gibt es aber keinen Hover, und eine
+  Listenzeile **ist ein Link** — ein Tipp öffnet die Quelle und kann nicht
+  zugleich „zeig auf der Karte" heißen. Entscheidung: **Einstieg und Filter,
+  ehrlich begrenzt** — kein Ring, kein Tooltip auf Touch. Neuer **Task 6b**:
+  unter 1360 px zuklappbar, beim ersten Besuch offen, danach gemerkt.
+- **Der Breakpoint war falsch gesetzt.** Mit 1400 px hätte ein verbreitetes
+  1366er-Notebook die mitwandernde Karte **nie** bekommen. Nachgerechnet:
+  296 (Filterleiste) + 300 (Karte) + 706 (kleinste Listenzeile) + 52 = 1354
+  → **Schwelle 1360 px, Karte ab 300 px.**
+- **Der Tab-Stopp-Konflikt war vertagt** (rund 76 Stopps vor der Liste). Jetzt
+  gelöst: **Sprunglink „Zur Liste springen"**.
+
+**Die Messung, die die schärfste Frage stellte** (Snapshot 2026-09-18, 21.897
+Objekte):
+
+```
+  221 Objekte  1,01 %  bekommen einen echten PLZ-Punkt
+21.321 Objekte 97,37 %  bekommen nur eine Bundesland-Kachel
+  355 Objekte  1,62 %  bekommen gar nichts
+```
+
+Der Hover-Ring trifft also in 97,4 % der Fälle nur eine Kachel, deren Namen
+die Zeile schon nennt. **Entscheidung des Nutzers: trotzdem bauen** — der Ring
+liefert dort Orientierung, keine neue Angabe. Die 221 PLZ-Objekte verteilen
+sich auf 60 Punkte (größter 16 Objekte, Median 2), 186 davon sind ZVG.
+
+**Nebenbefund, der zu einem neuen Backlog-Punkt wurde:** 352 Objekte bestehen
+nur aus einer URL — kein Titel, kein Ort, keine PLZ. Siehe **B5** in
+[`BACKLOG.md`](BACKLOG.md); Entscheidung des Nutzers: festhalten, nach der
+Karte angehen. **Dort steht ausdrücklich, was NICHT belegt ist:** dass es eine
+neue Regression sei — dem Snapshot fehlt `first_seen`, der Vergleich mit den
+54 aus E-7 ist keiner. Dabei fiel auf: **die von dir am 2026-09-13 entschiedene
+Kategorie „Objekte ohne Region" (E-7) ist im Dashboard nirgends gebaut.**
+
+### Zwei Fallen, die diese Sitzung gekostet hat
+
+- **`cmd //c "rmdir …"` funktioniert aus Git-Bash heraus nicht** für
+  Junctions: Jeder Aufruf meldete „Pfad nicht gefunden", obwohl der Pfad
+  stimmte — und sah damit aus wie „schon erledigt". Zusätzlich lässt
+  `git worktree remove` die Junction-Ordner stehen. **Was funktioniert:**
+  PowerShell mit `LinkType`-Prüfung und `[System.IO.Directory]::Delete($j, $false)`,
+  danach die Reparse-Point-Suche, erst dann löschen.
+- **Vite bindet hier nur an IPv6** — Skripte müssen `localhost` benutzen, nicht
+  `127.0.0.1`. Und auf der Seite gibt es **zwei** `.liste`-Elemente, von denen
+  das erste bei 1440×900 unterhalb des Sichtbereichs liegt; ohne
+  `.first().scrollIntoViewIfNeeded()` trifft ein Mausrad-Schritt nichts, und
+  das Messskript meldet „0 Ereignisse" — was leicht als „kein Problem"
+  durchgeht.
+
+---
+
+# Übergabe — Stand 2026-09-19 (erste Sitzung, Veröffentlichung)
 
 > **Zuerst lesen:** dieses Dokument, dann [`ABNAHME-BASIS.md`](ABNAHME-BASIS.md)
 > (woran „die Basis steht" gemessen wird), dann [`BACKLOG.md`](BACKLOG.md) und
@@ -347,8 +438,9 @@ Nutzers oder ein Brainstorming brauchen:
 1. **Veröffentlichung einrichten — ERLEDIGT am 2026-09-19**, live und
    verifiziert unter <https://immo-radar-dashboard.pages.dev>. Details im
    Abschnitt „Dashboard-Veröffentlichung" oben.
-2. **Karte als Dreh- und Angelpunkt — Entwurf fertig, ausdrücklich vom
-   Nutzer priorisiert.** Spec:
+2. **Karte als Dreh- und Angelpunkt — Block A erledigt, Block B offen.**
+   Der ganze Stand steht **oben** im Abschnitt „Die Karte als Dreh- und
+   Angelpunkt". Der Text unten ist der überholte Ausgangsstand. Spec:
    [`specs/2026-09-19-karte-dreh-und-angelpunkt-design.md`](specs/2026-09-19-karte-dreh-und-angelpunkt-design.md).
    Hover in der Tabelle hebt den PLZ-Punkt bzw. die Bundesland-Kachel
    hervor, sofortiges gestyltes Tooltip, Klick auf einen PLZ-Punkt filtert,
@@ -368,9 +460,21 @@ Nutzers oder ein Brainstorming brauchen:
    anfangen, die drei offenen Themen sind nicht schriftlich festgehalten
    (siehe oben).
 4. Danach der übliche Rückstand: A10 (Cron-Takt, Abwägung des Nutzers),
-   A11 Schritt 4 (darf eine bundeslandgenaue Schätzung überhaupt melden?).
+   A11 Schritt 4 (darf eine bundeslandgenaue Schätzung überhaupt melden?),
+   **B5** (die 352 leeren Hüllen, neu am 2026-09-19) und **E-7** (die
+   Kategorie „Objekte ohne Region" ist entschieden, aber nirgends gebaut).
 
-## Audit-Befunde der Weboberfläche — offen, nicht umgesetzt (2026-09-19)
+## Audit-Befunde der Weboberfläche — A, B, C ERLEDIGT (2026-09-19, zweite Sitzung)
+
+> **Alle drei sind behoben** (Tasks 1 und 2 des Kartenplans, siehe ganz oben).
+> Befund A und B in `8b9cd2e`, Befund C in `7e97dee`. Der Text unten ist der
+> ursprüngliche Befundstand und bleibt als Beleg stehen.
+>
+> **Was die Messung gegen die Vermutung entschieden hat:** Der Zusatzverdacht
+> zu `onScroll` („ein `setState` je Scroll-Ereignis") stimmte der Zahl nach —
+> es ist genau ein Render je Ereignis —, war aber **kein Problem**: p95 1,3 bis
+> 1,4 ms bei 120 Ereignissen, Schwelle 2 ms. Deshalb wurde dort **nichts**
+> geändert. Die Entscheidungsregel stand vor der Messung fest.
 
 Ein React-Performance-Audit (Skill `react-best-practices`) fand drei reale
 Punkte in `web/`. **Ein Parallellauf dazu ist am Session-Limit gescheitert**
@@ -403,7 +507,9 @@ Zwei Reste aus dem Access-Workflow, bewusst nicht mehr angefasst:
 - Ein Design- und Barrierefreiheits-Audit (WCAG 2.1 AA, Kontrast, Tastatur,
   Unterscheidbarkeit der drei Nichtwissens-Zeichen bei Farbsehschwäche) wurde
   gestartet und nach einem Limit abgebrochen — **nur lesend, nichts verloren,
-  aber auch nichts gewonnen**. Neu ansetzen.
+  aber auch nichts gewonnen**. **Es ist jetzt in Task 10 des Kartenplans
+  eingebaut** und läuft dort über alle berührten UI-Dateien; es deckt aber nur
+  `web/` ab und nur das, was dieser Plan anfasst.
 
 ## Neu installierte Skills (2026-09-19)
 
