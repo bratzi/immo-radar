@@ -4,8 +4,10 @@ import {
   KARTE_HOEHE,
   KARTE_BREITE,
   berechneAbdeckung,
+  beschreibeMarkierung,
   buendlePlzPunkte,
   kachelLagen,
+  markierungFuer,
   projiziere,
   spanneDerGroesse,
 } from "./karte.ts";
@@ -187,5 +189,59 @@ describe("spanneDerGroesse -- die Skala der Flaechenfaerbung", () => {
 
   it("gibt null zurueck, wenn kein einziger Wert vorliegt", () => {
     expect(spanneDerGroesse([laender[2]!], "medianDscr")).toBeNull();
+  });
+});
+
+describe("markierungFuer -- wohin gehoert ein Objekt auf der Karte?", () => {
+  it("nimmt den PLZ-Punkt, wenn die PLZ eine bekannte Koordinate hat", () => {
+    expect(markierungFuer(objekt({ plz: "80331", bundesland: "Bayern" }))).toEqual({
+      art: "plz",
+      zweisteller: "80",
+    });
+  });
+
+  it("faellt auf die Bundesland-Kachel zurueck, wenn es keine PLZ gibt", () => {
+    expect(markierungFuer(objekt({ plz: null, bundesland: "Sachsen" }))).toEqual({
+      art: "bundesland",
+      name: "Sachsen",
+    });
+  });
+
+  it("faellt auch dann auf die Kachel zurueck, wenn die PLZ keine Koordinate hat", () => {
+    // "00000": der Zweisteller "00" steht nicht in PLZ_KOORDINATEN -- ein Punkt
+    // waere erfunden. Dieselbe Regel wie in berechneAbdeckung.
+    expect(markierungFuer(objekt({ plz: "00000", bundesland: "Sachsen" }))).toEqual({
+      art: "bundesland",
+      name: "Sachsen",
+    });
+  });
+
+  it("behauptet bei einer kaputten PLZ keinen Punkt", () => {
+    expect(markierungFuer(objekt({ plz: "8033", bundesland: "Bayern" }))).toEqual({
+      art: "bundesland",
+      name: "Bayern",
+    });
+  });
+
+  it("markiert nichts, wenn weder PLZ noch Bundesland vorliegen", () => {
+    expect(markierungFuer(objekt({ plz: null, bundesland: null }))).toBeNull();
+  });
+});
+
+describe("beschreibeMarkierung -- die Zeile unter der Karte sagt, was der Ring bedeutet", () => {
+  it("nennt den PLZ-Bereich und sagt, dass der Punkt kein genauer Ort ist", () => {
+    const text = beschreibeMarkierung({ art: "plz", zweisteller: "80" });
+    expect(text).toContain("80");
+    expect(text).toContain("kein genauer Ort");
+  });
+
+  it("sagt bei der Kachel, dass nur das Land bekannt ist", () => {
+    const text = beschreibeMarkierung({ art: "bundesland", name: "Sachsen" });
+    expect(text).toContain("Sachsen");
+    expect(text).toContain("Nur das Land");
+  });
+
+  it("sagt bei fehlender Ortsangabe, dass das Objekt nicht auf der Karte steht", () => {
+    expect(beschreibeMarkierung(null)).toContain("nicht auf der Karte");
   });
 });
