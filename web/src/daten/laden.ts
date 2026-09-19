@@ -13,9 +13,11 @@
  *
  *   1. Der Abruf wird STROMWEISE gelesen (`body.getReader()`), damit die
  *      Oberflaeche einen echten Fortschritt zeigen kann statt eines
- *      Kreisels, der nichts weiss. `Content-Length` liefert das Ziel; fehlt
- *      es (etwa hinter einer komprimierenden Zwischenstelle), wird der
- *      Fortschritt als "unbekannt" gemeldet und NICHT geschaetzt.
+ *      Kreisels, der nichts weiss. `Content-Length` liefert das Ziel nur bei
+ *      unkomprimierter Antwort; sonst (komprimiert, Kopf fehlt) wird der
+ *      Fortschritt als "unbekannt" gemeldet und NICHT geschaetzt. Die
+ *      Meldungen sind auf eine je 100 ms gedrosselt -- die erste und der
+ *      Uebergang in die Aufbereitung kommen immer durch.
  *   2. Zwischen Abruf und `JSON.parse` wird dem Browser ausdruecklich ein
  *      Bild gegoennt (`requestAnimationFrame` + `setTimeout 0`). Ohne das
  *      sieht der Nutzer den Zustand "Aufbereiten" nie, weil der Parser
@@ -32,6 +34,46 @@ import { hatGueltigeKonstanten } from "../logik/snapshotpruefung.ts";
 
 /** Wo die Datei liegt. Relativ, damit die Seite unter jedem Pfad laeuft. */
 export const SNAPSHOT_URL = "dashboard-snapshot.json";
+
+/** Hoechstens eine Fortschrittsmeldung je Abstand -- die Leseschleife laeuft je Netzwerk-Paket. */
+export const MELDE_ABSTAND_MS = 100;
+
+/**
+ * Die Zahl, gegen die der Fortschritt gemessen werden darf -- oder `null`.
+ *
+ * `Content-Length` nennt die Groesse AUF DER LEITUNG. Hat der Server die Antwort
+ * komprimiert (`Content-Encoding` gzip, br, ...), liefert `body.getReader()`
+ * aber die DEKOMPRIMIERTEN Bytes -- bei diesem Snapshot rund siebenmal so viele.
+ * Beides ins Verhaeltnis zu setzen schrieb "23.5 von 3.2 MB". Lieber ehrlich
+ * "unbekannt" als eine Zahl, die nicht stimmt.
+ */
+export function erwarteteBytes(kopf: Pick<Headers, "get">): number | null {
+  const kodierung = kopf.get("content-encoding");
+  if (kodierung !== null && kodierung.trim().toLowerCase() !== "identity") return null;
+  const laenge = kopf.get("content-length");
+  if (laenge === null) return null;
+  const zahl = Number.parseInt(laenge, 10);
+  return Number.isFinite(zahl) && zahl > 0 ? zahl : null;
+}
+
+/**
+ * Zweite Wache gegen denselben Fehler: Ist schon MEHR gelesen als erwartet,
+ * stimmte der Massstab nicht (etwa weil der Browser `Content-Encoding` nicht
+ * preisgibt) -- dann wird ab hier "unbekannt" gemeldet statt ein Ziel, das
+ * bereits ueberschritten ist.
+ */
+export function gueltigesZiel(erwartet: number | null, gelesen: number): number | null {
+  return erwartet !== null && gelesen <= erwartet ? erwartet : null;
+}
+
+/** Erste Meldung immer, danach hoechstens eine je Abstand. */
+export function sollMelden(
+  letzteMeldungMs: number | null,
+  jetztMs: number,
+  abstandMs: number = MELDE_ABSTAND_MS
+): boolean {
+  return letzteMeldungMs === null || jetztMs - letzteMeldungMs >= abstandMs;
+}
 
 export interface Ladefortschritt {
   phase: "abruf" | "aufbereitung";
@@ -69,9 +111,7 @@ export async function ladeSnapshot(
     throw new Error(`Die Snapshot-Datei ist nicht abrufbar (HTTP ${antwort.status}).`);
   }
 
-  const laengeKopf = antwort.headers.get("content-length");
-  const gesamt = laengeKopf === null ? null : Number.parseInt(laengeKopf, 10);
-  const erwartet = gesamt !== null && Number.isFinite(gesamt) && gesamt > 0 ? gesamt : null;
+  const erwartet = erwarteteBytes(antwort.headers);
 
   let text: string;
   let bytes = 0;
@@ -86,13 +126,18 @@ export async function ladeSnapshot(
     const leser = antwort.body.getReader();
     const stuecke: Uint8Array[] = [];
     melde({ phase: "abruf", gelesen: 0, gesamt: erwartet });
+    let letzteMeldung: number | null = performance.now();
     for (;;) {
       const { done, value } = await leser.read();
       if (done) break;
       if (value !== undefined) {
         stuecke.push(value);
         bytes += value.byteLength;
-        melde({ phase: "abruf", gelesen: bytes, gesamt: erwartet });
+        const jetzt = performance.now();
+        if (sollMelden(letzteMeldung, jetzt)) {
+          melde({ phase: "abruf", gelesen: bytes, gesamt: gueltigesZiel(erwartet, bytes) });
+          letzteMeldung = jetzt;
+        }
       }
     }
     // Ein einziger zusammenhaengender Puffer, dann einmal dekodieren --
@@ -107,7 +152,7 @@ export async function ladeSnapshot(
   }
 
   const nachAbruf = performance.now();
-  melde({ phase: "aufbereitung", gelesen: bytes, gesamt: erwartet ?? bytes });
+  melde({ phase: "aufbereitung", gelesen: bytes, gesamt: bytes });
   await einBildLang();
 
   const vorParse = performance.now();
