@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SnapshotObjekt } from "../daten/snapshot.ts";
-import { LEERER_FILTER, wendeFilterAn, zaehleOhneAngabe, istFilterAktiv } from "./filter.ts";
+import { LEERER_FILTER, wendeFilterAn, zaehleOhneAngabe, istFilterAktiv, schalteEintrag } from "./filter.ts";
 
 function objekt(teil: Partial<SnapshotObjekt> = {}): SnapshotObjekt {
   return {
@@ -229,6 +229,80 @@ describe("zaehleOhneAngabe -- was ein Spannenfilter kosten wuerde", () => {
       grundstueck: 1,
       baujahr: 2,
       einheiten: 1,
+      plz: 3,
     });
+  });
+});
+
+describe("wendeFilterAn -- PLZ-Zweisteller (Klick auf einen Kartenpunkt)", () => {
+  const alle = [
+    objekt({ id: "muenchen", plz: "80331" }),
+    objekt({ id: "berlin", plz: "10115" }),
+    objekt({ id: "ohne", plz: null }),
+  ];
+
+  it("filtert nach dem Zweisteller der PLZ", () => {
+    const treffer = wendeFilterAn(alle, { ...LEERER_FILTER, plzZweisteller: ["80"] });
+    expect(treffer.map((o) => o.id)).toEqual(["muenchen"]);
+  });
+
+  it("verodert mehrere Zweisteller", () => {
+    const treffer = wendeFilterAn(alle, { ...LEERER_FILTER, plzZweisteller: ["80", "10"] });
+    expect(treffer.map((o) => o.id).sort()).toEqual(["berlin", "muenchen"]);
+  });
+
+  it("blendet ein Objekt OHNE PLZ aus, sobald nach PLZ gefiltert wird", () => {
+    const treffer = wendeFilterAn(alle, { ...LEERER_FILTER, plzZweisteller: ["80"] });
+    expect(treffer.map((o) => o.id)).not.toContain("ohne");
+  });
+
+  it("behandelt eine PLZ ohne Koordinate wie 'keine PLZ' -- sie ist auf der Karte nie anklickbar", () => {
+    const mit00 = [objekt({ id: "null-null", plz: "00000" })];
+    expect(wendeFilterAn(mit00, { ...LEERER_FILTER, plzZweisteller: ["00"] })).toHaveLength(0);
+  });
+
+  it("verbindet sich mit UND mit dem Bundesland", () => {
+    const beide = [
+      objekt({ id: "by", plz: "80331", bundesland: "Bayern" }),
+      objekt({ id: "sn", plz: "80331", bundesland: "Sachsen" }),
+    ];
+    const treffer = wendeFilterAn(beide, {
+      ...LEERER_FILTER,
+      plzZweisteller: ["80"],
+      bundeslaender: ["Bayern"],
+    });
+    expect(treffer.map((o) => o.id)).toEqual(["by"]);
+  });
+
+  it("gilt als aktiv, sobald ein Zweisteller gewaehlt ist", () => {
+    expect(istFilterAktiv({ ...LEERER_FILTER, plzZweisteller: ["80"] })).toBe(true);
+  });
+});
+
+describe("zaehleOhneAngabe -- PLZ", () => {
+  it("zaehlt Objekte ohne verortbare PLZ, auch solche mit unbekanntem Zweisteller", () => {
+    const alle = [
+      objekt({ plz: "80331" }),
+      objekt({ plz: null }),
+      objekt({ plz: "00000" }),
+      objekt({ plz: "8033" }),
+    ];
+    expect(zaehleOhneAngabe(alle).plz).toBe(3);
+  });
+});
+
+describe("schalteEintrag", () => {
+  it("nimmt einen fehlenden Eintrag auf und laesst die Reihenfolge stehen", () => {
+    expect(schalteEintrag(["a", "b"], "c")).toEqual(["a", "b", "c"]);
+  });
+
+  it("entfernt einen vorhandenen Eintrag", () => {
+    expect(schalteEintrag(["a", "b", "c"], "b")).toEqual(["a", "c"]);
+  });
+
+  it("veraendert die uebergebene Liste nicht", () => {
+    const liste = ["a"];
+    schalteEintrag(liste, "b");
+    expect(liste).toEqual(["a"]);
   });
 });

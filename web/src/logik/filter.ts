@@ -16,9 +16,12 @@ import type {
   SnapshotObjekt,
   Verfuegbarkeitszustand,
 } from "../daten/snapshot.ts";
+import { zweistellerMitKoordinate } from "./karte.ts";
 
 export interface Filter {
   bundeslaender: string[];
+  /** PLZ-Zweisteller, gewaehlt ueber einen Klick auf die Karte. */
+  plzZweisteller: string[];
   quellen: string[];
   stufen: Sicherheitsstufe[];
   zustaende: Verfuegbarkeitszustand[];
@@ -46,6 +49,7 @@ export interface Filter {
 
 export const LEERER_FILTER: Filter = {
   bundeslaender: [],
+  plzZweisteller: [],
   quellen: [],
   stufen: [],
   zustaende: [],
@@ -72,6 +76,7 @@ export const LEERER_FILTER: Filter = {
 export function istFilterAktiv(filter: Filter): boolean {
   return (
     filter.bundeslaender.length > 0 ||
+    filter.plzZweisteller.length > 0 ||
     filter.quellen.length > 0 ||
     filter.stufen.length > 0 ||
     filter.zustaende.length > 0 ||
@@ -161,6 +166,16 @@ function hatEineDerLuecken(objekt: SnapshotObjekt, gewaehlt: readonly string[]):
 export function wendeFilterAn(objekte: SnapshotObjekt[], filter: Filter): SnapshotObjekt[] {
   return objekte.filter((objekt) => {
     if (!inAuswahl(objekt.bundesland, filter.bundeslaender)) return false;
+
+    // Nur bei gesetztem Filter rechnen: Der Zweisteller wird sonst je Objekt bei
+    // JEDER Filteraenderung per Regex herausgeschnitten.
+    if (
+      filter.plzZweisteller.length > 0 &&
+      !inAuswahl(zweistellerMitKoordinate(objekt.plz), filter.plzZweisteller)
+    ) {
+      return false;
+    }
+
     if (!inAuswahl(objekt.quelle, filter.quellen)) return false;
     if (!inAuswahl(objekt.stufe, filter.stufen)) return false;
     if (!inAuswahl(objekt.zustand, filter.zustaende)) return false;
@@ -189,12 +204,15 @@ export interface OhneAngabe {
   grundstueck: number;
   baujahr: number;
   einheiten: number;
+  plz: number;
 }
 
 /**
  * Wie viele Objekte je Spannenfeld ueberhaupt keinen Wert tragen -- also wie
  * viele ein Filter auf dieses Feld ausblenden WUERDE, bevor er irgendetwas
  * einschraenkt. Steht in der Oberflaeche direkt am Feld.
+ *
+ * `plz` zaehlt, wie viele Objekte ein Klick auf einen Kartenpunkt ausblenden wuerde.
  */
 export function zaehleOhneAngabe(objekte: SnapshotObjekt[]): OhneAngabe {
   const zaehler: OhneAngabe = {
@@ -203,6 +221,7 @@ export function zaehleOhneAngabe(objekte: SnapshotObjekt[]): OhneAngabe {
     grundstueck: 0,
     baujahr: 0,
     einheiten: 0,
+    plz: 0,
   };
   for (const objekt of objekte) {
     if (objekt.kaufpreisEuro === null) zaehler.kaufpreis += 1;
@@ -210,6 +229,12 @@ export function zaehleOhneAngabe(objekte: SnapshotObjekt[]): OhneAngabe {
     if (objekt.grundstueckM2 === null) zaehler.grundstueck += 1;
     if (objekt.baujahr === null) zaehler.baujahr += 1;
     if (objekt.einheiten === null) zaehler.einheiten += 1;
+    if (zweistellerMitKoordinate(objekt.plz) === null) zaehler.plz += 1;
   }
   return zaehler;
+}
+
+/** Ein Eintrag rein, wenn er fehlt -- raus, wenn er schon drin ist. */
+export function schalteEintrag<T>(liste: readonly T[], eintrag: T): T[] {
+  return liste.includes(eintrag) ? liste.filter((e) => e !== eintrag) : [...liste, eintrag];
 }
