@@ -262,3 +262,34 @@ export function spanneDerGroesse(
   if (werte.length === 0) return null;
   return { min: Math.min(...werte), max: Math.max(...werte) };
 }
+
+/**
+ * Wo die Karte ein Objekt zeigt -- und damit, was sie ueber seinen Ort WIRKLICH weiss.
+ *
+ * Dieselbe Rangfolge wie `berechneAbdeckung`: erst der PLZ-Punkt (nur wenn es zu
+ * dem Zweisteller eine Koordinate gibt), dann die Bundesland-Kachel, sonst
+ * nichts. Ein Objekt ohne beides wird NICHT irgendwohin gelegt.
+ */
+export type Markierung =
+  | { art: "plz"; zweisteller: string }
+  | { art: "bundesland"; name: string };
+
+export function markierungFuer(
+  objekt: Pick<SnapshotObjekt, "plz" | "bundesland">
+): Markierung | null {
+  const zweisteller = zweistellerMitKoordinate(objekt.plz);
+  if (zweisteller !== null) return { art: "plz", zweisteller };
+  if (objekt.bundesland !== null) return { art: "bundesland", name: objekt.bundesland };
+  return null;
+}
+
+/** Der Satz unter der Karte -- damit ein Ring nie genauer wirkt, als die Daten sind. */
+export function beschreibeMarkierung(markierung: Markierung | null): string {
+  if (markierung === null) {
+    return "Dieses Objekt trägt weder PLZ noch Bundesland und steht deshalb nicht auf der Karte.";
+  }
+  if (markierung.art === "plz") {
+    return `PLZ-Bereich ${markierung.zweisteller}… — der Punkt sitzt in der Mitte des Bereichs, kein genauer Ort.`;
+  }
+  return `Nur das Land ist bekannt: ${markierung.name}. Die Kachel ist eine Marke, kein Ort.`;
+}
