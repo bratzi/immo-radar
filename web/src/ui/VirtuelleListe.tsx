@@ -24,6 +24,9 @@ export const ZEILENHOEHE_BREIT = 64;
 export const ZEILENHOEHE_SCHMAL = 104;
 const SCHMAL_AB = "(max-width: 960px)";
 
+/** Ein Objekt fuer alle Zeilen -- ein Literal in der Schleife waere je Bild und Zeile ein neues. */
+const DURCHSICHTIG = { display: "contents" } as const;
+
 /**
  * Die Zeilenhoehe des aktuellen Fensters. Bei schmalen Fenstern wird die
  * Zeile zweizeilig (Sache oben, Band und Zahlen darunter) und damit hoeher.
@@ -95,7 +98,7 @@ export function VirtuelleListe<T>({
     const eintrag = eintraege[i];
     if (eintrag === undefined) continue;
     gezeichnet.push(
-      <div key={schluessel(eintrag, i)} style={{ display: "contents" }}>
+      <div key={schluessel(eintrag, i)} style={DURCHSICHTIG}>
         {zeichne(eintrag, i, i * zeilenhoehe)}
       </div>
     );
