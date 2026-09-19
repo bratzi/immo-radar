@@ -55,6 +55,42 @@ Nachtrag `2026-09-15-dashboard-nachtrag-oberflaeche.md`.
    Sprechblasen für dieselbe Form. Der Name für Screenreader kommt weiter aus
    `aria-label` (ist an den Kacheln schon da und kommt an die Punkte).
 
+## Entscheidungen aus dem Grilling (2026-09-19, mit dem Nutzer)
+
+Vor dem Start von Block B hat der Nutzer den Plan gegen die echten Zahlen
+durchgesprochen. **Diese Entscheidungen gelten und werden nicht wieder
+aufgebracht:**
+
+| Frage | Entscheidung |
+|---|---|
+| Welche Fensterbreiten? | **Wechselt stark, auch Handy.** Der schmale Fall ist gleichwertig zu lösen, nicht nur „fällt in den Fluss zurück" |
+| Was leistet die Karte auf dem Handy? | **Einstieg und Filter, ehrlich begrenzt:** Tippen auf Kachel oder Punkt filtert. **Kein Hover-Ring, kein Tooltip auf Touch** — ein Finger schwebt nicht, und eine Listenzeile ist ein Link (Tippen öffnet die Quelle), kann also nicht zugleich „zeig auf der Karte" bedeuten |
+| Notebook (1366 px)? | **Mitwandernde Karte schon ab 1360 px**, Karte 300–460 px breit. Gerechnet: 296 (Filterleiste) + 300 (Karte) + 706 (Mindestbreite einer Listenzeile) + 52 (Innenabstand von `.haupt`) = 1354 → 1360. Die im Gespräch zuerst genannten 1300 px reichten rechnerisch nicht. Unter 1360 px steht die Karte im Fluss und klebt nicht |
+| Zuklappen? | **Unter 1360 px zuklappbar. Beim ersten Besuch offen, danach gemerkt** (`localStorage`; gesperrt oder kaputt → offen). Zugeklappt zeigt der Kopf den aktiven Filter („Bayern · 80…") — Task 6b |
+| Lohnt der Hover-Ring, wenn er in 97,4 % der Fälle nur eine Kachel trifft? | **Ja, wie geplant.** Gemessen am Snapshot vom 2026-09-18 (21.897 Objekte): 221 (1,0 %) bekommen einen PLZ-Punkt, 21.321 (97,4 %) nur eine Kachel, 355 (1,6 %) gar nichts. Der Ring liefert dort Orientierung, keine neue Angabe |
+| Die leeren Hüllen ohne Region? | **Festhalten, nach der Karte angehen** — siehe Task 10, Step 4 |
+
+**Der Fund, der zur letzten Zeile führte:** 348 der 356 Objekte ohne Bundesland
+sind Immowelt-Objekte **ohne Titel, ohne Ort, ohne PLZ — nur eine URL**, alle in
+den letzten zwei Tagen gesehen (151 am 17., 197 am 18.). Der Entwurf nannte für
+E-7 noch 54 (Stand 09-15, womöglich andere Zählweise; dem Snapshot fehlt
+`first_seen`, deshalb ist „erst seit …" **nicht belegt**). Die Kategorie
+„Objekte ohne Region" aus E-7 ist im Dashboard nirgends gebaut. **Nicht Teil
+dieses Plans** — dieser Plan behandelt solche Objekte nur ehrlich (kein Ring,
+ein Satz unter der Karte).
+
+Zwei weitere Messungen, die der Plan berücksichtigt: Die 221 PLZ-Objekte
+verteilen sich auf 60 Punkte (größter 16 Objekte, Median 2, 15 Punkte mit genau
+einem Objekt), 186 davon sind Zwangsversteigerungen — ein Klick auf einen Punkt
+ergibt also eine **sehr kleine** Liste. Das ist ehrlich und wird durch den
+Ausblendungssatz in der Filterleiste (Task 8) gesagt.
+
+**Vom Koordinator ohne Rückfrage ergänzt** (klein, im Geist der Entscheidungen):
+ein Sprunglink „Zur Liste" (sonst rund 76 Tab-Stopps vor der Liste), die
+Kürzel-Schriftgröße bei 300 px Spaltenbreite nachprüfen, eine wirksame
+Trefferfläche der Punkte von mindestens 24 px auf Touch, Hover nur für Maus und
+Stift (Tastaturfokus bleibt gleichwertig).
+
 ## Global geltende Randbedingungen
 
 Jede Aufgabe erfüllt sie stillschweigend mit.
@@ -76,6 +112,12 @@ Jede Aufgabe erfüllt sie stillschweigend mit.
   bleibt Inline-SVG; ein Tooltip ist ein eigenes Element.
 - **Wo Wissen fehlt, steht eine ehrliche Angabe statt einer Zahl** (Leitsatz
   des Projekts): kein „23.5 von 3.2 MB", keine stille 0.
+- **Touch bekommt keinen Hover.** Weder Ring noch Tooltip erscheinen bei einem
+  Fingertipp; Tippen filtert. Maus und Stift (`pointerType` `mouse`/`pen`) sowie
+  Tastaturfokus (`:focus-visible`) lösen Ring und Tooltip aus.
+- **Kein `localStorage`-Zugriff ohne `try/catch`** — schon der Zugriff auf
+  `window.localStorage` kann werfen (blockierte Website-Daten, privates
+  Fenster). Die Seite muss ohne Speicher genauso laufen.
 - **TDD, und jeder Test wird zuerst rot gesehen.** Ein grüner Test, der nie rot
   war, belegt nichts. Bei einem Test, der sofort grün ist: Produktionscode
   kurz kaputtmachen und zusehen, ob der Test es merkt.
@@ -112,7 +154,14 @@ Ausgangsstand: `main` = `6796f02`, **103 Web-Tests grün, 1 übersprungen**
    ins **Scratchpad**, nie ins Repo. Headless-Chromium gegen die **eigene**
    Seite ist unproblematisch (gesperrt ist nur Immowelt).
 6. Entwicklungsserver: `cd web && npx vite --port <freier Port> --strictPort`
-   im Hintergrund. **Nach der Aufgabe beenden**, gezielt über die
+   im Hintergrund. **Vite bindet hier nur an IPv6 — in Skripten `localhost`
+   benutzen, nicht `127.0.0.1`** (der eigene Testserver aus Task 1 bindet
+   ausdrücklich `127.0.0.1`, dort gilt das umgekehrt). **Auf der Seite gibt es
+   zwei `.liste`-Elemente**, und bei 1440×900 liegt die erste unter dem
+   sichtbaren Bereich: `.locator(".liste").first().scrollIntoViewIfNeeded()`,
+   sonst trifft ein Mausrad-Schritt nichts (gemessen in Task 2: ein Skript
+   meldete „0 Commits", was leicht als „kein Problem" hätte gelten können).
+   **Nach der Aufgabe beenden**, gezielt über die
    Kommandozeile suchen — nicht alle `node`-Prozesse abschießen (ein
    vergessener Server verhindert später `git worktree remove`).
 7. Commit-Texte über eine Datei (`git commit -F <datei>`), nie über `printf`:
@@ -137,22 +186,24 @@ Ausgangsstand: `main` = `6796f02`, **103 Web-Tests grün, 1 übersprungen**
 | `web/src/ui/Karte.tsx` | Overlay, klickbare Punkte, Tooltip | 7, 8, 9 |
 | `web/src/ui/Objektzeile.tsx`, `Bereich.tsx` | Hover-Weiterleitung | 7 |
 | `web/src/ui/Filterleiste.tsx` | Gruppe „PLZ-Bereich" | 8 |
-| `web/src/App.tsx` | Layout, Hover-Zustand, PLZ-Schalter | 6, 7, 8 |
+| `web/src/App.tsx` | Layout, Sprunglink, Hover-Zustand, PLZ-Schalter | 6, 7, 8 |
+| `web/src/logik/karteOffen.ts` (neu), `karteOffen.test.ts` (neu) | Zuklapp-Zustand der Karte, sicher gegen fehlenden Speicher | 6b |
+| `web/src/logik/kartentexte.ts` | + `filterKurz` (Filter-Kurztext im zugeklappten Kartenkopf) | 6b |
 | `web/src/stil.css` | Kartenspalte, Overlay, Punkt-Zustände, Tooltip | 6, 7, 8, 9 |
 
 ## Reihenfolge und Parallelität
 
-- **Block A (Tasks 1–5): fünf Worktrees gleichzeitig.** Die Dateien sind
-  disjunkt. Einzige Berührung: Task 3 hängt neue Funktionen ans Ende von
+- **Block A (Tasks 1–5): ERLEDIGT am 2026-09-19** — fünf Worktrees
+  gleichzeitig, gemergt, 145 Web-Tests grün. Die Dateien waren disjunkt. Einzige Berührung: Task 3 hängt neue Funktionen ans Ende von
   `karte.ts`, Task 4 ändert dort nur die Zeile `function zweistellerMitKoordinate`
   zu `export function …` — git führt das ohne Konflikt zusammen.
-- **Block B (Tasks 6–9): nacheinander in einem Zweig**, gestartet von `main`
-  **nach** dem Merge von Block A. Alle vier berühren `Karte.tsx`, `App.tsx`
+- **Block B (Tasks 6, 6b, 7, 8, 9): nacheinander in einem Zweig**, gestartet von
+  `main` **nach** dem Merge von Block A. Alle berühren `Karte.tsx`, `App.tsx`
   oder `stil.css`; Parallelität brächte nur Merge-Arbeit.
 - **Block C (Task 10):** Abnahme, Dokumentation, Merge/Push — Koordinator.
 - **Modellwahl (Vorschlag, entscheidet der Koordinator beim Losschicken):**
-  Tasks 1–5 `sonnet` (Code ist ausgeschrieben), Tasks 6–9 `opus`
-  (Gestaltungsurteil, React-Leistung, Browser-Prüfung).
+  Tasks 1–5 `sonnet` (Code ist ausgeschrieben; **so gelaufen und gut**),
+  Tasks 6–9 `opus` (Gestaltungsurteil, React-Leistung, Browser-Prüfung).
 
 ---
 
@@ -1184,30 +1235,42 @@ Nachricht (Vorschlag): `feat(web): Tooltip-Texte und Tooltip-Platzierung als rei
 
 ---
 
-# Zwischenschritt: Block A zusammenführen (Koordinator)
+# Zwischenschritt: Block A zusammenführen — ERLEDIGT (2026-09-19)
 
-Nach der Prüfung jedes Zweigs (Diff lesen, Tests im Zweig grün, die
-Gegenproben in den Tasks 3–5 stichprobenartig selbst wiederholen):
+Alle fünf Zweige nacheinander (nicht als Octopus-Merge: zwei berühren
+`karte.ts`) mit `--no-ff` in `main` gemergt, ohne Konflikt. Der Koordinator
+hat die Produktionsdiffs aller fünf Zweige selbst gelesen — sie stimmten Zeile
+für Zeile mit dem Plan überein. **145 Web-Tests grün, 1 übersprungen** (103 + 10
+Task 1 + 8 Task 3 + 10 Task 4 + 14 Task 5; der Plan hatte 9 und 12 gesagt und
+sich in beiden Zahlen verzählt), `tsc` und `vite build` sauber.
 
-```bash
-git checkout main
-git merge --no-ff feat/karte-laden feat/karte-liste feat/karte-markierung feat/karte-plzfilter feat/karte-tooltipbausteine
-cd web && npx vitest run && npx tsc --noEmit && npx vite build
-```
+Ein Befund des Agenten zu Task 3 ist bereits eingearbeitet: Der Satz unter der
+Karte für Objekte ohne Markierung sagt jetzt „keine verortbare PLZ und kein
+Bundesland" statt „weder PLZ noch Bundesland" — ein Objekt mit kaputter oder
+koordinatenloser PLZ trägt sehr wohl eine PLZ.
 
-Erwartet: **Web-Tests ≈ 103 + 9 (Task 1) + 8 (Task 3) + 12 (Task 4: 6 PLZ-Filter + 1 Zählung + 3 `schalteEintrag` + 0
-geänderter) + 14 (Task 5) ≈ 146 grün**, `tsc` und `vite build` sauber. Dann Worktrees
-aufräumen (Junction lösen, **bevor** gelöscht wird — siehe Projektnotiz zum
-Worktree-Aufräumen), Block B startet von diesem `main`.
+**Lehre beim Aufräumen der Worktrees:** `cmd //c "rmdir <pfad>"` aus Git-Bash
+meldete „Pfad nicht gefunden" und ließ die Junctions stehen (der Pfad wird
+beim Weiterreichen verstümmelt); `git worktree remove` entfernt den Worktree,
+lässt aber die Junction-Ordner zurück. Was funktionierte, ist PowerShell:
+`[System.IO.Directory]::Delete($junction, $false)` nach der Prüfung
+`(Get-Item $junction -Force).LinkType -eq 'Junction'` — das löst nur den Link.
+**Danach** prüfen, dass im Rest kein Reparse-Point mehr liegt
+(`Get-ChildItem <rest> -Recurse -Force -Attributes ReparsePoint`), erst dann
+löschen, und zuletzt die Gegenprobe am echten `node_modules`.
 
 ---
 
 # Block B — Oberfläche (nacheinander, ein Zweig)
 
 **Worktree:** `../immo-radar-wt-karte`, Zweig `feat/karte-oberflaeche`, von `main`
-nach dem Merge von Block A. Vor jedem Task die Entwicklungsumgebung aus dem
-Abschnitt „Arbeitsumgebung" (Snapshot-Datei kopieren!). Nach **jedem** Task
-Tests, `tsc` und die genannte Browser-Prüfung, dann ein Commit.
+nach dem Merge von Block A (`371ccd9`). Vor jedem Task die Entwicklungsumgebung
+aus dem Abschnitt „Arbeitsumgebung" (Snapshot-Datei kopieren!). Nach **jedem**
+Task Tests, `tsc` und die genannte Browser-Prüfung, dann ein Commit.
+**Ausgangsstand: 145 Web-Tests grün, 1 übersprungen.**
+
+**Die Aufgaben dieses Blocks lesen sich der Reihe nach:** 6 (Layout) → 6b
+(Zuklappen) → 7 (Hover) → 8 (Klick) → 9 (Tooltip). Jede setzt die vorige voraus.
 
 ### Task 6: Die Karte wird eine eigene, mitwandernde Spalte
 
@@ -1224,15 +1287,30 @@ den Anfang des scrollenden Inhalts, oberhalb von „Top-Treffer".
 
 **Die Spaltenbreite ist gemessen, nicht geraten.** Eine Zeile der Liste
 braucht mindestens **rund 706 px** (`stil.css`, „Spaltenmaße": 38 + 150 + 112 +
-190 + 128 px, vier Lücken zu 14 px, 2 × 16 px Innenabstand). Bei `--rail` 296 px
-und 2 × 26 px Innenabstand von `.haupt` heißt das: dreispaltig erst ab rund
-**1400 px** Fensterbreite, und die Kartenspalte darf nie breiter sein als der
-Rest hergibt. Deshalb: `--karte: clamp(340px, calc(100vw - var(--rail) - 780px), 460px)`.
+190 + 128 px, vier Lücken zu 14 px, 2 × 16 px Innenabstand). Bei `--rail` 296 px,
+2 × 26 px Innenabstand von `.haupt` und der **vom Nutzer gewollten**
+Mindestbreite der Karte von 300 px heißt das: 296 + 300 + 706 + 52 = 1354 —
+dreispaltig ab **1360 px** Fensterbreite (deckt das verbreitete 1366-px-
+Notebook), und die Kartenspalte darf nie breiter sein, als der Rest hergibt.
+Deshalb: `--karte: clamp(300px, calc(100vw - var(--rail) - 780px), 460px)`.
+
+**Folge der schmalen Karte:** Die Zeichnung ist 360 Einheiten breit; bei 300 px
+Spaltenbreite (abzüglich 20 px Innenabstand) erscheint sie mit rund 78 %, die
+Kachelkürzel (`font-size: 11px` in Zeichnungseinheiten) also mit rund 8,6 px
+Bildschirmschrift — zu klein. Die **wirksame** Schriftgröße
+(`11 × Zeichnungsbreite_px / 360`) muss bei jeder Breite ab 1360 px
+mindestens 10 px betragen; sonst die Schriftgröße in `.kachel__kuerzel`
+anheben (auch die Kachel selbst wächst mit, die Kürzel dürfen sie nicht
+sprengen — Berlin und Hamburg auf Überlappung prüfen).
+
+**Unter 1360 px** steht die Karte im Fluss (nicht klebend) und ist zuklappbar
+(Task 6b). Zwischen 961 und 1359 px liegt sie oben in der rechten Spalte; ab
+960 px abwärts zwischen Filterleiste und Liste.
 
 - [ ] **Step 1: Vorher-Bilder machen**
 
-Scratchpad-Skript, das bei 1440×900, 1100×800 und 390×844 je einen
-Vollbild-Screenshot von `http://127.0.0.1:<port>/` in ein Scratchpad-Verzeichnis
+Scratchpad-Skript, das bei 1440×900, 1366×768, 1100×800 und 390×844 je einen
+Vollbild-Screenshot von `http://localhost:<port>/` in ein Scratchpad-Verzeichnis
 `vorher/` legt (Entwicklungsserver, Snapshot vorhanden, auf `.geruest` warten).
 Sie dienen dem Vergleich in Step 6, nicht der Dokumentation.
 
@@ -1241,6 +1319,20 @@ Sie dienen dem Vergleich in Step 6, nicht der Dokumentation.
 Den Block `<div className="tafeln">…</div>` **ersatzlos** auflösen: Zwischen
 `<aside className="rail">…</aside>` und `<main className="haupt">` eine neue
 Spalte einfügen, und `<Betriebstafel>` als **erstes** Kind von `<main>`.
+Dazu ein **Sprunglink** als allererstes Kind von `.geruest` und eine Marke am
+Anfang der Liste — ohne ihn sind es rund 76 Tab-Stopps (16 Kacheln + bis zu 60
+Punkte, dazu die Filterleiste) vor dem ersten Objekt:
+
+```tsx
+    <div className="geruest">
+      <a className="sprunglink" href="#liste">
+        Zur Liste springen
+      </a>
+      <Kopfzeile snapshot={snapshot} topAnzahl={topImBestand} />
+```
+
+und `<main className="haupt">` bekommt `id="liste" tabIndex={-1}` (damit der
+Fokus nach dem Sprung wirklich dort landet und nicht nur die Ansicht scrollt):
 
 ```tsx
       </aside>
@@ -1278,7 +1370,35 @@ die Punkte.)
 In `stil.css` unter `:root` (bei `--rail`/`--zeile-hoehe`):
 
 ```css
-  --karte: clamp(340px, calc(100vw - var(--rail) - 780px), 460px);
+  /* 296 + 300 + 706 (kleinste Listenzeile) + 52 = 1354; darunter kein Platz. */
+  --karte: clamp(300px, calc(100vw - var(--rail) - 780px), 460px);
+```
+
+Der Sprunglink (Step 2) liegt **ausserhalb des Flusses** — sonst wird er ein
+eigenes Grid-Kind von `.geruest` und schiebt die Areas auseinander:
+
+```css
+.sprunglink {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 40;
+  padding: 9px 14px;
+  background: var(--flaeche-hoch);
+  border: 1px solid var(--gold);
+  border-radius: var(--r);
+  color: var(--gold-hell);
+  text-decoration: none;
+  transition: top 0.1s;
+}
+
+.sprunglink:focus {
+  top: 8px;
+}
+
+.haupt:focus {
+  outline: none;
+}
 ```
 
 `.geruest` ersetzen (Standard = mittlere Breiten: Karte oben in der rechten
@@ -1324,7 +1444,7 @@ Vor `@media (max-width: 960px)` einfügen:
 /* Breit genug fuer drei Spalten: Filter | Karte | Liste. Die Karte wandert mit,
    damit sie sichtbar bleibt, waehrend man durch die Liste blaettert -- sonst
    waere ein Hover in der Liste ein Ring auf einer Karte, die man nicht sieht. */
-@media (min-width: 1400px) {
+@media (min-width: 1360px) {
   .geruest {
     grid-template-columns: var(--rail) var(--karte) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
@@ -1374,39 +1494,46 @@ Expected: alles grün.
 - [ ] **Step 6: Im Browser prüfen — gemessen, nicht angesehen**
 
 Scratchpad-Skript `pruefe-layout.mjs` (Entwicklungsserver, Snapshot vorhanden).
-Für jede Breite **1920, 1440, 1400, 1399, 1280, 1100, 961, 960, 800, 390** (Höhe
-900, außer 390×844) prüfen und ausgeben:
+Für jede Breite **1920, 1440, 1366, 1360, 1359, 1280, 1100, 961, 960, 800, 390**
+(Höhe 900, außer 1366×768 und 390×844) prüfen und ausgeben:
 
 1. Kein waagerechtes Scrollen der Seite:
    `document.documentElement.scrollWidth <= document.documentElement.clientWidth`.
 2. Die Liste passt in ihren Behälter (öffne bei Bedarf „Top-Treffer"):
    `.liste.scrollWidth <= .liste.clientWidth` und kein `.zeile` läuft rechts
-   über `.liste` hinaus. **Ab 1400 px ist das die Probe auf die 706-px-Rechnung.**
-   Schlägt sie bei 1400 oder 1440 fehl, `--karte` bzw. den Schwellwert
-   `1400px` anheben — und die Zahl in den Kommentar an `--karte` schreiben.
-3. **Ab 1400 px** bleibt die Karte stehen, während die Seite scrollt:
+   über `.liste` hinaus. **Bei 1360 und 1366 px ist das die Probe auf die
+   706-px-Rechnung.** Schlägt sie dort fehl, `--karte` bzw. den Schwellwert
+   `1360px` anheben — und die Zahl in den Kommentar an `--karte` schreiben.
+3. **Ab 1360 px** bleibt die Karte stehen, während die Seite scrollt:
    `window.scrollTo(0, 2000)`, dann `boundingBox()` von `.kartenspalte .tafel`
-   → `y` zwischen 0 und 40. **Unter 1400 px** scrollt sie mit (`y` < 0 nach dem
+   → `y` zwischen 0 und 40. **Unter 1360 px** scrollt sie mit (`y` < 0 nach dem
    Scrollen).
-4. Ab 1400 px liegt die Betriebstafel **über** „Top-Treffer" in `.haupt`, und
+4. Ab 1360 px liegt die Betriebstafel **über** „Top-Treffer" in `.haupt`, und
    `.tafeln` kommt im DOM nicht mehr vor.
-5. Ab 1400 px passt bei 1440×900 die **Kartenzeichnung und der Satz mit der
+5. **Wirksame Kürzel-Schriftgröße** (siehe oben) ≥ 10 px bei 1360, 1366, 1440
+   und 1920 px; Kacheln von Berlin und Hamburg überlappen nicht.
+6. **Sprunglink:** mit `Tab` als erstes fokussierbares Element erreichbar,
+   sichtbar nur im Fokus; `Enter` bringt den Fokus in `<main id="liste">`
+   (`document.activeElement.id === "liste"`).
+7. Ab 1360 px passt bei 1440×900 die **Kartenzeichnung und der Satz mit der
    Abdeckung** ohne inneres Scrollen der Kartenspalte in das Fenster
    (`.kartenspalte.scrollHeight <= .kartenspalte.clientHeight`, sonst notieren,
-   um wie viel sie überläuft). Läuft sie über: die beiden Hinweisabsätze
+   um wie viel sie überläuft); bei **1366×768** muss wenigstens die
+   **Kartenzeichnung vollständig** sichtbar sein, die Legende darf dort im
+   Inneren der Spalte scrollen. Läuft sie über: die beiden Hinweisabsätze
    (`.hinweis-schematisch`) in ein standardmäßig geschlossenes
    `<details className="karte__hinweise"><summary>So ist die Karte zu lesen</summary>…</details>`
    packen — **der Abdeckungssatz (`.abdeckung`) bleibt dauerhaft sichtbar**
    (N2 verlangt ihn ausdrücklich), und die Aussage „Kacheln sind schematisch"
    darf nicht verschwinden, sondern nur eingeklappt sein; in der Legende steht
    dann zusätzlich ein Halbsatz „Kacheln sind schematisch (Details unten)".
-6. Keine Konsolenfehler.
-7. Die Kopfhöhe: `.kopf.offsetHeight` messen. Weicht sie stark von 132 px ab
+8. Keine Konsolenfehler.
+9. Die Kopfhöhe: `.kopf.offsetHeight` messen. Weicht sie stark von 132 px ab
    (dem Rückfallwert von `--kopf-hoehe`, den `.rail` und jetzt auch die
    Kartenspalte benutzen), den Wert in `:root` nachziehen — **gemeinsam** für
    beide, nicht nur für die Karte.
 
-Nachher-Bilder bei 1440×900, 1100×800, 390×844 machen und mit `vorher/`
+Nachher-Bilder bei 1440×900, 1366×768, 1100×800, 390×844 machen und mit `vorher/`
 vergleichen; das Ergebnis der Sichtung in zwei Sätzen im Commit festhalten.
 
 - [ ] **Step 7: Die Skills anwenden**
@@ -1419,6 +1546,343 @@ verwerfen. Das Ergebnis im Commit-Rumpf nennen.
 - [ ] **Step 8: Commit**
 
 Nachricht (Vorschlag): `feat(web): Karte als eigene mitwandernde Spalte, Betriebstafel an den Anfang der Liste`.
+
+---
+
+### Task 6b: Unter 1360 px ist die Karte zuklappbar — und merkt es sich
+
+Entscheidung des Nutzers (Grilling): Auf schmalen Bildschirmen ist die Karte
+der **Einstieg**, nicht ein Dauerbrenner. Beim ersten Besuch **offen**, danach
+merkt sich die Seite, ob man sie zugeklappt hat. Zugeklappt zeigt der Kopf den
+aktiven Filter, damit man ihn nicht vergisst. Ab 1360 px (mitwandernde Spalte)
+gibt es weder Knopf noch Zuklappen — die Karte ist dort immer sichtbar.
+
+**Files:**
+- Create: `web/src/logik/karteOffen.ts`, `web/src/logik/karteOffen.test.ts`
+- Modify: `web/src/logik/kartentexte.ts`, `web/src/logik/kartentexte.test.ts`,
+  `web/src/ui/Karte.tsx`, `web/src/stil.css`
+
+**Interfaces:**
+- Consumes: nichts aus anderen Tasks.
+- Produces (aus `logik/karteOffen.ts`):
+  - `export const KARTE_OFFEN_SCHLUESSEL = "immo-radar.karte-offen";`
+  - `export function liesKarteOffen(speicher: Pick<Storage, "getItem"> | null): boolean`
+  - `export function schreibeKarteOffen(speicher: Pick<Storage, "setItem"> | null, offen: boolean): void`
+  - `export function holeSpeicher(): Storage | null`
+- Produces (aus `logik/kartentexte.ts`):
+  - `export function filterKurz(laender: readonly string[], plzZweisteller: readonly string[]): string`
+
+- [ ] **Step 1: Die fehlschlagenden Tests schreiben**
+
+`web/src/logik/karteOffen.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { KARTE_OFFEN_SCHLUESSEL, liesKarteOffen, schreibeKarteOffen } from "./karteOffen.ts";
+
+const mit = (wert: string | null) => ({
+  getItem: (schluessel: string) => (schluessel === KARTE_OFFEN_SCHLUESSEL ? wert : null),
+});
+
+describe("liesKarteOffen -- im Zweifel offen, nie versteckt", () => {
+  it("ist offen, wenn nichts gemerkt ist (erster Besuch)", () => {
+    expect(liesKarteOffen(mit(null))).toBe(true);
+  });
+
+  it("ist zu, wenn zugeklappt gemerkt ist", () => {
+    expect(liesKarteOffen(mit("0"))).toBe(false);
+  });
+
+  it("ist offen, wenn offen gemerkt ist", () => {
+    expect(liesKarteOffen(mit("1"))).toBe(true);
+  });
+
+  it("ist offen bei jedem anderen Wert -- ein kaputter Eintrag versteckt die Karte nicht", () => {
+    expect(liesKarteOffen(mit("vielleicht"))).toBe(true);
+    expect(liesKarteOffen(mit(""))).toBe(true);
+  });
+
+  it("ist offen ohne Speicher", () => {
+    expect(liesKarteOffen(null)).toBe(true);
+  });
+
+  it("ist offen, wenn der Zugriff wirft (blockierte Website-Daten)", () => {
+    const wirft = {
+      getItem: () => {
+        throw new DOMException("blocked", "SecurityError");
+      },
+    };
+    expect(liesKarteOffen(wirft)).toBe(true);
+  });
+});
+
+describe("schreibeKarteOffen", () => {
+  it("schreibt 1 fuer offen und 0 fuer zu", () => {
+    const eintraege = new Map<string, string>();
+    const speicher = { setItem: (k: string, v: string) => void eintraege.set(k, v) };
+    schreibeKarteOffen(speicher, false);
+    expect(eintraege.get(KARTE_OFFEN_SCHLUESSEL)).toBe("0");
+    schreibeKarteOffen(speicher, true);
+    expect(eintraege.get(KARTE_OFFEN_SCHLUESSEL)).toBe("1");
+  });
+
+  it("wirft nicht, wenn es keinen Speicher gibt", () => {
+    expect(() => schreibeKarteOffen(null, true)).not.toThrow();
+  });
+
+  it("wirft nicht, wenn der Speicher voll oder gesperrt ist", () => {
+    const wirft = {
+      setItem: () => {
+        throw new DOMException("voll", "QuotaExceededError");
+      },
+    };
+    expect(() => schreibeKarteOffen(wirft, false)).not.toThrow();
+  });
+});
+```
+
+In `kartentexte.test.ts` den Import um `filterKurz` erweitern und anhängen:
+
+```ts
+describe("filterKurz -- was im zugeklappten Kartenkopf steht", () => {
+  it("ist leer, wenn nichts gewaehlt ist", () => {
+    expect(filterKurz([], [])).toBe("");
+  });
+
+  it("nennt ein Land", () => {
+    expect(filterKurz(["Bayern"], [])).toBe("Bayern");
+  });
+
+  it("nennt Laender vor PLZ-Bereichen, mit Auslassungspunkten an den Bereichen", () => {
+    expect(filterKurz(["Bayern"], ["80"])).toBe("Bayern · 80…");
+  });
+
+  it("nennt bis zu drei Eintraege ganz", () => {
+    expect(filterKurz(["Bayern", "Sachsen"], ["80"])).toBe("Bayern · Sachsen · 80…");
+  });
+
+  it("kuerzt ab vier Eintraegen auf zwei plus Zahl -- der Kopf ist schmal", () => {
+    expect(filterKurz(["Bayern", "Sachsen"], ["80", "10"])).toBe("Bayern · Sachsen · +2");
+  });
+});
+```
+
+- [ ] **Step 2: Rot sehen**
+
+Run: `cd web && npx vitest run src/logik/karteOffen.test.ts src/logik/kartentexte.test.ts`
+Expected: FAIL — `karteOffen.ts` existiert nicht; `filterKurz is not a function`.
+
+- [ ] **Step 3: Die Umsetzung**
+
+`web/src/logik/karteOffen.ts`:
+
+```ts
+/**
+ * Ob die Karte auf schmalen Bildschirmen aufgeklappt ist -- und dass die Seite
+ * sich das merkt.
+ *
+ * `localStorage` ist hier NIE verlaesslich: Blockierte Website-Daten, ein
+ * privates Fenster oder ein voller Speicher lassen schon den ZUGRIFF auf
+ * `window.localStorage` werfen. Deshalb steckt jeder Zugriff in einem
+ * `try/catch`, und im Zweifel ist die Karte OFFEN: Eine versteckte Karte ist
+ * ein Fehler, den man nicht sieht; eine offene Karte kostet nur Platz.
+ */
+export const KARTE_OFFEN_SCHLUESSEL = "immo-radar.karte-offen";
+
+export function liesKarteOffen(speicher: Pick<Storage, "getItem"> | null): boolean {
+  try {
+    return speicher?.getItem(KARTE_OFFEN_SCHLUESSEL) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function schreibeKarteOffen(
+  speicher: Pick<Storage, "setItem"> | null,
+  offen: boolean
+): void {
+  try {
+    speicher?.setItem(KARTE_OFFEN_SCHLUESSEL, offen ? "1" : "0");
+  } catch {
+    // Gesperrt oder voll: dann wird eben nichts gemerkt.
+  }
+}
+
+/** Der Speicher, oder `null` -- auch dann, wenn schon der Zugriff wirft. */
+export function holeSpeicher(): Storage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+```
+
+In `kartentexte.ts` anhängen:
+
+```ts
+/**
+ * Der Kurztext fuer den zugeklappten Kartenkopf: Laender zuerst, dann die
+ * PLZ-Bereiche. Bis zu drei Eintraege stehen ganz da, ab vier zwei plus Zahl --
+ * der Kopf ist auf dem Handy schmal.
+ */
+export function filterKurz(
+  laender: readonly string[],
+  plzZweisteller: readonly string[]
+): string {
+  const teile = [...laender, ...plzZweisteller.map((zweisteller) => `${zweisteller}…`)];
+  if (teile.length <= 3) return teile.join(" · ");
+  return `${teile.slice(0, 2).join(" · ")} · +${teile.length - 2}`;
+}
+```
+
+- [ ] **Step 4: Grün sehen, Gegenprobe**
+
+Run: `cd web && npx vitest run src/logik/karteOffen.test.ts src/logik/kartentexte.test.ts`
+Expected: PASS.
+
+Gegenprobe: in `liesKarteOffen` `!== "0"` vorübergehend zu `=== "1"` ändern —
+„ist offen, wenn nichts gemerkt ist" und „ist offen bei jedem anderen Wert"
+müssen rot werden; zurücknehmen.
+
+- [ ] **Step 5: `Karte.tsx` — der Knopf und der Zustand**
+
+Imports: `filterKurz` aus `../logik/kartentexte.ts`; `holeSpeicher`,
+`liesKarteOffen`, `schreibeKarteOffen` aus `../logik/karteOffen.ts`; `useState`
+aus `react`.
+
+In `Karte`, vor `return`:
+
+```tsx
+  // Der Ausgangswert wird EINMAL gelesen (Initialisierungsfunktion), nicht je Render.
+  const [offen, setOffen] = useState(() => liesKarteOffen(holeSpeicher()));
+  const schalteOffen = () => {
+    const neu = !offen;
+    setOffen(neu);
+    schreibeKarteOffen(holeSpeicher(), neu);
+  };
+  const kurz = filterKurz(gewaehlteLaender, []);
+```
+
+(`gewaehltePlz` gibt es erst ab Task 8; **dort wird das zweite Argument auf
+`gewaehltePlz` nachgezogen** — sonst zeigt der zugeklappte Kopf einen aktiven
+PLZ-Filter nie an.)
+
+Die Wurzel wird `<section className={`tafel${offen ? "" : " tafel--zu"}`}>`; im
+`.tafel__kopf` **vor** dem `<h2>`:
+
+```tsx
+        <button
+          type="button"
+          className="karte__zuklappen"
+          aria-expanded={offen}
+          aria-controls="karte-inhalt"
+          aria-label={offen ? "Karte zuklappen" : "Karte aufklappen"}
+          onClick={schalteOffen}
+        >
+          <span aria-hidden="true">▶</span>
+        </button>
+```
+
+und **hinter** dem `<h2>` (vor dem Größen-Schalter):
+
+```tsx
+        {kurz !== "" && <span className="karte__filterkurz">{kurz}</span>}
+```
+
+`<div className="tafel__inhalt">` bekommt `id="karte-inhalt"`.
+
+- [ ] **Step 6: Stylesheet**
+
+Hinter den `.karte__schalter`-Regeln:
+
+```css
+/* Zuklappen gibt es nur, solange die Karte nicht als Spalte mitwandert. */
+.karte__zuklappen,
+.karte__filterkurz {
+  display: none;
+}
+
+@media (max-width: 1359px) {
+  .karte__zuklappen {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
+    background: none;
+    border: 1px solid var(--linie);
+    border-radius: var(--r);
+    color: var(--papier-gedaempft);
+    cursor: pointer;
+    transition: transform 0.12s;
+  }
+
+  .karte__zuklappen[aria-expanded="true"] {
+    transform: rotate(90deg);
+  }
+
+  .karte__zuklappen:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  /* Zugeklappt: nur der Kopf bleibt, und er nennt den aktiven Filter. */
+  .tafel--zu .tafel__inhalt,
+  .tafel--zu .karte__schalter {
+    display: none;
+  }
+
+  .tafel--zu .karte__filterkurz {
+    display: inline;
+    margin-right: auto;
+    padding-left: 8px;
+    font-size: 12px;
+    color: var(--gold-hell);
+  }
+}
+```
+
+- [ ] **Step 7: Tests, Typprüfung, Build**
+
+Run: `cd web && npx vitest run && npx tsc --noEmit && npx vite build`
+Expected: alles grün (145 + 14 = 159 grün, 1 übersprungen).
+
+- [ ] **Step 8: Im Browser prüfen**
+
+Scratchpad-Skript, Entwicklungsserver, echter Snapshot:
+
+1. **390×844, Touch** (`hasTouch: true`, `isMobile: true`): Erster Besuch (leerer
+   Speicher) → `aria-expanded="true"`, `#karte-inhalt` sichtbar. Knopf
+   antippen → `#karte-inhalt` nicht sichtbar, `aria-expanded="false"`, der
+   Größen-Schalter weg.
+2. Eine Kachel antippen (Filter Bayern), dann zuklappen → der Kopf zeigt
+   „Bayern". Eine PLZ gibt es erst ab Task 8.
+3. **Merken:** zuklappen, Seite neu laden → Karte bleibt zu;
+   `localStorage["immo-radar.karte-offen"] === "0"`. Aufklappen, neu laden →
+   offen.
+4. **1440×900:** der Knopf ist **nicht sichtbar**; die Karte ist sichtbar, auch
+   wenn der Speicher `"0"` trägt (vor dem Laden per `addInitScript` setzen).
+5. **Gesperrter Speicher:** per `addInitScript`
+   `Object.defineProperty(window, "localStorage", { get() { throw new DOMException("blocked", "SecurityError"); } })`
+   → die Seite lädt, die Karte ist offen, **keine** Konsolenfehler, das
+   Zuklappen funktioniert weiter (nur eben ungemerkt).
+6. Tastatur: `Tab` erreicht den Knopf, `Enter` und `Leertaste` klappen; der
+   Fokusring ist sichtbar; der Knopf ist mindestens 32 × 32 px groß.
+7. Fenster von 1400 auf 1000 px ziehen, während die Karte zu ist → sie bleibt
+   zu; auf 1400 zurück → sie ist sichtbar (kein Knopf).
+8. Keine Konsolenfehler.
+
+- [ ] **Step 9: Die Skills anwenden**
+
+`web-design-guidelines` (Zielgröße, `aria-expanded`/`aria-controls`, Fokus
+sichtbar, Zustand nicht nur durch Farbe), `react-best-practices`
+(Initialisierungsfunktion statt Wert bei `useState`, kein Lesen im Render).
+Echte Befunde beheben, Rest mit Begründung verwerfen.
+
+- [ ] **Step 10: Commit**
+
+Nachricht (Vorschlag): `feat(web): Karte unter 1360 px zuklappbar, Zustand gemerkt, Filter im zugeklappten Kopf`.
 
 ---
 
@@ -1451,15 +1915,28 @@ In `Eigenschaften` ergänzen:
 `onHover` in der Parameterliste von `ObjektzeileRoh` ergänzen. Vor dem `return`:
 
 ```tsx
-  // Fokus gleichwertig zum Zeiger: Wer mit der Tastatur durch die Liste geht,
-  // bekommt denselben Ring auf der Karte.
+  // Nur Maus und Stift schweben. Ein Fingertipp ist KEIN Hover: Der Tipp oeffnet
+  // die Quelle (die Zeile ist ein Link), und ein danach stehenbleibender Ring
+  // waere ein Fehlzustand -- Browser senden nach einem Tipp keinen "Leave", bis
+  // man woanders tippt. (Entscheidung des Nutzers: auf dem Handy ist die Karte
+  // Einstieg und Filter, kein Hover-Spiegel.)
+  // Der Tastaturfokus ist gleichwertig: `:focus-visible` trifft nur echten
+  // Tastaturfokus, nicht das Fokussieren durch einen Klick oder Tipp.
   const hoverAnschluss = {
-    onMouseEnter: () => onHover(objekt),
-    onMouseLeave: () => onHover(null),
-    onFocus: () => onHover(objekt),
+    onPointerEnter: (ereignis: PointerEvent<HTMLElement>) => {
+      if (ereignis.pointerType !== "touch") onHover(objekt);
+    },
+    onPointerLeave: () => onHover(null),
+    onFocus: (ereignis: FocusEvent<HTMLElement>) => {
+      if (ereignis.currentTarget.matches(":focus-visible")) onHover(objekt);
+    },
     onBlur: () => onHover(null),
   };
 ```
+
+`PointerEvent` und `FocusEvent` als **Typen** aus `react` importieren
+(`import { memo, type FocusEvent, type PointerEvent } from "react";`) — die
+DOM-Typen gleichen Namens sind nicht dieselben.
 
 und `{...hoverAnschluss}` auf **beide** Wurzelelemente (`<div>` ohne URL und `<a>`).
 
@@ -1604,6 +2081,13 @@ Liste „Top-Treffer" öffnen, falls zu; dann:
    darunter ist leer.
 5. **Tastatur:** eine Zeile mit `Tab` fokussieren → derselbe Ring; `Tab` weiter →
    Ring wandert bzw. verschwindet.
+5b. **Touch** (eigener Kontext mit `hasTouch: true`, `isMobile: true`, 390×844,
+   Karte aufgeklappt): `page.tap()` auf eine Zeile → **kein** `.markierung`, die
+   Zeile unter der Karte bleibt leer. Damit der Tipp nicht wirklich Immowelt
+   öffnet, vorher `page.route("**/*", r => r.abort())` für fremde Adressen
+   setzen oder den Popup-Handler auf Schließen legen. **Anschließend auf
+   dieselbe Zeile klicken (Maus, `page.mouse.click`)** → hier darf ebenfalls
+   kein Ring stehenbleiben, wenn der Zeiger wieder weg ist.
 6. Einen Filter setzen, während eine Zeile angefahren ist → nach dem Wechsel
    kein Ring (der `useEffect` aus Step 3).
 7. **Die Grundschicht ist unverändert:** die `fill`-Werte aller `.kachel__flaeche`
@@ -1653,11 +2137,28 @@ Nachricht (Vorschlag): `feat(web): Hover in der Liste zeigt die Verortung auf de
   `schaltePlz: (zweisteller: string) => void`; die Klassen `.plzknopf`,
   `.plzknopf--gewaehlt`, `.plzknopf__flaeche`.
 
-**Warum die Punkte einen größeren Trefferbereich brauchen:** Ein Punkt hat einen
-Radius von 2,2 bis 7,6 Einheiten in einer 360 Einheiten breiten Zeichnung — auf
-dem Bildschirm rund 4 bis 15 px Durchmesser. Zu klein zum Treffen (WCAG 2.5.8
-verlangt 24 px). Jeder Punkt bekommt deshalb einen unsichtbaren, größeren Kreis
-als Trefferfläche; er gehört mit dem sichtbaren Punkt in eine Gruppe.
+**Warum die Punkte einen größeren Trefferbereich brauchen — gerechnet:** Ein
+Punkt hat einen Radius von 2,2 bis 7,6 Einheiten in einer 360 Einheiten breiten
+Zeichnung. Auf dem Handy (390 px Fensterbreite, Zeichnung rund 334 px breit,
+Faktor 0,93) sind das **4 bis 14 px** Durchmesser — deutlich unter den 24 px,
+die WCAG 2.5.8 verlangt. Jeder Punkt bekommt deshalb einen unsichtbaren,
+größeren Kreis als Trefferfläche, zusammen mit dem sichtbaren Punkt in einer
+Gruppe.
+
+**Die 24 px gelten auf dem Bildschirm, nicht in Zeichnungseinheiten.** Bei
+Faktor 0,93 braucht es einen Radius von rund 13 Einheiten; das Maß muss also
+mit der Zeichnungsbreite rechnen und nicht fest verdrahtet sein. Deshalb
+bekommt die Karte eine gemessene Breite (`ResizeObserver` am `<svg>`) und
+daraus den nötigen Mindestradius. **Gegenprobe im Browser ist Pflicht** (Step 6,
+Punkt 7) — die Rechnung allein zählt hier nicht.
+
+**Die 60 Punkte liegen dicht beieinander** (Median 2 Objekte je Punkt, 15
+Punkte mit genau einem). Große Trefferflächen überlappen dann. Regel: Die
+Trefferfläche wächst nie über den halben Abstand zum nächsten Punkt hinaus —
+sonst stiehlt ein großer Punkt seinem Nachbarn den Klick. Ist der Abstand
+kleiner als 24 px auf dem Bildschirm, gewinnt der nähere Mittelpunkt; das ist
+der ehrliche Kompromiss, und der Tastaturweg (Tab + Enter) bleibt als
+zuverlässiger Zugang daneben bestehen.
 
 - [ ] **Step 1: `App.tsx` — Schalter, `schalteLand` vereinheitlichen**
 
@@ -1681,9 +2182,42 @@ An `<Karte …>` ergänzen: `gewaehltePlz={filter.plzZweisteller}` und
 
 - [ ] **Step 2: `Karte.tsx` — die Punkte werden Schaltflächen**
 
-Imports: `alsZeile`, `punktText` aus `../logik/kartentexte.ts`. In
-`Eigenschaften` und der Parameterliste: `gewaehltePlz: readonly string[]`,
-`schaltePlz: (zweisteller: string) => void`.
+Imports: `alsZeile`, `punktText` aus `../logik/kartentexte.ts`; `useEffect`,
+`useRef`, `useState` aus `react`. In `Eigenschaften` und der Parameterliste:
+`gewaehltePlz: readonly string[]`, `schaltePlz: (zweisteller: string) => void`.
+
+**Den Kurztext aus Task 6b nachziehen** — sonst zeigt der zugeklappte
+Kartenkopf einen aktiven PLZ-Filter nie an:
+
+```tsx
+  const kurz = filterKurz(gewaehlteLaender, gewaehltePlz);
+```
+
+Die gemessene Breite und daraus die Trefferfläche (die Zeichnung ist
+`KARTE_BREITE` = 360 Einheiten breit, dargestellt in `breitePx`):
+
+```tsx
+  const bild = useRef<SVGSVGElement>(null);
+  const [breitePx, setBreitePx] = useState(KARTE_BREITE);
+
+  useEffect(() => {
+    const element = bild.current;
+    if (element === null || typeof ResizeObserver === "undefined") return;
+    const messen = () => setBreitePx(element.getBoundingClientRect().width || KARTE_BREITE);
+    messen();
+    const beobachter = new ResizeObserver(messen);
+    beobachter.observe(element);
+    return () => beobachter.disconnect();
+  }, []);
+
+  // 24 px Zielgroesse (WCAG 2.5.8) in Zeichnungseinheiten zurueckgerechnet.
+  // Faellt die Messung aus, gilt die Zeichnungsbreite -- dann ist der Radius
+  // eher zu gross als zu klein, und das ist die richtige Richtung.
+  const trefferRadius = (radius: number) =>
+    Math.max(radius + 3, (12 * KARTE_BREITE) / Math.max(1, breitePx));
+```
+
+und am `<svg className="karte__bild" …>` das Attribut `ref={bild}`.
 
 Die `punkte.map(…)` ersetzen (das `<title>` entfällt — Begründung in den
 Abweichungen oben; der Name kommt aus `aria-label`):
@@ -1708,8 +2242,8 @@ Abweichungen oben; der Name kommt aus `aria-label`):
                   }
                 }}
               >
-                {/* Trefferflaeche: unsichtbar, aber groesser als der Punkt. */}
-                <circle className="plzknopf__flaeche" cx={punkt.x} cy={punkt.y} r={Math.max(r + 3, 8)} />
+                {/* Trefferflaeche: unsichtbar, aber gross genug fuer einen Finger. */}
+                <circle className="plzknopf__flaeche" cx={punkt.x} cy={punkt.y} r={trefferRadius(r)} />
                 <circle className="plzpunkt" cx={punkt.x} cy={punkt.y} r={r} />
               </g>
             );
@@ -1820,16 +2354,24 @@ Scratchpad-Skript (Entwicklungsserver, echter Snapshot, 1440×900):
 5. Punkt **und** Bundesland-Kachel wählen → UND (Zahl ≤ jede der beiden allein).
 6. Tastatur: einen Punkt mit `Tab` erreichen, `Enter` und `Leertaste` filtern
    beide; der Fokusring ist sichtbar (Screenshot).
-7. **Trefferfläche:** Mit `boundingBox()` des kleinsten `.plzknopf__flaeche`
-   prüfen, dass er mindestens 16 px breit ist, und ein Klick 6 px neben den
-   Mittelpunkt des sichtbaren Punkts trifft ihn.
-8. Keine Konsolenfehler.
+7. **Trefferfläche, auf dem Bildschirm gemessen — bei 1440×900 UND bei
+   390×844:** `boundingBox()` **jeder** `.plzknopf__flaeche` → Breite und Höhe
+   mindestens 24 px. Zusätzlich ein Klick 10 px neben dem Mittelpunkt des
+   kleinsten sichtbaren Punkts trifft ihn. Schlägt das fehl, ist die
+   Rückrechnung in `trefferRadius` falsch — die gemessene Zahl in den Kommentar
+   schreiben, nicht die Prüfung lockern.
+8. **Überlappung:** Für jedes Paar benachbarter Punkte prüfen, dass ein Klick
+   genau auf den Mittelpunkt des einen **diesen** filtert und nicht den
+   Nachbarn (`aria-pressed` danach am richtigen Element).
+9. **Touch** (390×844, `hasTouch: true`): Ein Tipp auf einen Punkt filtert;
+   **kein** Tooltip erscheint (das kommt erst in Task 9, hier also nur die
+   Vorprüfung, dass der Tipp überhaupt ankommt).
+10. Keine Konsolenfehler.
 
-**Bekannter Zielkonflikt, hier nur festgehalten:** Jeder Punkt ist ein
-Tab-Stopp (bei den heutigen Daten rund 60 zusätzliche vor der Liste). Punkte
-nach Anzahl absteigend zu sortieren ist bereits so (`buendlePlzPunkte`), die
-größten liegen also zuerst. Ob ein Sprunglink „Zur Liste" nötig ist, bewertet
-Task 10 mit `web-design-guidelines`.
+**Der Tab-Stopp-Konflikt ist gelöst, nicht vertagt:** Die rund 60 Punkte plus
+16 Kacheln liegen vor der Liste im Tab-Weg. Der Sprunglink „Zur Liste springen"
+aus Task 6 überspringt sie in einem Schritt. Punkte sind bereits nach Anzahl
+absteigend sortiert (`buendlePlzPunkte`), die größten kommen also zuerst.
 
 - [ ] **Step 7: Die Skills anwenden**
 
@@ -1945,6 +2487,10 @@ In `Karte`, nach den `useMemo`s:
     (text: TooltipText) => (ereignis: React.PointerEvent<SVGGElement> | React.FocusEvent<SVGGElement>) => {
       // Ein Fingertipp ist ein Klick, kein Hover: ein aufblitzendes Tooltip waere Rauschen.
       if ("pointerType" in ereignis && ereignis.pointerType === "touch") return;
+      // Und ein Fokus, der von einem Klick kommt, auch nicht -- nur echter
+      // Tastaturfokus. Sonst bliebe nach jedem Klick auf eine Kachel ein
+      // Tooltip stehen, obwohl der Zeiger laengst weg ist.
+      if (!("pointerType" in ereignis) && !ereignis.currentTarget.matches(":focus-visible")) return;
       const form = ereignis.currentTarget.querySelector("[data-anker]") ?? ereignis.currentTarget;
       const r = form.getBoundingClientRect();
       setZiel({ anker: { x: r.left, y: r.top, breite: r.width, hoehe: r.height }, text });
@@ -1992,7 +2538,10 @@ Am Ende des Rückgabewerts, **als letztes Kind** von `<section className="tafel"
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-width: 260px;
+  /* Nie breiter als das Fenster: `platziereTooltip` klemmt sonst links an den
+     Rand und schneidet rechts ab. Auf einem 390-px-Schirm greift das zweite Mass. */
+  max-width: min(260px, calc(100vw - 16px));
+  overflow-wrap: break-word;
   padding: 9px 12px;
   background: var(--flaeche-hoch);
   border: 1px solid var(--linie-hell);
@@ -2040,8 +2589,10 @@ Scratchpad-Skript (Entwicklungsserver, echter Snapshot, 1440×900):
 3. Einen Punkt anfahren → Tooltip mit „PLZ-Bereich NN…", zwei Zeilen, Hinweis.
 4. Nach Klick auf den Punkt zeigt das Tooltip „Klick **entfernt** …" (Zustand
    `gewaehlt` fließt ein).
-5. Zeiger weg → Tooltip weg. Tastaturfokus auf eine Kachel → Tooltip; `Tab`
-   weiter → weg.
+5. Zeiger weg → Tooltip weg. Tastaturfokus auf eine Kachel (per `Tab`, nicht per
+   Klick) → Tooltip; `Tab` weiter → weg. **Und: eine Kachel anklicken, dann den
+   Zeiger wegnehmen → kein Tooltip bleibt stehen** (der Klick setzt Fokus, aber
+   nicht `:focus-visible`).
 6. Auf der Kartenspalte scrollen bzw. die Seite scrollen, während das Tooltip
    offen ist → es schließt.
 7. **Kein doppeltes Tooltip:** Im DOM der SVG gibt es kein `<title>` mehr
@@ -2049,8 +2600,11 @@ Scratchpad-Skript (Entwicklungsserver, echter Snapshot, 1440×900):
 8. `aria-label` an einer Kachel und an einem Punkt vorhanden und gleichlautend
    mit `Titel · Zeile · Zeile …`.
 9. **Fingertipp:** Mit `hasTouch: true` und `page.tap()` auf eine Kachel → kein
-   Tooltip, der Filter greift trotzdem.
-10. Keine Konsolenfehler; kein Long Task ≥ 50 ms beim Überfahren aller Kacheln.
+   Tooltip, der Filter greift trotzdem. Dasselbe für einen PLZ-Punkt.
+10. **390×844:** Ein Tooltip, das per Tastaturfokus ausgelöst wird, bleibt
+    vollständig im Fenster (`boundingBox()` innerhalb 0..390 × 0..844) und
+    läuft nicht rechts hinaus — das ist die Probe auf `max-width` mit `100vw`.
+11. Keine Konsolenfehler; kein Long Task ≥ 50 ms beim Überfahren aller Kacheln.
 
 - [ ] **Step 6: Die Skills anwenden**
 
@@ -2078,13 +2632,17 @@ ohne Warnungen.
 
 - [ ] **Step 2: Gesamtdurchlauf im Browser**
 
-Ein Scratchpad-Skript fährt den Weg einmal von vorn bis hinten, bei **1440×900**
-und **390×844**, mit dem echten Snapshot, und legt Screenshots ab:
-Laden (Ladetext ohne „von … MB"-Widerspruch) → Liste öffnen → Zeile anfahren
-(Ring + Satz) → Kachel anfahren (Tooltip) → Punkt anklicken (Filter + Gruppe in
-der Leiste + kleinere Liste) → zurücksetzen. Bei 390 px: Karte steht zwischen
-Filterleiste und Liste, kein waagerechtes Scrollen, Tooltips erscheinen nicht
-(Touch), Klick filtert. **Konsole: kein Fehler.**
+Ein Scratchpad-Skript fährt den Weg einmal von vorn bis hinten, bei **1440×900**,
+**1366×768** und **390×844 (mit `hasTouch`)**, mit dem echten Snapshot, und legt
+Screenshots ab: Laden (Ladetext ohne „von … MB"-Widerspruch) → Liste öffnen →
+Zeile anfahren (Ring + Satz) → Kachel anfahren (Tooltip) → Punkt anklicken
+(Filter + Gruppe in der Leiste + kleinere Liste) → zurücksetzen.
+
+Bei **1366 px** ausdrücklich: dreispaltig, Karte klebt, Liste ohne waagerechtes
+Scrollen, Kachelkürzel lesbar. Bei **390 px**: Karte zwischen Filterleiste und
+Liste, zuklappbar und gemerkt, kein waagerechtes Scrollen, **kein Ring und kein
+Tooltip bei Tipp**, Tippen filtert, Trefferflächen ≥ 24 px.
+**Konsole: kein Fehler.**
 
 - [ ] **Step 3: Unabhängige Prüfung der Oberfläche**
 
@@ -2092,26 +2650,49 @@ Filterleiste und Liste, kein waagerechtes Scrollen, Tooltips erscheinen nicht
 (`Karte.tsx`, `KartenTooltip.tsx`, `Objektzeile.tsx`, `Bereich.tsx`,
 `Filterleiste.tsx`, `App.tsx`, `stil.css`) und `react-best-practices` über
 `Karte.tsx`, `App.tsx`, `VirtuelleListe.tsx`, `laden.ts`. Dabei ausdrücklich
-bewerten: **Tab-Reihenfolge** (Filterleiste → Karte mit ~76 Stopps → Liste —
-braucht es einen Sprunglink „Zur Liste"?), **Farbe allein** trägt keinen
-Zustand (Ring, gewählter Punkt, gewählte Kachel), **Kontrast** des Rings und der
-Tooltip-Texte. Echte Befunde beheben (eigener Commit je Befund), unechte mit
-Begründung verwerfen, **alles** in einer Liste festhalten — sie geht in
-`UEBERGABE.md`.
+bewerten: **ob der Sprunglink wirklich trägt** (Filterleiste → Karte mit ~76
+Stopps → Liste), **Farbe allein** trägt keinen Zustand (Ring, gewählter Punkt,
+gewählte Kachel, zugeklappte Karte), **Kontrast** des Rings, der Tooltip-Texte
+und des Filter-Kurztexts im zugeklappten Kopf. Echte Befunde beheben (eigener
+Commit je Befund), unechte mit Begründung verwerfen, **alles** in einer Liste
+festhalten — sie geht in `UEBERGABE.md`.
+
+**Dies ist zugleich das Design-/Barrierefreiheits-Audit**, das am 2026-09-19
+zweimal am Sitzungslimit abgebrochen ist und in `UEBERGABE.md` als „noch nie
+gelaufen" steht. Es ist damit erledigt und muss dort umgetragen werden —
+allerdings nur für `web/`, nicht für Teile außerhalb dieses Plans; was
+ungeprüft bleibt, wird benannt.
 
 - [ ] **Step 4: Spec und Übergabe auf Stand bringen**
 
 - `specs/2026-09-19-karte-dreh-und-angelpunkt-design.md`: den Satz „(bereits
   exportiert aus `karte.ts`)" berichtigen („wird in Task 4 exportiert"), die
   drei Abweichungen dieses Plans (Objekt statt ID, `<title>` entfällt,
-  Punkt-Trefferfläche) mit je einem Satz nachtragen, und oben vermerken:
-  „Umgesetzt am <Datum>, Plan `plans/2026-09-19-karte-dreh-und-angelpunkt.md`."
+  Punkt-Trefferfläche) mit je einem Satz nachtragen, **die Entscheidungen aus
+  dem Grilling vom 2026-09-19 als eigenen Abschnitt übernehmen** (Handy,
+  Breakpoint 1360, Zuklappen mit Merken, kein Hover auf Touch — der Entwurf
+  sagt zum schmalen Fall bisher nur „muss zurück in den Fluss fallen"), und
+  oben vermerken: „Umgesetzt am <Datum>, Plan
+  `plans/2026-09-19-karte-dreh-und-angelpunkt.md`."
 - `UEBERGABE.md`: Abschnitt „Audit-Befunde der Weboberfläche" — A, B, C als
   erledigt mit Messergebnis (Task 1 Step 7: was gibt Chromium über
   `Content-Encoding` preis; Task 2 Step 2: p95 der Scroll-Commits; Task 7
   Step 7: Differenz der Zeilen-Renders); der Karten-Abschnitt als erledigt; das
   Design-/Barrierefreiheits-Audit: was Step 3 fand; **die Liste der noch
   offenen Punkte** (A16, A10, A11 Schritt 4, Gegenprobe `Location`-Kopf).
+- **`BACKLOG.md`: die leeren Hüllen als eigener, neuer Punkt** — Entscheidung
+  des Nutzers im Grilling („festhalten, nach der Karte angehen"). Mit den
+  gemessenen Zahlen, damit später niemand neu messen muss: Snapshot vom
+  2026-09-18, 21.897 Objekte, **356 ohne Bundesland, davon 348 Immowelt-Objekte
+  ohne Titel, ohne Ort, ohne PLZ — nur eine `/expose/`-URL**; zuletzt gesehen
+  151 am 17., 197 am 18.; Zustand 176 unbestätigt, 171 verfügbar, 9 abgängig.
+  E-7 nannte 54 (Stand 09-15, womöglich andere Zählweise). **Was NICHT belegt
+  ist:** dass es sich um eine neue Regression handelt — dem Snapshot fehlt
+  `first_seen`, der Vergleich mit den 54 ist deshalb keiner. Der erste Schritt
+  des künftigen Punkts ist also eine Messung über `listings.first_seen` in der
+  Datenbank (nur lesend), nicht eine Vermutung über die Ursache. Ebenfalls
+  festhalten: **die Kategorie „Objekte ohne Region" aus E-7 ist im Dashboard
+  nirgends gebaut.**
 - Gedächtnis (`immo-radar-uebergabe.md` und das Karten-Stichwort) auf Stand
   bringen.
 
@@ -2144,6 +2725,14 @@ ist und was als Nächstes kommt, dann **aufhören** — der Nutzer leert die Sit
 
 ## Selbstprüfung des Plans
 
+**Abdeckung der Grilling-Entscheidungen (2026-09-19):** Handy = Einstieg und
+Filter, zuklappbar mit Merken (Task 6b), kein Hover/Tooltip auf Touch (globale
+Randbedingung + Tasks 7, 9), Breakpoint 1360 statt 1400 mit der Rechnung
+(Task 6), Hover-Ring wie geplant (Task 7), leere Hüllen festgehalten statt
+angegangen (Task 10 Step 4). Dazu die vom Koordinator ergänzten Kleinigkeiten:
+Sprunglink (Task 6), Kürzel-Schriftgröße (Task 6 Step 6, Punkt 5),
+24-px-Trefferfläche mit Überlappungsregel (Task 8).
+
 **Abdeckung des Spec:** Hover Tabelle → Karte (Task 7); Tooltip statt `<title>`
 (Task 9, Abweichung 3 begründet); Klick auf PLZ-Punkt filtert, `plzZweisteller`,
 `wendeFilterAn`-Zeile, `schaltePlz` (Tasks 4, 8); Filterleiste zeigt den
@@ -2163,16 +2752,30 @@ Entscheidungsregel vorab da.
 
 **Typkonsistenz:** `Markierung`/`markierungFuer`/`beschreibeMarkierung`
 (Task 3 → 7); `schalteEintrag`, `Filter.plzZweisteller`, `OhneAngabe.plz`
-(Task 4 → 8); `TooltipText`/`kachelText`/`punktText`/`alsZeile` (Task 5 → 8, 9);
+(Task 4 → 8); `filterKurz` (Task 6b, in Task 8 auf `gewaehltePlz` nachgezogen —
+das ist die eine Stelle, an der ein späterer Task einen früheren *ändert*, und
+sie ist an beiden Enden vermerkt); `liesKarteOffen`/`schreibeKarteOffen`/
+`holeSpeicher` (Task 6b); `trefferRadius` und `breitePx` (Task 8);
+`TooltipText`/`kachelText`/`punktText`/`alsZeile` (Task 5 → 8, 9);
 `Rechteck`/`TooltipLage`/`platziereTooltip` (Task 5 → 9); `onHover` und
 `hervorgehobenesObjekt` (Task 7); `gewaehltePlz`/`schaltePlz` (Task 8);
 `TooltipZiel`/`KartenTooltip` (Task 9). Die Karte bekommt ihre Eigenschaften
 schrittweise (7: `hervorgehobenesObjekt`, 8: `gewaehltePlz`+`schaltePlz`); jeder
 Task nennt die Ergänzung und lässt `tsc` sie prüfen.
 
-**Bekannte Restunsicherheit, offen benannt:** Ob Chromium (und andere Browser)
-`Content-Encoding` über `fetch` herausgeben, ist im Plan nicht vorausgesetzt —
-`erwarteteBytes` und `gueltigesZiel` decken beide Fälle, Task 1 Step 7 misst
-und hält fest, welcher eintritt. Firefox und Safari sind mit Playwright hier
-nicht geprüft; das steht dann ausdrücklich in `UEBERGABE.md`, nicht als
-stillschweigend erledigt.
+**Bekannte Restunsicherheit, offen benannt:**
+
+- Ob Chromium `Content-Encoding` über `fetch` herausgibt, war eine offene
+  Frage — **gemessen am 2026-09-19: ja.** `erwarteteBytes` greift, `gueltigesZiel`
+  blieb als zweite Wache ungenutzt. Beide bleiben trotzdem im Code, weil sie
+  verschiedene Fehler abfangen.
+- **Firefox und Safari sind nicht geprüft.** Alle Browserprüfungen laufen gegen
+  Chromium. Betroffen sind vor allem `:focus-visible` an SVG-Gruppen,
+  `pointerType` und `position: fixed` in einer scrollenden Spalte. Das gehört
+  so in `UEBERGABE.md` — als offener Punkt, nicht als stillschweigend erledigt.
+- **Ein echtes Mobilgerät ist nicht geprüft.** Playwrights `hasTouch` ist eine
+  Nachbildung; iOS Safari verhält sich bei `:hover` und Tooltips nachweislich
+  anders (es sendet einem Element nach dem Tippen oft einen Hover-Zustand).
+  Die Entscheidung „kein Hover auf Touch" ist in diesem Plan über
+  `pointerType` gelöst, nicht über CSS-`@media (hover: hover)` — das ist die
+  robustere Wahl, ersetzt aber keine Prüfung auf echtem Gerät.
