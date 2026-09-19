@@ -164,7 +164,7 @@ export interface PlzPunkt {
 }
 
 /** Der PLZ-Zweisteller, zu dem es eine Koordinate gibt -- sonst `null`. */
-function zweistellerMitKoordinate(plz: string | null): string | null {
+export function zweistellerMitKoordinate(plz: string | null): string | null {
   if (plz === null) return null;
   const treffer = plz.trim().match(/^(\d{2})\d{3}$/);
   if (treffer === null) return null;
