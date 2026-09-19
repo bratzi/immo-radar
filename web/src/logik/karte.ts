@@ -286,7 +286,7 @@ export function markierungFuer(
 /** Der Satz unter der Karte -- damit ein Ring nie genauer wirkt, als die Daten sind. */
 export function beschreibeMarkierung(markierung: Markierung | null): string {
   if (markierung === null) {
-    return "Dieses Objekt trägt weder PLZ noch Bundesland und steht deshalb nicht auf der Karte.";
+    return "Dieses Objekt trägt keine verortbare PLZ und kein Bundesland und steht deshalb nicht auf der Karte.";
   }
   if (markierung.art === "plz") {
     return `PLZ-Bereich ${markierung.zweisteller}… — der Punkt sitzt in der Mitte des Bereichs, kein genauer Ort.`;
