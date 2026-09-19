@@ -370,6 +370,41 @@ Nutzers oder ein Brainstorming brauchen:
 4. Danach der übliche Rückstand: A10 (Cron-Takt, Abwägung des Nutzers),
    A11 Schritt 4 (darf eine bundeslandgenaue Schätzung überhaupt melden?).
 
+## Audit-Befunde der Weboberfläche — offen, nicht umgesetzt (2026-09-19)
+
+Ein React-Performance-Audit (Skill `react-best-practices`) fand drei reale
+Punkte in `web/`. **Ein Parallellauf dazu ist am Session-Limit gescheitert**
+(Opus 429, Reset 03:40 Berlin) — die Worktrees sind leer, nichts wurde
+umgesetzt. Die Befunde sind gelesen und belegt, nicht vermutet:
+
+- **A — Der Ladetext behauptet eine falsche Zahl** (`web/src/daten/laden.ts`,
+  `web/src/App.tsx`). `Content-Length` nennt die *komprimierte* Größe
+  (~3 MB), `body.getReader()` liefert aber bereits *dekomprimierte* Bytes
+  (~23 MB) — die Anzeige schreibt daraus wörtlich „23.5 von 3.2 MB". Der
+  Balken ist durch `Math.min(1, …)` gedeckelt und steht früh auf 100 %.
+  Der vorhandene Kommentar kennt nur „Kopf fehlt", nicht „Kopf da, meint aber
+  etwas anderes". Leitlinie des Projekts: lieber ehrlich „unbekannt" als
+  eine Zahl, die nicht stimmt. **Zu prüfen, nicht zu glauben:** ob
+  `Content-Encoding` bei `fetch` überhaupt lesbar ist (meist nicht).
+- **B — Ein React-Update je Netzwerk-Paket.** Die Leseschleife in `laden.ts`
+  ruft `melde(…)` bei jedem Chunk, `App.tsx` hängt `setFortschritt` daran —
+  hunderte bis tausende Render-Durchläufe während des teuersten Moments der
+  Seite. Drosseln; erste und letzte Meldung müssen immer durchkommen.
+- **C — Ein Objektliteral je Zeile** (`web/src/ui/VirtuelleListe.tsx`,
+  `style={{ display: "contents" }}` in der Zeichenschleife) — konstant,
+  gehört auf Modulebene. Klein. **Ehrlich mitprüfen**, ob das `onScroll`
+  mit `setOben` je Ereignis ein echtes Problem ist, statt es aus Reflex
+  umzubauen.
+
+Zwei Reste aus dem Access-Workflow, bewusst nicht mehr angefasst:
+- Die Gegenprobe prüft nur „302", nicht **wohin**. Ein 302 auf etwas anderes
+  als `*.cloudflareaccess.com` würde durchgehen. Härtung: den
+  `Location`-Kopf prüfen.
+- Ein Design- und Barrierefreiheits-Audit (WCAG 2.1 AA, Kontrast, Tastatur,
+  Unterscheidbarkeit der drei Nichtwissens-Zeichen bei Farbsehschwäche) wurde
+  gestartet und nach einem Limit abgebrochen — **nur lesend, nichts verloren,
+  aber auch nichts gewonnen**. Neu ansetzen.
+
 ## Neu installierte Skills (2026-09-19)
 
 Auf Nutzerauftrag von <https://collectivebrain.de/skills/> ausgesucht.
