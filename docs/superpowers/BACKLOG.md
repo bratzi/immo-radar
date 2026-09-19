@@ -1528,7 +1528,7 @@ ist bewusst und dokumentiert, betrifft aber die Mehrheit des Bestands.
 Wohnfläche verlässlicher ableiten? Und soll ein Objekt mit angenommener
 Einheitenzahl im Ranking gleichwertig erscheinen?
 
-## B5. 348 leere Hüllen im Bestand — Objekte, die nur aus einer URL bestehen
+## B5. 352 leere Hüllen im Bestand — Objekte, die nur aus einer URL bestehen
 
 **Gefunden am 2026-09-19** beim Auszählen der Kartenabdeckung, also nebenbei.
 **Entscheidung des Nutzers am selben Tag: festhalten, nach der Kartenaufgabe

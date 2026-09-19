@@ -70,9 +70,9 @@ aufgebracht:**
 | Lohnt der Hover-Ring, wenn er in 97,4 % der Fälle nur eine Kachel trifft? | **Ja, wie geplant.** Gemessen am Snapshot vom 2026-09-18 (21.897 Objekte): 221 (1,0 %) bekommen einen PLZ-Punkt, 21.321 (97,4 %) nur eine Kachel, 355 (1,6 %) gar nichts. Der Ring liefert dort Orientierung, keine neue Angabe |
 | Die leeren Hüllen ohne Region? | **Festhalten, nach der Karte angehen** — siehe Task 10, Step 4 |
 
-**Der Fund, der zur letzten Zeile führte:** 348 der 356 Objekte ohne Bundesland
-sind Immowelt-Objekte **ohne Titel, ohne Ort, ohne PLZ — nur eine URL**, alle in
-den letzten zwei Tagen gesehen (151 am 17., 197 am 18.). Der Entwurf nannte für
+**Der Fund, der zur letzten Zeile führte:** 352 der 356 Objekte ohne Bundesland
+haben **weder Titel noch Ort noch PLZ — nur eine URL** (347 der 356 stammen von
+Immowelt), zuletzt gesehen 151 am 17. und 197 am 18. Der Entwurf nannte für
 E-7 noch 54 (Stand 09-15, womöglich andere Zählweise; dem Snapshot fehlt
 `first_seen`, deshalb ist „erst seit …" **nicht belegt**). Die Kategorie
 „Objekte ohne Region" aus E-7 ist im Dashboard nirgends gebaut. **Nicht Teil
@@ -2683,8 +2683,8 @@ ungeprüft bleibt, wird benannt.
 - **`BACKLOG.md`: die leeren Hüllen als eigener, neuer Punkt** — Entscheidung
   des Nutzers im Grilling („festhalten, nach der Karte angehen"). Mit den
   gemessenen Zahlen, damit später niemand neu messen muss: Snapshot vom
-  2026-09-18, 21.897 Objekte, **356 ohne Bundesland, davon 348 Immowelt-Objekte
-  ohne Titel, ohne Ort, ohne PLZ — nur eine `/expose/`-URL**; zuletzt gesehen
+  2026-09-18, 21.897 Objekte, **356 ohne Bundesland, davon 352 ohne Titel, ohne
+  Ort, ohne PLZ — nur eine URL; 347 der 356 stammen von Immowelt**; zuletzt gesehen
   151 am 17., 197 am 18.; Zustand 176 unbestätigt, 171 verfügbar, 9 abgängig.
   E-7 nannte 54 (Stand 09-15, womöglich andere Zählweise). **Was NICHT belegt
   ist:** dass es sich um eine neue Regression handelt — dem Snapshot fehlt
