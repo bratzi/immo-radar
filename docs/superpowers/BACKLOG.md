@@ -1528,6 +1528,60 @@ ist bewusst und dokumentiert, betrifft aber die Mehrheit des Bestands.
 Wohnfläche verlässlicher ableiten? Und soll ein Objekt mit angenommener
 Einheitenzahl im Ranking gleichwertig erscheinen?
 
+## B5. 348 leere Hüllen im Bestand — Objekte, die nur aus einer URL bestehen
+
+**Gefunden am 2026-09-19** beim Auszählen der Kartenabdeckung, also nebenbei.
+**Entscheidung des Nutzers am selben Tag: festhalten, nach der Kartenaufgabe
+angehen** — nicht sofort, aber auch nicht vergessen.
+
+**Die Messung** (Snapshot vom 2026-09-18, `web/public/dashboard-snapshot.json`,
+21.897 Objekte — damit niemand neu messen muss):
+
+| | |
+|---|---|
+| ohne `bundesland` | **356** (1,62 %) |
+| davon Immowelt | **347** |
+| davon ZVG | 9 |
+| davon **ohne Titel, ohne Ort, ohne PLZ** — nur eine `/expose/`-URL | **352** |
+| zuletzt gesehen | 151 am 17.09., 197 am 18.09., einzelne ab 13.09. |
+| Zustand | 176 unbestätigt, 171 verfügbar, 9 abgängig |
+
+Ein Beispiel: `titel: null, ort: null, plz: null`, URL
+`https://www.immowelt.de/expose/4ffe88b6-…`. Die Zeile existiert, trägt eine
+Kennung und eine Adresse — und sonst nichts.
+
+**Was das für die Oberfläche heißt:** Solche Objekte erscheinen auf der Karte
+nirgends (kein Punkt, keine Kachel) und in der Liste als „Ohne Titel — die
+Quelle nennt keinen". Die Kartenaufgabe behandelt sie ehrlich (kein Ring, ein
+Satz, der sagt warum), **behebt die Ursache aber nicht.**
+
+**Was ausdrücklich NICHT belegt ist:** dass dies eine neue Regression sei.
+Verlockend wäre der Vergleich mit E-7 („54 Objekte ohne zuordenbare Region",
+Stand 2026-09-15) — aber der taugt nicht: Dem Snapshot fehlt `first_seen`, und
+E-7 zählte womöglich anders (`partitionEinesListings` liefert keine Region
+gegen `bundesland === null`). **Zwei Größen mit verschiedener Definition
+nebeneinanderzustellen ist genau der Fehler, den dieses Projekt bei „54 statt
+157" schon einmal korrigiert hat.**
+
+- [ ] **Schritt 1: Alter bestimmen, bevor irgendetwas vermutet wird.** Lesende
+  Abfrage über `listings.first_seen` für die betroffenen Zeilen (`cd scraper &&
+  npx tsx <skript>`, nur lesend). Kommen sie alle aus wenigen Tagen, ist es
+  eine Regression; verteilen sie sich über Wochen, ist es ein Dauerzustand.
+  **Das Ergebnis entscheidet, ob es überhaupt ein Fehler ist.**
+- [ ] **Schritt 2: Dieselbe Zählung mit der E-7-Definition** wiederholen
+  (`partitionEinesListings`), damit die 54 und die 356 vergleichbar werden —
+  oder belegt ist, dass sie es nicht sind.
+- [ ] **Schritt 3: Erst nach benannter Ursache** einen scheiternden Test. Die
+  Richtung hängt von Schritt 1 ab: Erfasst der Scraper Zeilen, die er besser
+  gar nicht anlegte? Oder verliert er Felder, die die Quelle sehr wohl nennt?
+  Naheliegender Verdacht, **ungeprüft**: `/expose/`-Detailseiten sind von
+  Rechenzentrums-Adressen gesperrt (siehe `UEBERGABE.md`, „Fallen") — eine
+  Zeile, die nur aus einer Expose-URL besteht, passt zu diesem Muster.
+- [ ] **Schritt 4: E-7 nachziehen.** Die vom Nutzer am 2026-09-13 entschiedene
+  Kategorie **„Objekte ohne Region"** ist im Dashboard **nirgends gebaut** —
+  geprüft am 2026-09-19, es gibt weder Filterknopf noch Bereich. Diese
+  Entscheidung steht also seit Wochen unerfüllt.
+
 ---
 
 # Teil C — Bewusst zurückgestellt
