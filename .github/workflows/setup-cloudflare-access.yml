@@ -90,12 +90,36 @@ jobs:
           set -e
           # Kein `curl -f`: 302 ist hier das GEWUENSCHTE Ergebnis, 200 der
           # Fehlerfall. Geprueft wird der Statuscode selbst.
+          #
+          # WARTEN VOR DEM ALARM: Lauf 35405319599 (2026-09-19) pruefte sofort
+          # (0,3 Sekunden) nach dem Anlegen der Access Application und meldete
+          # `8d4f31b2.immo-radar-dashboard.pages.dev -> HTTP 200` als Fehlalarm
+          # -- eine Minute spaeter lieferte dieselbe Adresse 302, Cloudflare
+          # braucht schlicht laenger zum Ausrollen. Deshalb je Adresse bis zu
+          # 12 Versuche im 10-Sekunden-Abstand (~2 Minuten Obergrenze je
+          # Adresse), aber sofortiger Abbruch der Versuche, sobald 302 ankommt
+          # -- kein unnoetiges Weiterwarten bei fruehem Erfolg. Bleibt eine
+          # Adresse bis zum letzten Versuch ohne 302, ist das ein echter
+          # Fehler, kein Zeitproblem mehr.
           schutz_fehlt=0
           for url in "https://immo-radar-dashboard.pages.dev/" "https://8d4f31b2.immo-radar-dashboard.pages.dev/"; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
-            echo "$url -> HTTP $code"
-            if [ "$code" = "200" ]; then
-              echo "::error::$url ist ohne Anmeldung erreichbar -- Access greift dort nicht."
+            max_versuche=12
+            intervall_sekunden=10
+            versuch=1
+            code=""
+            while [ "$versuch" -le "$max_versuche" ]; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+              echo "$url -> HTTP $code (Versuch $versuch/$max_versuche)"
+              if [ "$code" = "302" ]; then
+                break
+              fi
+              if [ "$versuch" -lt "$max_versuche" ]; then
+                sleep "$intervall_sekunden"
+              fi
+              versuch=$((versuch + 1))
+            done
+            if [ "$code" != "302" ]; then
+              echo "::error::$url ist nach $max_versuche Versuchen (~2 Minuten) weiterhin ohne Anmeldung erreichbar (letzter Status: HTTP $code) -- Access greift dort nicht."
               schutz_fehlt=1
             fi
           done
