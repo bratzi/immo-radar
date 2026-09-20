@@ -115,6 +115,15 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
     nichtBeurteilbar: false,
     abgaenge: false,
   });
+  const [hoverObjekt, setHoverObjekt] = useState<SnapshotObjekt | null>(null);
+  // Ein `pointerleave` feuert NICHT, wenn die Zeile unter dem Zeiger
+  // verschwindet -- Filterwechsel, Bereich zugeklappt. Ohne dieses Aufraeumen
+  // zeigte die Karte danach auf ein Objekt, das in der Liste gar nicht mehr
+  // steht.
+  useEffect(() => {
+    setHoverObjekt(null);
+  }, [filter, offen]);
+
   const zeilenhoehe = useZeilenhoehe();
 
   /**
@@ -249,6 +258,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           setzeGroesse={setKartengroesse}
           gewaehlteLaender={filter.bundeslaender}
           schalteLand={schalteLand}
+          hervorgehobenesObjekt={hoverObjekt}
         />
       </div>
 
@@ -277,6 +287,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           jetzt={jetzt}
           zeilenhoehe={zeilenhoehe}
           dscrMeldeschwelle={dscrMeldeschwelle}
+          onHover={setHoverObjekt}
           leertext={
             <>
               <b>Kein Objekt hält die Schwelle an der unteren Bandkante.</b> Das ist eine Aussage
@@ -297,6 +308,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           jetzt={jetzt}
           zeilenhoehe={zeilenhoehe}
           dscrMeldeschwelle={dscrMeldeschwelle}
+          onHover={setHoverObjekt}
           leertext={<b>Kein Objekt mit Rangzahl passt zu dieser Auswahl.</b>}
         />
 
@@ -311,6 +323,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           jetzt={jetzt}
           zeilenhoehe={zeilenhoehe}
           dscrMeldeschwelle={dscrMeldeschwelle}
+          onHover={setHoverObjekt}
           leertext={
             <>
               <b>Kein Objekt ohne Kennzahl in dieser Auswahl.</b> Über diese Objekte ist nichts
@@ -329,6 +342,7 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           jetzt={jetzt}
           zeilenhoehe={zeilenhoehe}
           dscrMeldeschwelle={dscrMeldeschwelle}
+          onHover={setHoverObjekt}
           leertext={
             <>
               <b>Kein Abgang in dieser Auswahl.</b> Aus Regionen, die ihre Trefferzahl nicht

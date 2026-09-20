@@ -568,6 +568,34 @@ a {
   pointer-events: none;
 }
 
+/* Das Overlay des Hovers aus der Liste -- ein Ring, keine Umfaerbung. */
+.markierung {
+  fill: none;
+  stroke: var(--gold-hell);
+  stroke-width: 2;
+  pointer-events: none;
+  /*
+    ERST DER DUNKLE SAUM, DANN DER SCHEIN. Der Plan hatte nur den Schein --
+    gerechnet gegen die hellste Kachelfuellung (Gold, Deckung 0,77) kam der
+    goldene Ring dort aber nur auf 2,05:1 und riss damit die 3:1 fuer
+    nicht-textliche Markierungen. Genau dort liegen die PLZ-Punktringe.
+    Mit dem Saum: Saum gegen die hellste Kachel 5,55:1, Ring gegen den Saum
+    11,14:1 -- der Ring ist auf JEDEM Untergrund der Karte zu sehen.
+  */
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.85))
+    drop-shadow(0 0 3px rgba(240, 195, 126, 0.7));
+}
+
+/* Feste Hoehe, damit die Karte nicht springt, wenn ein Satz erscheint. */
+.karte__hoverzeile {
+  margin: 8px 0 0;
+  min-height: 3em;
+  font-family: var(--schrift-prosa);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--papier-gedaempft);
+}
+
 .karte__legende {
   margin-top: 13px;
   border-top: 1px solid var(--linie-zart);

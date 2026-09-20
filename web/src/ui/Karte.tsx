@@ -26,7 +26,9 @@ import {
   KARTE_BREITE,
   KARTE_HOEHE,
   berechneAbdeckung,
+  beschreibeMarkierung,
   buendlePlzPunkte,
+  markierungFuer,
   kachelLagen,
   spanneDerGroesse,
   umrissPfad,
@@ -75,6 +77,8 @@ interface Eigenschaften {
   setzeGroesse: (groesse: Kartengroesse) => void;
   gewaehlteLaender: readonly string[];
   schalteLand: (name: string) => void;
+  /** Die Zeile unter dem Zeiger bzw. mit Tastaturfokus -- `null`, wenn keine. */
+  hervorgehobenesObjekt: SnapshotObjekt | null;
 }
 
 export function Karte({
@@ -84,12 +88,23 @@ export function Karte({
   setzeGroesse,
   gewaehlteLaender,
   schalteLand,
+  hervorgehobenesObjekt,
 }: Eigenschaften) {
   const lagen = useMemo(() => kachelLagen(), []);
   const pfad = useMemo(() => umrissPfad(), []);
   const punkte = useMemo(() => buendlePlzPunkte(alleObjekte), [alleObjekte]);
   const abdeckung = useMemo(() => berechneAbdeckung(alleObjekte), [alleObjekte]);
   const spanne = useMemo(() => spanneDerGroesse(bundeslaender, groesse), [bundeslaender, groesse]);
+
+  const markierung = useMemo(
+    () => (hervorgehobenesObjekt === null ? null : markierungFuer(hervorgehobenesObjekt)),
+    [hervorgehobenesObjekt]
+  );
+  const punktJeZweisteller = useMemo(
+    () => new Map(punkte.map((p) => [p.zweisteller, p])),
+    [punkte]
+  );
+  const lageJeName = useMemo(() => new Map(lagen.map((l) => [l.name, l])), [lagen]);
 
   const jeName = useMemo(
     () => new Map(bundeslaender.map((land) => [land.name, land])),
@@ -122,6 +137,11 @@ export function Karte({
   // mit 40 Objekten viermal so gewichtig aus, wie er ist.
   const maxAnzahl = punkte.reduce((groesster, p) => Math.max(groesster, p.anzahl), 1);
   const radius = (anzahl: number) => 2.2 + Math.sqrt(anzahl / maxAnzahl) * 5.4;
+
+  const markierterPunkt =
+    markierung?.art === "plz" ? punktJeZweisteller.get(markierung.zweisteller) : undefined;
+  const markierteLage =
+    markierung?.art === "bundesland" ? lageJeName.get(markierung.name) : undefined;
 
   // Der Ausgangswert wird EINMAL gelesen (Initialisierungsfunktion), nicht je Render.
   const [offen, setOffen] = useState(() => liesKarteOffen(holeSpeicher()));
@@ -240,7 +260,37 @@ export function Karte({
               </title>
             </circle>
           ))}
+
+          {/*
+            Das Overlay des Hovers: ein zusaetzlicher Ring, KEINE Aenderung an
+            Kachel oder Punkt darunter (die Karte zeigt immer den ganzen
+            Bestand). Es verschwindet mit dem Zeiger.
+          */}
+          {markierteLage !== undefined && (
+            <rect
+              className="markierung"
+              x={markierteLage.x - markierteLage.breite / 2 - 3}
+              y={markierteLage.y - markierteLage.hoehe / 2 - 3}
+              width={markierteLage.breite + 6}
+              height={markierteLage.hoehe + 6}
+              rx={5}
+              aria-hidden="true"
+            />
+          )}
+          {markierterPunkt !== undefined && (
+            <circle
+              className="markierung"
+              cx={markierterPunkt.x}
+              cy={markierterPunkt.y}
+              r={radius(markierterPunkt.anzahl) + 4}
+              aria-hidden="true"
+            />
+          )}
         </svg>
+
+        <p className="karte__hoverzeile">
+          {hervorgehobenesObjekt === null ? "" : beschreibeMarkierung(markierung)}
+        </p>
 
         <div className="karte__legende">
           <div className="skala">

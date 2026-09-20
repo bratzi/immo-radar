@@ -17,7 +17,7 @@
  * derselben Stelle seine Gruende im Klartext (3.7). Es gibt keinen Zweig,
  * in dem dort eine 0 oder ein leeres Feld steht.
  */
-import { memo } from "react";
+import { memo, type FocusEvent, type PointerEvent } from "react";
 import type { SnapshotObjekt } from "../daten/snapshot.ts";
 import {
   alterInTagen,
@@ -52,9 +52,11 @@ interface Eigenschaften {
   oben: number;
   /** `snapshot.konstanten.dscrMeldeschwelle` (A18-4) -- durchgereicht an den Bandstreifen. */
   dscrMeldeschwelle: number;
+  /** Meldet die Zeile unter dem Zeiger bzw. mit Fokus -- `null`, wenn keine. Muss stabil sein (memo). */
+  onHover: (objekt: SnapshotObjekt | null) => void;
 }
 
-function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle }: Eigenschaften) {
+function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle, onHover }: Eigenschaften) {
   const ohneKennzahl = objekt.rangzahl === null;
   const alter = alterInTagen(objekt.zuletztGesehen, jetzt);
   const jeQm = preisJeQuadratmeter(objekt.kaufpreisEuro, objekt.wohnflaecheM2);
@@ -166,6 +168,24 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle }: Eigens
     </>
   );
 
+  // Nur Maus und Stift schweben. Ein Fingertipp ist KEIN Hover: Der Tipp oeffnet
+  // die Quelle (die Zeile ist ein Link), und ein danach stehenbleibender Ring
+  // waere ein Fehlzustand -- Browser senden nach einem Tipp keinen "Leave", bis
+  // man woanders tippt. (Entscheidung des Nutzers: auf dem Handy ist die Karte
+  // Einstieg und Filter, kein Hover-Spiegel.)
+  // Der Tastaturfokus ist gleichwertig: `:focus-visible` trifft nur echten
+  // Tastaturfokus, nicht das Fokussieren durch einen Klick oder Tipp.
+  const hoverAnschluss = {
+    onPointerEnter: (ereignis: PointerEvent<HTMLElement>) => {
+      if (ereignis.pointerType !== "touch") onHover(objekt);
+    },
+    onPointerLeave: () => onHover(null),
+    onFocus: (ereignis: FocusEvent<HTMLElement>) => {
+      if (ereignis.currentTarget.matches(":focus-visible")) onHover(objekt);
+    },
+    onBlur: () => onHover(null),
+  };
+
   const stil = { top: `${oben}px` };
   const beschriftung = `${objekt.titel ?? "Objekt"} — ${
     STUFENTEXT[objekt.stufe] ?? objekt.stufe
@@ -174,7 +194,7 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle }: Eigens
   // Ohne URL kein Verweis: Ein Anker ohne Ziel sieht anklickbar aus und ist
   // es nicht. Dann steht dort dieselbe Zeile als reines Feld.
   return objekt.url === null ? (
-    <div className={klassen} style={stil} aria-label={beschriftung}>
+    <div className={klassen} style={stil} aria-label={beschriftung} {...hoverAnschluss}>
       {inhalt}
     </div>
   ) : (
@@ -185,6 +205,7 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle }: Eigens
       target="_blank"
       rel="noreferrer noopener"
       aria-label={beschriftung}
+      {...hoverAnschluss}
     >
       {inhalt}
     </a>

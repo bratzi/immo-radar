@@ -37,6 +37,8 @@ interface Eigenschaften {
   dscrMeldeschwelle: number;
   /** Was steht da, wenn nichts da ist. Nie "keine Treffer" ohne Grund. */
   leertext: React.ReactNode;
+  /** Wird an jede Zeile durchgereicht. Muss stabil sein -- sonst faellt das Memo der Zeilen. */
+  onHover: (objekt: SnapshotObjekt | null) => void;
 }
 
 export function Bereich({
@@ -52,6 +54,7 @@ export function Bereich({
   zeilenhoehe,
   leertext,
   dscrMeldeschwelle,
+  onHover,
 }: Eigenschaften) {
   const kennung = `bereich-${name.replace(/\W+/g, "-").toLowerCase()}`;
 
@@ -93,6 +96,7 @@ export function Bereich({
                     jetzt={jetzt}
                     oben={oben}
                     dscrMeldeschwelle={dscrMeldeschwelle}
+                    onHover={onHover}
                   />
                 )}
               />
