@@ -272,7 +272,7 @@ export function Karte({
           <p className="hinweis-schematisch">
             Die Karte zeigt <b>immer den ganzen Bestand</b>, nie die gefilterte Auswahl — sie ist
             der Einstieg in die Liste, nicht ihr Ergebnis. Ein Klick wählt ein Land aus (goldener
-            Rahmen) und filtert die Liste darunter.
+            Rahmen) und filtert die Liste.
           </p>
         </div>
       </div>

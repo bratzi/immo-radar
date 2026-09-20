@@ -75,6 +75,11 @@
 
   --rail: 296px;
   --zeile-hoehe: 64px;
+
+  /* 296 (Filterleiste) + 300 (schmalste Karte) + 706 (kleinste Listenzeile)
+     + 52 (Innenabstand von .haupt) = 1354; darunter kein Platz fuer drei
+     Spalten. Die 706 stehen unten in "Spaltenmasse". */
+  --karte: clamp(300px, calc(100vw - var(--rail) - 780px), 460px);
 }
 
 * {
@@ -142,14 +147,43 @@ a {
 /* Grundgeruest                                                         */
 /* ------------------------------------------------------------------ */
 
+/* Standard = mittlere Breiten: Karte oben in der rechten Spalte, nicht
+   mitwandernd. Ab 1360 px drei Spalten, unter 961 px einspaltig. */
 .geruest {
   min-height: 100%;
   display: grid;
   grid-template-columns: var(--rail) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-areas:
     "kopf kopf"
+    "rail karte"
     "rail haupt";
+}
+
+/* Der Sprunglink liegt AUSSERHALB des Flusses -- sonst waere er ein eigenes
+   Grid-Kind von .geruest und schoebe die Areas auseinander. */
+.sprunglink {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 40;
+  padding: 9px 14px;
+  background: var(--flaeche-hoch);
+  border: 1px solid var(--gold);
+  border-radius: var(--r);
+  color: var(--gold-hell);
+  text-decoration: none;
+  transition: top 0.1s;
+}
+
+.sprunglink:focus {
+  top: 8px;
+}
+
+/* Das Ziel des Sprungs bekommt den Fokus, soll ihn aber nicht als Rahmen
+   zeigen -- der Fokus wandert sofort weiter zur ersten Zeile. */
+.haupt:focus {
+  outline: none;
 }
 
 .kopf {
@@ -167,6 +201,18 @@ a {
   max-height: calc(100vh - var(--kopf-hoehe, 132px));
   position: sticky;
   top: 0;
+}
+
+.kartenspalte {
+  grid-area: karte;
+  min-width: 0;
+  padding: 20px 26px 0;
+}
+
+/* Mittlere Breiten: die Karte steht oben in der rechten Spalte und wird nicht
+   breiter als noetig -- sonst waere sie hoeher als das Fenster. */
+.kartenspalte .tafel {
+  max-width: 460px;
 }
 
 .haupt {
@@ -332,13 +378,6 @@ a {
 /* Tafeln (Karte, Betrieb)                                              */
 /* ------------------------------------------------------------------ */
 
-.tafeln {
-  display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-
 .tafel {
   background: var(--flaeche);
   border: 1px solid var(--linie);
@@ -440,7 +479,18 @@ a {
 
 .kachel__kuerzel {
   font-family: var(--schrift-technisch);
-  font-size: 11px;
+  /*
+    In Zeichnungseinheiten (die Zeichnung ist 360 breit), nicht in
+    Bildschirmpixeln. GEMESSEN 2026-09-19: Die Kartenspalte ist bei 1360 und
+    1366 px Fensterbreite 300 px breit, davon bleiben der Zeichnung nach den
+    Innenabstaenden (20 Spalte + 1 Rahmen + 15 Tafel, beidseitig) nur 248 px --
+    Faktor 0,689. Der Planwert "rund 280 px" war zu grosszuegig. Mit 11
+    Einheiten stand das Kuerzel dort mit 7,58 px auf dem Schirm, deutlich unter
+    den geforderten 10 px. 15 Einheiten ergeben 10,33 px im schmalsten Fall;
+    die Kachel ist 34 x 24 Einheiten und wird davon nicht gesprengt (im
+    Browser gegen die Kachelbreite nachgemessen).
+  */
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-anchor: middle;
@@ -1482,9 +1532,29 @@ a {
 /* Schmale Fenster                                                      */
 /* ------------------------------------------------------------------ */
 
-@media (max-width: 1180px) {
-  .tafeln {
-    grid-template-columns: minmax(0, 1fr);
+/* Breit genug fuer drei Spalten: Filter | Karte | Liste. Die Karte wandert mit,
+   damit sie sichtbar bleibt, waehrend man durch die Liste blaettert -- sonst
+   waere ein Hover in der Liste ein Ring auf einer Karte, die man nicht sieht. */
+@media (min-width: 1360px) {
+  .geruest {
+    grid-template-columns: var(--rail) var(--karte) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "kopf kopf kopf"
+      "rail karte haupt";
+  }
+
+  .kartenspalte {
+    padding: 20px 0 24px 20px;
+    align-self: start;
+    position: sticky;
+    top: 0;
+    max-height: calc(100vh - var(--kopf-hoehe, 132px));
+    overflow-y: auto;
+  }
+
+  .kartenspalte .tafel {
+    max-width: none;
   }
 }
 
@@ -1495,10 +1565,16 @@ a {
 
   .geruest {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
     grid-template-areas:
       "kopf"
       "rail"
+      "karte"
       "haupt";
+  }
+
+  .kartenspalte {
+    padding: 16px 14px 0;
   }
 
   .rail {
