@@ -568,6 +568,34 @@ a {
   pointer-events: none;
 }
 
+.plzknopf {
+  cursor: pointer;
+  outline: none;
+}
+
+/* Unsichtbar, aber getroffen: `transparent` ist eine Farbe, `none` waere keine. */
+.plzknopf__flaeche {
+  fill: transparent;
+  stroke: none;
+}
+
+.plzknopf:hover .plzpunkt {
+  fill-opacity: 1;
+  stroke: var(--papier);
+  stroke-width: 1;
+}
+
+.plzknopf:focus-visible .plzknopf__flaeche {
+  stroke: var(--gold);
+  stroke-width: 1.5;
+}
+
+.plzknopf--gewaehlt .plzpunkt {
+  fill-opacity: 1;
+  stroke: var(--gold-hell);
+  stroke-width: 2;
+}
+
 /* Das Overlay des Hovers aus der Liste -- ein Ring, keine Umfaerbung. */
 .markierung {
   fill: none;

@@ -10,7 +10,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Snapshot, SnapshotObjekt } from "./daten/snapshot.ts";
 import { ladeSnapshot, type Ladefortschritt, type Ladeergebnis } from "./daten/laden.ts";
-import { LEERER_FILTER, wendeFilterAn, zaehleOhneAngabe, type Filter } from "./logik/filter.ts";
+import {
+  LEERER_FILTER,
+  schalteEintrag,
+  wendeFilterAn,
+  zaehleOhneAngabe,
+  type Filter,
+} from "./logik/filter.ts";
 import { bestimmeBereich, gliedere } from "./logik/gliederung.ts";
 import { laenderOhneAbgangserkennung, zaehleZustaende } from "./logik/regionen.ts";
 import type { Kartengroesse } from "./logik/karte.ts";
@@ -207,9 +213,13 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
   const schalteLand = (name: string) =>
     setFilter((bisher) => ({
       ...bisher,
-      bundeslaender: bisher.bundeslaender.includes(name)
-        ? bisher.bundeslaender.filter((e) => e !== name)
-        : [...bisher.bundeslaender, name],
+      bundeslaender: schalteEintrag(bisher.bundeslaender, name),
+    }));
+
+  const schaltePlz = (zweisteller: string) =>
+    setFilter((bisher) => ({
+      ...bisher,
+      plzZweisteller: schalteEintrag(bisher.plzZweisteller, zweisteller),
     }));
 
   const umschalten = (bereich: Bereichsname) =>
@@ -258,6 +268,8 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           setzeGroesse={setKartengroesse}
           gewaehlteLaender={filter.bundeslaender}
           schalteLand={schalteLand}
+          gewaehltePlz={filter.plzZweisteller}
+          schaltePlz={schaltePlz}
           hervorgehobenesObjekt={hoverObjekt}
         />
       </div>

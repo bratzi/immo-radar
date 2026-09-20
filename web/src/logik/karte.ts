@@ -293,3 +293,60 @@ export function beschreibeMarkierung(markierung: Markierung | null): string {
   }
   return `Nur das Land ist bekannt: ${markierung.name}. Die Kachel ist eine Marke, kein Ort.`;
 }
+
+/**
+ * Wie weit die unsichtbare Trefferflaeche eines Punktes hoechstens wachsen
+ * darf: bis zur HALBEN Strecke zum naechsten Nachbarn.
+ *
+ * WARUM ES DIESE SCHRANKE BRAUCHT -- im Browser gemessen, nicht befuerchtet:
+ * Ohne sie deckte die 13,8 Einheiten grosse Trefferflaeche von PLZ 46 (zwei
+ * Objekte) den Mittelpunkt von PLZ 45 (sechzehn Objekte) vollstaendig zu.
+ * Der groesste Punkt der Karte war nicht mehr anklickbar, und zwar
+ * ausgerechnet vom kleinsten Nachbarn, weil der spaeter gezeichnet wird und
+ * damit obenauf liegt.
+ *
+ * `Infinity` fuer einen Punkt ohne Nachbarn ist Absicht: keine Schranke ist
+ * etwas anderes als die Schranke null.
+ */
+export function halberNachbarabstand(
+  punkte: readonly Pick<PlzPunkt, "zweisteller" | "x" | "y">[]
+): Map<string, number> {
+  const ergebnis = new Map<string, number>();
+  for (const punkt of punkte) {
+    let naechster = Infinity;
+    for (const anderer of punkte) {
+      if (anderer === punkt) continue;
+      const abstand = Math.hypot(anderer.x - punkt.x, anderer.y - punkt.y);
+      if (abstand < naechster) naechster = abstand;
+    }
+    ergebnis.set(punkt.zweisteller, naechster / 2);
+  }
+  return ergebnis;
+}
+
+/**
+ * Der Radius der Trefferflaeche: so gross wie gefordert (24 px Zielgroesse
+ * nach WCAG 2.5.8), aber nie ueber den halben Nachbarabstand -- und nie
+ * kleiner als der sichtbare Punkt selbst.
+ *
+ * Stehen zwei Punkte naeher als 24 px beieinander, gewinnt der naehere
+ * Mittelpunkt. Das ist der ehrliche Kompromiss: Ein zu grosser Trefferbereich
+ * macht den Nachbarn unerreichbar, was schlimmer ist als ein kleiner.
+ * Tab + Enter bleibt daneben als zuverlaessiger Weg zu JEDEM Punkt.
+ */
+export function begrenzterTrefferradius(
+  punktRadius: number,
+  gefordert: number,
+  halberAbstand: number
+): number {
+  // Die Reihenfolge ist die ganze Aussage: Der halbe Nachbarabstand steht
+  // GANZ AUSSEN und sticht alles. Ein erster Entwurf hatte das Mindestmass
+  // "nie kleiner als der sichtbare Punkt" darueber gelegt -- im Browser stahl
+  // PLZ 51 damit PLZ 50 den Klick. Lieber eine Trefferflaeche kleiner als der
+  // gezeichnete Punkt als ein Nachbar, der gar nicht mehr anzuklicken ist.
+  // Die Untergrenze ist bewusst NICHT vom Nachbarabstand gedeckelt: Liegen
+  // zwei Punkte exakt uebereinander (halberAbstand 0), gibt es nichts zu
+  // stehlen -- die Mittelpunkte sind dieselben. Eine Trefferflaeche von null
+  // waere dort nur ein Punkt, den niemand anklicken kann.
+  return Math.max(0.5, Math.min(Math.max(punktRadius, gefordert), halberAbstand));
+}

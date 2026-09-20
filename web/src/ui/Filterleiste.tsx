@@ -288,6 +288,35 @@ export function Filterleiste({
         </p>
       </Gruppe>
 
+      {filter.plzZweisteller.length > 0 && (
+        <Gruppe name="PLZ-Bereich" zaehler={filter.plzZweisteller.length} offenAnfangs>
+          <div className="wahl">
+            {filter.plzZweisteller.map((zweisteller) => (
+              <Wahlknopf
+                key={zweisteller}
+                name={`${zweisteller}…`}
+                titel={`PLZ-Bereich ${zweisteller}… — erneut anklicken entfernt die Auswahl`}
+                anzahl={undefined}
+                gewaehlt
+                umschalten={() =>
+                  aendere({ plzZweisteller: filter.plzZweisteller.filter((e) => e !== zweisteller) })
+                }
+              />
+            ))}
+          </div>
+          {/*
+            Dieselbe Ehrlichkeit wie an den Spannenfeldern: Ein PLZ-Filter blendet
+            den Bestand fast ganz aus, weil nur ein kleiner Teil eine verortbare
+            PLZ traegt. Ohne diese Zeile waere der Klick auf einen Punkt eine Falle.
+          */}
+          <p className="regionsnotiz">
+            <b>{formatiereAnzahl(ohneAngabe.plz)}</b> von {formatiereAnzahl(gesamt)} Objekten
+            tragen keine verortbare PLZ und fallen heraus, solange hier etwas steht — sie sind
+            gerade ausgeblendet.
+          </p>
+        </Gruppe>
+      )}
+
       <Gruppe name="Trefferlage" zaehler={
         (filter.nurUeberMeldeschwelle ? 1 : 0) +
         (filter.nurPreissenkungen ? 1 : 0) +

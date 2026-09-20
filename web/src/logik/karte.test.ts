@@ -3,6 +3,8 @@ import type { SnapshotObjekt } from "../daten/snapshot.ts";
 import {
   KARTE_HOEHE,
   KARTE_BREITE,
+  begrenzterTrefferradius,
+  halberNachbarabstand,
   berechneAbdeckung,
   beschreibeMarkierung,
   buendlePlzPunkte,
@@ -243,5 +245,62 @@ describe("beschreibeMarkierung -- die Zeile unter der Karte sagt, was der Ring b
 
   it("sagt bei fehlender Ortsangabe, dass das Objekt nicht auf der Karte steht", () => {
     expect(beschreibeMarkierung(null)).toContain("nicht auf der Karte");
+  });
+});
+
+describe("halberNachbarabstand -- wie weit eine Trefferflaeche hoechstens wachsen darf", () => {
+  const punkt = (zweisteller: string, x: number, y: number) => ({ zweisteller, x, y });
+
+  it("ist die halbe Strecke zum naechsten Nachbarn", () => {
+    const abstaende = halberNachbarabstand([punkt("10", 0, 0), punkt("20", 10, 0)]);
+    expect(abstaende.get("10")).toBe(5);
+    expect(abstaende.get("20")).toBe(5);
+  });
+
+  it("nimmt je Punkt den NAECHSTEN Nachbarn, nicht irgendeinen", () => {
+    const abstaende = halberNachbarabstand([punkt("10", 0, 0), punkt("20", 4, 0), punkt("30", 100, 0)]);
+    expect(abstaende.get("10")).toBe(2);
+    expect(abstaende.get("20")).toBe(2);
+    expect(abstaende.get("30")).toBe(48);
+  });
+
+  it("rechnet schraeg, nicht nur waagerecht", () => {
+    const abstaende = halberNachbarabstand([punkt("10", 0, 0), punkt("20", 3, 4)]);
+    expect(abstaende.get("10")).toBe(2.5);
+  });
+
+  it("gibt einem einzelnen Punkt keine Schranke", () => {
+    expect(halberNachbarabstand([punkt("10", 0, 0)]).get("10")).toBe(Infinity);
+  });
+});
+
+describe("begrenzterTrefferradius -- gross genug fuer einen Finger, aber nie der Klau des Nachbarn", () => {
+  it("nimmt den geforderten Radius, wenn Platz ist", () => {
+    expect(begrenzterTrefferradius(3, 13, 40)).toBe(13);
+  });
+
+  it("wird vom halben Nachbarabstand gedeckelt -- sonst stiehlt ein Punkt den Klick", () => {
+    expect(begrenzterTrefferradius(3, 13, 6)).toBe(6);
+  });
+
+  it("BRICHT die Schranke auch fuer einen grossen Punkt nicht -- im Browser gemessen", () => {
+    // Zuerst stand hier `toBe(5)`: "nie kleiner als der sichtbare Punkt".
+    // Die Browsermessung hat das widerlegt -- PLZ 51 stahl PLZ 50 den Klick,
+    // weil dieses Mindestmass die Nachbarschranke aussticht. Die Trefferflaeche
+    // darf NIE ueber den Mittelpunkt des Nachbarn reichen; das ist die
+    // Invariante, nicht die Zielgroesse.
+    expect(begrenzterTrefferradius(5, 13, 1)).toBe(1);
+  });
+
+  it("wird aber nie null -- ein Punkt ohne jede Trefferflaeche waere unerreichbar", () => {
+    expect(begrenzterTrefferradius(5, 13, 0)).toBe(0.5);
+  });
+
+  it("nimmt ohne Nachbarn den geforderten Radius", () => {
+    expect(begrenzterTrefferradius(3, 13, Infinity)).toBe(13);
+  });
+
+  it("nimmt mindestens den sichtbaren Punkt, solange Platz ist", () => {
+    expect(begrenzterTrefferradius(8, 4, 40)).toBe(8);
   });
 });

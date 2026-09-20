@@ -16,18 +16,20 @@
  *
  * KEIN KACHEL-DIENST, KEINE FREMDANFRAGE (N5). Alles ist Inline-SVG.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SnapshotBundesland, SnapshotObjekt } from "../daten/snapshot.ts";
 import { formatiereAnzahl, formatiereDscr, formatiereProzent } from "../logik/formate.ts";
-import { filterKurz } from "../logik/kartentexte.ts";
+import { alsZeile, filterKurz, punktText } from "../logik/kartentexte.ts";
 import { holeSpeicher, liesKarteOffen, schreibeKarteOffen } from "../logik/karteOffen.ts";
 import {
   KARTENGROESSE_NAMEN,
   KARTE_BREITE,
   KARTE_HOEHE,
+  begrenzterTrefferradius,
   berechneAbdeckung,
   beschreibeMarkierung,
   buendlePlzPunkte,
+  halberNachbarabstand,
   markierungFuer,
   kachelLagen,
   spanneDerGroesse,
@@ -77,6 +79,8 @@ interface Eigenschaften {
   setzeGroesse: (groesse: Kartengroesse) => void;
   gewaehlteLaender: readonly string[];
   schalteLand: (name: string) => void;
+  gewaehltePlz: readonly string[];
+  schaltePlz: (zweisteller: string) => void;
   /** Die Zeile unter dem Zeiger bzw. mit Tastaturfokus -- `null`, wenn keine. */
   hervorgehobenesObjekt: SnapshotObjekt | null;
 }
@@ -88,6 +92,8 @@ export function Karte({
   setzeGroesse,
   gewaehlteLaender,
   schalteLand,
+  gewaehltePlz,
+  schaltePlz,
   hervorgehobenesObjekt,
 }: Eigenschaften) {
   const lagen = useMemo(() => kachelLagen(), []);
@@ -138,6 +144,31 @@ export function Karte({
   const maxAnzahl = punkte.reduce((groesster, p) => Math.max(groesster, p.anzahl), 1);
   const radius = (anzahl: number) => 2.2 + Math.sqrt(anzahl / maxAnzahl) * 5.4;
 
+  const bild = useRef<SVGSVGElement>(null);
+  const [breitePx, setBreitePx] = useState(KARTE_BREITE);
+
+  useEffect(() => {
+    const element = bild.current;
+    if (element === null || typeof ResizeObserver === "undefined") return;
+    const messen = () => setBreitePx(element.getBoundingClientRect().width || KARTE_BREITE);
+    messen();
+    const beobachter = new ResizeObserver(messen);
+    beobachter.observe(element);
+    return () => beobachter.disconnect();
+  }, []);
+
+  // 24 px Zielgroesse (WCAG 2.5.8) in Zeichnungseinheiten zurueckgerechnet.
+  // Faellt die Messung aus, gilt die Zeichnungsbreite -- dann ist der Radius
+  // eher zu gross als zu klein, und das ist die richtige Richtung.
+  const gefordert = Math.max(3, (12 * KARTE_BREITE) / Math.max(1, breitePx));
+  const halbeAbstaende = useMemo(() => halberNachbarabstand(punkte), [punkte]);
+  const trefferRadius = (punkt: (typeof punkte)[number], radius: number) =>
+    begrenzterTrefferradius(
+      radius,
+      Math.max(radius + 3, gefordert),
+      halbeAbstaende.get(punkt.zweisteller) ?? Infinity
+    );
+
   const markierterPunkt =
     markierung?.art === "plz" ? punktJeZweisteller.get(markierung.zweisteller) : undefined;
   const markierteLage =
@@ -152,7 +183,7 @@ export function Karte({
   };
   // Zweites Argument: gewaehltePlz gibt es erst ab Task 8 -- dort nachziehen,
   // sonst zeigt der zugeklappte Kopf einen aktiven PLZ-Filter nie an.
-  const kurz = filterKurz(gewaehlteLaender, []);
+  const kurz = filterKurz(gewaehlteLaender, gewaehltePlz);
 
   return (
     <section className={`tafel${offen ? "" : " tafel--zu"}`}>
@@ -188,6 +219,7 @@ export function Karte({
       <div className="tafel__inhalt" id="karte-inhalt">
         <svg
           className="karte__bild"
+          ref={bild}
           viewBox={`0 0 ${KARTE_BREITE} ${KARTE_HOEHE}`}
           role="group"
           aria-label="Deutschlandkarte: 16 Bundesland-Kacheln und die punktgenau verortbaren Objekte"
@@ -246,20 +278,31 @@ export function Karte({
             );
           })}
 
-          {punkte.map((punkt) => (
-            <circle
-              key={punkt.zweisteller}
-              className="plzpunkt"
-              cx={punkt.x}
-              cy={punkt.y}
-              r={radius(punkt.anzahl)}
-            >
-              <title>
-                {`PLZ ${punkt.zweisteller}… — ${formatiereAnzahl(punkt.anzahl)} Objekte, ` +
-                  `${formatiereAnzahl(punkt.topTreffer)} davon Top-Treffer`}
-              </title>
-            </circle>
-          ))}
+          {punkte.map((punkt) => {
+            const gewaehlt = gewaehltePlz.includes(punkt.zweisteller);
+            const r = radius(punkt.anzahl);
+            return (
+              <g
+                key={punkt.zweisteller}
+                className={`plzknopf${gewaehlt ? " plzknopf--gewaehlt" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={gewaehlt}
+                aria-label={alsZeile(punktText(punkt, gewaehlt))}
+                onClick={() => schaltePlz(punkt.zweisteller)}
+                onKeyDown={(ereignis) => {
+                  if (ereignis.key === "Enter" || ereignis.key === " ") {
+                    ereignis.preventDefault();
+                    schaltePlz(punkt.zweisteller);
+                  }
+                }}
+              >
+                {/* Trefferflaeche: unsichtbar, aber gross genug fuer einen Finger. */}
+                <circle className="plzknopf__flaeche" cx={punkt.x} cy={punkt.y} r={trefferRadius(punkt, r)} />
+                <circle className="plzpunkt" cx={punkt.x} cy={punkt.y} r={r} />
+              </g>
+            );
+          })}
 
           {/*
             Das Overlay des Hovers: ein zusaetzlicher Ring, KEINE Aenderung an
@@ -345,8 +388,10 @@ export function Karte({
           </p>
           <p className="hinweis-schematisch">
             Die Karte zeigt <b>immer den ganzen Bestand</b>, nie die gefilterte Auswahl — sie ist
-            der Einstieg in die Liste, nicht ihr Ergebnis. Ein Klick wählt ein Land aus (goldener
-            Rahmen) und filtert die Liste.
+            der Einstieg in die Liste, nicht ihr Ergebnis. Ein Klick auf eine Kachel wählt ein
+            Land, ein Klick auf einen goldenen Punkt einen PLZ-Bereich (goldener Rahmen) und
+            filtert die Liste. Fährt man in der Liste über eine Zeile, zeigt ein Ring, wo die
+            Karte sie verortet.
           </p>
         </div>
       </div>
