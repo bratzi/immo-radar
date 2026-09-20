@@ -1549,7 +1549,7 @@ Nachricht (Vorschlag): `feat(web): Karte als eigene mitwandernde Spalte, Betrieb
 
 ---
 
-### Task 6b: Unter 1360 px ist die Karte zuklappbar — und merkt es sich
+### Task 6b: Unter 1360 px ist die Karte zuklappbar — und merkt es sich — ERLEDIGT (2026-09-20)
 
 Entscheidung des Nutzers (Grilling): Auf schmalen Bildschirmen ist die Karte
 der **Einstieg**, nicht ein Dauerbrenner. Beim ersten Besuch **offen**, danach
@@ -1886,7 +1886,7 @@ Nachricht (Vorschlag): `feat(web): Karte unter 1360 px zuklappbar, Zustand gemer
 
 ---
 
-### Task 7: Hover in der Liste hebt die Verortung auf der Karte hervor
+### Task 7: Hover in der Liste hebt die Verortung auf der Karte hervor — ERLEDIGT (2026-09-20)
 
 **Files:** Modify `web/src/ui/Objektzeile.tsx`, `web/src/ui/Bereich.tsx`,
 `web/src/App.tsx`, `web/src/ui/Karte.tsx`, `web/src/stil.css`.
@@ -2125,7 +2125,7 @@ Nachricht (Vorschlag): `feat(web): Hover in der Liste zeigt die Verortung auf de
 
 ---
 
-### Task 8: Ein Klick auf einen PLZ-Punkt filtert
+### Task 8: Ein Klick auf einen PLZ-Punkt filtert — ERLEDIGT (2026-09-20)
 
 **Files:** Modify `web/src/ui/Karte.tsx`, `web/src/App.tsx`,
 `web/src/ui/Filterleiste.tsx`, `web/src/stil.css`.

@@ -1,3 +1,84 @@
+# Übergabe — Stand 2026-09-20 (zweite Sitzung des Tages)
+
+## Kartenplan: Tasks 6b, 7 und 8 sind gebaut — offen bleiben 9 und 10
+
+> **Beim Sitzungsende laufen zwei Subagenten** (auf Wunsch des Nutzers
+> parallelisiert): einer an **Task 9** (Tooltip), einer an **B5** (die 352
+> leeren Hüllen, reine Untersuchung). Beide committen in ihrem Worktree und
+> mergen **nicht** — das Zusammenführen gehört dem Koordinator. **Erst in den
+> Worktree sehen, bevor du etwas neu baust.**
+
+| Task | Ergebnis |
+|---|---|
+| **6b** — Zuklappen | Unter 1360 px zuklappbar, Zustand gemerkt, Filter im zugeklappten Kopf. 8 Browserprüfungen bestanden |
+| **7** — Hover-Ring | Ring auf der Karte, ehrlich beschriftet; Touch bewusst ausgenommen |
+| **8** — Klick-Filter | Die 60 PLZ-Punkte sind Schaltflächen; Filtergruppe in der Leiste |
+
+**Stand danach: 169 Web-Tests grün, 1 übersprungen**, `tsc` und `vite build`
+sauber, alles auf `main` gepusht.
+
+### Drei Dinge, die die Messung dem Plan abgerungen hat
+
+**1. Der Hover-Ring war unsichtbar, wo er am meisten gebraucht wird.** Der Plan
+gab ihm nur einen goldenen Schein. Gegen die hellste Kachelfüllung gerechnet
+kam er damit auf **2,05:1** und riss die 3:1 für nicht-textliche Markierungen —
+und genau dort liegen die PLZ-Punkte. Ein dunkler Saum unter dem Schein bringt
+ihn auf **5,55:1** gegen die Kachel bei 11,14:1 Ring gegen Saum.
+
+**2. Die 24-px-Trefferfläche aus Task 8 ist nicht erreichbar, und der Plan
+widersprach sich selbst.** Er verlangte ≥ 24 px für jede Fläche und zugleich
+„nie über den halben Abstand zum nächsten Punkt". Beides zusammen geht bei 60
+Punkten auf 312 px Kartenbreite nicht. Gemessen: **kleinste 4,5 px, Median
+20,9 px, größte 24,0 px** (bei 390 px Fensterbreite Median 22,1). Was
+stattdessen gilt und gemessen ist: **60 von 60 Punkten treffen sich selbst**,
+keiner wird vom Nachbarn überdeckt; Tab + Enter erreicht ohnehin jeden.
+
+Der Weg dahin war zweimal falsch, beide Male vom Browser widerlegt: Ohne
+Schranke deckte PLZ 46 (zwei Objekte) den Mittelpunkt von PLZ 45 (sechzehn)
+vollständig zu — der größte Punkt der Karte war nicht anklickbar. Mit der
+Schranke, aber dem Mindestmaß „nie kleiner als der sichtbare Punkt", stahl
+PLZ 51 dem Punkt PLZ 50 den Klick. **Die Nachbarschranke muss alles stechen.**
+
+**3. Das Memoisieren hält — belegt durch die Gegenprobe.** 31 Zeilen
+überfahren, mit dem stabilen `setHoverObjekt`: **0** Neuzeichnungen, keine
+Long Task ≥ 50 ms. Zur Gegenprobe ein Inline-Pfeil eingesetzt: **5.704**
+Neuzeichnungen. Ohne diese Gegenprobe hätte die Null nichts bewiesen.
+
+### B6 Schritt 1 ist vorbereitet, aber der Lauf fehlt — er braucht dich
+
+`scraper/scripts/diagnose-detail.mts` misst jetzt, ob Immowelts
+`/expose/`-Sperre für GitHub-Actions-Adressen noch besteht (Backlog B6,
+Schritt 1 — die Vorbedingung für alles Weitere an der Datenqualität). Es holt
+die expose-URLs **frisch aus der Suchseite**, an der es ohnehin aufwärmt: Die
+zwei fest verdrahteten URLs vom 2026-09-07 sind womöglich abgelaufen, und ein
+404 wäre dann von einer Sperre nicht zu unterscheiden gewesen.
+
+**Der Lauf konnte nicht gestartet werden: `gh` ist in dieser Sitzung nicht
+angemeldet** (`gh auth login` fehlt, und ein Zugriff auf gespeicherte
+Zugangsdaten wird von der Sicherung blockiert — zu Recht). Zu starten mit:
+
+```
+gh workflow run pruefung.yml -f skript=diagnose-detail
+```
+
+Das Skript druckt am Ende eine Ergebniszeile, die sagt, ob die Sperre noch
+besteht. **Danach liegt Schritt 2 beim Nutzer** — die vier Wege und ihre Preise
+stehen in B6.
+
+### Zwei Fallen, die diese Sitzung gekostet haben
+
+- **Ein Messskript, das nichts findet, sieht aus wie ein bestandener Test.**
+  Die Leistungsmessung überfuhr zuerst **drei** Zeilen statt vierzig und meldete
+  brav „Differenz 0". Erst der Blick auf die Zahl daneben verriet es. Ebenso
+  meldete der erste Long-Task-Zähler vier Treffer — die stammten mit
+  `buffered: true` aus dem Seitenaufbau, nicht aus dem Hover.
+- **`\d` in einem Suchausdruck, der durch Heredoc, Shell und Template-Literal
+  geht, kommt nicht als `\d` an.** Eine Prüfung meldete deshalb „keine Zeile
+  trägt die richtige PLZ", während alle acht sie trugen. Im Zweifel ohne Regex
+  prüfen — hier: an „·" trennen und die fünfstellige Zahl nehmen.
+
+---
+
 # Übergabe — Stand 2026-09-20
 
 ## Die nächste große Aufgabe, vom Nutzer gesetzt: der Immowelt-Lauf
