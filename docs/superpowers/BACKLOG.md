@@ -1766,6 +1766,30 @@ schafft, verschiebt auch, wann gelöscht werden darf.
 
 ---
 
+## B7. Zwei Befunde aus dem Oberflächen-Audit, die nicht in den Kartenplan gehörten
+
+**Herkunft:** Task 10 des Kartenplans, 2026-09-20. Beide sind belegt, beide
+sind bewusst nicht dort behoben worden — sie berühren Dinge außerhalb des
+Plans.
+
+**B7-1: Der Filterzustand steht nicht in der URL.** Bundesländer, PLZ-Bereiche,
+Stufen, Spannen, aufgeklappte Bereiche — alles lebt nur in `useState`. Folgen:
+Eine Auswahl lässt sich niemandem schicken, ein Neuladen wirft sie weg, und
+der Zurück-Knopf des Browsers verlässt die Seite statt den Filter zu lösen.
+Betroffen sind `App.tsx` (Zustand `filter`, `offen`, `kartengroesse`) und
+`logik/filter.ts` (`Filter`-Typ, `LEERER_FILTER`). **Erster Schritt ist ein
+Entwurf, kein Umbau:** Welche Felder gehören in die URL, wie kurz darf sie
+bleiben, und was passiert mit einer URL, deren Filter nichts mehr trifft.
+
+**B7-2: `title`-Attribute tragen Erklärungen, die Touch und Tastatur nicht
+erreichen.** In `Objektzeile.tsx` hängen an Kaufpreisfaktor, Stufenabzeichen
+und Zustandsmarke `title`-Attribute; auf einem Fingergerät erscheint dort nie
+etwas, und für die Tastatur ist es unzuverlässig. Seit Task 9 gibt es ein
+eigenes, sofortiges Tooltip-Element (`ui/KartenTooltip.tsx`) — die Frage ist,
+ob es sich von der Karte lösen und allgemein verwenden lässt, ohne dass die
+Zeile ihr Memo verliert (sie wird 18.000-fach gezeichnet).
+
+
 # Teil C — Bewusst zurückgestellt
 
 Aus früheren Entwürfen, mit Begründung. Nur auf ausdrücklichen Wunsch.

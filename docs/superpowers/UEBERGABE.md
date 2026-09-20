@@ -1,3 +1,111 @@
+# Übergabe — Stand 2026-09-20 (dritte Sitzung des Tages)
+
+## Der Kartenplan ist abgenommen — Task 10 ist gelaufen, der Plan ist fertig
+
+**Alle zehn Tasks sind erledigt.** Task 10 war die Gesamtabnahme: volle
+Prüfung, Gesamtdurchlauf im Browser an drei Fenstergrößen, das Design- und
+Barrierefreiheits-Audit, Dokumentation.
+
+**Stand nach der Abnahme: 187 Web-Tests grün, 1 übersprungen**, `tsc` und
+`vite build` sauber, keine Konsolenfehler in keiner der drei Größen.
+
+### Der Befund, den erst die Abnahme fand: die Punkte stahlen den Kacheln den Klick
+
+Die auf 24 px vergrößerten Trefferflächen der PLZ-Punkte sind **unsichtbar**
+und liegen **über** den Bundesland-Kacheln. Gemessen an 1440×900, 1366×768 und
+390×844 mit einem 5×5-Raster je Kachel:
+
+| Kachel | vorher (von 25) | nachher |
+|---|---|---|
+| Saarland | **0** (bei 1366 px) | 23 |
+| Berlin | 11 | 23 |
+| Thüringen | 6 | 21 |
+| Bremen | 8 | 23 |
+
+Task 8 hatte nur geprüft, ob jeder **Punkt** sich selbst trifft — nicht, ob
+die **Kachel darunter** noch erreichbar ist. Das ist die Lehre: Eine
+Überdeckungsprüfung muss beide Richtungen messen, nicht nur die Schicht, die
+gerade gebaut wird.
+
+Die Trefferfläche bekommt deshalb eine **zweite Schranke**: den Abstand zur
+nächsten Kachelfläche (`abstandZuKacheln` in `logik/karte.ts`). Anders als die
+Nachbarschranke darf sie **nicht unter den sichtbaren Punktradius drücken** —
+was man sieht, muss man treffen können. Die Kachel verliert genau die Fläche,
+die der Punkt ohnehin verdeckt. Preis: Median-Trefferfläche 20,9 → 15,2 px;
+alle 60 Punkte treffen weiterhin sich selbst. Commit `2485d4d`.
+
+**Was bleibt:** Bei **Bremen** und **Saarland** liegt der sichtbare Punkt
+genau auf der Kachelmitte. Wer dort in die Mitte klickt, trifft den Punkt,
+nicht die Kachel. 23 von 25 Rasterstellen der Kachel bleiben ihr — das ist
+ehrlich, denn der Punkt ist dort wirklich sichtbar.
+
+### Das Design- und Barrierefreiheits-Audit ist gelaufen
+
+Es stand seit dem 2026-09-19 als „zweimal am Sitzungslimit abgebrochen" in
+dieser Datei. Es deckt `web/` ab, und dort nur die von diesem Plan berührten
+Dateien (`Karte.tsx`, `KartenTooltip.tsx`, `Objektzeile.tsx`, `Bereich.tsx`,
+`Filterleiste.tsx`, `App.tsx`, `stil.css`, `VirtuelleListe.tsx`, `laden.ts`).
+**Nicht geprüft:** `Betriebstafel.tsx`, `Bandstreifen.tsx`, `Kopfzeile.tsx`
+und alles außerhalb von `web/`.
+
+**Behoben (je ein Commit):**
+
+| Befund | Commit |
+|---|---|
+| Punkt-Trefferflächen nehmen den Kacheln den Klick | `2485d4d` |
+| Ladetext und Fußzeile rechneten Megabyte selbst und schrieben als einzige Stellen der Oberfläche einen englischen Dezimalpunkt („23.3 von 23.3 MB") | `320c084` |
+| Zwischen Zahl und Einheit fehlte das geschützte Leerzeichen (MB, ms) | `320c084` |
+| `index.html` ohne `theme-color` — die Adressleiste mobiler Browser stand nicht in der Seitenfarbe | `320c084` |
+
+**Gemessen und bestanden, also nichts geändert:**
+
+- **Kontraste.** Tooltip-Titel 12,66:1, Tooltip-Zeile 5,34:1, Tooltip-Hinweis
+  9,67:1, Filter-Kurztext im zugeklappten Kopf 10,74:1, Kartentitel 5,94:1 —
+  alle über 4,5:1. Der Hover-Ring war in Task 7 mit 5,55:1 gegen die Kachel
+  gemessen.
+- **Farbe allein trägt keinen Zustand.** Gewählte Kachel: Rahmen *und*
+  `aria-pressed`. Gewählter Punkt: dickerer Rand *und* `aria-pressed`. Ring:
+  eine zusätzliche Form. Zugeklappte Karte: gedrehter Pfeil *und*
+  `aria-expanded`.
+- **Der Sprunglink trägt.** Erstes Tab zeigt ihn sichtbar (nach der 0,1-s-
+  Blende), Enter setzt den Fokus auf `#liste`, das nächste Tab landet auf dem
+  ersten Bereichskopf — die rund 76 Stopps sind übersprungen.
+- **Hover auf der Karte ist nicht teuer.** 46 Hover-Wechsel über Kacheln und
+  Punkte: keine einzige Long Task ≥ 50 ms. Der React-Verdacht „`kachelText`
+  wird je Render mehrfach gebaut" ist damit real, aber folgenlos — **nicht**
+  umgebaut.
+
+**Verworfen, mit Begründung:**
+
+- *„Platzhalter sollen mit … enden und ein Beispiel zeigen"* — die Felder
+  „von"/„bis" der Spannen sind rund 40 px breit; ein Beispielmuster passt dort
+  nicht, und `aria-label` nennt die Größe bereits vollständig.
+- *„Überschrift gehört nicht in den Knopf"* (`Bereich.tsx`, `<h2>` im
+  `<button>`) — gültiges HTML, der Name wird vorgelesen, und `aria-expanded`
+  sitzt richtig. Ein Umbau brächte nichts.
+- *„`.haupt:focus { outline: none }`"* — das Sprungziel ist die ganze
+  Hauptspalte; ein Rahmen darum wäre irreführender als keiner, und der Fokus
+  wandert mit dem nächsten Tab sichtbar weiter.
+
+**Festgehalten statt behoben** (gehört nicht in diesen Plan, siehe
+[`BACKLOG.md`](BACKLOG.md) **B7**): Der Filterzustand steht **nicht** in der
+URL — die Auswahl lässt sich nicht verlinken und überlebt kein Neuladen. Und
+die `title`-Attribute an Kaufpreisfaktor, Stufe und Zustandsmarke sind auf
+Touch unerreichbar und für die Tastatur nur mit Mühe; das eigene
+Tooltip-Element gibt es inzwischen.
+
+### Zwei Fallen dieser Sitzung
+
+- **Ein Messskript, das an der Elementmitte misst, misst die falsche Stelle.**
+  Playwrights `hover()` zielt auf die Mitte — bei Bremen und Saarland sitzt
+  dort der Punkt, nicht die Kachel, und der Lauf lief in einen Timeout statt
+  in ein Ergebnis. Der Timeout **war** der eigentliche Befund.
+- **`elementFromPoint` sieht nur den Sichtbereich.** Die erste Messung bei
+  390 px meldete „alle 16 Kacheln 0 von 25" — die Karte lag schlicht unter dem
+  Fensterrand. Vor solchen Messungen `scrollIntoView`.
+
+---
+
 # Übergabe — Stand 2026-09-20 (zweite Sitzung des Tages)
 
 ## Kartenplan: Tasks 6b, 7, 8 und 9 sind gebaut — offen bleibt nur Task 10 (Abnahme)
@@ -677,7 +785,8 @@ Zwei Reste aus dem Access-Workflow, bewusst nicht mehr angefasst:
 - Die Gegenprobe prüft nur „302", nicht **wohin**. Ein 302 auf etwas anderes
   als `*.cloudflareaccess.com` würde durchgehen. Härtung: den
   `Location`-Kopf prüfen.
-- Ein Design- und Barrierefreiheits-Audit (WCAG 2.1 AA, Kontrast, Tastatur,
+- **ERLEDIGT am 2026-09-20 (Task 10, siehe ganz oben).** Ein Design- und
+  Barrierefreiheits-Audit (WCAG 2.1 AA, Kontrast, Tastatur,
   Unterscheidbarkeit der drei Nichtwissens-Zeichen bei Farbsehschwäche) wurde
   gestartet und nach einem Limit abgebrochen — **nur lesend, nichts verloren,
   aber auch nichts gewonnen**. **Es ist jetzt in Task 10 des Kartenplans

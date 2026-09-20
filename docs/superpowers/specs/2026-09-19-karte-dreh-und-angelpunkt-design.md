@@ -1,5 +1,10 @@
 # Entwurf — Die Karte als Dreh- und Angelpunkt der Weboberfläche
 
+> **Umgesetzt am 2026-09-20**, Plan
+> [`plans/2026-09-19-karte-dreh-und-angelpunkt.md`](../plans/2026-09-19-karte-dreh-und-angelpunkt.md).
+> Die Abweichungen der Umsetzung stehen unten im Abschnitt „Was die Umsetzung
+> anders gemacht hat".
+
 > Nutzerauftrag, 2026-09-19, per `superpowers:brainstorming` erarbeitet und
 > Punkt für Punkt bestätigt (Chat-Verlauf dieser Sitzung). Architektonisch
 > eingestuft: mehrere gekoppelte Komponenten, neue Hover-Verdrahtung
@@ -61,8 +66,9 @@ das ist keine neue Regel, Bundesland-Kacheln tun das heute schon.
   (das Objekt selbst, nicht nur die ID — `Dashboard` löst die ID gegen
   `alleObjekte` auf, `Karte` selbst kennt keine Objektliste außerhalb dessen,
   was sie schon bekommt).
-- Ableitung in `Karte.tsx`: `zweistellerMitKoordinate(objekt.plz)` (bereits
-  exportiert aus `karte.ts`) → wenn nicht `null`, den passenden Punkt in
+- Ableitung in `Karte.tsx`: `zweistellerMitKoordinate(objekt.plz)` (wird in
+  Task 4 aus `karte.ts` exportiert — zum Zeitpunkt dieses Entwurfs gab es den
+  Export noch nicht) → wenn nicht `null`, den passenden Punkt in
   `punkte` hervorheben; sonst `objekt.bundesland` → die passende Kachel in
   `lagen` hervorheben; sonst nichts.
 
@@ -140,3 +146,41 @@ eigene, `position: sticky` Spalte **zwischen** `.rail` (Filterleiste, schon
    rote Test, dann die minimale Umsetzung. Die React-Verdrahtung
    (Hover-State, Tooltip-Positionierung) ist der Teil, der sich am ehesten
    nur im Browser wirklich prüfen lässt (`run`-Skill).
+
+
+---
+
+## Die Entscheidungen aus dem Grilling vom 2026-09-19
+
+Sie sind erst nach diesem Entwurf gefallen und binden die Umsetzung; der
+Entwurf selbst sagt zum schmalen Fenster bisher nur, die Karte „muss zurück in
+den Fluss fallen".
+
+- **Das Handy ist Einstieg und Filter, kein Hover-Spiegel.** Auf Touch
+  erscheint weder Ring noch Tooltip; ein Tipp filtert.
+- **Der Breakpoint liegt bei 1360 px, nicht bei 1400.** Gerechnet aus den
+  drei Spaltenbreiten plus Abständen; 1366×768 ist ein verbreitetes Format
+  und soll noch dreispaltig sein.
+- **Unter 1360 px ist die Karte zuklappbar, und der Zustand wird gemerkt**
+  (`localStorage`, jeder Zugriff in `try/catch`). Im zugeklappten Kopf steht
+  der aktive Filter als Kurztext.
+- **Der Hover-Ring bleibt wie geplant** — als zusätzliches Overlay, ohne die
+  Grundschicht zu verändern.
+- **Die leeren Hüllen ohne Region werden festgehalten, nicht in diesem Plan
+  angegangen** (jetzt Backlog B5).
+
+## Was die Umsetzung anders gemacht hat
+
+1. **`hervorgehobenesObjekt` ist das Objekt, nicht seine ID.** Sonst müsste
+   `Karte` die Objektliste zum Auflösen durchsuchen.
+2. **Kein `<title>` in der SVG-Form, sondern ein eigenes Tooltip-Element.**
+   Das `<title>` des Browsers erscheint verzögert und ist nicht gestaltbar;
+   das eigene Element ist `aria-hidden`, den Namen trägt `aria-label`.
+3. **Die Punkte bekommen eine unsichtbare Trefferfläche.** Sie ist auf 24 px
+   Zielgröße ausgelegt, wird aber von zwei Schranken gestochen: dem halben
+   Nachbarabstand (sonst stiehlt ein Punkt dem nächsten den Klick) und dem
+   Abstand zur nächsten Kachelfläche (sonst stiehlt sie den Kacheln den
+   Klick — im Browser gemessen, Task 10). Die 24 px sind damit nicht
+   überall erreichbar; gemessen sind kleinste 4,5 px, Median 15,2 px. Was
+   stattdessen gilt und gemessen ist: alle 60 Punkte treffen sich selbst,
+   und Tab + Enter erreicht ohnehin jeden.

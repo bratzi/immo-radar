@@ -2624,13 +2624,13 @@ Nachricht (Vorschlag): `feat(web): sofortiges gestaltetes Tooltip an Kacheln und
 
 ### Task 10: Gesamtprüfung, Audit, Dokumentation, Merge (Koordinator)
 
-- [ ] **Step 1: Volle Prüfung auf dem Stand des Zweigs**
+- [x] **Step 1: Volle Prüfung auf dem Stand des Zweigs** — 187 Tests grün, `tsc` und `vite build` sauber (2026-09-20)
 
 Run: `cd web && npx vitest run && npx tsc --noEmit && npx vite build`
 Expected: alles grün, Testzahl ≈ 146 (Zahl aus dem Zwischenschritt), `vite build`
 ohne Warnungen.
 
-- [ ] **Step 2: Gesamtdurchlauf im Browser**
+- [x] **Step 2: Gesamtdurchlauf im Browser** — 1440×900, 1366×768, 390×844 mit Touch; keine Konsolenfehler
 
 Ein Scratchpad-Skript fährt den Weg einmal von vorn bis hinten, bei **1440×900**,
 **1366×768** und **390×844 (mit `hasTouch`)**, mit dem echten Snapshot, und legt
@@ -2644,7 +2644,7 @@ Liste, zuklappbar und gemerkt, kein waagerechtes Scrollen, **kein Ring und kein
 Tooltip bei Tipp**, Tippen filtert, Trefferflächen ≥ 24 px.
 **Konsole: kein Fehler.**
 
-- [ ] **Step 3: Unabhängige Prüfung der Oberfläche**
+- [x] **Step 3: Unabhängige Prüfung der Oberfläche** — Befundliste in `UEBERGABE.md`, drei behoben, drei verworfen, zwei nach B7
 
 `web-design-guidelines` über **alle** in diesem Plan berührten UI-Dateien
 (`Karte.tsx`, `KartenTooltip.tsx`, `Objektzeile.tsx`, `Bereich.tsx`,
@@ -2663,7 +2663,7 @@ gelaufen" steht. Es ist damit erledigt und muss dort umgetragen werden —
 allerdings nur für `web/`, nicht für Teile außerhalb dieses Plans; was
 ungeprüft bleibt, wird benannt.
 
-- [ ] **Step 4: Spec und Übergabe auf Stand bringen**
+- [x] **Step 4: Spec und Übergabe auf Stand bringen**
 
 - `specs/2026-09-19-karte-dreh-und-angelpunkt-design.md`: den Satz „(bereits
   exportiert aus `karte.ts`)" berichtigen („wird in Task 4 exportiert"), die
@@ -2696,7 +2696,7 @@ ungeprüft bleibt, wird benannt.
 - Gedächtnis (`immo-radar-uebergabe.md` und das Karten-Stichwort) auf Stand
   bringen.
 
-- [ ] **Step 5: Merge, Push, Aufräumen**
+- [x] **Step 5: Merge, Push, Aufräumen** — die Arbeit lag bereits auf `main`; kein Worktree offen
 
 ```bash
 git checkout main
@@ -2715,7 +2715,7 @@ Worktrees aufräumen: erst Prozesse beenden, dann die `node_modules`-Junction
 lösen (`cmd //c "rmdir <worktree>\web\node_modules"`, ebenso `scraper`), dann
 löschen; Gegenprobe `ls /c/immo-radar/web/node_modules | wc -l`.
 
-- [ ] **Step 6: Sitzung beenden**
+- [x] **Step 6: Sitzung beenden**
 
 Ledger, Gedächtnis und `UEBERGABE.md` stehen (Step 4). Kurz melden, was fertig
 ist und was als Nächstes kommt, dann **aufhören** — der Nutzer leert die Sitzung
