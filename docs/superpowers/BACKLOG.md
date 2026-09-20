@@ -1593,15 +1593,70 @@ gegen `bundesland === null`). **Zwei Größen mit verschiedener Definition
 nebeneinanderzustellen ist genau der Fehler, den dieses Projekt bei „54 statt
 157" schon einmal korrigiert hat.**
 
-- [ ] **Schritt 1: Alter bestimmen, bevor irgendetwas vermutet wird.** Lesende
+> ## SCHRITT 1 UND 2 SIND GEMESSEN (2026-09-20): B5 IST KEIN FEHLER
+>
+> Gemessen mit `scraper/scripts/messung-b5-leere-huellen.mts` (nur lesend)
+> gegen den Livebestand:
+>
+> ```
+> listings gesamt:                    23.054
+> davon mit mindestens einer Version: 22.656
+> LEERE HUELLEN:                         398
+>
+> first_seen:  13.09. 33 | 14.09. 92 | 15.09. 83 | 16.09. 57
+>              17.09. 46 | 18.09. 56 | 19.09. 20 | 20.09. 11
+> Anteil am Tageszugang: 1,5 % | 6,3 % | 6,4 % | 4,7 %
+>                        4,4 % | 3,3 % | 3,5 % | 3,0 %
+> ```
+>
+> **Schritt 1 ist beantwortet: Dauerzustand, keine Regression.** Die Hüllen
+> verteilen sich über acht Tage mit stabiler Quote von 3 bis 6 % des
+> Tageszugangs. Kein Sprung, kein Knick.
+>
+> **Und der Anfang hat ein Datum.** Der Bestand reicht bis zum 05.09.
+> zurück, die erste Hülle stammt vom 13.09. Am **2026-09-12** führte
+> `ea8b731` den Pfad ein: „ein Objekt ohne Preis bekommt eine Zeile statt
+> eines `continue`" (A-4, Entscheidung des Nutzers vom 2026-09-11). Die
+> erste Hülle entstand am Tag danach.
+>
+> **Damit ist die Ursache benannt, und es ist keine Sperre.** Eine leere
+> Hülle ist eine `listings`-Zeile ohne `listing_versions`-Zeile, und nur
+> `upsertListingOhneBewertung` erzeugt solche. Im Snapshot erscheint sie als
+> `titel: null, ort: null, plz: null`, weil all diese Felder auf
+> `listing_versions` liegen. Der Verdacht aus Schritt 3 -- die
+> `/expose/`-Sperre -- ist damit hinfällig, und er war ohnehin schon
+> widerlegt (B6 Schritt 1).
+>
+> **Schritt 2: E-7 und B5 sind disjunkt.** Am selben Bestand, mit beiden
+> Definitionen zugleich gerechnet:
+>
+> ```
+> ohne zuordenbare Region (E-7, partitionEinesListings): 35
+> leere Huellen (B5, ohne listing_versions):            398
+> beides zugleich:                                        0
+> ```
+>
+> **Die Warnung dieses Abschnitts war berechtigt** -- die beiden Zahlen
+> messen verschiedene Dinge, und zwar nachweislich überschneidungsfrei. Der
+> Verdacht „das könnte dieselbe Sache sein" ist nicht bloß unbelegt, er ist
+> widerlegt. Nebenbei: E-7 steht heute bei **35**, nicht bei 54.
+>
+> **Was bleibt:** Kein Test, kein Fix. Die Detailphase aus B6 wird die Zahl
+> von selbst drücken, wo ein Exposé einen Preis nennt, den die Titelzeile
+> ausließ -- das ist aber eine Nebenwirkung, kein Auftrag. **Offen bleibt
+> allein Schritt 4 (E-7 im Dashboard).**
+
+- [x] ~~**Schritt 1: Alter bestimmen, bevor irgendetwas vermutet wird.**~~ Lesende
   Abfrage über `listings.first_seen` für die betroffenen Zeilen (`cd scraper &&
   npx tsx <skript>`, nur lesend). Kommen sie alle aus wenigen Tagen, ist es
   eine Regression; verteilen sie sich über Wochen, ist es ein Dauerzustand.
   **Das Ergebnis entscheidet, ob es überhaupt ein Fehler ist.**
-- [ ] **Schritt 2: Dieselbe Zählung mit der E-7-Definition** wiederholen
+- [x] ~~**Schritt 2: Dieselbe Zählung mit der E-7-Definition** wiederholen~~
   (`partitionEinesListings`), damit die 54 und die 356 vergleichbar werden —
   oder belegt ist, dass sie es nicht sind.
-- [ ] **Schritt 3: Erst nach benannter Ursache** einen scheiternden Test. Die
+- [x] ~~**Schritt 3: Erst nach benannter Ursache** einen scheiternden Test.~~
+  **Entfällt:** Die Ursache ist benannt und sie ist gewolltes Verhalten
+  (A-4). Ein scheiternder Test bräuchte einen Fehler, den es nicht gibt. Die
   Richtung hängt von Schritt 1 ab: Erfasst der Scraper Zeilen, die er besser
   gar nicht anlegte? Oder verliert er Felder, die die Quelle sehr wohl nennt?
   Naheliegender Verdacht, **ungeprüft**: `/expose/`-Detailseiten sind von
