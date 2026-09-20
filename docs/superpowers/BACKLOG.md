@@ -1694,7 +1694,46 @@ Befunde geführt werden:
 
 ### Was zu klären ist — und in welcher Reihenfolge
 
-- [ ] **Schritt 1: Die Sperre neu prüfen, bevor irgendetwas gebaut wird.** Der
+> ## SCHRITT 1 IST ERLEDIGT (2026-09-20): DIE SPERRE BESTEHT NICHT MEHR
+>
+> **Lauf `35535674960`** (`pruefung.yml`, Skript `diagnose-detail`,
+> 2026-09-20 20:28 UTC, von einer GitHub-Actions-Adresse):
+>
+> ```
+> Suchseite (/suche/):              brauchbar
+> Frische Detailseiten (/expose/):  3 von 3 brauchbar
+> Gegenprobe, 2 alte URLs vom 07.09.: beide HTTP 200 mit Datenmodell
+> -> Die Sperre vom 2026-09-07 besteht in dieser Form NICHT mehr.
+> ```
+>
+> **Fünf von fünf** `/expose/`-Abrufen lieferten HTTP 200 mit rund 607.000
+> Zeichen und `__UFRN_LIFECYCLE_SERVERREQUEST__` im HTML. Am 2026-09-07
+> scheiterten an derselben Stelle **144 von 144**.
+>
+> **Was das heißt:** Die Begründung, aus der `erfasseImmoweltDetails`
+> ausgehängt ist, gilt nicht mehr. Damit ist der Weg zu einheitlich gefüllten
+> Datensätzen offen — PLZ, Zimmer, Baujahr, Kaltmiete, Einheiten, Fotos.
+> Das ist die Wurzel von 97,4 % ohne PLZ, 0,3 % mit Baujahr und der nur
+> bundeslandgenauen Mietschätzung (A11).
+>
+> **Was das NICHT heißt.** Drei Dinge sind ausdrücklich ungeprüft:
+> 1. **Eine Momentaufnahme ist keine Dauerhaftigkeit.** Fünf Abrufe mit 5 s
+>    Abstand sagen nichts über 144 Abrufe am Stück. DataDome misst die
+>    Abrufrate; die Sperre kann bei Menge zurückkommen.
+> 2. **Der Parser ist damit nicht bestätigt.** Geprüft wurde nur, dass das
+>    Datenmodell im HTML steht — nicht, dass `parseImmoweltDetailPage` es
+>    heute noch richtig liest. Die Seite kann sich in zwei Wochen geändert
+>    haben.
+> 3. **Das Zeitbudget bleibt, wie es war.** 144 Detailseiten je Lauf bei 5 s
+>    Drossel sind 12 Minuten — die Mengenfrage aus Schritt 2 ist dadurch
+>    nicht beantwortet, nur die Netzfrage.
+>
+> **Der nächste Schritt ist ein Wiedereinhängen mit Messung, kein Vertrauen:**
+> `erfasseImmoweltDetails` zurück in den Produktionspfad, dann EINEN Lauf
+> beobachten — wie viele der 144 durchkommen, ab welcher Seite es kippt, ob
+> der Parser Felder liefert. Erst danach gilt es als gelöst.
+
+- [x] ~~**Schritt 1: Die Sperre neu prüfen, bevor irgendetwas gebaut wird.**~~ Der
       Docstring sagt ausdrücklich: „Vorher aber prüfen, ob die Sperre noch
       besteht, statt sie einfach wieder einzuhängen." Letzter Beleg ist der
       Live-Lauf vom **2026-09-07** — über zwei Wochen alt. Ein einziger

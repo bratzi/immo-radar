@@ -1,20 +1,20 @@
 # Übergabe — Stand 2026-09-20 (zweite Sitzung des Tages)
 
-## Kartenplan: Tasks 6b, 7 und 8 sind gebaut — offen bleiben 9 und 10
+## Kartenplan: Tasks 6b, 7, 8 und 9 sind gebaut — offen bleibt nur Task 10 (Abnahme)
 
-> **Beim Sitzungsende laufen zwei Subagenten** (auf Wunsch des Nutzers
-> parallelisiert): einer an **Task 9** (Tooltip), einer an **B5** (die 352
-> leeren Hüllen, reine Untersuchung). Beide committen in ihrem Worktree und
-> mergen **nicht** — das Zusammenführen gehört dem Koordinator. **Erst in den
-> Worktree sehen, bevor du etwas neu baust.**
+> **Beide Subagenten sind fertig, geprüft und gemergt** (Task 9 Tooltip, B5
+> Untersuchung). Offen ist nur noch **Task 10**: die Gesamtabnahme des
+> Kartenplans — Audit, Doku, Abschluss.
 
 | Task | Ergebnis |
 |---|---|
 | **6b** — Zuklappen | Unter 1360 px zuklappbar, Zustand gemerkt, Filter im zugeklappten Kopf. 8 Browserprüfungen bestanden |
 | **7** — Hover-Ring | Ring auf der Karte, ehrlich beschriftet; Touch bewusst ausgenommen |
 | **8** — Klick-Filter | Die 60 PLZ-Punkte sind Schaltflächen; Filtergruppe in der Leiste |
+| **9** — Tooltip | Sofortiges, gestaltetes Tooltip an Kacheln und Punkten, auch per Tastaturfokus |
+| **B5** | Untersucht: keine Sperre, keine Regression, sondern der Schreibpfad — 350 statt 352 |
 
-**Stand danach: 169 Web-Tests grün, 1 übersprungen**, `tsc` und `vite build`
+**Stand danach: 174 Web-Tests grün, 1 übersprungen**, `tsc` und `vite build`
 sauber, alles auf `main` gepusht.
 
 ### Drei Dinge, die die Messung dem Plan abgerungen hat
@@ -44,7 +44,41 @@ PLZ 51 dem Punkt PLZ 50 den Klick. **Die Nachbarschranke muss alles stechen.**
 Long Task ≥ 50 ms. Zur Gegenprobe ein Inline-Pfeil eingesetzt: **5.704**
 Neuzeichnungen. Ohne diese Gegenprobe hätte die Null nichts bewiesen.
 
-### B6 Schritt 1 ist vorbereitet, aber der Lauf fehlt — er braucht dich
+### B6 SCHRITT 1 IST GELAUFEN — DIE IMMOWELT-SPERRE IST WEG
+
+**Das ist der wichtigste Befund dieser Sitzung.** Lauf `35535674960`
+(`pruefung.yml`, Skript `diagnose-detail`, 2026-09-20 20:28 UTC, von einer
+GitHub-Actions-Adresse): **5 von 5** `/expose/`-Abrufen lieferten HTTP 200 mit
+rund 607.000 Zeichen und vollständigem Datenmodell — drei frisch aus der
+Ergebnisliste geholte URLs und, als Gegenprobe, die zwei alten vom 2026-09-07,
+die nicht einmal abgelaufen waren. Am 2026-09-07 scheiterten dort **144 von
+144**.
+
+**Damit ist die Begründung weg, aus der `erfasseImmoweltDetails` seit zwei
+Wochen nicht aufgerufen wird** — und das ist die Wurzel von 97,4 % ohne PLZ,
+0,3 % mit Baujahr und der bundeslandgenauen Mietschätzung. Die nächste große
+Aufgabe liegt damit auf der Hand.
+
+**Lies vor dem Umbau den Kasten in [`BACKLOG.md`](BACKLOG.md) B6, Schritt 1.**
+Dort stehen die drei Dinge, die die Messung ausdrücklich **nicht** sagt: Eine
+Momentaufnahme von fünf Abrufen ist keine Aussage über 144 am Stück, der
+Parser ist nicht mitgeprüft, und das Zeitbudget bleibt wie es war.
+
+### Wie der Lauf gestartet wird
+
+`gh` **ist dauerhaft angemeldet** (Fine-grained Token, read/write, ohne
+Ablauf). Die Konfiguration liegt unter Windows in
+`%AppData%GitHub CLIhosts.yml` — **nicht** in `~/.config/gh/`. Wer dort
+nachsieht, findet nichts und hält `gh` fälschlich für nicht eingerichtet.
+Einfach ausführen:
+
+```
+gh workflow run pruefung.yml -f skript=diagnose-detail
+gh run list --workflow=pruefung.yml --limit 3
+gh run view <id> --log
+```
+
+### Task 9 ist gemergt — und was der Merge entschieden hat
 
 `scraper/scripts/diagnose-detail.mts` misst jetzt, ob Immowelts
 `/expose/`-Sperre für GitHub-Actions-Adressen noch besteht (Backlog B6,
@@ -53,17 +87,15 @@ die expose-URLs **frisch aus der Suchseite**, an der es ohnehin aufwärmt: Die
 zwei fest verdrahteten URLs vom 2026-09-07 sind womöglich abgelaufen, und ein
 404 wäre dann von einer Sperre nicht zu unterscheiden gewesen.
 
-**Der Lauf konnte nicht gestartet werden: `gh` ist in dieser Sitzung nicht
-angemeldet** (`gh auth login` fehlt, und ein Zugriff auf gespeicherte
-Zugangsdaten wird von der Sicherung blockiert — zu Recht). Zu starten mit:
+**Schritt 2 liegt jetzt beim Nutzer** — die vier Wege und ihre Preise stehen
+in B6. Die Netzfrage ist beantwortet, die Mengenfrage nicht.
 
-```
-gh workflow run pruefung.yml -f skript=diagnose-detail
-```
-
-Das Skript druckt am Ende eine Ergebniszeile, die sagt, ob die Sperre noch
-besteht. **Danach liegt Schritt 2 beim Nutzer** — die vier Wege und ihre Preise
-stehen in B6.
+Der Merge von Task 9 (Tooltip) traf auf Task 8, weil der Agent davor
+abgezweigt war. Zwei Dinge wurden dabei entschieden: `gewaehlt` ist nicht mehr
+fest `false` (der Klickhinweis kippt jetzt nach dem Klick, nachgemessen), und
+`data-anker` sitzt am **sichtbaren** Punkt statt an der Trefferfläche. Nach
+dem Merge sind die Prüfskripte zu Task 7 und 8 unverändert grün gelaufen —
+60 von 60 Punkten treffen weiterhin sich selbst.
 
 ### Zwei Fallen, die diese Sitzung gekostet haben
 
