@@ -210,6 +210,13 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
 
   return (
     <div className="geruest">
+      {/*
+        Vor der Liste liegen rund 76 Tab-Stopps (16 Kacheln, bis zu 60 Punkte,
+        dazu die Filterleiste). Der Sprunglink ueberspringt sie in einem Schritt.
+      */}
+      <a className="sprunglink" href="#liste">
+        Zur Liste springen
+      </a>
       <Kopfzeile snapshot={snapshot} topAnzahl={topImBestand} />
 
       <aside className="rail">
@@ -229,18 +236,24 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
         />
       </aside>
 
-      <main className="haupt">
-        <div className="tafeln">
-          <Karte
-            bundeslaender={snapshot.bundeslaender}
-            alleObjekte={alleObjekte}
-            groesse={kartengroesse}
-            setzeGroesse={setKartengroesse}
-            gewaehlteLaender={filter.bundeslaender}
-            schalteLand={schalteLand}
-          />
-          <Betriebstafel betrieb={snapshot.betrieb} jetzt={jetzt} />
-        </div>
+      {/*
+        Ein <div> statt <aside>: Die Karte traegt schon ein eigenes <section>
+        mit Ueberschrift; ein zweites Landmark neben der Filterleiste waere
+        Rauschen.
+      */}
+      <div className="kartenspalte">
+        <Karte
+          bundeslaender={snapshot.bundeslaender}
+          alleObjekte={alleObjekte}
+          groesse={kartengroesse}
+          setzeGroesse={setKartengroesse}
+          gewaehlteLaender={filter.bundeslaender}
+          schalteLand={schalteLand}
+        />
+      </div>
+
+      <main className="haupt" id="liste" tabIndex={-1}>
+        <Betriebstafel betrieb={snapshot.betrieb} jetzt={jetzt} />
 
         {nichtsUebrig && (
           <div className="bereich">
