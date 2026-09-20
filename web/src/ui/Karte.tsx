@@ -33,6 +33,7 @@ import {
   KARTENGROESSE_NAMEN,
   KARTE_BREITE,
   KARTE_HOEHE,
+  abstandZuKacheln,
   begrenzterTrefferradius,
   berechneAbdeckung,
   beschreibeMarkierung,
@@ -187,11 +188,16 @@ export function Karte({
   // eher zu gross als zu klein, und das ist die richtige Richtung.
   const gefordert = Math.max(3, (12 * KARTE_BREITE) / Math.max(1, breitePx));
   const halbeAbstaende = useMemo(() => halberNachbarabstand(punkte), [punkte]);
+  // Die Trefferflaechen liegen ueber den Kacheln und sind unsichtbar. Ohne
+  // diese zweite Schranke nehmen sie den Kacheln den Klick (gemessen am
+  // 2026-09-20: das Saarland traf bei 1366 px 0 von 25 Rasterpunkten).
+  const kachelAbstaende = useMemo(() => abstandZuKacheln(punkte, lagen), [punkte, lagen]);
   const trefferRadius = (punkt: (typeof punkte)[number], radius: number) =>
     begrenzterTrefferradius(
       radius,
       Math.max(radius + 3, gefordert),
-      halbeAbstaende.get(punkt.zweisteller) ?? Infinity
+      halbeAbstaende.get(punkt.zweisteller) ?? Infinity,
+      kachelAbstaende.get(punkt.zweisteller) ?? Infinity
     );
 
   const markierterPunkt =

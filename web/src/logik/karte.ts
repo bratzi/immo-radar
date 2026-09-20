@@ -334,10 +334,31 @@ export function halberNachbarabstand(
  * macht den Nachbarn unerreichbar, was schlimmer ist als ein kleiner.
  * Tab + Enter bleibt daneben als zuverlaessiger Weg zu JEDEM Punkt.
  */
+export function abstandZuKacheln(
+  punkte: readonly Pick<PlzPunkt, "zweisteller" | "x" | "y">[],
+  kacheln: readonly Pick<KachelLage, "x" | "y" | "breite" | "hoehe">[]
+): Map<string, number> {
+  const ergebnis = new Map<string, number>();
+  for (const punkt of punkte) {
+    let naechste = Infinity;
+    for (const kachel of kacheln) {
+      // Abstand Punkt zu Rechteck: je Achse das, was ueber den Rand
+      // hinausragt -- liegt der Punkt in der Kachel, ist beides 0.
+      const dx = Math.max(Math.abs(punkt.x - kachel.x) - kachel.breite / 2, 0);
+      const dy = Math.max(Math.abs(punkt.y - kachel.y) - kachel.hoehe / 2, 0);
+      const abstand = Math.hypot(dx, dy);
+      if (abstand < naechste) naechste = abstand;
+    }
+    ergebnis.set(punkt.zweisteller, naechste);
+  }
+  return ergebnis;
+}
+
 export function begrenzterTrefferradius(
   punktRadius: number,
   gefordert: number,
-  halberAbstand: number
+  halberAbstand: number,
+  kachelAbstand: number = Infinity
 ): number {
   // Die Reihenfolge ist die ganze Aussage: Der halbe Nachbarabstand steht
   // GANZ AUSSEN und sticht alles. Ein erster Entwurf hatte das Mindestmass
@@ -348,5 +369,16 @@ export function begrenzterTrefferradius(
   // zwei Punkte exakt uebereinander (halberAbstand 0), gibt es nichts zu
   // stehlen -- die Mittelpunkte sind dieselben. Eine Trefferflaeche von null
   // waere dort nur ein Punkt, den niemand anklicken kann.
-  return Math.max(0.5, Math.min(Math.max(punktRadius, gefordert), halberAbstand));
+  // Die zweite Schranke (2026-09-20, Task 10): Die Trefferflaeche liegt
+  // UEBER den Kacheln und ist unsichtbar. Gemessen nahm sie ihnen den Klick --
+  // das Saarland traf bei 1366 px keinen einzigen von 25 Rasterpunkten mehr,
+  // Berlin, Bremen und Thueringen verloren ihre Mitte. Anders als beim
+  // Nachbarpunkt darf diese Schranke aber nicht unter den SICHTBAREN Punkt
+  // druecken: Was man sieht, muss man treffen koennen. Die Kachel verliert
+  // also genau die Flaeche, die der Punkt ohnehin verdeckt -- und keine mehr.
+  const gewuenscht = Math.min(
+    Math.max(punktRadius, gefordert),
+    Math.max(punktRadius, kachelAbstand)
+  );
+  return Math.max(0.5, Math.min(gewuenscht, halberAbstand));
 }

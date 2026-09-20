@@ -3,6 +3,7 @@ import type { SnapshotObjekt } from "../daten/snapshot.ts";
 import {
   KARTE_HOEHE,
   KARTE_BREITE,
+  abstandZuKacheln,
   begrenzterTrefferradius,
   halberNachbarabstand,
   berechneAbdeckung,
@@ -302,5 +303,56 @@ describe("begrenzterTrefferradius -- gross genug fuer einen Finger, aber nie der
 
   it("nimmt mindestens den sichtbaren Punkt, solange Platz ist", () => {
     expect(begrenzterTrefferradius(8, 4, 40)).toBe(8);
+  });
+
+  // Im Browser gemessen (2026-09-20, Task 10): Die unsichtbare Trefferflaeche
+  // der Punkte lag ueber den Kacheln und nahm ihnen den Klick -- das Saarland
+  // traf bei 1366 px keinen einzigen von 25 Rasterpunkten mehr, Berlin, Bremen
+  // und Thueringen verloren ihre Mitte. Deshalb eine zweite Schranke.
+  it("wird vom Abstand zur naechsten Kachel gedeckelt", () => {
+    expect(begrenzterTrefferradius(3, 13, Infinity, 5)).toBe(5);
+  });
+
+  it("drueckt dabei aber nie unter den SICHTBAREN Punkt -- sichtbar heisst treffbar", () => {
+    // Punkt liegt mitten in der Kachel (Abstand 0). Die Kachel bekommt alles
+    // zurueck bis auf das, was der Punkt selbst verdeckt.
+    expect(begrenzterTrefferradius(6, 13, Infinity, 0)).toBe(6);
+  });
+
+  it("laesst die Nachbarschranke weiterhin alles stechen, auch die Kachelschranke", () => {
+    expect(begrenzterTrefferradius(6, 13, 1, 0)).toBe(1);
+  });
+
+  it("ohne Kachel in der Naehe bleibt alles wie bisher", () => {
+    expect(begrenzterTrefferradius(3, 13, 40, Infinity)).toBe(13);
+  });
+});
+
+describe("abstandZuKacheln -- wie nah ein Punkt der naechsten Kachelflaeche kommt", () => {
+  const punkt = (zweisteller: string, x: number, y: number) => ({ zweisteller, x, y });
+  const kachel = (x: number, y: number) => ({ x, y, breite: 10, hoehe: 6 });
+
+  it("misst die Luecke bis zum Rand des Rechtecks, nicht bis zu seiner Mitte", () => {
+    // Kachel von x 5..15, y 7..13. Punkt liegt 5 links davon.
+    const abstaende = abstandZuKacheln([punkt("10", 0, 10)], [kachel(10, 10)]);
+    expect(abstaende.get("10")).toBe(5);
+  });
+
+  it("ist null, wenn der Punkt in der Kachel liegt", () => {
+    expect(abstandZuKacheln([punkt("10", 10, 10)], [kachel(10, 10)]).get("10")).toBe(0);
+  });
+
+  it("rechnet ueber Eck", () => {
+    // Naechste Ecke der Kachel liegt bei (5, 7); Punkt bei (2, 3).
+    expect(abstandZuKacheln([punkt("10", 2, 3)], [kachel(10, 10)]).get("10")).toBe(5);
+  });
+
+  it("nimmt die naechste von mehreren Kacheln", () => {
+    const abstaende = abstandZuKacheln([punkt("10", 0, 10)], [kachel(40, 10), kachel(10, 10)]);
+    expect(abstaende.get("10")).toBe(5);
+  });
+
+  it("gibt ohne Kacheln keine Schranke", () => {
+    expect(abstandZuKacheln([punkt("10", 0, 0)], []).get("10")).toBe(Infinity);
   });
 });
