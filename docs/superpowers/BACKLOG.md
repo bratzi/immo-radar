@@ -1528,7 +1528,37 @@ ist bewusst und dokumentiert, betrifft aber die Mehrheit des Bestands.
 Wohnfläche verlässlicher ableiten? Und soll ein Objekt mit angenommener
 Einheitenzahl im Ranking gleichwertig erscheinen?
 
-## B5. 352 leere Hüllen im Bestand — Objekte, die nur aus einer URL bestehen
+## B5. 350 leere Hüllen im Bestand — URSACHE GEKLÄRT (2026-09-20)
+
+> **Untersucht und belegt:
+> [`specs/2026-09-20-b5-leere-huellen-befund.md`](specs/2026-09-20-b5-leere-huellen-befund.md).**
+> Drei Dinge daraus, die den Abschnitt darunter überholen:
+>
+> 1. **Es ist keine Sperre und kein Parserfehler**, sondern der Schreibpfad:
+>    `main.ts:452` → `upsertListingOhneBewertung` (`lib/db.ts:161`) schreibt
+>    nur in `listings`, nie eine `listing_versions`-Zeile; `snapshot.ts:626`
+>    liefert deshalb titel/ort/plz als `null`. Am Code nachgeprüft.
+>    **Der Verdacht „Immowelt-Detailsperre (B6)" ist damit widerlegt** — bei
+>    diesen Objekten wurde nie eine Detailseite versucht (`last_detail_at`
+>    bleibt `null`).
+> 2. **Es ist keine Regression, sondern deine Entscheidung vom 2026-09-11**,
+>    umgesetzt in `ea8b731` (2026-09-12) und `dd0b81b` (2026-09-13): Ein Objekt
+>    ohne Preis bekommt eine Zeile, statt verloren zu gehen (A-4). Vorher gab
+>    es diese Zeilen gar nicht. Belegt über `git log -S`, **nicht** über den
+>    Snapshot — Schritt 1 unten bleibt offen (siehe Punkt 3).
+> 3. **Die Zahl 352 unten ist falsch gezählt.** Nach der Definition
+>    „titel + ort + plz alle null" sind es **350** (347 Immowelt, 3 ZVG).
+>    352 ist „ohne Bundesland und ohne Ort", 356 ist „ohne Bundesland".
+>
+> **Der einzige echte Mangel, der bleibt:** `main.ts:427` berechnet aus der
+> Titelzeile Lage, Zimmer, Wohnfläche und Grundstück — und `main.ts:452`
+> übergibt nichts davon. Die Angaben sind da und werden weggeworfen.
+> Die Wege dahin und ihre Preise stehen im Befund, Abschnitt „Optionen".
+> **Entschieden ist nichts.**
+
+<details><summary>Der ursprüngliche Befund vom 2026-09-19 (Zahlen teils überholt)</summary>
+
+### 352 leere Hüllen im Bestand — Objekte, die nur aus einer URL bestehen
 
 **Gefunden am 2026-09-19** beim Auszählen der Kartenabdeckung, also nebenbei.
 **Entscheidung des Nutzers am selben Tag: festhalten, nach der Kartenaufgabe
@@ -1581,6 +1611,8 @@ nebeneinanderzustellen ist genau der Fehler, den dieses Projekt bei „54 statt
   Kategorie **„Objekte ohne Region"** ist im Dashboard **nirgends gebaut** —
   geprüft am 2026-09-19, es gibt weder Filterknopf noch Bereich. Diese
   Entscheidung steht also seit Wochen unerfüllt.
+
+</details>
 
 ## B6. Der Immowelt-Lauf: alles auf einmal, und überall dieselben Felder
 
