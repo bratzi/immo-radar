@@ -596,6 +596,54 @@ a {
   stroke-width: 2;
 }
 
+/*
+  `.plzknopf .plzpunkt { pointer-events: auto }` stand hier im Entwurf des
+  Tooltips -- der entstand, bevor Task 8 die groessere Trefferflaeche gebaut
+  hatte, und ohne sie waere die Gruppe wegen `pointer-events: none` am Punkt
+  fuer den Zeiger unsichtbar geblieben. `.plzknopf__flaeche` nimmt die
+  Ereignisse jetzt, die Regel ist damit ueberfluessig.
+*/
+
+/* Das Tooltip der Karte: fixed, damit weder overflow:hidden an .tafel noch das
+   Scrollen der Kartenspalte es abschneidet. Rein optisch -- kein Zeigerziel. */
+.kartentooltip {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Nie breiter als das Fenster: `platziereTooltip` klemmt sonst links an den
+     Rand und schneidet rechts ab. Auf einem 390-px-Schirm greift das zweite Mass. */
+  max-width: min(260px, calc(100vw - 16px));
+  overflow-wrap: break-word;
+  padding: 9px 12px;
+  background: var(--flaeche-hoch);
+  border: 1px solid var(--linie-hell);
+  border-radius: var(--r);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.kartentooltip__titel {
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--papier);
+}
+
+.kartentooltip__zeile {
+  color: var(--papier-gedaempft);
+  font-variant-numeric: tabular-nums;
+}
+
+.kartentooltip__hinweis {
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--gold-hell);
+}
+
 /* Das Overlay des Hovers aus der Liste -- ein Ring, keine Umfaerbung. */
 .markierung {
   fill: none;
