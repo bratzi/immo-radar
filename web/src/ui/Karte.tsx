@@ -16,10 +16,12 @@
  *
  * KEIN KACHEL-DIENST, KEINE FREMDANFRAGE (N5). Alles ist Inline-SVG.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SnapshotBundesland, SnapshotObjekt } from "../daten/snapshot.ts";
 import { formatiereAnzahl, formatiereDscr, formatiereProzent } from "../logik/formate.ts";
-import { filterKurz } from "../logik/kartentexte.ts";
+import { alsZeile, filterKurz, kachelText, punktText, type TooltipText } from "../logik/kartentexte.ts";
+import { oeffnetTooltip } from "../logik/tooltipAusloeser.ts";
+import { KartenTooltip, type TooltipZiel } from "./KartenTooltip.tsx";
 import { holeSpeicher, liesKarteOffen, schreibeKarteOffen } from "../logik/karteOffen.ts";
 import {
   KARTENGROESSE_NAMEN,
@@ -119,18 +121,35 @@ export function Karte({
     return (wert - spanne.min) / (spanne.max - spanne.min);
   };
 
-  const beschriftungFuer = (land: SnapshotBundesland | undefined, name: string): string => {
-    if (land === undefined) return `${name} — keine Daten im Snapshot`;
-    return [
-      name,
-      `${formatiereAnzahl(land.objekte)} Objekte`,
-      `${formatiereAnzahl(land.topTreffer)} Top-Treffer`,
-      `Median-DSCR ${formatiereDscr(land.medianDscr)}`,
-      land.standAlterTage === null
-        ? "kein Regionslauf verzeichnet"
-        : `zuletzt gesweept vor ${land.standAlterTage.toFixed(1)} Tagen`,
-    ].join(" · ");
-  };
+  const [ziel, setZiel] = useState<TooltipZiel | null>(null);
+
+  // Ein Bildlauf laesst die Form unter dem stehenden Tooltip wegwandern.
+  const tooltipOffen = ziel !== null;
+  useEffect(() => {
+    if (!tooltipOffen) return;
+    const schliessen = () => setZiel(null);
+    window.addEventListener("scroll", schliessen, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", schliessen, { capture: true });
+  }, [tooltipOffen]);
+
+  const zeigeTooltip =
+    (text: TooltipText) =>
+    (ereignis: React.PointerEvent<SVGGElement> | React.FocusEvent<SVGGElement>) => {
+      // Welches Ereignis ueberhaupt ein Hover ist, entscheidet `oeffnetTooltip`
+      // -- rein und getestet (Fingertipp und Klickfokus zaehlen nicht).
+      const darf =
+        "pointerType" in ereignis
+          ? oeffnetTooltip({ art: "zeiger", zeigerArt: ereignis.pointerType })
+          : oeffnetTooltip({
+              art: "fokus",
+              fokusSichtbar: ereignis.currentTarget.matches(":focus-visible"),
+            });
+      if (!darf) return;
+      const form = ereignis.currentTarget.querySelector("[data-anker]") ?? ereignis.currentTarget;
+      const r = form.getBoundingClientRect();
+      setZiel({ anker: { x: r.left, y: r.top, breite: r.width, hoehe: r.height }, text });
+    };
+  const verbergeTooltip = () => setZiel(null);
 
   // Der Radius waechst mit der Wurzel der Anzahl: Die FLAECHE des Punktes
   // soll die Anzahl tragen, nicht sein Durchmesser -- sonst sieht ein Punkt
@@ -209,15 +228,18 @@ export function Karte({
                 role="button"
                 tabIndex={0}
                 aria-pressed={gewaehlt}
-                aria-label={beschriftungFuer(land, lage.name)}
+                aria-label={alsZeile(kachelText(land, lage.name, gewaehlt))}
                 onKeyDown={(ereignis) => {
                   if (ereignis.key === "Enter" || ereignis.key === " ") {
                     ereignis.preventDefault();
                     schalteLand(lage.name);
                   }
                 }}
+                onPointerEnter={zeigeTooltip(kachelText(land, lage.name, gewaehlt))}
+                onPointerLeave={verbergeTooltip}
+                onFocus={zeigeTooltip(kachelText(land, lage.name, gewaehlt))}
+                onBlur={verbergeTooltip}
               >
-                <title>{beschriftungFuer(land, lage.name)}</title>
                 {lage.versetzt && (
                   <>
                     <line
@@ -232,6 +254,7 @@ export function Karte({
                 )}
                 <rect
                   className="kachel__flaeche"
+                  data-anker=""
                   x={lage.x - lage.breite / 2}
                   y={lage.y - lage.hoehe / 2}
                   width={lage.breite}
@@ -246,20 +269,31 @@ export function Karte({
             );
           })}
 
-          {punkte.map((punkt) => (
-            <circle
-              key={punkt.zweisteller}
-              className="plzpunkt"
-              cx={punkt.x}
-              cy={punkt.y}
-              r={radius(punkt.anzahl)}
-            >
-              <title>
-                {`PLZ ${punkt.zweisteller}… — ${formatiereAnzahl(punkt.anzahl)} Objekte, ` +
-                  `${formatiereAnzahl(punkt.topTreffer)} davon Top-Treffer`}
-              </title>
-            </circle>
-          ))}
+          {punkte.map((punkt) => {
+            // `gewaehlt` ist hier noch fest `false`: Den Auswahlzustand der
+            // PLZ-Bereiche (`gewaehltePlz`/`schaltePlz`) bringt Task 8 mit --
+            // dort nachziehen, sonst sagt der Klickhinweis immer "zeigt nur".
+            const text = punktText(punkt, false);
+            return (
+              <g
+                key={punkt.zweisteller}
+                className="plzknopf"
+                aria-label={alsZeile(text)}
+                onPointerEnter={zeigeTooltip(text)}
+                onPointerLeave={verbergeTooltip}
+                onFocus={zeigeTooltip(text)}
+                onBlur={verbergeTooltip}
+              >
+                <circle
+                  className="plzpunkt"
+                  data-anker=""
+                  cx={punkt.x}
+                  cy={punkt.y}
+                  r={radius(punkt.anzahl)}
+                />
+              </g>
+            );
+          })}
 
           {/*
             Das Overlay des Hovers: ein zusaetzlicher Ring, KEINE Aenderung an
@@ -350,6 +384,8 @@ export function Karte({
           </p>
         </div>
       </div>
+
+      {ziel !== null && <KartenTooltip ziel={ziel} />}
     </section>
   );
 }
