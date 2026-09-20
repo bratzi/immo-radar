@@ -17,6 +17,7 @@ import {
   formatTopTrefferMessage,
   formatZvgTopTrefferMessage,
   formatPreisaenderungMessage,
+  begrenzeBildUrls,
   type TelegramConfig,
   type ListingSummary,
 } from "./telegram.js";
@@ -202,7 +203,12 @@ async function sendeMedien(
   const karte = kartePngFuerPlz(candidate.zipCode);
   if (karte !== null) fotos.push({ bytes: karte, filename: "lage.png" });
 
-  for (const [i, url] of (candidate.photoUrls ?? []).entries()) {
+  // Nur so viele laden, wie die Mediengruppe noch aufnimmt -- die Lagekarte
+  // oben belegt bereits einen Platz. Ohne diese Grenze holt ein Expose mit
+  // 40 Fotos alle 40 vom Immowelt-CDN, damit `teileInMediengruppen` dann 30
+  // verschickt.
+  const bildUrls = begrenzeBildUrls(candidate.photoUrls ?? [], fotos.length);
+  for (const [i, url] of bildUrls.entries()) {
     const bytes = await ladeDatei(url);
     if (bytes !== null) fotos.push({ bytes, filename: `bild-${i + 1}.jpg` });
   }

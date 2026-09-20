@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen, formatAbgangMessage, formatSweepWarnungMessage, sendTelegramMessage, datenlueckeKlartext } from "./telegram.js";
+import { formatTopTrefferMessage, formatPreisaenderungMessage, formatZvgTopTrefferMessage, teileInMediengruppen, begrenzeBildUrls, MAX_BILDER_JE_OBJEKT, formatAbgangMessage, formatSweepWarnungMessage, sendTelegramMessage, datenlueckeKlartext } from "./telegram.js";
 import { S0_LUECKEN, LUECKE_MIETQUELLE_UNBEKANNT } from "./ranking.js";
 
 const listing = {
@@ -556,5 +556,31 @@ describe("Altcodes tragen denselben Klartext wie ihr heutiger Name (A18-2)", () 
     for (const code of [...S0_LUECKEN, LUECKE_MIETQUELLE_UNBEKANNT]) {
       expect(datenlueckeKlartext(code), code).not.toBe(code);
     }
+  });
+});
+
+describe("begrenzeBildUrls", () => {
+  it("laedt nicht mehr Bilder, als am Ende verschickt werden koennen", () => {
+    // Der Deckel sass bisher NUR im Versand (teileInMediengruppen). Die
+    // Ladeschleife kannte ihn nicht und holte bei einem Expose mit 40 Fotos
+    // alle 40 vom Immowelt-CDN, um dann 30 zu verschicken.
+    const urls = Array.from({ length: 40 }, (_, i) => `https://example.invalid/${i}.jpg`);
+    expect(begrenzeBildUrls(urls, 0)).toHaveLength(MAX_BILDER_JE_OBJEKT);
+  });
+
+  it("rechnet bereits belegte Plaetze ab", () => {
+    // Die Lagekarte steht vor den Fotos in derselben Mediengruppe. Ohne diese
+    // Rechnung wuerde das letzte geladene Foto beim Versand wieder verworfen.
+    const urls = Array.from({ length: 40 }, (_, i) => `https://example.invalid/${i}.jpg`);
+    expect(begrenzeBildUrls(urls, 1)).toHaveLength(MAX_BILDER_JE_OBJEKT - 1);
+  });
+
+  it("laesst kurze Listen unveraendert", () => {
+    const urls = ["https://example.invalid/a.jpg", "https://example.invalid/b.jpg"];
+    expect(begrenzeBildUrls(urls, 1)).toEqual(urls);
+  });
+
+  it("gibt nichts zurueck, wenn die Gruppe schon voll ist", () => {
+    expect(begrenzeBildUrls(["https://example.invalid/a.jpg"], MAX_BILDER_JE_OBJEKT)).toEqual([]);
   });
 });

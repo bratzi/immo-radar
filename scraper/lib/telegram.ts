@@ -383,7 +383,27 @@ function wartezeitAusHeader(header: string | null, versuch: number): number {
 /** Telegram nimmt hoechstens 10 Medien je sendMediaGroup-Aufruf an. */
 const MEDIEN_PRO_GRUPPE = 10;
 /** Obergrenze je Objekt, damit ein Expose mit 40 Fotos den Chat nicht flutet. */
-const MAX_BILDER_JE_OBJEKT = 30;
+export const MAX_BILDER_JE_OBJEKT = 30;
+
+/**
+ * Schneidet eine Bild-URL-Liste auf das zu, was am Ende auch verschickt wird.
+ *
+ * WOZU: Der Deckel sass bis zum 2026-09-20 nur im Versand
+ * (`teileInMediengruppen`). Die Ladeschleife kannte ihn nicht -- ein Expose
+ * mit 40 Fotos wurde vollstaendig vom Immowelt-CDN geholt, um dann 30 Bilder
+ * zu verschicken. Zehn Abrufe gegen eine fremde Infrastruktur fuer nichts.
+ *
+ * Aufgefallen ist das erst, als Immowelt `photoUrls` erstmals wirklich fuellte
+ * (Detailphase, BACKLOG B6). Vorher war das Feld in der Produktion tot: ZVG
+ * reicht nur `attachments` durch, Immowelt schickte eine feste leere Liste.
+ *
+ * `belegt` sind die Plaetze, die in derselben Mediengruppe schon vergeben
+ * sind -- die Lagekarte steht vor den Fotos. Ohne diese Rechnung wuerde das
+ * letzte geladene Foto beim Versand wieder verworfen.
+ */
+export function begrenzeBildUrls(urls: string[], belegt: number): string[] {
+  return urls.slice(0, Math.max(0, MAX_BILDER_JE_OBJEKT - belegt));
+}
 
 /** Zerlegt Medien in versandfertige Gruppen (gedeckelt, siehe Konstanten). */
 export function teileInMediengruppen<T>(medien: T[]): T[][] {
