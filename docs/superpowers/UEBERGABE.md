@@ -1,3 +1,93 @@
+# Übergabe — Stand 2026-09-20 (vierte Sitzung des Tages)
+
+## Die Immowelt-Detailphase hängt wieder im Produktionslauf — gedeckelt auf 25
+
+**B6 ist von Schritt 1 bis Schritt 3 durch.** Die Sperre war schon gestern
+widerlegt; diese Sitzung hat die Entscheidung des Nutzers eingeholt und
+gebaut. `erfasseImmoweltDetails` wird seit dem 2026-09-08 zum ersten Mal
+wieder aufgerufen.
+
+**Stand: 535 Scraper-Tests grün, `tsc` sauber.** Die Web-Seite ist nicht
+berührt.
+
+### Die Entscheidung des Nutzers: 25 Seiten, rund 4 Minuten
+
+Vorgelegt wurden vier Deckel mit ihren Preisen, gewählt wurde der kleinste.
+**Der erste Lauf ist eine Messung, kein Nachfüllen.** Drossel,
+`SWEEP_BUDGET_MS` und `timeout-minutes` sind unangetastet — keiner der Wege
+(a) bis (d) aus B6 wurde beschritten.
+
+Die Rechnung, die den Deckel trägt: Eine Immowelt-Seite kostet gemessen
+**8,7 bis 11,5 s**, nicht 5. Die 5 s sind die Drossel, der Rest ist echte
+Ladezeit; eine frühere Rechnung setzte nur die Drossel an und war um mehr als
+das Doppelte zu optimistisch. 25 Abrufe sind damit rund 4 min, die Marge
+gegen `timeout-minutes: 75` sinkt von 25 auf rund 21 min.
+
+### Der Gedanke, der das Bild gedreht hat
+
+**PLZ, Baujahr und Grundstück ändern sich nie.** Detaildaten sind kein
+wiederkehrender Aufwand, sondern ein einmaliges Nachfüllen je Objekt. Ein Lauf
+muss nicht „alles" holen — er muss holen, was noch fehlt, und der Rückstand
+schrumpft monoton. Damit verliert die Spannung zwischen „alle Inserate auf
+einmal" und „schlank", an der B6 hing, ihre Schärfe.
+
+### Was gebaut wurde
+
+| Ort | Was |
+|---|---|
+| `main.ts` | `MAX_DETAILS_IMMOWELT = 25`, Detailscheibe innerhalb der Bewertungsauswahl, gekapselter Aufruf |
+| `scrapers/immowelt/zusammenfuehren.ts` | **neu** — `fuegeDetailHinzu`, 9 Tests |
+| `scrapers/immowelt/index.ts` | Docstring: die „wird nicht aufgerufen"-Begründung war seit dem 2026-09-20 falsch |
+| `lib/db.ts` | Docstring berichtigt, der Fund B8-1 steht jetzt dort, wo er zuschlägt |
+
+Die Regel von `fuegeDetailHinzu` in einem Satz: **Ein `null` auf der
+Detailseite ist keine Aussage** und darf einen Wert der Titelzeile nicht
+löschen. Ohne diese Regel machte die Detailphase den Bestand ärmer statt
+reicher — ausgerechnet bei den Objekten, deren Seite lückenhaft ist.
+
+Die Phase ist gekapselt: Bricht sie im Ganzen weg, kostet das Felder, nicht
+den Lauf. ZVG-Sweep, Bestandsabgleich und Löschblock bleiben erreichbar.
+
+### Der nächste Schritt ist Lesen, nicht Bauen
+
+Nach dem ersten Produktionslauf mit der neuen Phase steht im Log:
+
+```
+Immowelt-Detail: n von 25 Detailseiten gelesen.
+```
+
+**Diese Zahl ist die eigentliche Messung.** Steht dort 0, sagen die Zeilen
+darüber (`beurteileDetailAntwort`), ob eine Sperre oder eine
+Strukturänderung antwortete. Drei Dinge hängen daran: ob der Deckel steigen
+darf, ob `parseImmoweltDetailPage` nachgezogen werden muss, und ob B8 lohnt.
+Das steht als **B6 Schritt 4** im Backlog.
+
+### Zwei Funde aus dem Bauen — B8, bewusst offen
+
+- **`last_detail_at` sagt bei Immowelt nicht die Wahrheit.**
+  `listingUpsertZeile` setzt das Feld bei **jedem** Upsert; der Schalter
+  `detailGelesen` greift nur auf dem preislosen Pfad. Jedes bewertete
+  Immowelt-Objekt sieht „frisch im Detail erfasst" aus. Deshalb taugt
+  `ladeVeralteteExternalIds` dort nicht als Rückstandsfilter — die
+  Detailscheibe rotiert, statt nach Alter zu wählen.
+- **`zip_code` liegt auf `listing_versions`, nicht auf `listings`.** Der
+  saubere Vorrang wäre „hole, wer noch keine PLZ hat" — 97,4 % des Bestands.
+  Er braucht eine Abfrage über die jeweils neueste Version, die es nicht gibt.
+
+Beides lohnt erst nach der Messung. Ein Vorrang für Objekte, deren Seiten alle
+abgewiesen werden, wäre nur ein schnellerer Weg ins Nichts.
+
+### Die Falle dieser Sitzung
+
+**Ein Docstring, der eine Regel erklärt, ist kein Beleg, dass der Code sie
+befolgt.** `lib/db.ts` beschreibt über dreißig Zeilen sorgfältig, warum
+`last_detail_at` am Schalter `detailGelesen` hängt — und dreißig Zeilen
+darüber setzt `listingUpsertZeile` es bedingungslos. Der Entwurf dieser
+Sitzung baute im ersten Anlauf auf genau diesen Docstring. Die Prüfung am
+Code, nicht an der Prosa, kam rechtzeitig.
+
+---
+
 # Übergabe — Stand 2026-09-20 (dritte Sitzung des Tages)
 
 ## Der Kartenplan ist abgenommen — Task 10 ist gelaufen, der Plan ist fertig

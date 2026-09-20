@@ -684,19 +684,31 @@ export function beurteileDetailAntwort(
 /**
  * Phase B: Detailseiten nur fuer die uebergebenen externalIds.
  *
- * WIRD VOM PRODUKTIVLAUF NICHT MEHR AUFGERUFEN (Stand 2026-09-08). Immowelts
- * /expose/-Seiten antworten von Rechenzentrums-Adressen mit HTTP 403 und einem
- * DataDome-CAPTCHA, waehrend /suche/ im selben Lauf und derselben
- * Browser-Sitzung HTTP 200 mit vollstaendiger Seite liefert -- direkt
- * nacheinander auf einem GitHub-Runner gemessen. 144 von 144 Abrufen je Lauf
- * scheiterten so, zwoelf Minuten Budget fuer nichts.
+ * WIRD SEIT DEM 2026-09-20 WIEDER AUFGERUFEN, gedeckelt auf
+ * `MAX_DETAILS_IMMOWELT` Seiten je Lauf (main.ts).
  *
- * Die Bewertung kommt seither aus der Titelzeile der Ergebniskarte
- * (scrapers/immowelt/titelzeile.ts). Diese Funktion bleibt stehen, weil sie
- * von einem gewoehnlichen Anschluss aus nachweislich funktioniert (lokal
- * geprueft, HTTP 200 mit vollem Datenmodell) -- sie waere der Weg, falls der
- * Lauf je von einer nicht gesperrten Adresse aus stattfindet. Vorher aber
- * pruefen, ob die Sperre noch besteht, statt sie einfach wieder einzuhaengen.
+ * Die Vorgeschichte, weil sie die Bauart dieser Funktion erklaert: Vom
+ * 2026-09-08 bis zum 2026-09-20 war sie ausgehaengt. Immowelts
+ * /expose/-Seiten antworteten von Rechenzentrums-Adressen mit HTTP 403 und
+ * einem DataDome-CAPTCHA, waehrend /suche/ im selben Lauf und derselben
+ * Browser-Sitzung HTTP 200 mit vollstaendiger Seite lieferte -- direkt
+ * nacheinander auf einem GitHub-Runner gemessen. 144 von 144 Abrufen je Lauf
+ * scheiterten so, zwoelf Minuten Budget fuer nichts. Die Bewertung kam
+ * seither allein aus der Titelzeile der Ergebniskarte
+ * (scrapers/immowelt/titelzeile.ts).
+ *
+ * Nachgemessen am 2026-09-20 aus GitHub Actions heraus (Lauf 35535674960,
+ * `pruefung.yml`, Skript `diagnose-detail`): 5 von 5 Abrufen HTTP 200 mit
+ * rund 607.000 Zeichen und vollstaendigem Datenmodell, darunter zwei alte
+ * URLs vom 2026-09-07 als Gegenprobe. Die Sperre besteht in dieser Form nicht
+ * mehr.
+ *
+ * WAS DAMIT NICHT BEWIESEN IST -- und warum der Deckel klein ist: Fuenf
+ * Abrufe sagen nichts ueber 144 am Stueck; DataDome misst die Abrufrate, und
+ * die Sperre kann bei Menge zurueckkommen. Geprueft wurde ausserdem nur, dass
+ * das Datenmodell im HTML steht, nicht dass `parseImmoweltDetailPage` es
+ * heute noch richtig liest. Die Zahl in der Schlusszeile unten ist deshalb
+ * die eigentliche Messung. Vor jedem Anheben des Deckels: diese Zahl lesen.
  */
 export async function erfasseImmoweltDetails(
   zusammenfassungen: Map<string, ImmoweltListSummary>,

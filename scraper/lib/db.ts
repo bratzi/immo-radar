@@ -149,14 +149,22 @@ export function listingUpsertZeile(
  * erst spaeter eingeholt.
  *
  * `last_detail_at` haengt am Schalter `detailGelesen` und ist NICHT einfach
- * immer leer: Bei Immowelt wurde nie eine Detailseite gelesen (der fehlende
- * Preis steht schon in der Ergebnisliste) -- ein gesetzter Wert hielte das
- * Objekt faelschlich aus `ladeVeralteteExternalIds` heraus, als sei es
- * frisch im Detail erfasst. Bei ZVG WURDE die Detailseite gelesen, sie nennt
- * nur keinen Wert; bliebe das Feld dort leer, holte `ladeVeralteteExternalIds`
- * dieselben Faelle in jedem Lauf erneut und verbrauchte Detailbudget fuer
- * etwas, das das Gericht nie nachliefert -- derselbe stehende Rueckstand, nur
- * teurer.
+ * immer leer. Bei ZVG WURDE die Detailseite gelesen, sie nennt nur keinen
+ * Wert; bliebe das Feld dort leer, holte `ladeVeralteteExternalIds` dieselben
+ * Faelle in jedem Lauf erneut und verbrauchte Detailbudget fuer etwas, das
+ * das Gericht nie nachliefert -- derselbe stehende Rueckstand, nur teurer.
+ * Bei Immowelt entscheidet seit dem 2026-09-20 die Detailscheibe: Innerhalb
+ * ihrer 25 Seiten wurde gelesen, ausserhalb nicht. Ein gesetzter Wert ohne
+ * gelesene Seite hielte das Objekt faelschlich aus `ladeVeralteteExternalIds`
+ * heraus, als sei es frisch im Detail erfasst.
+ *
+ * ACHTUNG, hier stimmt etwas nicht, und es ist bewusst noch nicht behoben:
+ * `listingUpsertZeile` setzt `last_detail_at` bei JEDEM Upsert -- der
+ * Schalter greift also nur auf diesem Pfad hier, nicht auf dem von
+ * `upsertListingAndVersion`. Jedes bewertete Immowelt-Objekt sieht deshalb
+ * "frisch im Detail erfasst" aus. Fuer Immowelt ist `ladeVeralteteExternalIds`
+ * damit kein brauchbarer Rueckstandsfilter; main.ts waehlt die Detailscheibe
+ * aus genau diesem Grund per Rotation statt per Alter (BACKLOG B8).
  */
 export async function upsertListingOhneBewertung(
   supabase: SupabaseClient,

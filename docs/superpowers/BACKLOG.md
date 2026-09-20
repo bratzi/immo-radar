@@ -1738,7 +1738,43 @@ Befunde geführt werden:
       besteht, statt sie einfach wieder einzuhängen." Letzter Beleg ist der
       Live-Lauf vom **2026-09-07** — über zwei Wochen alt. Ein einziger
       `/expose/`-Abruf aus GitHub Actions beantwortet das.
-- [ ] **Schritt 2: Die Entscheidung, die der Nutzer treffen muss.** „Alle
+> ## SCHRITT 2 IST ENTSCHIEDEN UND SCHRITT 3 IST GEBAUT (2026-09-20)
+>
+> **Die Entscheidung des Nutzers: 25 Detailseiten je Lauf, rund 4 Minuten.**
+> Der erste Lauf ist eine Messung, kein Nachfüllen. Keiner der Wege (a) bis
+> (d) unten wurde beschritten — Drossel, `SWEEP_BUDGET_MS` und
+> `timeout-minutes` sind unangetastet. Die Marge sinkt von 25 auf rund
+> 21 Minuten.
+>
+> **Die Rechnung dahinter:** Eine Immowelt-Seite kostet gemessen 8,7 bis
+> 11,5 s — die 5 s Drossel sind nur ein Teil davon, die frühere Rechnung mit
+> 5 s war um mehr als das Doppelte zu optimistisch. 25 Abrufe sind rund
+> 4 Minuten.
+>
+> **Was gebaut wurde:** `erfasseImmoweltDetails` hängt wieder im
+> Produktionspfad (`main.ts`, Konstante `MAX_DETAILS_IMMOWELT = 25`). Die
+> neue reine Funktion `fuegeDetailHinzu`
+> (`scrapers/immowelt/zusammenfuehren.ts`, 9 Tests) legt die Detailseite über
+> die Titelzeile. Ihre Regel in einem Satz: **Ein `null` auf der Detailseite
+> ist keine Aussage** und darf einen Wert der Titelzeile nicht löschen —
+> sonst macht die Detailphase den Bestand ärmer statt reicher.
+>
+> **Die Phase ist gekapselt.** Bricht sie im Ganzen weg, kostet das Felder,
+> nicht den Lauf: ZVG-Sweep, Bestandsabgleich und Löschblock bleiben
+> erreichbar.
+>
+> **Die Messung liest man an einer Zeile ab:**
+> `Immowelt-Detail: n von 25 Detailseiten gelesen.` Kommt dort 0, sagen die
+> Zeilen darüber (`beurteileDetailAntwort`), ob es eine Sperre oder eine
+> Strukturänderung war. **Erst diese Zahl rechtfertigt ein Anheben des
+> Deckels** — und dann mit 11,5 s je Seite gerechnet, nicht mit 5.
+>
+> **Zwei Funde aus dem Bauen stehen in B8** und sind bewusst offen: Für
+> Immowelt taugt `last_detail_at` nicht als Rückstandsfilter, und ein
+> Vorrang nach fehlender PLZ braucht eine Abfrage, die es noch nicht gibt.
+> Die Scheibe rotiert deshalb, statt gezielt aufzuholen.
+
+- [x] ~~**Schritt 2: Die Entscheidung, die der Nutzer treffen muss.**~~ „Alle
       Inserate auf einmal" und „schlank" stehen in Spannung zueinander:
       22.000 Objekte bei 5 s Drossel sind rechnerisch über 30 Stunden. Die
       möglichen Wege — und alle haben einen Preis:
@@ -1752,8 +1788,14 @@ Befunde geführt werden:
       **(d)** Detailseiten von einer nicht gesperrten Adresse holen → das ist
       die einzige Antwort auf „einheitliche Infos", und sie ist eine
       Infrastrukturfrage, keine Codefrage.
-- [ ] **Schritt 3: Erst nach Schritt 1 und 2** einen Plan schreiben. Vorher
-      ist jede Umsetzung geraten.
+- [x] ~~**Schritt 3: Erst nach Schritt 1 und 2** einen Plan schreiben.~~
+      Als bounded eingestuft und ohne Plandokument gebaut: Der Ablauf
+      existierte bereits — `main.ts` macht für ZVG genau dasselbe —, und
+      `erfasseImmoweltDetails` war fertig, nur ausgehängt.
+- [ ] **Schritt 4, neu: Die Messung lesen.** Nach dem ersten Produktionslauf
+      mit der neuen Phase die Zeile `Immowelt-Detail: n von 25` auswerten und
+      hier festhalten. Davon hängt ab, ob der Deckel steigt, ob der Parser
+      nachgezogen werden muss und ob B8 überhaupt lohnt.
 
 **Hängt zusammen mit:** A10 (Cron-Takt), A11 (Mietschätzung — die
 Bundeslandstufe existiert nur, weil die PLZ fehlt), B1 (Löschhoheit braucht
@@ -1788,6 +1830,41 @@ etwas, und für die Tastatur ist es unzuverlässig. Seit Task 9 gibt es ein
 eigenes, sofortiges Tooltip-Element (`ui/KartenTooltip.tsx`) — die Frage ist,
 ob es sich von der Karte lösen und allgemein verwenden lässt, ohne dass die
 Zeile ihr Memo verliert (sie wird 18.000-fach gezeichnet).
+
+
+## B8. Zwei Funde aus dem Wiedereinhängen der Immowelt-Detailphase
+
+**Herkunft:** B6 Schritt 3, 2026-09-20. Beide sind belegt, beide sind bewusst
+nicht sofort behoben worden — sie hätten die Messung aufgehalten, um die es
+bei B6 gerade geht.
+
+**B8-1: `last_detail_at` sagt bei Immowelt nicht die Wahrheit.**
+`listingUpsertZeile` (`scraper/lib/db.ts`) setzt `last_detail_at` bei **jedem**
+Upsert auf jetzt. Der Schalter `detailGelesen`, den
+`upsertListingOhneBewertung` dafür anbietet, greift deshalb nur auf dem
+preislosen Pfad — `upsertListingAndVersion` überschreibt das Feld ohnehin.
+Jedes bewertete Immowelt-Objekt sieht damit „frisch im Detail erfasst" aus,
+obwohl bis zum 2026-09-20 nie eine Detailseite gelesen wurde.
+
+**Folge:** `ladeVeralteteExternalIds` ist für Immowelt kein brauchbarer
+Rückstandsfilter. Die neue Detailscheibe in `main.ts` wählt aus genau diesem
+Grund per Rotation statt per Alter — das läuft über den ganzen Bestand, aber
+langsam und ohne Vorrang für die Objekte, denen am meisten fehlt.
+
+**Vorsicht beim Beheben:** Das Feld hängt an der Detailbudgetierung von ZVG.
+Wer es richtigstellt, prüft zuerst, ob ZVG-Objekte dadurch in jedem Lauf
+erneut geholt werden.
+
+**B8-2: `zip_code` liegt auf `listing_versions`, nicht auf `listings`.** Der
+saubere Vorrang für die Detailphase wäre „hole die Objekte, die noch keine
+PLZ haben" — der eigentliche Rückstand, 97,4 % des Bestands. Diese Auswahl
+braucht eine Abfrage über die **jeweils neueste** Version je Listing, die es
+heute nicht gibt. Erst mit ihr holt die Detailphase gezielt auf, statt zu
+rotieren.
+
+**Reihenfolge:** Beides lohnt erst, wenn die Messung aus B6 sagt, dass die
+Detailphase überhaupt trägt. Ein Vorrang für Objekte, deren Seiten alle
+abgewiesen werden, wäre nur ein schnellerer Weg ins Nichts.
 
 
 # Teil C — Bewusst zurückgestellt

@@ -1,7 +1,10 @@
 import {
   sweepImmowelt,
+  erfasseImmoweltDetails,
   IMMOWELT_VERZOEGERUNG_MS,
 } from "./scrapers/immowelt/index.js";
+import { fuegeDetailHinzu } from "./scrapers/immowelt/zusammenfuehren.js";
+import type { ImmoweltDetailData } from "./scrapers/immowelt/detail.js";
 import {
   sweepZvgPortal,
   erfasseZvgDetails,
@@ -143,6 +146,35 @@ const MAX_MELDUNGEN_JE_LAUF = 25;
  * Abgleichs- und Loeschblock.
  */
 const MAX_BEWERTUNGEN_IMMOWELT = 600;
+
+/**
+ * Hoechstzahl Immowelt-Detailseiten, die ein Lauf holt.
+ *
+ * WARUM ES DIESE PHASE WIEDER GIBT: Immowelts /expose/-Sperre fuer
+ * Rechenzentrums-Adressen besteht nicht mehr. Gemessen am 2026-09-20 aus
+ * GitHub Actions heraus (Lauf 35535674960, `pruefung.yml`, Skript
+ * `diagnose-detail`): 5 von 5 Abrufen HTTP 200 mit vollem Datenmodell, wo am
+ * 2026-09-07 noch 144 von 144 scheiterten. Details stehen in BACKLOG.md B6.
+ *
+ * WARUM NUR 25: Der erste Lauf ist eine MESSUNG, kein Nachfuellen. Drei
+ * Fragen sind ausdruecklich offen und werden erst von dieser Phase
+ * beantwortet -- ob die Sperre bei Menge zurueckkommt (DataDome misst die
+ * Abrufrate, fuenf Abrufe sagen nichts ueber 144 am Stueck), ob
+ * `parseImmoweltDetailPage` die Seite von heute noch liest, und wie viel
+ * Zeit es wirklich kostet.
+ *
+ * DIE RECHNUNG: Eine Immowelt-Seite kostet gemessen 8,7 bis 11,5 s -- 5 s
+ * Drossel plus echte Ladezeit. 25 Abrufe sind damit rund 4 min. Der laengste
+ * echte Lauf lag bei 50 min gegen `timeout-minutes: 75`; die Marge sinkt
+ * also von 25 auf rund 21 min. Wer diesen Deckel anhebt, rechnet mit 11,5 s
+ * je Seite, nicht mit 5 -- und weiss, dass ein Kill VOR dem Abgleichs- und
+ * Loeschblock traefe.
+ *
+ * WAS ER NICHT LEISTET: Aufholen. 25 je Lauf bei real 4,5 Laeufen am Tag
+ * sind rund 110 Objekte taeglich gegen einen Bestand von ueber 20.000. Das
+ * ist Absicht -- erst messen, dann anheben.
+ */
+const MAX_DETAILS_IMMOWELT = 25;
 
 const TELEGRAM_SENDEABSTAND_MS = 500;
 
@@ -385,30 +417,31 @@ async function main() {
   // die Referenzlaeufe, die eine spaetere regionsgenaue Loeschhoheit braucht.
   await speichereRegionsLaeufe(sb, "immowelt", immowelt.regionLaeufe);
 
-  // Immowelt wird AUS DER ERGEBNISLISTE bewertet, nicht aus Detailseiten.
+  // Immowelt wird AUS DER ERGEBNISLISTE bewertet -- und fuer eine kleine
+  // Scheibe zusaetzlich aus der Detailseite.
   //
-  // WARUM: Immowelts /expose/-Seiten antworten von Rechenzentrums-Adressen mit
-  // HTTP 403 und einem DataDome-CAPTCHA, waehrend /suche/ im selben Lauf und
-  // derselben Browser-Sitzung HTTP 200 mit vollstaendiger Seite liefert
-  // (gemessen 2026-09-08 auf einem GitHub-Runner, unmittelbar nacheinander).
-  // Die frueher hier stehende Detailphase holte 144 Seiten je Lauf und bekam
-  // 144-mal 403: zwoelf Minuten Budget fuer nichts, und 144 Anfragen gegen
-  // einen Anti-Bot-Schutz, den wir nicht reizen wollen.
-  //
-  // Die Ergebnisliste traegt alles Noetige in der Titelzeile der Karte, die
-  // der Sweep ohnehin schon einsammelt:
+  // DIE ERGEBNISLISTE traegt das Meiste in der Titelzeile der Karte, die der
+  // Sweep ohnehin schon einsammelt:
   //
   //   "Mehrfamilienhaus zum Kauf - West - 75.000 € - 8 Zimmer, 158,7 m², 184 m² Grundstück"
   //
-  // Das kostet keinen einzigen zusaetzlichen Abruf.
+  // Das kostet keinen einzigen zusaetzlichen Abruf. Drei Dinge stehen dort
+  // aber nicht, und genau sie fehlten deshalb im ganzen Bestand:
+  //  * Die PLZ -- sie steht weder im Seiten-HTML noch im Datenmodell der
+  //    Suchseite. Ohne sie wird die Miete nur bundeslandgenau geschaetzt und
+  //    traegt die Datenluecke `miete_nur_bundeslandgenau` (A11).
+  //  * Das Baujahr.
+  //  * Die Kaltmiete.
   //
-  // Was dabei fehlt und bewusst hingenommen wird:
-  //  * Die PLZ. Sie steht weder im Seiten-HTML noch im Datenmodell der
-  //    Suchseite. Die Miete wird deshalb bundeslandgenau geschaetzt (ueber den
-  //    Fundort) und traegt die Datenluecke `miete_nur_bundeslandgenau`.
-  //  * Baujahr und Beschreibung.
-  //  * Die Einheitenzahl -- die lieferte Immowelt aber auch auf der
-  //    Detailseite nie (`units: null` selbst in der Fixture).
+  // DIE DETAILPHASE ist seit dem 2026-09-20 wieder eingehaengt, weil die
+  // Sperre weg ist, die sie am 2026-09-08 ausgehaengt hat: Immowelts
+  // /expose/-Seiten antworteten Rechenzentrums-Adressen mit HTTP 403 und
+  // einem DataDome-CAPTCHA -- 144 von 144 Abrufen je Lauf scheiterten so.
+  // Nachgemessen aus GitHub Actions heraus: 5 von 5 HTTP 200 mit vollem
+  // Datenmodell (BACKLOG.md B6, Schritt 1).
+  //
+  // Sie holt `MAX_DETAILS_IMMOWELT` Seiten, nicht mehr -- der erste Lauf ist
+  // eine Messung, kein Nachfuellen. Die Begruendung des Deckels steht dort.
   let immoweltBewertet = 0;
   const immoweltOhnePreis: { fundort: string | null; titleLine: string }[] = [];
   // Rotierende Scheibe: nicht alle gesehenen Objekte in einem Lauf bewerten.
@@ -420,9 +453,59 @@ async function main() {
       detailVersatz
     )
   );
+
+  // Detailscheibe: eine zweite, viel kleinere Rotation INNERHALB der
+  // Bewertungsauswahl. Nur wer bewertet wird, kann von einer Detailseite
+  // ueberhaupt profitieren, und nur wer gerade gesehen wurde, hat eine URL.
+  //
+  // WARUM NICHT `ladeVeralteteExternalIds` wie bei ZVG: `listingUpsertZeile`
+  // setzt `last_detail_at` bei JEDEM Upsert, auch wenn nie eine Detailseite
+  // gelesen wurde (lib/db.ts) -- fuer Immowelt ist das Feld deshalb kein
+  // brauchbarer Rueckstandsfilter. Der saubere Filter waere "hat noch keine
+  // PLZ", aber `zip_code` liegt auf `listing_versions`, nicht auf `listings`,
+  // und braucht damit eine neue Abfrage ueber die jeweils neueste Version.
+  // Beides ist als eigener Punkt notiert. Fuer 25 Messabrufe genuegt die
+  // wandernde Scheibe -- sie laeuft ueber den ganzen Bestand, nur langsam.
+  const immoweltDetailAuswahl = budgetiereDetailKandidaten(
+    "Immowelt-Detail",
+    MAX_DETAILS_IMMOWELT,
+    [...immoweltAuswahl],
+    detailVersatz
+  );
+
+  // Gekapselt wie jeder Abschnitt, der ein fremdes Portal anfasst: Bricht die
+  // Detailphase im Ganzen weg -- Browserstart, Consent, Aufwaermseite --, ist
+  // das ein Verlust an Feldern, kein Grund, den Lauf abzubrechen. Ungekapselt
+  // risse sie den ZVG-Sweep, den Bestandsabgleich und den Loeschblock mit
+  // sich; deren Ausfall waere um ein Vielfaches teurer als eine fehlende PLZ.
+  const immoweltDetails = new Map<string, ImmoweltDetailData>();
+  if (immoweltDetailAuswahl.length > 0) {
+    try {
+      const erfasst = await erfasseImmoweltDetails(
+        immowelt.zusammenfassungen,
+        immoweltDetailAuswahl
+      );
+      for (const detail of erfasst) immoweltDetails.set(detail.externalId, detail);
+      console.log(
+        `Immowelt-Detail: ${immoweltDetails.size} von ${immoweltDetailAuswahl.length} ` +
+          `Detailseiten gelesen.`
+      );
+    } catch (err) {
+      // Die Zahl daneben ist der eigentliche Befund: 0 von 25 heisst Sperre
+      // oder Strukturaenderung, nicht Pech. `beurteileDetailAntwort` sagt in
+      // den Zeilen darueber, welches von beidem.
+      console.error("Immowelt-Detailphase fehlgeschlagen, Lauf geht ohne sie weiter:", err);
+    }
+  }
+
   for (const zusammenfassung of immowelt.zusammenfassungen.values()) {
     if (!immoweltAuswahl.has(zusammenfassung.externalId)) continue;
-    const werte = werteAusTitelzeile(zusammenfassung.titleLine);
+    // Die Detailseite legt sich ueber die Titelzeile; wo sie schweigt, bleibt
+    // die Titelzeile stehen (scrapers/immowelt/zusammenfuehren.ts).
+    const werte = fuegeDetailHinzu(
+      werteAusTitelzeile(zusammenfassung.titleLine),
+      immoweltDetails.get(zusammenfassung.externalId)
+    );
     // Ohne Preis ist nichts zu rechnen. Ein erfundener Preis waere schlimmer
     // als gar keiner -- er ginge unmittelbar in den Kaufpreisfaktor ein.
     if (werte.preisCents === null) {
@@ -454,6 +537,10 @@ async function main() {
           externalId: zusammenfassung.externalId,
           url: zusammenfassung.url,
           fundort: zusammenfassung.fundort ?? null,
+          // Seit es wieder eine Detailphase gibt, ist das nicht mehr pauschal
+          // false: Wurde die Seite gelesen und nennt trotzdem keinen Preis,
+          // ist das eine Aussage der Quelle und soll `last_detail_at` setzen.
+          detailGelesen: werte.detailGelesen,
         });
       } catch (err) {
         console.error(
@@ -473,21 +560,23 @@ async function main() {
       priceCents: werte.preisCents,
       livingAreaM2: werte.wohnflaecheM2,
       plotAreaM2: werte.grundstueckM2,
-      // Die Zimmerzahl ist NICHT die Zahl der Wohneinheiten. Sie hier
-      // einzusetzen waere eine stille Erfindung; `bewerteEinheiten` nimmt
-      // stattdessen wie bisher den Mindestwert an und markiert das.
-      units: null,
-      unitsConfident: false,
-      yearBuilt: null,
-      // Ohne PLZ: die Ortsangabe der Karte ist ein Stadtteilname.
-      zipCode: "",
-      city: werte.lage ?? "",
-      rentColdMonthly: null,
+      // Einheiten, Baujahr, PLZ und Kaltmiete kann nur die Detailseite
+      // liefern -- ohne sie stehen hier weiterhin null bzw. "". Die
+      // Zimmerzahl der Titelzeile ist NICHT die Zahl der Wohneinheiten und
+      // wird deshalb nirgends dafuer eingesetzt.
+      units: werte.einheiten,
+      unitsConfident: werte.einheitenSicher,
+      yearBuilt: werte.baujahr,
+      // Mit PLZ faellt die Datenluecke `miete_nur_bundeslandgenau`; ohne sie
+      // ist die Ortsangabe der Karte ein Stadtteilname.
+      zipCode: werte.plz,
+      city: werte.ort,
+      rentColdMonthly: werte.kaltmiete,
       auctionAt: null,
       court: null,
       caseNumber: null,
       rawNoticeText: null,
-      photoUrls: [],
+      photoUrls: werte.fotoUrls,
     }, meldebudget);
   }
   console.log(
