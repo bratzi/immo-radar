@@ -1,6 +1,66 @@
+# Übergabe — Stand 2026-09-20
+
+## Die nächste große Aufgabe, vom Nutzer gesetzt: der Immowelt-Lauf
+
+**Der Nutzer hat am Sitzungsende eine neue Richtung vorgegeben** (Wortlaut in
+[`BACKLOG.md`](BACKLOG.md) **B6**): Warum bekommen wir nicht alle Inserate auf
+einmal? Warum braucht es mehrere Läufe? Warum sind die Datensätze nie
+einheitlich gefüllt? Der Lauf soll **schlank** bleiben, durch **alle** Inserate
+gehen und **einheitliche Infos ganzheitlich** auslesen.
+
+**Die Antworten sind schon am Code belegt** — B6 im Backlog hat sie mit
+Fundstellen, damit die Aufgabe nicht bei null anfängt. Der Kern in drei Sätzen:
+
+1. **Ein Lauf schafft rund eine große Region.** `SWEEP_BUDGET_MS` = 12 Minuten
+   bei 5 Sekunden Drossel je Seitenabruf; Nordrhein-Westfalen allein braucht
+   173 Seiten. Die 75-Minuten-Grenze des Workflows ist die eigentliche Wand —
+   ein Kill träfe **vor** dem Löschblock.
+2. **Mehrere Läufe sind Absicht:** Rotation über die 16 Regionen, Startpunkt
+   seit 2026-09-09 aus der Historie statt aus der Wanduhr (5,7 statt 13,1 Tage
+   bis zur vollen Abdeckung).
+3. **Der eigentliche Befund:** `erfasseImmoweltDetails` wird **im
+   Produktionslauf nirgends aufgerufen** — geprüft am 2026-09-20. Die Funktion
+   ist fertig gebaut, aber nicht eingehängt, weil `/expose/`-Seiten von
+   Rechenzentrums-Adressen gesperrt sind. **Alle** Immowelt-Angaben kommen
+   deshalb aus der Titelzeile der Ergebnisliste. Das ist die Wurzel von
+   97,4 % ohne PLZ, 0,3 % mit Baujahr, der bundeslandgenauen Miete (A11) und
+   der 352 leeren Hüllen (B5).
+
+**Der erste Schritt ist eine Messung, kein Umbau:** Der Docstring verlangt
+ausdrücklich, die Sperre neu zu prüfen, bevor man die Detailerfassung wieder
+einhängt. Der letzte Beleg stammt vom **2026-09-07**. Ein einziger
+`/expose/`-Abruf aus GitHub Actions beantwortet das.
+
+**Danach liegt eine Entscheidung beim Nutzer:** „Alle auf einmal" und
+„schlank" widersprechen sich — 22.000 Objekte bei 5 s Drossel sind über
+30 Stunden. Die vier Wege und ihre Preise stehen in B6, Schritt 2.
+
+---
+
 # Übergabe — Stand 2026-09-19 (zweite Sitzung des Tages)
 
-## Die Karte als Dreh- und Angelpunkt — Block A erledigt, Block B lief noch
+## Die Karte als Dreh- und Angelpunkt — Block A und Task 6 erledigt, Rest offen
+
+> **Stand beim Sitzungsende:** Block A (Tasks 1–5) und **Task 6** (Layout) sind
+> gemergt und gepusht. **Offen bleiben Task 6b, 7, 8, 9 und 10** — Zuklappen,
+> Hover-Ring, Klick-Filter, Tooltip, Abnahme. Der Plan ist vollständig
+> ausgeschrieben, die Entscheidungen sind gefallen; es ist reine Umsetzung.
+>
+> **Warum es hier aufhört:** Der Opus-Agent für Block B ist am Sitzungslimit
+> gescheitert (Reset 2:10 Berlin). Er hatte Task 6 fertig, aber **nicht
+> committet**. Der Koordinator hat den Diff gelesen, die Browser-Messungen
+> selbst nachgeholt und ihn gesichert (`667b348`) — **wieder ein Beleg dafür,
+> dass ein abgebrochener Agent nicht wertlos ist: erst in seinen Worktree
+> sehen.**
+>
+> **Was Task 6 am Plan korrigiert hat:** Die Kartenzeichnung ist bei 1360 px
+> nur **248 px** breit (Faktor 0,689), nicht die geschätzten 280 px. Die
+> Kachelkürzel standen damit mit **7,58 px** auf dem Schirm statt der
+> geforderten 10. Schrift von 11 auf 15 Zeichnungseinheiten angehoben →
+> 10,33 px im schmalsten Fall. Über acht Fensterbreiten nachgemessen: kein
+> waagerechtes Scrollen, kein Zeilenüberlauf, keine überlappenden Kacheln,
+> Sticky greift ab 1360 px und endet bei 1359 px, Sprunglink setzt den Fokus
+> auf `<main id="liste">`, keine Konsolenfehler.
 
 **Die große Aufgabe dieser Sitzung.** Der Entwurf vom 2026-09-19 wurde zum
 Plan [`plans/2026-09-19-karte-dreh-und-angelpunkt.md`](plans/2026-09-19-karte-dreh-und-angelpunkt.md)

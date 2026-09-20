@@ -1582,6 +1582,117 @@ nebeneinanderzustellen ist genau der Fehler, den dieses Projekt bei „54 statt
   geprüft am 2026-09-19, es gibt weder Filterknopf noch Bereich. Diese
   Entscheidung steht also seit Wochen unerfüllt.
 
+## B6. Der Immowelt-Lauf: alles auf einmal, und überall dieselben Felder
+
+**Frage des Nutzers, 2026-09-19/20, im Wortlaut:**
+
+> „warum bekommen wir nicht alle inserate von immowelt auf ein mal? warum
+> braucht es mehrere läufe. warum sind die datensätze nie konsitent gefüllt.
+> wir müssen den scraper run schlank halten der muss durch alle inserate
+> durch und am besten immer einheitliche infos ganheitlich auslesen."
+
+**Die Antworten stehen im Code und sind hier belegt, damit die Aufgabe nicht
+bei null anfängt.** Der Koordinator hat sie am 2026-09-20 nachgelesen; keine
+Vermutung, jede Zeile mit Fundstelle.
+
+### Warum nicht alles auf einmal — ein Zeitbudget, kein Fehler
+
+`SWEEP_BUDGET_MS = 12 * 60 * 1000` (`scrapers/immowelt/index.ts:62`). Die
+Schleife über die 16 Bundesländer bricht ab, sobald das Budget voll ist — mit
+einer Ausnahme: **eine einmal begonnene Region wird immer zu Ende geblättert**
+(„ein halb erfasstes Bundesland wäre eine Lüge über die Abdeckung").
+
+Der Kommentar an `sweepStartVersatz` (`lib/bestand.ts:400`) sagt die
+Größenordnung: **„Das Zeitbudget eines Laufs reicht für genau eine große
+Region — `nw` allein braucht 173 Seiten."**
+
+Dazu die Drossel: `IMMOWELT_VERZOEGERUNG_MS = 5000` — **fünf Sekunden zwischen
+zwei Seitenabrufen**. 12 Minuten ergeben damit rund **144 Seitenabrufe je
+Lauf**, für alle 16 Regionen zusammen. Die Drossel ist kein Zufallswert: Ein
+CAPTCHA misst eine zu hohe Abrufrate (siehe `UEBERGABE.md`, „Fallen"), und
+Immowelt deckelt jede Ergebnisliste ohnehin bei `SEITEN_DECKEL = 250`.
+
+**Die 75-Minuten-Grenze des Workflows ist die eigentliche Wand:** Der
+Kommentar über `SWEEP_BUDGET_MS` warnt, ein Kill träfe **vor** dem Abgleichs-
+und Löschblock — „die Marge ist die Sicherheit dieses Projekts". Wer das
+Budget anhebt, riskiert also nicht nur einen abgebrochenen Lauf, sondern einen
+Lauf, der seine Bestandspflege nicht mehr erreicht.
+
+### Warum mehrere Läufe — Rotation statt Wiederholung
+
+Jeder Lauf beginnt an einer anderen Stelle der Regionsliste
+(`sweepStartVersatz` + `rotiereAuswahl`). Der Startpunkt kommt **seit
+2026-09-09 aus der Historie** (`sweep_region_runs`: die am längsten nicht
+gesweepte Region zuerst), nicht mehr aus der Wanduhr. Monte-Carlo über 3.000
+Durchläufe: volle Abdeckung in **5,7 statt 13,1 Tagen**, ohne einen einzigen
+zusätzlichen Abruf. Der Cron läuft nominell alle drei Stunden
+(`scrape.yml`, `0 */3 * * *`), real fallen **43 % der Termine aus** (A10).
+
+### Warum die Datensätze nie einheitlich gefüllt sind — DER EIGENTLICHE BEFUND
+
+**`erfasseImmoweltDetails` wird im Produktionslauf nirgends aufgerufen.**
+Geprüft am 2026-09-20: Die Funktion existiert (`scrapers/immowelt/index.ts:701`),
+ist vollständig ausgebaut (Aufwärmen, Consent, Referer, Drossel), und der
+einzige Verweis darauf außerhalb ihrer selbst steht in einem **Kommentar** und
+in `scripts/diagnose-detail.mts`. **Kein Produktionspfad ruft sie.**
+
+Der Grund steht im Docstring darüber: Immowelt-Detailseiten (`/expose/`) sind
+**von Rechenzentrums-Adressen gesperrt** (HTTP 403 mit Hülle statt Seite). Die
+Funktion „bleibt stehen, weil sie von einem gewöhnlichen Anschluss aus
+nachweislich funktioniert" — als Weg für den Fall, dass der Lauf je von einer
+nicht gesperrten Adresse stattfindet.
+
+**Folge:** Alle Immowelt-Angaben stammen aus der **Titelzeile der
+Ergebnisliste** (`scrapers/immowelt/titelzeile.ts`). Was `ImmoweltDetailData`
+alles könnte — `zipCode`, `rooms`, `yearBuilt`, `rentColdMonthly`,
+`plotAreaM2`, `units`, `descriptionText`, `photoUrls` — kommt in der Produktion
+**nie** an. Das ist die Wurzel von gleich vier Dingen, die anderswo als eigene
+Befunde geführt werden:
+
+| Sichtbare Folge | Zahl |
+|---|---|
+| Objekte ohne verortbare PLZ | 97,4 % (nur Bundesland) |
+| Miete deshalb nur bundeslandgenau geschätzt | trägt 83 % des Bestands (A11) |
+| `baujahr` gefüllt | 0,3 % |
+| `einheiten` gefüllt | 0,5 % |
+| leere Hüllen ohne jedes Feld | 352 (**B5**) |
+
+**Die Inkonsistenz ist also kein Parser-Fehler, sondern eine Sperre.** Wer sie
+„beheben" will, muss zuerst die Netzfrage beantworten, nicht den Code ändern.
+
+### Was zu klären ist — und in welcher Reihenfolge
+
+- [ ] **Schritt 1: Die Sperre neu prüfen, bevor irgendetwas gebaut wird.** Der
+      Docstring sagt ausdrücklich: „Vorher aber prüfen, ob die Sperre noch
+      besteht, statt sie einfach wieder einzuhängen." Letzter Beleg ist der
+      Live-Lauf vom **2026-09-07** — über zwei Wochen alt. Ein einziger
+      `/expose/`-Abruf aus GitHub Actions beantwortet das.
+- [ ] **Schritt 2: Die Entscheidung, die der Nutzer treffen muss.** „Alle
+      Inserate auf einmal" und „schlank" stehen in Spannung zueinander:
+      22.000 Objekte bei 5 s Drossel sind rechnerisch über 30 Stunden. Die
+      möglichen Wege — und alle haben einen Preis:
+      **(a)** Drossel senken → CAPTCHA-Risiko, und ein CAPTCHA wird in diesem
+      Projekt nicht gelöst;
+      **(b)** Zeitbudget und `timeout-minutes` anheben → weniger Marge vor dem
+      Löschblock, und Actions-Minuten sind zwar kostenlos (öffentliches Repo),
+      ein Kill mitten im Lauf aber teuer;
+      **(c)** Cron dichter takten (A10) → mehr Läufe statt längerer Läufe,
+      ändert nichts an „alles auf einmal";
+      **(d)** Detailseiten von einer nicht gesperrten Adresse holen → das ist
+      die einzige Antwort auf „einheitliche Infos", und sie ist eine
+      Infrastrukturfrage, keine Codefrage.
+- [ ] **Schritt 3: Erst nach Schritt 1 und 2** einen Plan schreiben. Vorher
+      ist jede Umsetzung geraten.
+
+**Hängt zusammen mit:** A10 (Cron-Takt), A11 (Mietschätzung — die
+Bundeslandstufe existiert nur, weil die PLZ fehlt), B1 (Löschhoheit braucht
+vollständige Regionsläufe), B5 (die leeren Hüllen).
+
+**Vorsicht, eine Falle:** „Alle Inserate in einem Lauf" klingt wie eine reine
+Mengenfrage, ist aber auch eine Sicherheitsfrage. Die Vollständigkeit eines
+Regionslaufs ist die **Wache vor der Massenlöschung** (B1). Ein Lauf, der mehr
+schafft, verschiebt auch, wann gelöscht werden darf.
+
 ---
 
 # Teil C — Bewusst zurückgestellt
