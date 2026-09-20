@@ -15,6 +15,10 @@ export const OHNE_ANGABE = "—";
 const ANZAHL = new Intl.NumberFormat("de-DE");
 const EURO = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
 const FLAECHE = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
+const MEGABYTE = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 const DSCR = new Intl.NumberFormat("de-DE", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -122,4 +126,20 @@ export function formatiereDatumZeit(zeitstempel: string | null): string {
   const zeit = Date.parse(zeitstempel);
   if (!Number.isFinite(zeit)) return OHNE_ANGABE;
   return `${DATUM_ZEIT.format(new Date(zeit))} UTC`;
+}
+
+/**
+ * Bytes als Megabyte -- deutsch formatiert und mit geschuetztem Leerzeichen.
+ *
+ * Der Ladetext rechnete das frueher selbst (`toFixed(1)`) und schrieb damit
+ * als einzige Stelle der Oberflaeche einen englischen Dezimalpunkt. Ein
+ * Umbruch zwischen Zahl und Einheit ist ebenfalls unerwuenscht.
+ */
+export function formatiereMegabyte(bytes: number): string {
+  return `${megabyteZahl(bytes)} MB`;
+}
+
+/** Dieselbe Zahl ohne Einheit -- fuer "0,0 von 23,3 MB". */
+export function megabyteZahl(bytes: number): string {
+  return MEGABYTE.format(bytes / 1024 / 1024);
 }

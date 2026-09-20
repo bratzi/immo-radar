@@ -20,7 +20,12 @@ import {
 import { bestimmeBereich, gliedere } from "./logik/gliederung.ts";
 import { laenderOhneAbgangserkennung, zaehleZustaende } from "./logik/regionen.ts";
 import type { Kartengroesse } from "./logik/karte.ts";
-import { formatiereAnzahl, formatiereDatumZeit } from "./logik/formate.ts";
+import {
+  formatiereAnzahl,
+  formatiereDatumZeit,
+  formatiereMegabyte,
+  megabyteZahl,
+} from "./logik/formate.ts";
 import { Kopfzeile } from "./ui/Kopfzeile.tsx";
 import { Filterleiste } from "./ui/Filterleiste.tsx";
 import { Karte } from "./ui/Karte.tsx";
@@ -89,7 +94,6 @@ function Ladeanzeige({ fortschritt }: { fortschritt: Ladefortschritt | null }) {
   const gesamt = fortschritt?.gesamt ?? null;
   const gelesen = fortschritt?.gelesen ?? 0;
   const anteil = gesamt !== null && gesamt > 0 ? Math.min(1, gelesen / gesamt) : null;
-  const mb = (bytes: number) => (bytes / 1024 / 1024).toFixed(1);
 
   return (
     <div className="laden">
@@ -102,8 +106,8 @@ function Ladeanzeige({ fortschritt }: { fortschritt: Ladefortschritt | null }) {
       </div>
       <span className="laden__zahl">
         {gesamt === null
-          ? `${mb(gelesen)} MB gelesen`
-          : `${mb(gelesen)} von ${mb(gesamt)} MB`}
+          ? `${formatiereMegabyte(gelesen)} gelesen`
+          : `${megabyteZahl(gelesen)} von ${formatiereMegabyte(gesamt)}`}
       </span>
     </div>
   );
@@ -368,9 +372,9 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
           <span>Snapshot {formatiereDatumZeit(snapshot.erzeugtAm)}</span>
           <span>{formatiereAnzahl(alleObjekte.length)} Objekte</span>
           <span>{formatiereAnzahl(gefiltert.length)} nach Filter</span>
-          <span>{(ergebnis.messung.bytes / 1024 / 1024).toFixed(2)} MB</span>
-          <span>Abruf {Math.round(ergebnis.messung.abrufMs)} ms</span>
-          <span>Parsen {Math.round(ergebnis.messung.parseMs)} ms</span>
+          <span>{formatiereMegabyte(ergebnis.messung.bytes)}</span>
+          <span>Abruf {formatiereAnzahl(Math.round(ergebnis.messung.abrufMs))}&nbsp;ms</span>
+          <span>Parsen {formatiereAnzahl(Math.round(ergebnis.messung.parseMs))}&nbsp;ms</span>
           <span>
             Alle Zeitangaben gegen den Snapshot-Zeitpunkt gerechnet, nicht gegen die Uhr dieses
             Rechners.

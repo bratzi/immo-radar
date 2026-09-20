@@ -7,6 +7,8 @@ import {
   formatiereEuro,
   formatiereFlaeche,
   formatiereKaufpreisfaktor,
+  formatiereMegabyte,
+  megabyteZahl,
   formatiereTagesalter,
   preisJeQuadratmeter,
 } from "./formate.ts";
@@ -110,5 +112,27 @@ describe("formatiereDatum", () => {
   it("gibt bei unlesbarem oder fehlendem Wert einen Gedankenstrich", () => {
     expect(formatiereDatum(null)).toBe("—");
     expect(formatiereDatum("demnaechst")).toBe("—");
+  });
+});
+
+describe("formatiereMegabyte -- Zahl und Einheit gehoeren zusammen", () => {
+  it("schreibt deutsch mit Komma, nicht englisch mit Punkt", () => {
+    // Befund aus Task 10: Der Ladetext stand als "23.3 von 23.3 MB" da,
+    // waehrend jede andere Zahl der Oberflaeche deutsch formatiert ist.
+    expect(formatiereMegabyte(24_445_358)).toBe("23,3 MB");
+  });
+
+  it("haelt Zahl und Einheit mit einem geschuetzten Leerzeichen zusammen", () => {
+    expect(formatiereMegabyte(1024 * 1024)).toBe("1,0 MB");
+  });
+
+  it("rundet auf eine Stelle", () => {
+    expect(formatiereMegabyte(0)).toBe("0,0 MB");
+  });
+});
+
+describe("megabyteZahl -- dieselbe Zahl ohne Einheit", () => {
+  it("nennt die Einheit nicht, damit '0,0 von 23,3 MB' sie nur einmal traegt", () => {
+    expect(megabyteZahl(24_445_358)).toBe("23,3");
   });
 });
