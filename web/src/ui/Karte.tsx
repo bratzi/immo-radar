@@ -16,9 +16,11 @@
  *
  * KEIN KACHEL-DIENST, KEINE FREMDANFRAGE (N5). Alles ist Inline-SVG.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { SnapshotBundesland, SnapshotObjekt } from "../daten/snapshot.ts";
 import { formatiereAnzahl, formatiereDscr, formatiereProzent } from "../logik/formate.ts";
+import { filterKurz } from "../logik/kartentexte.ts";
+import { holeSpeicher, liesKarteOffen, schreibeKarteOffen } from "../logik/karteOffen.ts";
 import {
   KARTENGROESSE_NAMEN,
   KARTE_BREITE,
@@ -121,12 +123,34 @@ export function Karte({
   const maxAnzahl = punkte.reduce((groesster, p) => Math.max(groesster, p.anzahl), 1);
   const radius = (anzahl: number) => 2.2 + Math.sqrt(anzahl / maxAnzahl) * 5.4;
 
+  // Der Ausgangswert wird EINMAL gelesen (Initialisierungsfunktion), nicht je Render.
+  const [offen, setOffen] = useState(() => liesKarteOffen(holeSpeicher()));
+  const schalteOffen = () => {
+    const neu = !offen;
+    setOffen(neu);
+    schreibeKarteOffen(holeSpeicher(), neu);
+  };
+  // Zweites Argument: gewaehltePlz gibt es erst ab Task 8 -- dort nachziehen,
+  // sonst zeigt der zugeklappte Kopf einen aktiven PLZ-Filter nie an.
+  const kurz = filterKurz(gewaehlteLaender, []);
+
   return (
-    <section className="tafel">
+    <section className={`tafel${offen ? "" : " tafel--zu"}`}>
       <div className="tafel__kopf">
+        <button
+          type="button"
+          className="karte__zuklappen"
+          aria-expanded={offen}
+          aria-controls="karte-inhalt"
+          aria-label={offen ? "Karte zuklappen" : "Karte aufklappen"}
+          onClick={schalteOffen}
+        >
+          <span aria-hidden="true">▶</span>
+        </button>
         <h2 className="tafel__titel">
           Karte <span style={{ opacity: 0.6, letterSpacing: "0.05em" }}>· ganzer Bestand</span>
         </h2>
+        {kurz !== "" && <span className="karte__filterkurz">{kurz}</span>}
         <div className="karte__schalter" role="group" aria-label="Größe der Flächenfärbung">
           {(Object.keys(KARTENGROESSE_NAMEN) as Kartengroesse[]).map((schluessel) => (
             <button
@@ -141,7 +165,7 @@ export function Karte({
         </div>
       </div>
 
-      <div className="tafel__inhalt">
+      <div className="tafel__inhalt" id="karte-inhalt">
         <svg
           className="karte__bild"
           viewBox={`0 0 ${KARTE_BREITE} ${KARTE_HOEHE}`}

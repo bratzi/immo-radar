@@ -59,3 +59,17 @@ export function punktText(
 export function alsZeile(text: TooltipText): string {
   return [text.titel, ...text.zeilen].join(" · ");
 }
+
+/**
+ * Der Kurztext fuer den zugeklappten Kartenkopf: Laender zuerst, dann die
+ * PLZ-Bereiche. Bis zu drei Eintraege stehen ganz da, ab vier zwei plus Zahl --
+ * der Kopf ist auf dem Handy schmal.
+ */
+export function filterKurz(
+  laender: readonly string[],
+  plzZweisteller: readonly string[]
+): string {
+  const teile = [...laender, ...plzZweisteller.map((zweisteller) => `${zweisteller}…`)];
+  if (teile.length <= 3) return teile.join(" · ");
+  return `${teile.slice(0, 2).join(" · ")} · +${teile.length - 2}`;
+}

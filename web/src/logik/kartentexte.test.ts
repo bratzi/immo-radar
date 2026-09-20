@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SnapshotBundesland } from "../daten/snapshot.ts";
-import { alsZeile, kachelText, punktText } from "./kartentexte.ts";
+import { alsZeile, filterKurz, kachelText, punktText } from "./kartentexte.ts";
 
 const sachsen: SnapshotBundesland = {
   name: "Sachsen",
@@ -58,5 +58,27 @@ describe("alsZeile -- der Text fuer aria-label, ohne Klickhinweis", () => {
     expect(alsZeile(punktText({ zweisteller: "80", anzahl: 3, topTreffer: 1 }, false))).toBe(
       "PLZ-Bereich 80… · 3 Objekte · 1 davon Top-Treffer"
     );
+  });
+});
+
+describe("filterKurz -- was im zugeklappten Kartenkopf steht", () => {
+  it("ist leer, wenn nichts gewaehlt ist", () => {
+    expect(filterKurz([], [])).toBe("");
+  });
+
+  it("nennt ein Land", () => {
+    expect(filterKurz(["Bayern"], [])).toBe("Bayern");
+  });
+
+  it("nennt Laender vor PLZ-Bereichen, mit Auslassungspunkten an den Bereichen", () => {
+    expect(filterKurz(["Bayern"], ["80"])).toBe("Bayern · 80…");
+  });
+
+  it("nennt bis zu drei Eintraege ganz", () => {
+    expect(filterKurz(["Bayern", "Sachsen"], ["80"])).toBe("Bayern · Sachsen · 80…");
+  });
+
+  it("kuerzt ab vier Eintraegen auf zwei plus Zahl -- der Kopf ist schmal", () => {
+    expect(filterKurz(["Bayern", "Sachsen"], ["80", "10"])).toBe("Bayern · Sachsen · +2");
   });
 });

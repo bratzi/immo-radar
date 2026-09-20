@@ -442,6 +442,57 @@ a {
   color: var(--gold-hell);
 }
 
+/* Zuklappen gibt es nur, solange die Karte nicht als Spalte mitwandert. */
+.karte__zuklappen,
+.karte__filterkurz {
+  display: none;
+}
+
+@media (max-width: 1359px) {
+  .karte__zuklappen {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
+    background: none;
+    border: 1px solid var(--linie);
+    border-radius: var(--r);
+    color: var(--papier-gedaempft);
+    cursor: pointer;
+    /* Wie .karte__bild: nimmt die 300-ms-Wartezeit auf einen Doppeltipp weg.
+       Der Knopf gibt es nur auf schmalen Schirmen, also genau dort, wo
+       getippt statt geklickt wird. */
+    touch-action: manipulation;
+    /* Nur transform, nicht `all` -- und `prefers-reduced-motion` schaltet die
+       Dauer global ab (Regel am Ende dieser Datei). */
+    transition: transform 0.12s;
+  }
+
+  .karte__zuklappen[aria-expanded="true"] {
+    transform: rotate(90deg);
+  }
+
+  .karte__zuklappen:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  /* Zugeklappt: nur der Kopf bleibt, und er nennt den aktiven Filter. */
+  .tafel--zu .tafel__inhalt,
+  .tafel--zu .karte__schalter {
+    display: none;
+  }
+
+  .tafel--zu .karte__filterkurz {
+    display: inline;
+    margin-right: auto;
+    padding-left: 8px;
+    font-size: 12px;
+    color: var(--gold-hell);
+  }
+}
+
 .karte__bild {
   display: block;
   width: 100%;
