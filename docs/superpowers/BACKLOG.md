@@ -1888,6 +1888,40 @@ Befunde geführt werden:
 >
 > ### Was daraus folgt
 >
+> ### NACHTRAG, derselbe Tag: die Sperre haengt am Sweep davor
+>
+> Ein zweiter Diagnoselauf auf einem **frischen** Runner (`35578149964`,
+> 21.09. 08:30 UTC, nur rund sechs Seitenabrufe insgesamt) lieferte **1 von 3**
+> frischen Exposés mit HTTP 200. Zusammen mit dem Lauf vom Vortag:
+>
+> | Umgebung | Abrufe | HTTP 200 |
+> |---|---|---|
+> | Diagnose, frischer Runner | 10 | **6** |
+> | Produktionslauf, nach vollem Sweep | 75 | **0** |
+>
+> **Sechs von zehn gegen null von 75.** Die Stichproben sind klein, der
+> Unterschied ist es nicht: Bei einer Durchlassquote von 60 % wären null
+> Treffer in 75 Abrufen praktisch ausgeschlossen.
+>
+> **Damit ist die Ursache eingegrenzt.** Die Sperre hängt nicht an der
+> Uhrzeit (beide Diagnosen lagen zwischen Produktionsläufen), nicht an der
+> URL-Form (identisch, am Log belegt) und nicht an der Detailphase selbst
+> (der Einbruch begann davor). Sie hängt am **Ruf der Adresse**, den der
+> Sweep mit seinen Hunderten Abrufen vorher verbraucht.
+>
+> **Das eröffnet einen Weg (e), den Schritt 2 nicht kannte:** die
+> Detailphase aus dem Produktionslauf herausnehmen und in einen **eigenen
+> Workflow** legen, der nichts anderes tut — aufwärmen, Detailseiten holen,
+> schreiben. Kein Sweep davor, also ein unverbrauchter Runner. Er bleibt in
+> GitHub Actions, braucht keine fremde Infrastruktur und kostet nichts.
+>
+> **Was dagegen spricht und vor dem Bauen zu klären ist:** Ein solcher Lauf
+> hat keine Zusammenfassungen aus einem Sweep, muss seine URLs also aus
+> `listings` holen und käme ohne `ImmoweltListSummary` aus — das ist ein
+> anderer Einstieg in `erfasseImmoweltDetails`. Und 6 von 10 heißt auch:
+> **vier von zehn scheitern weiterhin.** Der Weg macht die Sache möglich,
+> nicht zuverlässig.
+>
 > Die Detailphase kostet derzeit rund zwei Minuten je Lauf für null Felder.
 > Sie bleibt vorerst stehen, weil sie die Messung ist — aber die Entscheidung
 > darüber gehört dem Nutzer, und sie hängt an **Weg (d) aus Schritt 2**:
