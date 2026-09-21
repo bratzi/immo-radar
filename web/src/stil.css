@@ -1262,6 +1262,21 @@ a {
   transition: background 0.1s;
 }
 
+/*
+  ZVG-Zeilen sind eine Schaltflaeche, kein Anker (siehe logik/zvgSuche.ts:
+  die Terminsuche ist POST). Ein <button> bringt eigene Schrift, einen
+  eigenen Hintergrund und mittigen Text mit -- alles drei muss weg, sonst
+  faellt die Zeile aus der Liste heraus.
+*/
+button.zeile {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--linie-zart);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .zeile:hover {
   background: var(--flaeche-hoch);
 }

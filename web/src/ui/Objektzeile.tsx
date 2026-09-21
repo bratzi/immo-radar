@@ -30,6 +30,7 @@ import {
   preisJeQuadratmeter,
 } from "../logik/formate.ts";
 import { gruendeFuerAnzeige } from "../logik/gruende.ts";
+import { zvgSuchfelder, ZVG_SUCHE_URL } from "../logik/zvgSuche.ts";
 import { Bandstreifen } from "./Bandstreifen.tsx";
 
 const STUFENTEXT: Record<string, string> = {
@@ -191,12 +192,42 @@ function ObjektzeileRoh({ objekt, rang, jetzt, oben, dscrMeldeschwelle, onHover 
     STUFENTEXT[objekt.stufe] ?? objekt.stufe
   }, ${ZUSTANDSTEXT[objekt.zustand] ?? objekt.zustand}`;
 
+  // Der ZVG-Weg ist ein Formular, kein Verweis -- der gespeicherte
+  // Direktlink liefert von hier aus IMMER "error", weil zvg-portal.de einen
+  // Referer der eigenen Domain verlangt. Die Terminsuche nimmt stattdessen
+  // Bundesland und PLZ entgegen, ist aber POST und damit fuer einen Anker
+  // unerreichbar. Herleitung und Messung: logik/zvgSuche.ts.
+  const suche = zvgSuchfelder(objekt.quelle, objekt.bundesland, objekt.plz);
+
   // Ohne URL kein Verweis: Ein Anker ohne Ziel sieht anklickbar aus und ist
   // es nicht. Dann steht dort dieselbe Zeile als reines Feld.
   return objekt.url === null ? (
     <div className={klassen} style={stil} aria-label={beschriftung} {...hoverAnschluss}>
       {inhalt}
     </div>
+  ) : suche !== null ? (
+    // `display: contents` laesst das Formular selbst verschwinden -- die
+    // Schaltflaeche traegt die Zeilenklassen und sitzt an der Stelle, an der
+    // sonst der Anker saesse. Ohne das bekaeme die virtuelle Liste ein
+    // zusaetzliches Kaestchen zwischen Behaelter und Zeile.
+    <form
+      method="post"
+      action={ZVG_SUCHE_URL}
+      target="_blank"
+      style={{ display: "contents" }}
+    >
+      <input type="hidden" name="land_abk" value={suche.land_abk} />
+      <input type="hidden" name="plz" value={suche.plz} />
+      <button
+        type="submit"
+        className={klassen}
+        style={stil}
+        aria-label={`${beschriftung} — im ZVG-Portal suchen`}
+        {...hoverAnschluss}
+      >
+        {inhalt}
+      </button>
+    </form>
   ) : (
     <a
       className={klassen}
