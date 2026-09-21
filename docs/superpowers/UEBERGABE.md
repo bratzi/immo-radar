@@ -1,3 +1,128 @@
+# Übergabe — Stand 2026-09-21
+
+## Die Detailsperre besteht — die Messung aus B6 ist da und sie ist negativ
+
+**75 Abrufe über drei Produktionsläufe, alle HTTP 403.**
+
+| Lauf (UTC) | Sweep, gesehene Objekte | Detailseiten |
+|---|---|---|
+| 20.09. 21:35 `35539155621` | 641 — eingebrochen | **0 von 25** |
+| 20.09. 22:45 `35542642397` | 647 — eingebrochen | **0 von 25** |
+| 21.09. 01:56 `35552491138` | **6.807 — normal** | **0 von 25** |
+
+**Der dritte Lauf entscheidet.** Sein Sweep war einwandfrei — eine große
+Region, 6.807 Objekte, das normale Bild. Die Detailseiten blieben trotzdem
+vollständig gesperrt. Die Sperre ist also kein Folgeschaden eines schlechten
+Laufs, sie steht für sich.
+
+**Die Momentaufnahme vom 20.09., 20:28 (5 von 5 HTTP 200) war die Ausnahme.**
+Genau davor warnt der Kasten zu B6 Schritt 1: „Fünf Abrufe mit 5 s Abstand
+sagen nichts über 144 am Stück." Die Warnung hat sich binnen eines Tages
+bestätigt. Das ist kein Fehlschlag der Arbeit, sondern der Zweck der Messung:
+Sie war als Messung gebaut, gedeckelt auf 25, und sie hat gemessen.
+
+### Was noch offen ist und wem es gehört
+
+Die Detailphase kostet derzeit rund zwei Minuten je Lauf für null Felder. Ob
+sie stehen bleibt, ist eine **Entscheidung des Nutzers** und hängt an **Weg
+(d) aus B6 Schritt 2**: Detailseiten von einer nicht gesperrten Adresse
+holen. Das ist eine Infrastrukturfrage, keine Codefrage — und nach dieser
+Messung die **einzige** verbliebene Antwort auf „einheitliche Infos
+ganzheitlich auslesen".
+
+### Zwei Verdächtigungen, die die Messung widerlegt hat
+
+- **Nicht die URL-Form.** Die Produktions-URLs tragen einen langen Anhang
+  (`?serp_view=list&search=…#ln=…`), die erfolgreiche Diagnose schien saubere
+  URLs zu nehmen. Das Log des Diagnoselaufs zeigt: **identische Form.** Der
+  Umbau, der daraus gefolgt wäre, hätte nichts gebracht.
+- **Nicht die neue Detailphase.** Der Sweep-Einbruch vom 20.09. begann im
+  19:52-Lauf, also **vor** dem Wiedereinhängen (gepusht gegen 21:30 UTC).
+
+## Die Löschwache hat unter echter Belastung gehalten
+
+Am 20.09. fiel die gesehene Menge von 4.789 auf 644 und blieb über drei Läufe
+dort. Im Log steht `immowelt: Loeschung ausgesetzt (strukturell teilweise,
+erwartet) — Sweep war unvollständig`. **Kein Objekt wurde fälschlich als
+Abgang markiert.** Genau dafür ist die Fail-closed-Umstellung gebaut.
+
+**Was fehlt: eine Warnung.** `pruefeMengenplausibilitaet` prüft `!vollstaendig`
+zuerst und erreicht ihren Mengenvergleich bei Immowelt nie — `vollstaendig`
+ist dort strukturell hart `false`. Für das Löschen richtig, für das Bemerken
+eine Lücke. Der Einbruch um Faktor 7 stand nur in einer Logzeile. Als **B9**
+notiert, samt der Warnung, die Reihenfolge der Wache **nicht** anzufassen.
+
+## B5 ist gemessen und ist kein Fehler
+
+`scraper/scripts/messung-b5-leere-huellen.mts` (nur lesend) beantwortet
+Schritt 1 und 2 in einem Lauf:
+
+```
+listings gesamt:                    23.054
+davon mit mindestens einer Version: 22.656
+LEERE HUELLEN:                         398
+first_seen: verteilt ueber 8 Tage, 13.09. bis 20.09.
+Anteil am Tageszugang: 1,5 bis 6,4 %
+```
+
+**Dauerzustand, keine Regression** — stabile Quote, kein Knick. Und der
+Anfang hat ein Datum: Der Bestand reicht bis zum 05.09. zurück, die erste
+Hülle stammt vom 13.09. Am **2026-09-12** führte `ea8b731` den Pfad ein, dass
+ein Objekt ohne Preis eine Zeile statt eines `continue` bekommt (A-4). Die
+398 Hüllen sind dieser Pfad, wie entworfen.
+
+**E-7 und B5 sind disjunkt:** 35 ohne zuordenbare Region, 398 Hüllen,
+Überschneidung **null**. Die Warnung des Backlogs war berechtigt.
+
+**Aber Vorsicht mit der Zahl 35.** Im Snapshot tragen **356** Objekte kein
+Bundesland, und davon sind **350** genau die Hüllen. Auf Datenbankebene sind
+die Mengen disjunkt, auf Snapshot-Ebene fast deckungsgleich —
+`partitionEinesListings` liest den `fundort` (fast immer gesetzt), der
+Snapshot dagegen `bundesland` aus der Version, und Hüllen haben keine
+Version. **Drei Definitionen, drei Zahlen: 35, 356, 398.** Wer sie
+nebeneinanderstellt, muss sagen, welche er meint.
+
+## E-7 ist gebaut
+
+Die Kategorie „Objekte ohne Region" (Entscheidung des Nutzers vom
+2026-09-13) stand seit Wochen unerfüllt. `inAuswahl` gibt für `null` false
+zurück, sobald gefiltert wird — die 356 Objekte verschwanden beim ersten
+Klick auf die Karte, und es gab keinen Weg zurück.
+
+`OHNE_REGION` lebt im vorhandenen Feld `bundeslaender` und erbt damit
+Zurücksetzen, Zähler und `istFilterAktiv`. Die Karte bekommt **keine**
+Kachel: Ein Objekt ohne Region hat keinen Ort, eine Kachel wäre eine
+Behauptung über seine Lage.
+
+Im Browser nachgemessen: Der Knopf trägt 356, ein Klick setzt die Liste auf
+„356 nach Filter", 290 Zeilen verschwinden, keine Konsolenfehler.
+**195 Web-Tests grün**, 1 übersprungen.
+
+## Ein Fehler, den erst die Detailphase sichtbar gemacht hat
+
+`MAX_BILDER_JE_OBJEKT = 30` saß nur im Versand, nicht im Laden. Ein Exposé mit
+40 Fotos wurde vollständig vom Immowelt-CDN geholt, um dann 30 zu
+verschicken. Das fiel nie auf, weil `photoUrls` in der Produktion **toter
+Code** war: ZVG reicht nur `attachments` durch, Immowelt schickte eine feste
+leere Liste. Behoben in `e1628b3` mit `begrenzeBildUrls`.
+
+## Drei Fallen dieser Sitzung
+
+- **Ein Messskript, das die falsche Zahl greift, sieht aus wie ein
+  bestandener Test.** Der Browsercheck zu E-7 las zuerst „21.897 Objekte" aus
+  der Kopfzeile — die Bestandsgröße, nicht die gefilterte Menge — und meldete
+  brav „unverändert". Erst eine eingebaute Wache (`if (vorher === 0) throw`)
+  hat den Lauf abbrechen lassen, statt einen grünen Haken zu erfinden.
+- **Ein Docstring, der eine Regel erklärt, ist kein Beleg, dass der Code sie
+  befolgt.** `lib/db.ts` beschreibt über dreißig Zeilen, warum
+  `last_detail_at` am Schalter `detailGelesen` hängt — und dreißig Zeilen
+  darüber setzt `listingUpsertZeile` es bedingungslos.
+- **Ein typografisches Anführungszeichen in einem Testnamen beendet den
+  String.** `describe("… „Objekte ohne Region" …")` ist ein Parserfehler, der
+  als „0 Tests gefunden" erscheint, nicht als Syntaxfehler an der Zeile.
+
+---
+
 # Übergabe — Stand 2026-09-20 (vierte Sitzung des Tages)
 
 ## Die Immowelt-Detailphase hängt wieder im Produktionslauf — gedeckelt auf 25

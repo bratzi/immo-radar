@@ -1847,6 +1847,54 @@ Befunde geführt werden:
       Als bounded eingestuft und ohne Plandokument gebaut: Der Ablauf
       existierte bereits — `main.ts` macht für ZVG genau dasselbe —, und
       `erfasseImmoweltDetails` war fertig, nur ausgehängt.
+> ## SCHRITT 4 IST GEMESSEN (2026-09-21): DIE DETAILSPERRE BESTEHT
+>
+> **Drei Produktionsläufe mit der neuen Phase, 75 Abrufe, alle HTTP 403.**
+>
+> | Lauf (UTC) | Sweep, gesehene Objekte | Detailseiten |
+> |---|---|---|
+> | 20.09. 21:35 (`35539155621`) | 641 — eingebrochen | **0 von 25** |
+> | 20.09. 22:45 (`35542642397`) | 647 — eingebrochen | **0 von 25** |
+> | 21.09. 01:56 (`35552491138`) | **6.807 — normal** | **0 von 25** |
+>
+> **Der dritte Lauf ist der entscheidende.** Sein Sweep lief einwandfrei —
+> eine große Region, 6.807 Objekte, genau das normale Bild. Die Detailseiten
+> blieben trotzdem zu 25 von 25 gesperrt. Damit ist die Sperre keine Folge
+> eines schlechten Laufs, sondern steht für sich.
+>
+> **Die Momentaufnahme vom 2026-09-20, 20:28 (5 von 5 HTTP 200) war die
+> Ausnahme, nicht die Regel.** Genau davor warnt der Kasten zu Schritt 1:
+> „Fünf Abrufe mit 5 s Abstand sagen nichts über 144 am Stück." Die Warnung
+> war richtig, und sie hat sich innerhalb eines Tages bestätigt.
+>
+> ### Was die Messung nebenbei gezeigt hat
+>
+> **Ein Sweep-Einbruch um den Faktor 7 lief ohne eine einzige Warnzeile
+> durch.** Am 20.09. fiel die gesehene Menge von 4.789 (17:45) auf 644
+> (19:52) und blieb zwei Läufe dort, bevor sie sich von selbst erholte. Das
+> geschah **vor** dem Wiedereinhängen der Detailphase, hat also nichts mit
+> ihr zu tun.
+>
+> **Die Löschwache hat gehalten** — `immowelt: Loeschung ausgesetzt
+> (strukturell teilweise, erwartet) — Sweep war unvollständig`. Genau dafür
+> ist sie gebaut, und sie hat unter echter Belastung funktioniert.
+>
+> **Aber sichtbar wurde der Einbruch nirgends.**
+> `pruefeMengenplausibilitaet` steigt bei `!vollstaendig` sofort mit „Sweep
+> war unvollständig" aus und kommt an ihren Mengenvergleich gar nicht heran.
+> Für das Löschen ist das richtig (fail-closed), für das Bemerken nicht: Die
+> Zahl 641 steht nur in einer Logzeile, die jemand lesen müsste. Als **B9**
+> notiert.
+>
+> ### Was daraus folgt
+>
+> Die Detailphase kostet derzeit rund zwei Minuten je Lauf für null Felder.
+> Sie bleibt vorerst stehen, weil sie die Messung ist — aber die Entscheidung
+> darüber gehört dem Nutzer, und sie hängt an **Weg (d) aus Schritt 2**:
+> Detailseiten von einer nicht gesperrten Adresse holen. Das ist eine
+> Infrastrukturfrage, keine Codefrage, und es ist jetzt die **einzige**
+> verbliebene Antwort auf „einheitliche Infos ganzheitlich auslesen".
+
 - [ ] **Schritt 4, neu: Die Messung lesen.** Nach dem ersten Produktionslauf
       mit der neuen Phase die Zeile `Immowelt-Detail: n von 25` auswerten und
       hier festhalten. Davon hängt ab, ob der Deckel steigt, ob der Parser
@@ -1920,6 +1968,43 @@ rotieren.
 **Reihenfolge:** Beides lohnt erst, wenn die Messung aus B6 sagt, dass die
 Detailphase überhaupt trägt. Ein Vorrang für Objekte, deren Seiten alle
 abgewiesen werden, wäre nur ein schnellerer Weg ins Nichts.
+
+
+## B9. Ein Mengeneinbruch um den Faktor 7 erzeugt keine Warnung
+
+**Herkunft:** B6 Schritt 4, 2026-09-21.
+
+**Der Vorfall:** Am 2026-09-20 fiel die vom Immowelt-Sweep gesehene Menge von
+**4.789** (17:45 UTC) auf **644** (19:52) und blieb über drei Läufe dort,
+bevor sie sich von selbst erholte (6.807 am 21.09., 01:56). Jede der 16
+Regionen war binnen vier Minuten „abgearbeitet" — die Signatur eines
+Soft-Blocks auf der Ergebnisliste, nicht eines leeren Marktes.
+
+**Was gut war:** Die Löschwache hat gehalten. Im Log steht
+`immowelt: Loeschung ausgesetzt (strukturell teilweise, erwartet) — Sweep war
+unvollständig`. Kein einziges Objekt wurde fälschlich als Abgang markiert.
+Genau dafür ist die Fail-closed-Umstellung gebaut, und sie hat unter echter
+Belastung funktioniert.
+
+**Was fehlt:** Es gab **keine Warnzeile**. `pruefeMengenplausibilitaet`
+(`lib/plausibilitaet.ts`) prüft als Erstes `!vollstaendig` und kehrt sofort
+mit „Sweep war unvollständig." zurück — der Mengenvergleich dahinter wird bei
+Immowelt nie erreicht, weil `vollstaendig` dort strukturell hart `false` ist.
+Für die Löschentscheidung ist das richtig. Für das **Bemerken** ist es eine
+Lücke: Die 641 stehen in einer Logzeile, die jemand lesen müsste.
+
+**Vorsicht bei der Behebung:** Die Wache darf ihre Reihenfolge **nicht**
+ändern — „unvollständig" muss weiterhin zuerst und fail-closed greifen. Eine
+Warnung ist etwas anderes als eine Erlaubnis, und beides in dieselbe Funktion
+zu legen wäre genau die Vermischung, die B-2 aufgeräumt hat. Der Ort ist eher
+eine eigene, rein meldende Prüfung gegen die Sweep-Historie, die es mit
+`ladeSweepHistorie` schon gibt.
+
+**Offen ist auch die Schwelle.** Faktor 7 ist eindeutig, aber der normale Lauf
+schwankt von Natur aus stark: 4.789 gegen 6.807 sind beides gesunde Läufe, je
+nachdem, welche Region die Rotation erwischt. Eine Warnung, die das nicht
+berücksichtigt, meldet ständig — und eine Warnung, die 94 % der Läufe trägt,
+warnt vor nichts (die Lehre aus 3.6).
 
 
 # Teil C — Bewusst zurückgestellt
