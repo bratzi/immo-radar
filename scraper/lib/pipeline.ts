@@ -247,8 +247,22 @@ export async function processCandidate(
    * gesendet -- das ist nur fuer Tests gedacht, der Produktivlauf reicht immer
    * eines herein.
    */
-  meldebudget?: Meldebudget
+  meldebudget?: Meldebudget,
+  /**
+   * Warteschlange fuer den MELDETEIL. Laufen mehrere Kandidaten gleichzeitig
+   * (siehe `inBloecken`), muss alles ab der Meldeklasse nacheinander laufen:
+   * Zwischen `darfSenden` und `verbuchen` liegt ein Telegram-Versand, und
+   * zwei parallele Meldungen saehen dasselbe freie Kontingent. Auch Telegrams
+   * Sendeabstand haelt nur in der Reihe.
+   *
+   * Fehlt sie, laeuft alles wie bisher unmittelbar -- der Rechen- und
+   * Schreibteil darf und soll nebenlaeufig sein, nur dieser Block nicht.
+   */
+  serialisiere?: <T>(aufgabe: () => Promise<T>) => Promise<T>
 ): Promise<void> {
+  // Ohne Warteschlange: unmittelbar ausfuehren. Damit bleibt jeder
+  // bestehende Aufrufer und jeder Test unveraendert gueltig.
+  const inReihe = serialisiere ?? (<T>(aufgabe: () => Promise<T>) => aufgabe());
   const einheiten = bewerteEinheiten(candidate.units, candidate.unitsConfident);
   if (einheiten.ausschliessen) {
     console.log(
@@ -351,6 +365,7 @@ export async function processCandidate(
   });
 
   if (klasse !== "keine") {
+    await inReihe(async () => {
     const bereitsGemeldet = await hoechsteGemeldeteKlasse(supabase, diff.listingId);
     const meldenNoetig = sollGesendetWerden(klasse, bereitsGemeldet);
     // Budgetwache VOR dem Versand. Ist das Budget des Laufs aufgebraucht, wird
@@ -436,11 +451,18 @@ export async function processCandidate(
     } else if (meldenNoetig) {
       await sendeMeldung();
     }
+    });
   }
 
   // Auch die Preisaenderung ist eine Telegram-Nachricht und zaehlt gegen
   // dasselbe Budget.
   if (diff.priceDropped && diff.previousPriceCents !== null) {
+    // Vor der Warteschlange festhalten: Innerhalb des Closures verliert
+    // TypeScript die Gewissheit, dass der Wert nicht null ist -- und die
+    // Gewissheit ist hier keine Formsache, denn aus alt und neu wird die
+    // Preissenkung gerechnet.
+    const altPreisCents = diff.previousPriceCents;
+    await inReihe(async () => {
     if (meldebudget !== undefined && !meldebudget.darfSenden()) {
       meldebudget.zurueckstellen();
       return;
@@ -448,19 +470,20 @@ export async function processCandidate(
     await schlafe(TELEGRAM_SENDEABSTAND_MS);
     const preisMessageId = await sendTelegramMessage(
       telegramConfig,
-      formatPreisaenderungMessage(listingSummary, diff.previousPriceCents, candidate.priceCents)
+      formatPreisaenderungMessage(listingSummary, altPreisCents, candidate.priceCents)
     );
     await logNotification(
       supabase,
       diff.listingId,
       "preisaenderung",
       {
-        altPreisCents: diff.previousPriceCents,
+        altPreisCents,
         neuPreisCents: candidate.priceCents,
         ...versandBeleg(preisMessageId, process.env.GITHUB_RUN_ID),
       },
       `${candidate.source} · ${candidate.externalId}`
     );
     meldebudget?.verbuchen();
+    });
   }
 }

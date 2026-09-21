@@ -23,6 +23,7 @@ import {
   type SweepErgebnis,
 } from "./lib/bestand.js";
 import { pruefeMengenplausibilitaet } from "./lib/plausibilitaet.js";
+import { inBloecken, serialisierer } from "./lib/nebenlaeufig.js";
 import {
   ladeBekannteListings,
   ladeVeralteteExternalIds,
@@ -182,6 +183,43 @@ const MAX_DETAILS_IMMOWELT = 25;
 const TELEGRAM_SENDEABSTAND_MS = 500;
 
 /**
+ * Wie viele Immowelt-Objekte gleichzeitig bewertet werden.
+ *
+ * DAS GEMESSENE PROBLEM: Ein bewertetes Objekt kostet rund 0,6 s, und fast
+ * alles davon ist Warten auf die Datenbank -- `upsertListingAndVersion`
+ * macht drei Runden nacheinander bei rund 100 ms Umlaufzeit. Auf den Deckel
+ * von `MAX_BEWERTUNGEN_IMMOWELT` gerechnet sind das sechs Minuten, mehr als
+ * der Sweep selbst braucht (gemessen am Lauf 35539155621).
+ *
+ * WAS DAS KOSTET, und zwar nicht an Zeit: Bei 600 Bewertungen je Lauf, real
+ * 4,5 Laeufen am Tag und ueber 23.000 Objekten im Bestand wird ein Objekt
+ * nur alle **8,5 Tage** neu bewertet. So spaet faellt eine Preissenkung auf
+ * -- bei einem Werkzeug, dessen Kernversprechen Preissenkungen sind.
+ *
+ * WARUM 6 UND NICHT 20: Die Gegenseite ist hier die eigene Datenbank, nicht
+ * ein fremdes Portal -- es gibt also keine Drossel zu beachten. Aber
+ * Supabase deckelt gleichzeitige Anfragen, und ein Lauf, der in sein Limit
+ * rennt, ist teurer als einer, der eine Minute laenger braucht. Sechs ist
+ * bewusst vorsichtig; wer ihn anhebt, misst vorher die Laufzeit UND die
+ * Fehlerzahl im Log.
+ *
+ * DER RUECKWEG IST DIESE ZAHL: `1` ergibt exakt das alte Verhalten, Objekt
+ * fuer Objekt. Macht Nebenlaeufigkeit im Betrieb Aerger, genuegt diese eine
+ * Aenderung -- kein Umbau.
+ */
+const BEWERTUNGSBREITE = 6;
+
+/**
+ * Die Warteschlange, durch die JEDE Meldung dieses Laufs geht.
+ *
+ * Eine einzige fuer den ganzen Lauf, nicht eine je Quelle: Telegrams
+ * Sendeabstand und das Meldebudget gelten quellenuebergreifend. Zwei
+ * Warteschlangen wuerden beide fuer sich die Reihe halten und trotzdem
+ * gleichzeitig senden.
+ */
+const MELDEREIHE = serialisierer();
+
+/**
  * Waehlt die Kandidatenscheibe dieses Laufs und schreibt die Log-Zeile dazu.
  * Auswahl und Meldung stecken in `budgetiereKandidaten` (lib/bestand.ts) --
  * dort sind sie unter Test, hier waren sie es nie.
@@ -233,10 +271,15 @@ function zaehleOhnePreis(
 async function verarbeiteKandidatIsoliert(
   telegramConfig: TelegramConfig,
   candidate: PipelineCandidate,
-  meldebudget: Meldebudget
+  meldebudget: Meldebudget,
+  /**
+   * Warteschlange fuer den Meldeteil. Nur noetig, wenn mehrere Kandidaten
+   * gleichzeitig laufen -- siehe `MELDEREIHE` und `BEWERTUNGSBREITE`.
+   */
+  serialisiere?: <T>(aufgabe: () => Promise<T>) => Promise<T>
 ): Promise<void> {
   try {
-    await processCandidate(sb, telegramConfig, candidate, meldebudget);
+    await processCandidate(sb, telegramConfig, candidate, meldebudget, serialisiere);
   } catch (err) {
     console.error(
       `Kandidat fehlgeschlagen, uebersprungen [${candidate.source} · ${candidate.externalId} · ${candidate.url}]:`,
@@ -517,8 +560,15 @@ async function main() {
     )
   );
 
-  for (const zusammenfassung of immowelt.zusammenfassungen.values()) {
-    if (!immoweltAuswahl.has(zusammenfassung.externalId)) continue;
+  // NEBENLAEUFIG, mit EINER Ausnahme: Der Meldeteil laeuft durch
+  // `MELDEREIHE` und damit weiterhin streng nacheinander. Alles davor --
+  // rechnen und schreiben -- ist reines Warten auf die Datenbank und
+  // kostet nebeneinander nicht mehr als hintereinander. Begruendung und
+  // Rueckweg stehen bei `BEWERTUNGSBREITE`.
+  const zuBewerten = [...immowelt.zusammenfassungen.values()].filter((z) =>
+    immoweltAuswahl.has(z.externalId)
+  );
+  await inBloecken(zuBewerten, BEWERTUNGSBREITE, async (zusammenfassung) => {
     // Die Detailseite legt sich ueber die Titelzeile; wo sie schweigt, bleibt
     // die Titelzeile stehen (scrapers/immowelt/zusammenfuehren.ts).
     const werte = fuegeDetailHinzu(
@@ -567,7 +617,7 @@ async function main() {
           err
         );
       }
-      continue;
+      return;
     }
     immoweltBewertet += 1;
     await verarbeiteKandidatIsoliert(telegramConfig, {
@@ -596,8 +646,8 @@ async function main() {
       caseNumber: null,
       rawNoticeText: null,
       photoUrls: werte.fotoUrls,
-    }, meldebudget);
-  }
+    }, meldebudget, MELDEREIHE);
+  });
   console.log(
     `Immowelt: ${immoweltBewertet} von ${immowelt.zusammenfassungen.size} gesehenen Objekten ` +
       `aus der Ergebnisliste bewertet, ${fasseOhnePreisZusammen(immoweltOhnePreis)}`
@@ -617,7 +667,8 @@ async function main() {
     await verarbeiteKandidatIsoliert(
       telegramConfig,
       kandidatAusDetail(detail, immoweltDetailFundort.get(detail.externalId) ?? null),
-      meldebudget
+      meldebudget,
+      MELDEREIHE
     );
   }
   if (immoweltDetails.size > 0) {
@@ -671,7 +722,7 @@ async function main() {
       // `ladeVeralteteExternalIds` holte dieselben Termine in JEDEM Lauf
       // erneut -- ein stehender Rueckstand, nur teurer.
       detailGelesen: true,
-    }, meldebudget);
+    }, meldebudget, MELDEREIHE);
   }
   // Die Bekanntmachung wurde gelesen, sie nennt nur keinen verwertbaren
   // Verkehrswert (A-4, Aufgabe 2 -- Gegenstueck zum Immowelt-Fall oben).
