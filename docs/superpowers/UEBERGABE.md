@@ -1,3 +1,90 @@
+# Übergabe — Stand 2026-09-21 (zweite Sitzung des Tages)
+
+## Die Detailphase läuft jetzt vor dem Sweep — und der ZVG-Link funktioniert wieder
+
+### Weg (e) ist gebaut: ein Lauf, Detailphase zuerst
+
+**Entscheidung des Nutzers: in einem Lauf, nicht in einem zweiten Workflow.**
+Die Detailphase steht jetzt **vor** `sweepImmowelt`. Damit läuft sie auf
+demselben unverbrauchten Runner wie die Diagnose — ohne zweiten Workflow,
+ohne zweiten Schreiber auf dieselben Tabellen, ohne überlappende Läufe.
+
+**Die Begründung in zwei Zeilen:**
+
+```
+frischer Runner (Diagnose, ~6 Abrufe):      6 von 10 mit HTTP 200
+nach vollem Sweep (drei Produktionslaeufe): 0 von 75
+```
+
+**Wer den Block verschiebt, macht ihn wirkungslos.** Das steht so im Code.
+
+Zwei Bausteine waren dafür nötig. **`ladeDetailRueckstand`** holt die
+Kandidaten aus `listings` — vor dem Sweep gibt es keine Zusammenfassungen,
+und der Rückstand liegt ohnehin im Altbestand. Sie liefert `externalId`,
+`url` **und** `fundort` in einer Abfrage; der Fundort ist die Wache vor der
+Löschung. **`kandidatAusDetail`** schreibt die Objekte, die der Sweep dieses
+Laufs nicht gesehen hat — der Normalfall, denn die Scheibe wählt über alle
+16 Regionen, der Sweep deckt eine ab. Ohne diesen Weg wären fast alle
+Abrufe umsonst gewesen.
+
+**Möglich wurde das erst durch die Korrektur an `last_detail_at`** (B8-1,
+`ef934fe`): Vorher trug das Feld bei jedem Upsert einen Zeitstempel und
+taugte nicht als Rückstandsfilter.
+
+**Was es nicht ist: ein Sieg über die Sperre.** Vier von zehn Abrufen
+scheitern weiterhin. Der Deckel von 25 bleibt die laufende Messung — die
+Zeile `Immowelt-Detail: n von 25` ist weiterhin die Zahl, die man liest.
+
+### Der ZVG-Link führte immer auf „error" — Befund des Nutzers, behoben
+
+**Ursache:** zvg-portal.de verlangt einen Referer der eigenen Domain. Ein
+Klick aus dem Dashboard ist immer Cross-Origin, und Browser senden dabei
+standardmäßig nur den Origin. Der gespeicherte Direktlink
+(`index.php?button=showZvg&zvg_id=…`) **konnte von dort aus nie
+funktionieren** — er antwortet mit HTTP 200 und dem Body `error`. Derselbe
+Mechanismus ist im Scraper seit Langem bekannt: `ladeDatei` setzt für
+ZVG-PDFs eigens einen Referer.
+
+**Lösung:** die Terminsuche des Portals, vorbelegt mit Bundesland und PLZ.
+Sie ist **POST** — ein `<a href>` kann sie nicht aufrufen, ein
+`<form method="post" target="_blank">` schon. Formulare unterliegen nicht
+CORS; geprüft antwortet die Suche ohne Referer, mit fremdem Referer und mit
+Origin-Header gleichermaßen. **Zwei Felder genügen** (`land_abk`, `plz`).
+
+**Gemessen an 60 Objekten:** 57 gefunden, 33 davon neben ein bis drei
+weiteren Treffern. Die übrigen drei sind im Dashboard als **abgängig**
+markiert — sie existieren im Portal nicht mehr, die Suche findet korrekt
+nichts. Bezogen auf die noch existierenden Objekte also **57 von 57**.
+
+**Eine Falle, durch einen Test festgenagelt:** `logik/karte.ts` schreibt
+Brandenburg als `BB`. Das ZVG-Portal kennt nur `br` und antwortet auf `bb`
+mit „falsche Parameter übergeben". `logik/zvgSuche.ts` hat deshalb eine
+**eigene** Tabelle und erbt die der Karte nicht.
+
+## Weitere Ergebnisse dieser Sitzung
+
+| | |
+|---|---|
+| **B8-1** | `last_detail_at` hängt jetzt wirklich am Schalter. **Weglassen statt null** — ein null löschte den Zeitstempel eines Objekts, das früher sehr wohl erfasst wurde. ZVG setzt ihn ausdrücklich auf `true`, sonst wäre aus der Korrektur eine Regression geworden |
+| **Bilddeckel** | `MAX_BILDER_JE_OBJEKT` griff nur beim Versand. 40 Fotos wurden geladen, 30 verschickt. Auffällig wurde es erst, weil `photoUrls` bis zur Detailphase **toter Code** war |
+
+## Drei Fallen dieser Sitzung
+
+- **Eine Messung, die überall dasselbe meldet, misst meistens sich selbst.**
+  Der Vergleich „ist die gesuchte ZVG-Id in den Treffern?" sagte achtmal
+  NEIN — weil Python unter Windows CRLF schreibt und das `` an der Id
+  klebte. Die Suche war die ganze Zeit richtig. Dieselbe Falle schlug
+  vorher schon beim E-7-Browsercheck zu.
+- **Ein Formular hat mehr Felder, als die Seite zeigt.** Die sichtbare
+  ZVG-Maske kennt Bundesland, Amtsgericht und Aktenzeichen — im HTML stehen
+  zusätzlich `plz`, `ort`, `ortsteil`, `str` und `hnr`. Ein Blick auf die
+  gerenderte Seite hätte die Lösung übersehen.
+- **Ein typografisches Anführungszeichen beendet einen String.**
+  `describe("… „Objekte ohne Region" …")` erscheint als „0 Tests gefunden",
+  nicht als Syntaxfehler an der Zeile.
+
+---
+
 # Übergabe — Stand 2026-09-21
 
 ## Die Detailsperre besteht — die Messung aus B6 ist da und sie ist negativ

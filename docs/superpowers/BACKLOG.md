@@ -1922,12 +1922,44 @@ Befunde geführt werden:
 > **vier von zehn scheitern weiterhin.** Der Weg macht die Sache möglich,
 > nicht zuverlässig.
 >
-> Die Detailphase kostet derzeit rund zwei Minuten je Lauf für null Felder.
-> Sie bleibt vorerst stehen, weil sie die Messung ist — aber die Entscheidung
-> darüber gehört dem Nutzer, und sie hängt an **Weg (d) aus Schritt 2**:
-> Detailseiten von einer nicht gesperrten Adresse holen. Das ist eine
-> Infrastrukturfrage, keine Codefrage, und es ist jetzt die **einzige**
-> verbliebene Antwort auf „einheitliche Infos ganzheitlich auslesen".
+> ### WEG (e) IST GEBAUT (2026-09-21): DIE PHASE LÄUFT VOR DEM SWEEP
+>
+> **Entscheidung des Nutzers: in einem Lauf, nicht in einem zweiten
+> Workflow.** Die Detailphase steht jetzt **vor** `sweepImmowelt` in
+> `main.ts` — damit läuft sie auf demselben unverbrauchten Runner wie die
+> Diagnose, ohne zweiten Workflow, ohne zweiten Schreiber auf dieselben
+> Tabellen und ohne die Frage, was bei überlappenden Läufen geschieht.
+>
+> **Wer den Block verschiebt, macht ihn wirkungslos.** Das steht so auch im
+> Code.
+>
+> **Zwei Dinge mussten dafür neu gebaut werden:**
+>
+> 1. **`ladeDetailRueckstand`** (`lib/bestandDb.ts`). Vor dem Sweep gibt es
+>    keine Zusammenfassungen, die Kandidaten kommen also aus `listings` —
+>    und das ist ohnehin der richtige Ort, denn der Rückstand liegt im
+>    Altbestand. Sie liefert `externalId`, `url` **und** `fundort` in einer
+>    Abfrage; der Fundort ist die Wache vor der Löschung und darf auf diesem
+>    Weg nicht verloren gehen. Abgängige Objekte bleiben draußen.
+> 2. **`kandidatAusDetail`** (`scrapers/immowelt/zusammenfuehren.ts`). Die
+>    Detailscheibe wählt über alle 16 Regionen, der Sweep deckt eine einzige
+>    ab — die meisten im Detail erfassten Objekte stehen gar nicht in der
+>    Ergebnisliste dieses Laufs. Ohne diesen Weg wären fast alle Abrufe
+>    umsonst gewesen. Steht ein Objekt doch in beiden, gewinnt weiterhin
+>    `fuegeDetailHinzu` die Detailseite.
+>
+> **Möglich wurde das erst durch die Korrektur an `last_detail_at` (B8-1).**
+> Vorher trug das Feld bei jedem Upsert einen Zeitstempel und taugte nicht
+> als Rückstandsfilter; jetzt sagt es die Wahrheit, und der Rückstand baut
+> sich ohne Wiederholungen ab.
+>
+> **Was das NICHT ist: ein Sieg über die Sperre.** Vier von zehn Abrufen
+> scheitern weiterhin. Der Deckel von 25 hält den Preis eines schlechten
+> Tages klein und bleibt zugleich die laufende Messung — die Logzeile
+> `Immowelt-Detail: n von 25` ist weiterhin die Zahl, die man liest.
+>
+> **Weg (d) bleibt offen** — Detailseiten von einer nicht gesperrten Adresse
+> — und wäre die Antwort, falls die 60 % nicht reichen.
 
 - [ ] **Schritt 4, neu: Die Messung lesen.** Nach dem ersten Produktionslauf
       mit der neuen Phase die Zeile `Immowelt-Detail: n von 25` auswerten und
