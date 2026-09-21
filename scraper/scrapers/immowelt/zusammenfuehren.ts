@@ -84,3 +84,67 @@ export function fuegeDetailHinzu(
     detailGelesen: true,
   };
 }
+
+/**
+ * Die Felder eines Objekts, das NUR aus seiner Detailseite bekannt ist.
+ *
+ * WOZU: Die Detailscheibe waehlt aus `listings`, also aus dem Altbestand --
+ * der Sweep desselben Laufs deckt dagegen eine einzelne Region ab. Die
+ * meisten im Detail erfassten Objekte tauchen in diesem Lauf also gar nicht
+ * in der Ergebnisliste auf. Ohne diesen Weg waere ihr Abruf umsonst gewesen.
+ *
+ * Es gibt hier keine Titelzeile, gegen die etwas abzuwaegen waere: Die
+ * Detailseite ist die einzige Quelle, und sie ist die genauere.
+ */
+export function kandidatAusDetail(
+  detail: ImmoweltDetailData,
+  fundort: string | null
+): {
+  source: string;
+  externalId: string;
+  url: string;
+  fundort: string | null;
+  title: string;
+  priceCents: number;
+  livingAreaM2: number | null;
+  plotAreaM2: number | null;
+  units: number | null;
+  unitsConfident: boolean;
+  yearBuilt: number | null;
+  zipCode: string;
+  city: string;
+  rentColdMonthly: number | null;
+  auctionAt: null;
+  court: null;
+  caseNumber: null;
+  rawNoticeText: null;
+  photoUrls: string[];
+  detailGelesen: true;
+} {
+  return {
+    source: "immowelt",
+    externalId: detail.externalId,
+    url: detail.url,
+    // Der Fundort ist die Wache vor der Loeschung: Ohne ihn gilt ein Objekt
+    // als nicht zuzuordnen und ist damit nie ein Abgang. Er kommt aus dem
+    // Bestand, weil die Detailseite ihn nicht nennt -- ihn hier fallen zu
+    // lassen waere schlimmer als die Felder, die der Abruf gerade geholt hat.
+    fundort,
+    title: detail.title,
+    priceCents: detail.priceCents,
+    livingAreaM2: detail.livingAreaM2,
+    plotAreaM2: detail.plotAreaM2,
+    units: detail.units,
+    unitsConfident: detail.units !== null && detail.unitsConfident,
+    yearBuilt: detail.yearBuilt,
+    zipCode: detail.zipCode,
+    city: detail.city,
+    rentColdMonthly: detail.rentColdMonthly,
+    auctionAt: null,
+    court: null,
+    caseNumber: null,
+    rawNoticeText: null,
+    photoUrls: detail.photoUrls,
+    detailGelesen: true,
+  };
+}

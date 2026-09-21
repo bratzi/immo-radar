@@ -3,8 +3,9 @@ import {
   erfasseImmoweltDetails,
   IMMOWELT_VERZOEGERUNG_MS,
 } from "./scrapers/immowelt/index.js";
-import { fuegeDetailHinzu } from "./scrapers/immowelt/zusammenfuehren.js";
+import { fuegeDetailHinzu, kandidatAusDetail } from "./scrapers/immowelt/zusammenfuehren.js";
 import type { ImmoweltDetailData } from "./scrapers/immowelt/detail.js";
+import type { ImmoweltListSummary } from "./scrapers/immowelt/list.js";
 import {
   sweepZvgPortal,
   erfasseZvgDetails,
@@ -25,6 +26,7 @@ import { pruefeMengenplausibilitaet } from "./lib/plausibilitaet.js";
 import {
   ladeBekannteListings,
   ladeVeralteteExternalIds,
+  ladeDetailRueckstand,
   quelleHatLoeschhoheit,
   markiereVerschwunden,
   hebeVerschwundenAuf,
@@ -150,18 +152,19 @@ const MAX_BEWERTUNGEN_IMMOWELT = 600;
 /**
  * Hoechstzahl Immowelt-Detailseiten, die ein Lauf holt.
  *
- * WARUM ES DIESE PHASE WIEDER GIBT: Immowelts /expose/-Sperre fuer
- * Rechenzentrums-Adressen besteht nicht mehr. Gemessen am 2026-09-20 aus
- * GitHub Actions heraus (Lauf 35535674960, `pruefung.yml`, Skript
- * `diagnose-detail`): 5 von 5 Abrufen HTTP 200 mit vollem Datenmodell, wo am
- * 2026-09-07 noch 144 von 144 scheiterten. Details stehen in BACKLOG.md B6.
+ * WARUM ES DIESE PHASE GIBT: Sie ist der einzige Weg zu PLZ, Baujahr und
+ * Kaltmiete -- die Titelzeile der Ergebnisliste nennt keines davon, und ihr
+ * Fehlen ist die Wurzel von 97,4 % ohne PLZ, 0,3 % mit Baujahr und der nur
+ * bundeslandgenauen Mietschaetzung (A11).
  *
- * WARUM NUR 25: Der erste Lauf ist eine MESSUNG, kein Nachfuellen. Drei
- * Fragen sind ausdruecklich offen und werden erst von dieser Phase
- * beantwortet -- ob die Sperre bei Menge zurueckkommt (DataDome misst die
- * Abrufrate, fuenf Abrufe sagen nichts ueber 144 am Stueck), ob
- * `parseImmoweltDetailPage` die Seite von heute noch liest, und wie viel
- * Zeit es wirklich kostet.
+ * WARUM SIE VOR DEM SWEEP STEHT: Ein Runner, der gerade Hunderte Suchseiten
+ * geholt hat, bekommt auf /expose/ nur noch HTTP 403; ein frischer nicht.
+ * Gemessen 6 von 10 gegen 0 von 75 (BACKLOG.md B6, Schritt 4). Die
+ * Reihenfolge ist deshalb keine Geschmacksfrage, sondern die Bedingung.
+ *
+ * WARUM NUR 25: Weil die Sperre nicht besiegt, sondern nur umgangen ist --
+ * vier von zehn Abrufen scheitern weiterhin. Der Deckel haelt den Preis
+ * eines schlechten Tages klein und ist zugleich die laufende Messung.
  *
  * DIE RECHNUNG: Eine Immowelt-Seite kostet gemessen 8,7 bis 11,5 s -- 5 s
  * Drossel plus echte Ladezeit. 25 Abrufe sind damit rund 4 min. Der laengste
@@ -403,7 +406,71 @@ async function main() {
   // Liste, statt immer denselben Kopf zu greifen und den Rest auszuhungern.
   const detailVersatz = Math.floor(Date.now() / 3_600_000);
 
-  // --- Immowelt ---------------------------------------------------------
+  // --- Immowelt: Detailphase ZUERST -------------------------------------
+  //
+  // DIE REIHENFOLGE IST DER GANZE PUNKT. Immowelts /expose/-Seiten antworten
+  // einem Runner, der gerade Hunderte Suchseiten geholt hat, mit HTTP 403 --
+  // einem frischen Runner dagegen nicht. Gemessen am 2026-09-20/21:
+  //
+  //   frischer Runner (Diagnose, ~6 Abrufe):   6 von 10 mit HTTP 200
+  //   nach vollem Sweep (drei Produktionslaeufe): 0 von 75
+  //
+  // Nicht die Uhrzeit (beide Diagnosen lagen zwischen Produktionslaeufen),
+  // nicht die URL-Form (am Log als identisch belegt), nicht die Detailphase
+  // selbst (der Einbruch begann vor ihrem Einhaengen) -- sondern der Ruf der
+  // Adresse, den der Sweep verbraucht. Deshalb steht dieser Block VOR
+  // `sweepImmowelt` und nicht dahinter. Wer ihn verschiebt, macht ihn
+  // wirkungslos; die Herleitung steht in BACKLOG.md B6, Schritt 4.
+  //
+  // Die Kandidaten kommen aus `listings`, nicht aus dem Sweep: Zu diesem
+  // Zeitpunkt gibt es noch keinen, und der Rueckstand liegt ohnehin im
+  // Altbestand -- ueber 20.000 Objekte ohne PLZ, Baujahr und Kaltmiete.
+  const immoweltDetails = new Map<string, ImmoweltDetailData>();
+  const immoweltDetailFundort = new Map<string, string | null>();
+  const detailRueckstand = await ladeDetailRueckstand(sb, "immowelt", detailGrenze);
+  const detailZiele = budgetiereDetailKandidaten(
+    "Immowelt-Detail",
+    MAX_DETAILS_IMMOWELT,
+    detailRueckstand.map((z) => z.externalId),
+    detailVersatz
+  );
+  if (detailZiele.length > 0) {
+    // `erfasseImmoweltDetails` erwartet die Zusammenfassungen eines Sweeps.
+    // Hier gibt es keinen -- gebraucht werden daraus nur `externalId` und
+    // `url`, und beide stehen im Bestand. Die Titelzeile bleibt leer, weil
+    // es keine gibt; die Detailseite traegt ohnehin alles.
+    const ausBestand = new Map<string, ImmoweltListSummary>();
+    for (const zeile of detailRueckstand) {
+      ausBestand.set(zeile.externalId, {
+        externalId: zeile.externalId,
+        url: zeile.url,
+        titleLine: "",
+        fundort: zeile.fundort,
+      });
+      immoweltDetailFundort.set(zeile.externalId, zeile.fundort);
+    }
+    // Gekapselt wie jeder Abschnitt, der ein fremdes Portal anfasst: Bricht
+    // die Detailphase im Ganzen weg -- Browserstart, Consent, Aufwaermseite
+    // --, ist das ein Verlust an Feldern, kein Grund, den Lauf abzubrechen.
+    // Ungekapselt risse sie beide Sweeps, den Bestandsabgleich und den
+    // Loeschblock mit sich; deren Ausfall waere um ein Vielfaches teurer.
+    try {
+      const erfasst = await erfasseImmoweltDetails(ausBestand, detailZiele);
+      for (const detail of erfasst) immoweltDetails.set(detail.externalId, detail);
+    } catch (err) {
+      console.error("Immowelt-Detailphase fehlgeschlagen, Lauf geht ohne sie weiter:", err);
+    }
+    // DIESE ZAHL IST DIE MESSUNG. Steht dort 0, sagen die Zeilen darueber
+    // (`beurteileDetailAntwort`), ob eine Sperre oder eine
+    // Strukturaenderung geantwortet hat -- das eine verlangt Drosselung, das
+    // andere den Parser. Vor jedem Anheben von MAX_DETAILS_IMMOWELT: lesen.
+    console.log(
+      `Immowelt-Detail: ${immoweltDetails.size} von ${detailZiele.length} ` +
+        `Detailseiten gelesen (Rueckstand insgesamt ${detailRueckstand.length}).`
+    );
+  }
+
+  // --- Immowelt: Sweep --------------------------------------------------
   // Wo der letzte Lauf aufgehoert hat. Der Sweep setzt dort fort, statt seinen
   // Startpunkt aus der Wanduhr zu ziehen -- der billigste Hebel gegen die
   // langsame Abdeckung (5,7 statt 13,1 Tage, ohne einen zusaetzlichen Abruf;
@@ -433,15 +500,11 @@ async function main() {
   //  * Das Baujahr.
   //  * Die Kaltmiete.
   //
-  // DIE DETAILPHASE ist seit dem 2026-09-20 wieder eingehaengt, weil die
-  // Sperre weg ist, die sie am 2026-09-08 ausgehaengt hat: Immowelts
-  // /expose/-Seiten antworteten Rechenzentrums-Adressen mit HTTP 403 und
-  // einem DataDome-CAPTCHA -- 144 von 144 Abrufen je Lauf scheiterten so.
-  // Nachgemessen aus GitHub Actions heraus: 5 von 5 HTTP 200 mit vollem
-  // Datenmodell (BACKLOG.md B6, Schritt 1).
-  //
-  // Sie holt `MAX_DETAILS_IMMOWELT` Seiten, nicht mehr -- der erste Lauf ist
-  // eine Messung, kein Nachfuellen. Die Begruendung des Deckels steht dort.
+  // DIE DETAILPHASE lief bereits, ganz zu Anfang dieses Laufs -- vor dem
+  // Sweep, weil ihre Abrufe nur auf einem unverbrauchten Runner durchkommen.
+  // Was sie geholt hat, liegt in `immoweltDetails` und legt sich hier ueber
+  // die Titelzeile. Die meisten ihrer Objekte stehen aber gar nicht in
+  // dieser Ergebnisliste; die holt der Block hinter der Schleife ab.
   let immoweltBewertet = 0;
   const immoweltOhnePreis: { fundort: string | null; titleLine: string }[] = [];
   // Rotierende Scheibe: nicht alle gesehenen Objekte in einem Lauf bewerten.
@@ -453,50 +516,6 @@ async function main() {
       detailVersatz
     )
   );
-
-  // Detailscheibe: eine zweite, viel kleinere Rotation INNERHALB der
-  // Bewertungsauswahl. Nur wer bewertet wird, kann von einer Detailseite
-  // ueberhaupt profitieren, und nur wer gerade gesehen wurde, hat eine URL.
-  //
-  // WARUM NICHT `ladeVeralteteExternalIds` wie bei ZVG: `listingUpsertZeile`
-  // setzt `last_detail_at` bei JEDEM Upsert, auch wenn nie eine Detailseite
-  // gelesen wurde (lib/db.ts) -- fuer Immowelt ist das Feld deshalb kein
-  // brauchbarer Rueckstandsfilter. Der saubere Filter waere "hat noch keine
-  // PLZ", aber `zip_code` liegt auf `listing_versions`, nicht auf `listings`,
-  // und braucht damit eine neue Abfrage ueber die jeweils neueste Version.
-  // Beides ist als eigener Punkt notiert. Fuer 25 Messabrufe genuegt die
-  // wandernde Scheibe -- sie laeuft ueber den ganzen Bestand, nur langsam.
-  const immoweltDetailAuswahl = budgetiereDetailKandidaten(
-    "Immowelt-Detail",
-    MAX_DETAILS_IMMOWELT,
-    [...immoweltAuswahl],
-    detailVersatz
-  );
-
-  // Gekapselt wie jeder Abschnitt, der ein fremdes Portal anfasst: Bricht die
-  // Detailphase im Ganzen weg -- Browserstart, Consent, Aufwaermseite --, ist
-  // das ein Verlust an Feldern, kein Grund, den Lauf abzubrechen. Ungekapselt
-  // risse sie den ZVG-Sweep, den Bestandsabgleich und den Loeschblock mit
-  // sich; deren Ausfall waere um ein Vielfaches teurer als eine fehlende PLZ.
-  const immoweltDetails = new Map<string, ImmoweltDetailData>();
-  if (immoweltDetailAuswahl.length > 0) {
-    try {
-      const erfasst = await erfasseImmoweltDetails(
-        immowelt.zusammenfassungen,
-        immoweltDetailAuswahl
-      );
-      for (const detail of erfasst) immoweltDetails.set(detail.externalId, detail);
-      console.log(
-        `Immowelt-Detail: ${immoweltDetails.size} von ${immoweltDetailAuswahl.length} ` +
-          `Detailseiten gelesen.`
-      );
-    } catch (err) {
-      // Die Zahl daneben ist der eigentliche Befund: 0 von 25 heisst Sperre
-      // oder Strukturaenderung, nicht Pech. `beurteileDetailAntwort` sagt in
-      // den Zeilen darueber, welches von beidem.
-      console.error("Immowelt-Detailphase fehlgeschlagen, Lauf geht ohne sie weiter:", err);
-    }
-  }
 
   for (const zusammenfassung of immowelt.zusammenfassungen.values()) {
     if (!immoweltAuswahl.has(zusammenfassung.externalId)) continue;
@@ -583,6 +602,30 @@ async function main() {
     `Immowelt: ${immoweltBewertet} von ${immowelt.zusammenfassungen.size} gesehenen Objekten ` +
       `aus der Ergebnisliste bewertet, ${fasseOhnePreisZusammen(immoweltOhnePreis)}`
   );
+
+  // Im Detail erfasst, aber vom Sweep dieses Laufs NICHT gesehen.
+  //
+  // Der Normalfall, nicht die Ausnahme: Die Detailscheibe waehlt aus dem
+  // Altbestand ueber alle 16 Regionen, der Sweep deckt in einem Lauf eine
+  // einzige ab. Ohne diesen Block waeren fast alle Detailabrufe umsonst --
+  // die Bewertungsschleife oben erreicht nur, was auch in der Ergebnisliste
+  // stand.
+  let nurAusDetail = 0;
+  for (const detail of immoweltDetails.values()) {
+    if (immowelt.zusammenfassungen.has(detail.externalId)) continue;
+    nurAusDetail += 1;
+    await verarbeiteKandidatIsoliert(
+      telegramConfig,
+      kandidatAusDetail(detail, immoweltDetailFundort.get(detail.externalId) ?? null),
+      meldebudget
+    );
+  }
+  if (immoweltDetails.size > 0) {
+    console.log(
+      `Immowelt-Detail: ${nurAusDetail} von ${immoweltDetails.size} erfassten Objekten ` +
+        `standen nicht in der Ergebnisliste dieses Laufs und wurden einzeln geschrieben.`
+    );
+  }
 
   // --- ZVG-Portal -------------------------------------------------------
   console.log("ZVG-Portal: Sweep gestartet...");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fuegeDetailHinzu } from "./zusammenfuehren.js";
+import { fuegeDetailHinzu, kandidatAusDetail } from "./zusammenfuehren.js";
 import type { TitelzeilenWerte } from "./titelzeile.js";
 import type { ImmoweltDetailData } from "./detail.js";
 
@@ -110,5 +110,51 @@ describe("fuegeDetailHinzu — lueckenhafte Detailseite", () => {
     // Die Seite wurde abgerufen, sie nennt nur nichts. Ein false hier holte
     // dasselbe Objekt in jedem Lauf erneut -- ein stehender Rueckstand.
     expect(werte.detailGelesen).toBe(true);
+  });
+});
+
+describe("kandidatAusDetail — ein Objekt, das der Sweep nicht gesehen hat", () => {
+  // Die Detailscheibe kommt aus `listings` und damit aus dem Altbestand; der
+  // Sweep dieses Laufs deckt eine andere Region ab. Ohne diesen Weg waere
+  // der Abruf umsonst gewesen.
+  const werte = kandidatAusDetail(DETAIL, "nw");
+
+  it("nimmt alle Felder aus der Detailseite", () => {
+    expect(werte.priceCents).toBe(7_400_000);
+    expect(werte.livingAreaM2).toBe(160);
+    expect(werte.plotAreaM2).toBe(190);
+    expect(werte.zipCode).toBe("44135");
+    expect(werte.city).toBe("Dortmund");
+    expect(werte.yearBuilt).toBe(1972);
+    expect(werte.rentColdMonthly).toBe(210_000);
+    expect(werte.units).toBe(4);
+    expect(werte.unitsConfident).toBe(true);
+    expect(werte.photoUrls).toEqual(["https://example.invalid/1.jpg"]);
+  });
+
+  it("traegt den Fundort aus dem Bestand weiter", () => {
+    // Der Fundort ist die Wache vor der Loeschung: Ohne ihn gilt ein Objekt
+    // als nicht zuzuordnen. Ihn hier zu verlieren waere schlimmer als die
+    // fehlenden Felder, die der Abruf gerade geholt hat.
+    expect(werte.fundort).toBe("nw");
+  });
+
+  it("meldet die gelesene Detailseite", () => {
+    expect(werte.detailGelesen).toBe(true);
+  });
+
+  it("setzt die ZVG-Felder auf null", () => {
+    expect(werte.auctionAt).toBeNull();
+    expect(werte.court).toBeNull();
+    expect(werte.caseNumber).toBeNull();
+    expect(werte.rawNoticeText).toBeNull();
+  });
+
+  it("behaelt einen fehlenden Fundort als null", () => {
+    expect(kandidatAusDetail(DETAIL, null).fundort).toBeNull();
+  });
+
+  it("nimmt den Titel der Detailseite", () => {
+    expect(kandidatAusDetail(DETAIL, null).title).toBe("Mehrfamilienhaus");
   });
 });

@@ -113,6 +113,54 @@ export async function ladeVeralteteExternalIds(
 }
 
 /**
+ * Objekte, deren Detailseite noch nie oder zu lange nicht geholt wurde --
+ * mit allem, was ein Abruf braucht.
+ *
+ * WARUM NICHT `ladeVeralteteExternalIds`: Die gibt nur externalIds zurueck.
+ * Ein Abruf braucht die URL, und der spaetere Schreibvorgang braucht den
+ * `fundort` -- ohne ihn gilt das Objekt als nicht zuzuordnen und faellt aus
+ * der regionsgenauen Loeschhoheit heraus. Beides steht in derselben Zeile;
+ * es zweimal zu holen waere eine zweite Abfrage ueber denselben Bestand.
+ *
+ * `last_detail_at is null` faellt bewusst mit hinein: Solche Objekte wurden
+ * noch nie im Detail erfasst und sind genau der Rueckstand, den die
+ * Detailphase abbauen soll. Seit der Korrektur an `listingUpsertZeile`
+ * (B8-1) sagt das Feld fuer Immowelt auch die Wahrheit -- davor trug es bei
+ * jedem Upsert einen Zeitstempel und war als Filter unbrauchbar.
+ *
+ * Abgaengige Objekte bleiben draussen: Eine Detailseite zu holen, von der
+ * der letzte vollstaendige Sweep schon weiss, dass es sie nicht mehr gibt,
+ * ist Budget fuer nichts.
+ */
+export async function ladeDetailRueckstand(
+  supabase: SupabaseClient,
+  source: string,
+  grenze: Date
+): Promise<{ externalId: string; url: string; fundort: string | null }[]> {
+  const zeilen = await ladeSeitenweise<{
+    id: string;
+    external_id: string;
+    url: string;
+    fundort: string | null;
+  }>(async (nachId, seitenGrenze) => {
+    let abfrage = supabase
+      .from("listings")
+      .select("id, external_id, url, fundort")
+      .eq("source", source)
+      .is("disappeared_at", null)
+      .or(`last_detail_at.is.null,last_detail_at.lt.${grenze.toISOString()}`)
+      .order("id", { ascending: true });
+    if (nachId !== null) abfrage = abfrage.gt("id", nachId);
+    return abfrage.limit(seitenGrenze);
+  }, "listings");
+  return zeilen.map((zeile) => ({
+    externalId: zeile.external_id,
+    url: zeile.url,
+    fundort: zeile.fundort ?? null,
+  }));
+}
+
+/**
  * Groesse eines `.in()`-Blocks. Die Grenze ist die URL-Laenge, nicht die
  * Datenbank: gemessen am 2026-09-08 gehen 641 IDs durch (25.072 B), 642
  * ergeben HTTP 400 `Bad Request`, 1.500 ergeben HTTP 414. 500 laesst Luft
