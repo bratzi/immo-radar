@@ -151,11 +151,26 @@ export interface Massstab {
   art: MassstabArt;
   /** Die Menge, gegen die geurteilt wurde. null nur bei art "keiner". */
   referenz: number | null;
+  /** Zulässiger Fehlbetrag als Anteil. Gehört zum Maßstab, nicht zum
+   *  Aufrufer — sonst könnte dieselbe Referenz je nach Aufrufort anders
+   *  streng gelesen werden. */
+  toleranz: number;
 }
+
+/** Die Schwellen, mit denen eine Quelle misst. Als Parameter und nicht als
+ *  Konstante im Modul, damit `lib/` nicht auf `scrapers/` zeigen muss. */
+export interface MassstabRegeln {
+  untergrenze: number;
+  toleranzGemeldet: number;
+  toleranzMarke: number;
+}
+
+export function hochwassermarkeAus(mengen: number[]): number | null;
 
 export function waehleMassstab(
   gemeldet: number | null,
-  hochwassermarke: number | null
+  hochwassermarke: number | null,
+  regeln: MassstabRegeln
 ): Massstab;
 
 export function urteileGegenMassstab(
@@ -164,6 +179,10 @@ export function urteileGegenMassstab(
   abgeschnitten: boolean
 ): boolean;
 ```
+
+Die konkreten Werte leben als `IMMOWELT_MASSSTAB_REGELN` in
+`scrapers/immowelt/index.ts`, wo `EINE_ERGEBNISSEITE` und
+`REGION_FEHLBETRAG_TOLERANZ` schon stehen.
 
 `istRegionVollstaendig` in `scraper/scrapers/immowelt/index.ts` bekommt die
 Hochwassermarke als **viertes Argument**, verpflichtend und ohne Vorgabewert —
