@@ -61,13 +61,40 @@ export const BUNDESWEITER_MIETPREIS_PRO_M2_MONAT = 11.11;
  * BBSR-Angebotsmieten 2025: Muenchen -2,4 %, Frankfurt -0,8 %,
  * Stuttgart -6,4 %.
  *
- * Die Tabelle ist also NICHT geraten. Sie trifft Niveau und Gefaelle und
- * liegt systematisch leicht zu niedrig -- erwartbar, weil ein
- * PLZ-Zweisteller mehr umfasst als seine Kernstadt (die "44" ist Dortmund
- * UND Bochum UND Herne). Wer einen Einzelwert anhebt, verschiebt damit auch
- * den Bundeslandmittelwert, der daraus gebildet wird.
+ * Die Tabelle ist also NICHT geraten. Sie trifft Niveau und Gefaelle. Wer
+ * einen Einzelwert anhebt, verschiebt damit auch den Bundeslandmittelwert,
+ * der daraus gebildet wird.
+ *
+ * ZWEITE PRUEFUNG, 2026-09-21 -- vollstaendig statt stichprobenhaft:
+ * Gegen INKAR (BBSR), Indikator 2113 "Wiedervermietungsmieten inserierter
+ * Wohnungen (Angebotsmieten)", Kreisebene, Stand 2024. Dieselbe
+ * Bezugsgroesse wie der Code, also OHNE die Umrechnung von Bestands- auf
+ * Angebotsmiete, die die Pruefung von 2026-09-08 noch brauchte. Alle 95
+ * Werte, nicht 23 Stichproben. Der Test dazu ist
+ * `rentEstimate.pruefdaten.test.ts`, die Referenz liegt als
+ * `mietPruefdaten.generated.json` im Repo.
+ *
+ *   n = 95, Mittel +6,2 %, Median +6,7 %
+ *   95 von 95 innerhalb ±25 %, 78 innerhalb ±15 %
+ *   groesste Abweichungen: "58" +22,5 %, "13" -23,2 %
+ *
+ * DAS VORZEICHEN HAT SICH GEDREHT, und das ist kein Widerspruch der
+ * Quellen, sondern eine Frage des Massstabs: Die Referenz mittelt ALLE
+ * Kreise, die ein Zweisteller beruehrt, gewichtet nach Einwohnern. Die
+ * handrecherchierten Werte zielen erkennbar auf die Kernstadt. Ein
+ * Zweisteller umfasst mehr als die (die "44" ist Dortmund UND Bochum UND
+ * Herne), deshalb liegt die Tabelle gegen das Gebietsmittel hoch und gegen
+ * Stadtwerte niedrig. Beides zugleich ist moeglich und beides ist gemessen.
+ *
+ * WAS AUFFAELLT UND GEGEN DEN NUTZER GEHT: Die drei Berliner Zweisteller
+ * sind die groessten Unterschaetzungen ("13" -23,2 %, "12" -19,8 %,
+ * "10" -13,5 %; INKAR nennt fuer Berlin 17 €/m²). Zu niedrige Miete heiszt
+ * zu schlechter Kaufpreisfaktor -- ein lohnendes Objekt fiele unter die
+ * Meldeschwelle. Nicht geaendert, weil eine Korrektur den Berliner
+ * Bundeslandmittelwert mitverschiebt; das gehoert gemessen, nicht nebenbei
+ * erledigt (Backlog A11).
  */
-const REGIONALE_MIETE_PRO_M2: Record<string, number> = {
+export const REGIONALE_MIETE_PRO_M2: Record<string, number> = {
   "01": 9.0, "02": 6.0, "03": 6.5, "04": 9.5, "06": 6.8, "07": 7.2, "08": 6.0, "09": 6.5,
   "10": 14.5, "12": 13.5, "13": 13.0, "14": 12.0, "15": 8.5, "16": 9.0, "17": 8.0,
   "18": 9.5, "19": 8.5,

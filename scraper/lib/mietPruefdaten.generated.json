@@ -1,0 +1,4852 @@
+{
+ "quelle": "INKAR (BBSR), Indikator 2113 Wiedervermietungsmieten inserierter Wohnungen (Angebotsmieten), Kreisebene",
+ "jahr": "2024",
+ "genauigkeit": "INKAR liefert ueber diese Schnittstelle ganzzahlige Euro je m2 -- bei rund 9 Euro sind das +-5,6 Prozent Rundung",
+ "zuordnung": "PLZ -> Kreisschluessel aus GeoNames DE.zip (Spalte admin3). Gewicht je Kreis: Einwohner (INKAR Bevoelkerung gesamt, 2023) mal Anteil der Postleitzahlen des Kreises, die auf diesen Zweisteller entfallen",
+ "mindestabdeckung": 0.8,
+ "erzeugtAm": "2026-09-21",
+ "zweisteller": {
+  "10": {
+   "referenz": 16.758,
+   "abdeckung": 1,
+   "plzGesamt": 158,
+   "kreise": [
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 154,
+     "gewicht": 1558029
+    },
+    {
+     "kreis": "12054",
+     "wert": 13,
+     "plz": 2,
+     "gewicht": 20477
+    },
+    {
+     "kreis": "06438",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 11503
+    },
+    {
+     "kreis": "12072",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 11089
+    },
+    {
+     "kreis": "14625",
+     "wert": 6,
+     "plz": 1,
+     "gewicht": 8669
+    },
+    {
+     "kreis": "12061",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 6580
+    },
+    {
+     "kreis": "08111",
+     "wert": 15,
+     "plz": 1,
+     "gewicht": 5895
+    },
+    {
+     "kreis": "05314",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 5106
+    }
+   ]
+  },
+  "11": {
+   "referenz": 16.951,
+   "abdeckung": 1,
+   "plzGesamt": 24,
+   "kreise": [
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 23,
+     "gewicht": 232693
+    },
+    {
+     "kreis": "08111",
+     "wert": 15,
+     "plz": 1,
+     "gewicht": 5895
+    }
+   ]
+  },
+  "12": {
+   "referenz": 16.823,
+   "abdeckung": 1,
+   "plzGesamt": 87,
+   "kreise": [
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 84,
+     "gewicht": 849834
+    },
+    {
+     "kreis": "12061",
+     "wert": 12,
+     "plz": 3,
+     "gewicht": 19740
+    },
+    {
+     "kreis": "06438",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 11503
+    }
+   ]
+  },
+  "13": {
+   "referenz": 16.921,
+   "abdeckung": 1,
+   "plzGesamt": 71,
+   "kreise": [
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 70,
+     "gewicht": 708195
+    },
+    {
+     "kreis": "12065",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 11436
+    }
+   ]
+  },
+  "14": {
+   "referenz": 12.421,
+   "abdeckung": 1,
+   "plzGesamt": 95,
+   "kreise": [
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 26,
+     "gewicht": 263044
+    },
+    {
+     "kreis": "12069",
+     "wert": 11,
+     "plz": 27,
+     "gewicht": 220158
+    },
+    {
+     "kreis": "12054",
+     "wert": 13,
+     "plz": 16,
+     "gewicht": 163813
+    },
+    {
+     "kreis": "12063",
+     "wert": 10,
+     "plz": 15,
+     "gewicht": 159113
+    },
+    {
+     "kreis": "12072",
+     "wert": 9,
+     "plz": 8,
+     "gewicht": 88710
+    },
+    {
+     "kreis": "12051",
+     "wert": 9,
+     "plz": 7,
+     "gewicht": 73939
+    },
+    {
+     "kreis": "15090",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 8215
+    }
+   ]
+  },
+  "15": {
+   "referenz": 9.654,
+   "abdeckung": 1,
+   "plzGesamt": 68,
+   "kreise": [
+    {
+     "kreis": "12067",
+     "wert": 9,
+     "plz": 18,
+     "gewicht": 180499
+    },
+    {
+     "kreis": "12064",
+     "wert": 9,
+     "plz": 16,
+     "gewicht": 166556
+    },
+    {
+     "kreis": "12061",
+     "wert": 12,
+     "plz": 23,
+     "gewicht": 151342
+    },
+    {
+     "kreis": "12072",
+     "wert": 9,
+     "plz": 7,
+     "gewicht": 77621
+    },
+    {
+     "kreis": "12053",
+     "wert": 7,
+     "plz": 8,
+     "gewicht": 57065
+    },
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 1,
+     "gewicht": 10117
+    }
+   ]
+  },
+  "16": {
+   "referenz": 9.881,
+   "abdeckung": 1,
+   "plzGesamt": 54,
+   "kreise": [
+    {
+     "kreis": "12065",
+     "wert": 12,
+     "plz": 18,
+     "gewicht": 205854
+    },
+    {
+     "kreis": "12060",
+     "wert": 10,
+     "plz": 14,
+     "gewicht": 192776
+    },
+    {
+     "kreis": "12068",
+     "wert": 8,
+     "plz": 13,
+     "gewicht": 99372
+    },
+    {
+     "kreis": "12073",
+     "wert": 7,
+     "plz": 5,
+     "gewicht": 53544
+    },
+    {
+     "kreis": "12070",
+     "wert": 7,
+     "plz": 5,
+     "gewicht": 31728
+    },
+    {
+     "kreis": "12064",
+     "wert": 9,
+     "plz": 3,
+     "gewicht": 31229
+    },
+    {
+     "kreis": "12063",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 10608
+    }
+   ]
+  },
+  "17": {
+   "referenz": 7.659,
+   "abdeckung": 1,
+   "plzGesamt": 85,
+   "kreise": [
+    {
+     "kreis": "13071",
+     "wert": 7,
+     "plz": 38,
+     "gewicht": 247575
+    },
+    {
+     "kreis": "13075",
+     "wert": 8,
+     "plz": 41,
+     "gewicht": 226181
+    },
+    {
+     "kreis": "12073",
+     "wert": 7,
+     "plz": 5,
+     "gewicht": 53544
+    },
+    {
+     "kreis": "13072",
+     "wert": 9,
+     "plz": 3,
+     "gewicht": 19889
+    },
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 1,
+     "gewicht": 10117
+    }
+   ]
+  },
+  "18": {
+   "referenz": 9.661,
+   "abdeckung": 1,
+   "plzGesamt": 77,
+   "kreise": [
+    {
+     "kreis": "13073",
+     "wert": 9,
+     "plz": 36,
+     "gewicht": 216175
+    },
+    {
+     "kreis": "13003",
+     "wert": 11,
+     "plz": 15,
+     "gewicht": 204948
+    },
+    {
+     "kreis": "13072",
+     "wert": 9,
+     "plz": 30,
+     "gewicht": 198891
+    }
+   ]
+  },
+  "19": {
+   "referenz": 8.161,
+   "abdeckung": 1,
+   "plzGesamt": 56,
+   "kreise": [
+    {
+     "kreis": "13076",
+     "wert": 8,
+     "plz": 32,
+     "gewicht": 209372
+    },
+    {
+     "kreis": "13004",
+     "wert": 9,
+     "plz": 12,
+     "gewicht": 97850
+    },
+    {
+     "kreis": "12070",
+     "wert": 7,
+     "plz": 7,
+     "gewicht": 44420
+    },
+    {
+     "kreis": "13074",
+     "wert": 8,
+     "plz": 6,
+     "gewicht": 42862
+    },
+    {
+     "kreis": "03355",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 5436
+    }
+   ]
+  },
+  "20": {
+   "referenz": 14.075,
+   "abdeckung": 1,
+   "plzGesamt": 77,
+   "kreise": [
+    {
+     "kreis": "02000",
+     "wert": 14,
+     "plz": 76,
+     "gewicht": 614503
+    },
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 1,
+     "gewicht": 6646
+    }
+   ]
+  },
+  "21": {
+   "referenz": 10.824,
+   "abdeckung": 1,
+   "plzGesamt": 148,
+   "kreise": [
+    {
+     "kreis": "03353",
+     "wert": 11,
+     "plz": 34,
+     "gewicht": 264767
+    },
+    {
+     "kreis": "03359",
+     "wert": 10,
+     "plz": 30,
+     "gewicht": 200960
+    },
+    {
+     "kreis": "03355",
+     "wert": 10,
+     "plz": 32,
+     "gewicht": 173967
+    },
+    {
+     "kreis": "02000",
+     "wert": 14,
+     "plz": 20,
+     "gewicht": 161711
+    },
+    {
+     "kreis": "03352",
+     "wert": 9,
+     "plz": 17,
+     "gewicht": 109343
+    },
+    {
+     "kreis": "01053",
+     "wert": 10,
+     "plz": 14,
+     "gewicht": 92782
+    },
+    {
+     "kreis": "01062",
+     "wert": 12,
+     "plz": 3,
+     "gewicht": 21103
+    }
+   ]
+  },
+  "22": {
+   "referenz": 13.489,
+   "abdeckung": 1,
+   "plzGesamt": 169,
+   "kreise": [
+    {
+     "kreis": "02000",
+     "wert": 14,
+     "plz": 130,
+     "gewicht": 1051124
+    },
+    {
+     "kreis": "01062",
+     "wert": 12,
+     "plz": 22,
+     "gewicht": 154755
+    },
+    {
+     "kreis": "01056",
+     "wert": 11,
+     "plz": 7,
+     "gewicht": 55276
+    },
+    {
+     "kreis": "01060",
+     "wert": 11,
+     "plz": 8,
+     "gewicht": 44277
+    },
+    {
+     "kreis": "01053",
+     "wert": 10,
+     "plz": 4,
+     "gewicht": 26509
+    },
+    {
+     "kreis": "06436",
+     "wert": 13,
+     "plz": 1,
+     "gewicht": 7953
+    },
+    {
+     "kreis": "09184",
+     "wert": 18,
+     "plz": 1,
+     "gewicht": 6414
+    },
+    {
+     "kreis": "08111",
+     "wert": 15,
+     "plz": 1,
+     "gewicht": 5895
+    }
+   ]
+  },
+  "23": {
+   "referenz": 10.552,
+   "abdeckung": 1,
+   "plzGesamt": 106,
+   "kreise": [
+    {
+     "kreis": "01003",
+     "wert": 11,
+     "plz": 22,
+     "gewicht": 217061
+    },
+    {
+     "kreis": "01055",
+     "wert": 11,
+     "plz": 28,
+     "gewicht": 201529
+    },
+    {
+     "kreis": "01060",
+     "wert": 11,
+     "plz": 21,
+     "gewicht": 116228
+    },
+    {
+     "kreis": "13074",
+     "wert": 8,
+     "plz": 16,
+     "gewicht": 114298
+    },
+    {
+     "kreis": "01053",
+     "wert": 10,
+     "plz": 13,
+     "gewicht": 86154
+    },
+    {
+     "kreis": "01062",
+     "wert": 12,
+     "plz": 10,
+     "gewicht": 70343
+    },
+    {
+     "kreis": "01057",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 4666
+    }
+   ]
+  },
+  "24": {
+   "referenz": 9.753,
+   "abdeckung": 1,
+   "plzGesamt": 213,
+   "kreise": [
+    {
+     "kreis": "01058",
+     "wert": 10,
+     "plz": 64,
+     "gewicht": 257751
+    },
+    {
+     "kreis": "01002",
+     "wert": 10,
+     "plz": 30,
+     "gewicht": 251751
+    },
+    {
+     "kreis": "01059",
+     "wert": 9,
+     "plz": 68,
+     "gewicht": 198911
+    },
+    {
+     "kreis": "01057",
+     "wert": 10,
+     "plz": 27,
+     "gewicht": 125969
+    },
+    {
+     "kreis": "01060",
+     "wert": 11,
+     "plz": 19,
+     "gewicht": 105159
+    },
+    {
+     "kreis": "01001",
+     "wert": 9,
+     "plz": 10,
+     "gewicht": 87665
+    },
+    {
+     "kreis": "01004",
+     "wert": 9,
+     "plz": 6,
+     "gewicht": 79461
+    },
+    {
+     "kreis": "01061",
+     "wert": 8,
+     "plz": 2,
+     "gewicht": 6971
+    }
+   ]
+  },
+  "25": {
+   "referenz": 9.431,
+   "abdeckung": 1,
+   "plzGesamt": 157,
+   "kreise": [
+    {
+     "kreis": "01056",
+     "wert": 11,
+     "plz": 33,
+     "gewicht": 260589
+    },
+    {
+     "kreis": "01054",
+     "wert": 9,
+     "plz": 48,
+     "gewicht": 170048
+    },
+    {
+     "kreis": "01051",
+     "wert": 8,
+     "plz": 33,
+     "gewicht": 133514
+    },
+    {
+     "kreis": "01061",
+     "wert": 8,
+     "plz": 36,
+     "gewicht": 125476
+    },
+    {
+     "kreis": "01058",
+     "wert": 10,
+     "plz": 5,
+     "gewicht": 20137
+    },
+    {
+     "kreis": "01060",
+     "wert": 11,
+     "plz": 3,
+     "gewicht": 16604
+    },
+    {
+     "kreis": "01059",
+     "wert": 9,
+     "plz": 2,
+     "gewicht": 5850
+    }
+   ]
+  },
+  "26": {
+   "referenz": 8.508,
+   "abdeckung": 1,
+   "plzGesamt": 123,
+   "kreise": [
+    {
+     "kreis": "03452",
+     "wert": 8,
+     "plz": 18,
+     "gewicht": 188960
+    },
+    {
+     "kreis": "03403",
+     "wert": 10,
+     "plz": 21,
+     "gewicht": 176242
+    },
+    {
+     "kreis": "03457",
+     "wert": 8,
+     "plz": 16,
+     "gewicht": 169111
+    },
+    {
+     "kreis": "03451",
+     "wert": 10,
+     "plz": 11,
+     "gewicht": 127292
+    },
+    {
+     "kreis": "03454",
+     "wert": 8,
+     "plz": 11,
+     "gewicht": 108125
+    },
+    {
+     "kreis": "03455",
+     "wert": 8,
+     "plz": 8,
+     "gewicht": 100461
+    },
+    {
+     "kreis": "03405",
+     "wert": 7,
+     "plz": 8,
+     "gewicht": 76010
+    },
+    {
+     "kreis": "03461",
+     "wert": 7,
+     "plz": 10,
+     "gewicht": 74430
+    },
+    {
+     "kreis": "03462",
+     "wert": 8,
+     "plz": 9,
+     "gewicht": 56013
+    },
+    {
+     "kreis": "03402",
+     "wert": 8,
+     "plz": 3,
+     "gewicht": 49701
+    },
+    {
+     "kreis": "03458",
+     "wert": 9,
+     "plz": 3,
+     "gewicht": 49487
+    },
+    {
+     "kreis": "03453",
+     "wert": 8,
+     "plz": 4,
+     "gewicht": 47077
+    },
+    {
+     "kreis": "09562",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 12813
+    },
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 1,
+     "gewicht": 6646
+    }
+   ]
+  },
+  "27": {
+   "referenz": 8.385,
+   "abdeckung": 1,
+   "plzGesamt": 89,
+   "kreise": [
+    {
+     "kreis": "03357",
+     "wert": 8,
+     "plz": 14,
+     "gewicht": 165561
+    },
+    {
+     "kreis": "03251",
+     "wert": 8,
+     "plz": 16,
+     "gewicht": 126139
+    },
+    {
+     "kreis": "04012",
+     "wert": 7,
+     "plz": 8,
+     "gewicht": 118323
+    },
+    {
+     "kreis": "03361",
+     "wert": 9,
+     "plz": 12,
+     "gewicht": 103705
+    },
+    {
+     "kreis": "03352",
+     "wert": 9,
+     "plz": 14,
+     "gewicht": 90047
+    },
+    {
+     "kreis": "03458",
+     "wert": 9,
+     "plz": 5,
+     "gewicht": 82478
+    },
+    {
+     "kreis": "03401",
+     "wert": 8,
+     "plz": 5,
+     "gewicht": 81746
+    },
+    {
+     "kreis": "03356",
+     "wert": 10,
+     "plz": 5,
+     "gewicht": 56892
+    },
+    {
+     "kreis": "03256",
+     "wert": 8,
+     "plz": 4,
+     "gewicht": 15706
+    },
+    {
+     "kreis": "03461",
+     "wert": 7,
+     "plz": 2,
+     "gewicht": 14886
+    },
+    {
+     "kreis": "03358",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 10116
+    },
+    {
+     "kreis": "02000",
+     "wert": 14,
+     "plz": 1,
+     "gewicht": 8086
+    },
+    {
+     "kreis": "01056",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 7897
+    },
+    {
+     "kreis": "03359",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 6699
+    }
+   ]
+  },
+  "28": {
+   "referenz": 10.658,
+   "abdeckung": 1,
+   "plzGesamt": 79,
+   "kreise": [
+    {
+     "kreis": "04011",
+     "wert": 11,
+     "plz": 65,
+     "gewicht": 584332
+    },
+    {
+     "kreis": "03356",
+     "wert": 10,
+     "plz": 5,
+     "gewicht": 56892
+    },
+    {
+     "kreis": "03251",
+     "wert": 8,
+     "plz": 5,
+     "gewicht": 39418
+    },
+    {
+     "kreis": "03361",
+     "wert": 9,
+     "plz": 4,
+     "gewicht": 34568
+    }
+   ]
+  },
+  "29": {
+   "referenz": 7.818,
+   "abdeckung": 1,
+   "plzGesamt": 116,
+   "kreise": [
+    {
+     "kreis": "03351",
+     "wert": 8,
+     "plz": 32,
+     "gewicht": 172871
+    },
+    {
+     "kreis": "03358",
+     "wert": 8,
+     "plz": 13,
+     "gewicht": 131511
+    },
+    {
+     "kreis": "03360",
+     "wert": 8,
+     "plz": 30,
+     "gewicht": 91832
+    },
+    {
+     "kreis": "03354",
+     "wert": 6,
+     "plz": 27,
+     "gewicht": 46815
+    },
+    {
+     "kreis": "03151",
+     "wert": 9,
+     "plz": 11,
+     "gewicht": 44992
+    },
+    {
+     "kreis": "15081",
+     "wert": 6,
+     "plz": 3,
+     "gewicht": 22031
+    }
+   ]
+  },
+  "30": {
+   "referenz": 9.978,
+   "abdeckung": 1,
+   "plzGesamt": 93,
+   "kreise": [
+    {
+     "kreis": "03241",
+     "wert": 10,
+     "plz": 91,
+     "gewicht": 987084
+    },
+    {
+     "kreis": "05913",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 10550
+    },
+    {
+     "kreis": "03254",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 5963
+    }
+   ]
+  },
+  "31": {
+   "referenz": 8.224,
+   "abdeckung": 1,
+   "plzGesamt": 148,
+   "kreise": [
+    {
+     "kreis": "03254",
+     "wert": 8,
+     "plz": 44,
+     "gewicht": 262355
+    },
+    {
+     "kreis": "03257",
+     "wert": 8,
+     "plz": 35,
+     "gewicht": 157051
+    },
+    {
+     "kreis": "03252",
+     "wert": 7,
+     "plz": 17,
+     "gewicht": 150535
+    },
+    {
+     "kreis": "03241",
+     "wert": 10,
+     "plz": 13,
+     "gewicht": 141012
+    },
+    {
+     "kreis": "03256",
+     "wert": 8,
+     "plz": 27,
+     "gewicht": 106017
+    },
+    {
+     "kreis": "03157",
+     "wert": 8,
+     "plz": 8,
+     "gewicht": 99624
+    },
+    {
+     "kreis": "05754",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 9829
+    },
+    {
+     "kreis": "03255",
+     "wert": 6,
+     "plz": 2,
+     "gewicht": 6957
+    },
+    {
+     "kreis": "09184",
+     "wert": 18,
+     "plz": 1,
+     "gewicht": 6414
+    },
+    {
+     "kreis": "05314",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 5106
+    }
+   ]
+  },
+  "32": {
+   "referenz": 8.342,
+   "abdeckung": 1,
+   "plzGesamt": 66,
+   "kreise": [
+    {
+     "kreis": "05770",
+     "wert": 9,
+     "plz": 23,
+     "gewicht": 307553
+    },
+    {
+     "kreis": "05766",
+     "wert": 8,
+     "plz": 23,
+     "gewicht": 307504
+    },
+    {
+     "kreis": "05758",
+     "wert": 8,
+     "plz": 19,
+     "gewicht": 254593
+    },
+    {
+     "kreis": "05762",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 12640
+    },
+    {
+     "kreis": "05711",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 10046
+    }
+   ]
+  },
+  "33": {
+   "referenz": 8.93,
+   "abdeckung": 1,
+   "plzGesamt": 92,
+   "kreise": [
+    {
+     "kreis": "05754",
+     "wert": 9,
+     "plz": 36,
+     "gewicht": 353845
+    },
+    {
+     "kreis": "05711",
+     "wert": 9,
+     "plz": 32,
+     "gewicht": 321473
+    },
+    {
+     "kreis": "05774",
+     "wert": 9,
+     "plz": 18,
+     "gewicht": 315606
+    },
+    {
+     "kreis": "05766",
+     "wert": 8,
+     "plz": 3,
+     "gewicht": 40109
+    },
+    {
+     "kreis": "05762",
+     "wert": 7,
+     "plz": 3,
+     "gewicht": 37921
+    },
+    {
+     "kreis": "02000",
+     "wert": 14,
+     "plz": 1,
+     "gewicht": 8086
+    }
+   ]
+  },
+  "34": {
+   "referenz": 7.902,
+   "abdeckung": 1,
+   "plzGesamt": 104,
+   "kreise": [
+    {
+     "kreis": "06633",
+     "wert": 8,
+     "plz": 32,
+     "gewicht": 230742
+    },
+    {
+     "kreis": "06611",
+     "wert": 9,
+     "plz": 25,
+     "gewicht": 197065
+    },
+    {
+     "kreis": "06634",
+     "wert": 7,
+     "plz": 29,
+     "gewicht": 174356
+    },
+    {
+     "kreis": "06635",
+     "wert": 7,
+     "plz": 14,
+     "gewicht": 83534
+    },
+    {
+     "kreis": "05762",
+     "wert": 7,
+     "plz": 3,
+     "gewicht": 37921
+    },
+    {
+     "kreis": "03159",
+     "wert": 10,
+     "plz": 2,
+     "gewicht": 18780
+    },
+    {
+     "kreis": "05958",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 12438
+    }
+   ]
+  },
+  "35": {
+   "referenz": 9.555,
+   "abdeckung": 1,
+   "plzGesamt": 127,
+   "kreise": [
+    {
+     "kreis": "06531",
+     "wert": 10,
+     "plz": 29,
+     "gewicht": 268141
+    },
+    {
+     "kreis": "06532",
+     "wert": 9,
+     "plz": 41,
+     "gewicht": 254444
+    },
+    {
+     "kreis": "06534",
+     "wert": 10,
+     "plz": 30,
+     "gewicht": 243093
+    },
+    {
+     "kreis": "06635",
+     "wert": 7,
+     "plz": 11,
+     "gewicht": 65634
+    },
+    {
+     "kreis": "06533",
+     "wert": 9,
+     "plz": 7,
+     "gewicht": 40666
+    },
+    {
+     "kreis": "06440",
+     "wert": 11,
+     "plz": 4,
+     "gewicht": 40091
+    },
+    {
+     "kreis": "06535",
+     "wert": 8,
+     "plz": 4,
+     "gewicht": 19332
+    },
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 1,
+     "gewicht": 6646
+    }
+   ]
+  },
+  "36": {
+   "referenz": 8.689,
+   "abdeckung": 1,
+   "plzGesamt": 91,
+   "kreise": [
+    {
+     "kreis": "06631",
+     "wert": 10,
+     "plz": 33,
+     "gewicht": 222688
+    },
+    {
+     "kreis": "06632",
+     "wert": 7,
+     "plz": 25,
+     "gewicht": 113471
+    },
+    {
+     "kreis": "06535",
+     "wert": 8,
+     "plz": 16,
+     "gewicht": 77329
+    },
+    {
+     "kreis": "16063",
+     "wert": 7,
+     "plz": 11,
+     "gewicht": 74768
+    },
+    {
+     "kreis": "06435",
+     "wert": 11,
+     "plz": 3,
+     "gewicht": 30663
+    },
+    {
+     "kreis": "06411",
+     "wert": 14,
+     "plz": 1,
+     "gewicht": 7849
+    },
+    {
+     "kreis": "16066",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 6731
+    },
+    {
+     "kreis": "06634",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 6012
+    },
+    {
+     "kreis": "06636",
+     "wert": 6,
+     "plz": 1,
+     "gewicht": 4457
+    }
+   ]
+  },
+  "37": {
+   "referenz": 8.017,
+   "abdeckung": 1,
+   "plzGesamt": 99,
+   "kreise": [
+    {
+     "kreis": "03159",
+     "wert": 10,
+     "plz": 33,
+     "gewicht": 309877
+    },
+    {
+     "kreis": "03155",
+     "wert": 7,
+     "plz": 15,
+     "gewicht": 126310
+    },
+    {
+     "kreis": "16061",
+     "wert": 7,
+     "plz": 8,
+     "gewicht": 102699
+    },
+    {
+     "kreis": "06636",
+     "wert": 6,
+     "plz": 21,
+     "gewicht": 93598
+    },
+    {
+     "kreis": "03255",
+     "wert": 6,
+     "plz": 17,
+     "gewicht": 59131
+    },
+    {
+     "kreis": "05762",
+     "wert": 7,
+     "plz": 4,
+     "gewicht": 50561
+    },
+    {
+     "kreis": "03153",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 8514
+    },
+    {
+     "kreis": "16065",
+     "wert": 6,
+     "plz": 1,
+     "gewicht": 6596
+    }
+   ]
+  },
+  "38": {
+   "referenz": 7.821,
+   "abdeckung": 1,
+   "plzGesamt": 167,
+   "kreise": [
+    {
+     "kreis": "03101",
+     "wert": 9,
+     "plz": 31,
+     "gewicht": 253527
+    },
+    {
+     "kreis": "15085",
+     "wert": 7,
+     "plz": 18,
+     "gewicht": 138089
+    },
+    {
+     "kreis": "03151",
+     "wert": 9,
+     "plz": 32,
+     "gewicht": 130884
+    },
+    {
+     "kreis": "03103",
+     "wert": 8,
+     "plz": 11,
+     "gewicht": 129347
+    },
+    {
+     "kreis": "03153",
+     "wert": 7,
+     "plz": 14,
+     "gewicht": 119198
+    },
+    {
+     "kreis": "03158",
+     "wert": 8,
+     "plz": 24,
+     "gewicht": 118540
+    },
+    {
+     "kreis": "03102",
+     "wert": 6,
+     "plz": 8,
+     "gewicht": 105056
+    },
+    {
+     "kreis": "03154",
+     "wert": 7,
+     "plz": 24,
+     "gewicht": 90692
+    },
+    {
+     "kreis": "03157",
+     "wert": 8,
+     "plz": 3,
+     "gewicht": 37359
+    },
+    {
+     "kreis": "15081",
+     "wert": 6,
+     "plz": 2,
+     "gewicht": 14687
+    }
+   ]
+  },
+  "39": {
+   "referenz": 6.595,
+   "abdeckung": 1,
+   "plzGesamt": 89,
+   "kreise": [
+    {
+     "kreis": "15003",
+     "wert": 7,
+     "plz": 30,
+     "gewicht": 242491
+    },
+    {
+     "kreis": "15083",
+     "wert": 6,
+     "plz": 22,
+     "gewicht": 168593
+    },
+    {
+     "kreis": "15090",
+     "wert": 7,
+     "plz": 12,
+     "gewicht": 98578
+    },
+    {
+     "kreis": "15089",
+     "wert": 6,
+     "plz": 14,
+     "gewicht": 98159
+    },
+    {
+     "kreis": "15086",
+     "wert": 7,
+     "plz": 10,
+     "gewicht": 88695
+    },
+    {
+     "kreis": "15081",
+     "wert": 6,
+     "plz": 6,
+     "gewicht": 44062
+    },
+    {
+     "kreis": "15082",
+     "wert": 7,
+     "plz": 3,
+     "gewicht": 19225
+    },
+    {
+     "kreis": "15085",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 7672
+    }
+   ]
+  },
+  "40": {
+   "referenz": 11.787,
+   "abdeckung": 1,
+   "plzGesamt": 90,
+   "kreise": [
+    {
+     "kreis": "05111",
+     "wert": 13,
+     "plz": 65,
+     "gewicht": 589128
+    },
+    {
+     "kreis": "05158",
+     "wert": 10,
+     "plz": 21,
+     "gewicht": 342832
+    },
+    {
+     "kreis": "05162",
+     "wert": 10,
+     "plz": 4,
+     "gewicht": 57175
+    }
+   ]
+  },
+  "41": {
+   "referenz": 9.278,
+   "abdeckung": 1,
+   "plzGesamt": 60,
+   "kreise": [
+    {
+     "kreis": "05162",
+     "wert": 10,
+     "plz": 28,
+     "gewicht": 400223
+    },
+    {
+     "kreis": "05116",
+     "wert": 9,
+     "plz": 18,
+     "gewicht": 267667
+    },
+    {
+     "kreis": "05166",
+     "wert": 9,
+     "plz": 8,
+     "gewicht": 170002
+    },
+    {
+     "kreis": "05370",
+     "wert": 8,
+     "plz": 6,
+     "gewicht": 131075
+    }
+   ]
+  },
+  "42": {
+   "referenz": 8.366,
+   "abdeckung": 1,
+   "plzGesamt": 79,
+   "kreise": [
+    {
+     "kreis": "05124",
+     "wert": 8,
+     "plz": 42,
+     "gewicht": 358592
+    },
+    {
+     "kreis": "05122",
+     "wert": 8,
+     "plz": 13,
+     "gewicht": 166078
+    },
+    {
+     "kreis": "05158",
+     "wert": 10,
+     "plz": 9,
+     "gewicht": 146928
+    },
+    {
+     "kreis": "05120",
+     "wert": 7,
+     "plz": 9,
+     "gewicht": 114061
+    },
+    {
+     "kreis": "05378",
+     "wert": 10,
+     "plz": 3,
+     "gewicht": 47268
+    },
+    {
+     "kreis": "05374",
+     "wert": 8,
+     "plz": 2,
+     "gewicht": 28838
+    },
+    {
+     "kreis": "05111",
+     "wert": 13,
+     "plz": 1,
+     "gewicht": 9064
+    },
+    {
+     "kreis": "09272",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 2908
+    }
+   ]
+  },
+  "44": {
+   "referenz": 8.252,
+   "abdeckung": 1,
+   "plzGesamt": 107,
+   "kreise": [
+    {
+     "kreis": "05913",
+     "wert": 9,
+     "plz": 55,
+     "gewicht": 580243
+    },
+    {
+     "kreis": "05911",
+     "wert": 8,
+     "plz": 32,
+     "gewicht": 346205
+    },
+    {
+     "kreis": "05916",
+     "wert": 7,
+     "plz": 11,
+     "gewicht": 156154
+    },
+    {
+     "kreis": "05562",
+     "wert": 7,
+     "plz": 5,
+     "gewicht": 103809
+    },
+    {
+     "kreis": "05978",
+     "wert": 8,
+     "plz": 4,
+     "gewicht": 83428
+    }
+   ]
+  },
+  "45": {
+   "referenz": 7.959,
+   "abdeckung": 1,
+   "plzGesamt": 119,
+   "kreise": [
+    {
+     "kreis": "05113",
+     "wert": 9,
+     "plz": 59,
+     "gewicht": 574082
+    },
+    {
+     "kreis": "05562",
+     "wert": 7,
+     "plz": 22,
+     "gewicht": 456760
+    },
+    {
+     "kreis": "05513",
+     "wert": 7,
+     "plz": 18,
+     "gewicht": 267284
+    },
+    {
+     "kreis": "05117",
+     "wert": 8,
+     "plz": 11,
+     "gewicht": 172887
+    },
+    {
+     "kreis": "05954",
+     "wert": 8,
+     "plz": 5,
+     "gewicht": 68493
+    },
+    {
+     "kreis": "05911",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 10819
+    },
+    {
+     "kreis": "05314",
+     "wert": 12,
+     "plz": 2,
+     "gewicht": 10212
+    },
+    {
+     "kreis": "05111",
+     "wert": 13,
+     "plz": 1,
+     "gewicht": 9064
+    }
+   ]
+  },
+  "46": {
+   "referenz": 7.93,
+   "abdeckung": 1,
+   "plzGesamt": 49,
+   "kreise": [
+    {
+     "kreis": "05170",
+     "wert": 8,
+     "plz": 14,
+     "gewicht": 256225
+    },
+    {
+     "kreis": "05119",
+     "wert": 8,
+     "plz": 12,
+     "gewicht": 213510
+    },
+    {
+     "kreis": "05554",
+     "wert": 8,
+     "plz": 12,
+     "gewicht": 189894
+    },
+    {
+     "kreis": "05512",
+     "wert": 8,
+     "plz": 5,
+     "gewicht": 118912
+    },
+    {
+     "kreis": "05562",
+     "wert": 7,
+     "plz": 3,
+     "gewicht": 62286
+    },
+    {
+     "kreis": "05154",
+     "wert": 8,
+     "plz": 3,
+     "gewicht": 45704
+    }
+   ]
+  },
+  "47": {
+   "referenz": 8.297,
+   "abdeckung": 1,
+   "plzGesamt": 88,
+   "kreise": [
+    {
+     "kreis": "05112",
+     "wert": 8,
+     "plz": 36,
+     "gewicht": 503185
+    },
+    {
+     "kreis": "05154",
+     "wert": 8,
+     "plz": 18,
+     "gewicht": 274224
+    },
+    {
+     "kreis": "05114",
+     "wert": 9,
+     "plz": 15,
+     "gewicht": 215993
+    },
+    {
+     "kreis": "05170",
+     "wert": 8,
+     "plz": 11,
+     "gewicht": 201320
+    },
+    {
+     "kreis": "05166",
+     "wert": 9,
+     "plz": 6,
+     "gewicht": 127502
+    },
+    {
+     "kreis": "05111",
+     "wert": 13,
+     "plz": 1,
+     "gewicht": 9064
+    },
+    {
+     "kreis": "01001",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 8766
+    }
+   ]
+  },
+  "48": {
+   "referenz": 9.732,
+   "abdeckung": 1,
+   "plzGesamt": 99,
+   "kreise": [
+    {
+     "kreis": "05515",
+     "wert": 13,
+     "plz": 38,
+     "gewicht": 299197
+    },
+    {
+     "kreis": "05566",
+     "wert": 9,
+     "plz": 22,
+     "gewicht": 282884
+    },
+    {
+     "kreis": "05554",
+     "wert": 8,
+     "plz": 12,
+     "gewicht": 189894
+    },
+    {
+     "kreis": "05558",
+     "wert": 9,
+     "plz": 9,
+     "gewicht": 145425
+    },
+    {
+     "kreis": "05570",
+     "wert": 8,
+     "plz": 9,
+     "gewicht": 133681
+    },
+    {
+     "kreis": "03456",
+     "wert": 9,
+     "plz": 7,
+     "gewicht": 72106
+    },
+    {
+     "kreis": "03454",
+     "wert": 8,
+     "plz": 3,
+     "gewicht": 29489
+    }
+   ]
+  },
+  "49": {
+   "referenz": 8.561,
+   "abdeckung": 1,
+   "plzGesamt": 119,
+   "kreise": [
+    {
+     "kreis": "03459",
+     "wert": 8,
+     "plz": 36,
+     "gewicht": 356194
+    },
+    {
+     "kreis": "03454",
+     "wert": 8,
+     "plz": 20,
+     "gewicht": 196590
+    },
+    {
+     "kreis": "05566",
+     "wert": 9,
+     "plz": 13,
+     "gewicht": 167158
+    },
+    {
+     "kreis": "03404",
+     "wert": 10,
+     "plz": 12,
+     "gewicht": 165686
+    },
+    {
+     "kreis": "03460",
+     "wert": 9,
+     "plz": 12,
+     "gewicht": 146400
+    },
+    {
+     "kreis": "03453",
+     "wert": 8,
+     "plz": 11,
+     "gewicht": 129463
+    },
+    {
+     "kreis": "03456",
+     "wert": 9,
+     "plz": 7,
+     "gewicht": 72106
+    },
+    {
+     "kreis": "03251",
+     "wert": 8,
+     "plz": 7,
+     "gewicht": 55186
+    },
+    {
+     "kreis": "05770",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 13372
+    }
+   ]
+  },
+  "50": {
+   "referenz": 12.819,
+   "abdeckung": 1,
+   "plzGesamt": 127,
+   "kreise": [
+    {
+     "kreis": "05315",
+     "wert": 14,
+     "plz": 102,
+     "gewicht": 773997
+    },
+    {
+     "kreis": "05362",
+     "wert": 11,
+     "plz": 24,
+     "gewicht": 476412
+    },
+    {
+     "kreis": "05913",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 10550
+    },
+    {
+     "kreis": "02000",
+     "wert": 14,
+     "plz": 1,
+     "gewicht": 8086
+    },
+    {
+     "kreis": "10041",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 7731
+    },
+    {
+     "kreis": "08111",
+     "wert": 15,
+     "plz": 1,
+     "gewicht": 5895
+    }
+   ]
+  },
+  "51": {
+   "referenz": 10.673,
+   "abdeckung": 1,
+   "plzGesamt": 75,
+   "kreise": [
+    {
+     "kreis": "05374",
+     "wert": 8,
+     "plz": 17,
+     "gewicht": 245125
+    },
+    {
+     "kreis": "05378",
+     "wert": 10,
+     "plz": 15,
+     "gewicht": 236339
+    },
+    {
+     "kreis": "05315",
+     "wert": 14,
+     "plz": 31,
+     "gewicht": 235234
+    },
+    {
+     "kreis": "05316",
+     "wert": 11,
+     "plz": 11,
+     "gewicht": 167850
+    },
+    {
+     "kreis": "05382",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 18342
+    },
+    {
+     "kreis": "07132",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 4130
+    }
+   ]
+  },
+  "52": {
+   "referenz": 9.174,
+   "abdeckung": 1,
+   "plzGesamt": 69,
+   "kreise": [
+    {
+     "kreis": "05334",
+     "wert": 10,
+     "plz": 42,
+     "gewicht": 582463
+    },
+    {
+     "kreis": "05358",
+     "wert": 8,
+     "plz": 21,
+     "gewicht": 278462
+    },
+    {
+     "kreis": "05370",
+     "wert": 8,
+     "plz": 6,
+     "gewicht": 131075
+    }
+   ]
+  },
+  "53": {
+   "referenz": 10.215,
+   "abdeckung": 1,
+   "plzGesamt": 131,
+   "kreise": [
+    {
+     "kreis": "05382",
+     "wert": 10,
+     "plz": 32,
+     "gewicht": 586941
+    },
+    {
+     "kreis": "05314",
+     "wert": 12,
+     "plz": 56,
+     "gewicht": 285938
+    },
+    {
+     "kreis": "05366",
+     "wert": 9,
+     "plz": 14,
+     "gewicht": 201841
+    },
+    {
+     "kreis": "07131",
+     "wert": 9,
+     "plz": 17,
+     "gewicht": 95012
+    },
+    {
+     "kreis": "07138",
+     "wert": 9,
+     "plz": 12,
+     "gewicht": 64682
+    },
+    {
+     "kreis": "07233",
+     "wert": 8,
+     "plz": 3,
+     "gewicht": 7443
+    },
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 1,
+     "gewicht": 6646
+    }
+   ]
+  },
+  "54": {
+   "referenz": 8.905,
+   "abdeckung": 1,
+   "plzGesamt": 115,
+   "kreise": [
+    {
+     "kreis": "07235",
+     "wert": 9,
+     "plz": 38,
+     "gewicht": 149056
+    },
+    {
+     "kreis": "07211",
+     "wert": 10,
+     "plz": 11,
+     "gewicht": 103986
+    },
+    {
+     "kreis": "07232",
+     "wert": 9,
+     "plz": 29,
+     "gewicht": 100740
+    },
+    {
+     "kreis": "07231",
+     "wert": 8,
+     "plz": 26,
+     "gewicht": 98217
+    },
+    {
+     "kreis": "07233",
+     "wert": 8,
+     "plz": 17,
+     "gewicht": 42176
+    },
+    {
+     "kreis": "07134",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 5508
+    }
+   ]
+  },
+  "55": {
+   "referenz": 10.297,
+   "abdeckung": 1,
+   "plzGesamt": 113,
+   "kreise": [
+    {
+     "kreis": "07315",
+     "wert": 13,
+     "plz": 21,
+     "gewicht": 223871
+    },
+    {
+     "kreis": "07339",
+     "wert": 10,
+     "plz": 27,
+     "gewicht": 179611
+    },
+    {
+     "kreis": "07133",
+     "wert": 9,
+     "plz": 32,
+     "gewicht": 138580
+    },
+    {
+     "kreis": "07134",
+     "wert": 7,
+     "plz": 14,
+     "gewicht": 77114
+    },
+    {
+     "kreis": "07140",
+     "wert": 8,
+     "plz": 13,
+     "gewicht": 60133
+    },
+    {
+     "kreis": "07331",
+     "wert": 10,
+     "plz": 10,
+     "gewicht": 52318
+    },
+    {
+     "kreis": "06414",
+     "wert": 12,
+     "plz": 2,
+     "gewicht": 17953
+    },
+    {
+     "kreis": "09564",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 7116
+    }
+   ]
+  },
+  "56": {
+   "referenz": 8.357,
+   "abdeckung": 1,
+   "plzGesamt": 172,
+   "kreise": [
+    {
+     "kreis": "07137",
+     "wert": 8,
+     "plz": 37,
+     "gewicht": 216874
+    },
+    {
+     "kreis": "07143",
+     "wert": 8,
+     "plz": 29,
+     "gewicht": 146873
+    },
+    {
+     "kreis": "07111",
+     "wert": 10,
+     "plz": 25,
+     "gewicht": 113346
+    },
+    {
+     "kreis": "07138",
+     "wert": 9,
+     "plz": 21,
+     "gewicht": 113194
+    },
+    {
+     "kreis": "07141",
+     "wert": 8,
+     "plz": 19,
+     "gewicht": 88162
+    },
+    {
+     "kreis": "07135",
+     "wert": 7,
+     "plz": 24,
+     "gewicht": 61538
+    },
+    {
+     "kreis": "07140",
+     "wert": 8,
+     "plz": 10,
+     "gewicht": 46257
+    },
+    {
+     "kreis": "07131",
+     "wert": 9,
+     "plz": 6,
+     "gewicht": 33534
+    },
+    {
+     "kreis": "07231",
+     "wert": 8,
+     "plz": 4,
+     "gewicht": 15110
+    },
+    {
+     "kreis": "07132",
+     "wert": 8,
+     "plz": 3,
+     "gewicht": 12389
+    },
+    {
+     "kreis": "07233",
+     "wert": 8,
+     "plz": 4,
+     "gewicht": 9924
+    },
+    {
+     "kreis": "06632",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 4539
+    }
+   ]
+  },
+  "57": {
+   "referenz": 7.997,
+   "abdeckung": 1,
+   "plzGesamt": 66,
+   "kreise": [
+    {
+     "kreis": "05970",
+     "wert": 8,
+     "plz": 20,
+     "gewicht": 274379
+    },
+    {
+     "kreis": "05966",
+     "wert": 8,
+     "plz": 8,
+     "gewicht": 132426
+    },
+    {
+     "kreis": "07132",
+     "wert": 8,
+     "plz": 28,
+     "gewicht": 115630
+    },
+    {
+     "kreis": "07143",
+     "wert": 8,
+     "plz": 12,
+     "gewicht": 60775
+    },
+    {
+     "kreis": "05958",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 12438
+    },
+    {
+     "kreis": "07138",
+     "wert": 9,
+     "plz": 2,
+     "gewicht": 10780
+    }
+   ]
+  },
+  "58": {
+   "referenz": 7.348,
+   "abdeckung": 1,
+   "plzGesamt": 69,
+   "kreise": [
+    {
+     "kreis": "05962",
+     "wert": 7,
+     "plz": 28,
+     "gewicht": 408899
+    },
+    {
+     "kreis": "05954",
+     "wert": 8,
+     "plz": 18,
+     "gewicht": 246576
+    },
+    {
+     "kreis": "05914",
+     "wert": 7,
+     "plz": 19,
+     "gewicht": 190640
+    },
+    {
+     "kreis": "05978",
+     "wert": 8,
+     "plz": 3,
+     "gewicht": 62571
+    },
+    {
+     "kreis": "05974",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 11552
+    }
+   ]
+  },
+  "59": {
+   "referenz": 7.714,
+   "abdeckung": 1,
+   "plzGesamt": 85,
+   "kreise": [
+    {
+     "kreis": "05974",
+     "wert": 8,
+     "plz": 25,
+     "gewicht": 288795
+    },
+    {
+     "kreis": "05978",
+     "wert": 8,
+     "plz": 12,
+     "gewicht": 250284
+    },
+    {
+     "kreis": "05958",
+     "wert": 7,
+     "plz": 19,
+     "gewicht": 236317
+    },
+    {
+     "kreis": "05915",
+     "wert": 7,
+     "plz": 14,
+     "gewicht": 179380
+    },
+    {
+     "kreis": "05570",
+     "wert": 8,
+     "plz": 10,
+     "gewicht": 148535
+    },
+    {
+     "kreis": "05558",
+     "wert": 9,
+     "plz": 5,
+     "gewicht": 80792
+    },
+    {
+     "kreis": "06635",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 5967
+    }
+   ]
+  },
+  "60": {
+   "referenz": 15.717,
+   "abdeckung": 1,
+   "plzGesamt": 138,
+   "kreise": [
+    {
+     "kreis": "06412",
+     "wert": 16,
+     "plz": 130,
+     "gewicht": 686250
+    },
+    {
+     "kreis": "06434",
+     "wert": 12,
+     "plz": 3,
+     "gewicht": 25781
+    },
+    {
+     "kreis": "06436",
+     "wert": 13,
+     "plz": 2,
+     "gewicht": 15906
+    },
+    {
+     "kreis": "06413",
+     "wert": 13,
+     "plz": 1,
+     "gewicht": 10987
+    },
+    {
+     "kreis": "05314",
+     "wert": 12,
+     "plz": 2,
+     "gewicht": 10212
+    },
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 1,
+     "gewicht": 10117
+    }
+   ]
+  },
+  "61": {
+   "referenz": 11.643,
+   "abdeckung": 1,
+   "plzGesamt": 46,
+   "kreise": [
+    {
+     "kreis": "06434",
+     "wert": 12,
+     "plz": 25,
+     "gewicht": 214841
+    },
+    {
+     "kreis": "06440",
+     "wert": 11,
+     "plz": 16,
+     "gewicht": 160364
+    },
+    {
+     "kreis": "06435",
+     "wert": 11,
+     "plz": 3,
+     "gewicht": 30663
+    },
+    {
+     "kreis": "06412",
+     "wert": 16,
+     "plz": 2,
+     "gewicht": 10558
+    }
+   ]
+  },
+  "63": {
+   "referenz": 11.325,
+   "abdeckung": 1,
+   "plzGesamt": 153,
+   "kreise": [
+    {
+     "kreis": "06435",
+     "wert": 11,
+     "plz": 35,
+     "gewicht": 357730
+    },
+    {
+     "kreis": "06438",
+     "wert": 12,
+     "plz": 29,
+     "gewicht": 333573
+    },
+    {
+     "kreis": "09671",
+     "wert": 10,
+     "plz": 32,
+     "gewicht": 165679
+    },
+    {
+     "kreis": "06413",
+     "wert": 13,
+     "plz": 11,
+     "gewicht": 120858
+    },
+    {
+     "kreis": "06440",
+     "wert": 11,
+     "plz": 11,
+     "gewicht": 110250
+    },
+    {
+     "kreis": "09676",
+     "wert": 10,
+     "plz": 27,
+     "gewicht": 107328
+    },
+    {
+     "kreis": "09661",
+     "wert": 12,
+     "plz": 5,
+     "gewicht": 72554
+    },
+    {
+     "kreis": "06412",
+     "wert": 16,
+     "plz": 2,
+     "gewicht": 10558
+    },
+    {
+     "kreis": "08222",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 5967
+    },
+    {
+     "kreis": "06535",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 4833
+    }
+   ]
+  },
+  "64": {
+   "referenz": 11.886,
+   "abdeckung": 1,
+   "plzGesamt": 87,
+   "kreise": [
+    {
+     "kreis": "06432",
+     "wert": 12,
+     "plz": 26,
+     "gewicht": 302263
+    },
+    {
+     "kreis": "06411",
+     "wert": 14,
+     "plz": 20,
+     "gewicht": 156983
+    },
+    {
+     "kreis": "06433",
+     "wert": 12,
+     "plz": 15,
+     "gewicht": 154569
+    },
+    {
+     "kreis": "06431",
+     "wert": 11,
+     "plz": 12,
+     "gewicht": 126685
+    },
+    {
+     "kreis": "06437",
+     "wert": 9,
+     "plz": 15,
+     "gewicht": 94246
+    },
+    {
+     "kreis": "08222",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 5967
+    }
+   ]
+  },
+  "65": {
+   "referenz": 11.45,
+   "abdeckung": 1,
+   "plzGesamt": 134,
+   "kreise": [
+    {
+     "kreis": "06414",
+     "wert": 12,
+     "plz": 30,
+     "gewicht": 269288
+    },
+    {
+     "kreis": "06436",
+     "wert": 13,
+     "plz": 27,
+     "gewicht": 214734
+    },
+    {
+     "kreis": "06439",
+     "wert": 10,
+     "plz": 29,
+     "gewicht": 186050
+    },
+    {
+     "kreis": "06533",
+     "wert": 9,
+     "plz": 23,
+     "gewicht": 133615
+    },
+    {
+     "kreis": "06433",
+     "wert": 12,
+     "plz": 10,
+     "gewicht": 103046
+    },
+    {
+     "kreis": "07141",
+     "wert": 8,
+     "plz": 8,
+     "gewicht": 37121
+    },
+    {
+     "kreis": "06412",
+     "wert": 16,
+     "plz": 7,
+     "gewicht": 36952
+    },
+    {
+     "kreis": "05315",
+     "wert": 14,
+     "plz": 1,
+     "gewicht": 7588
+    }
+   ]
+  },
+  "66": {
+   "referenz": 8.552,
+   "abdeckung": 1,
+   "plzGesamt": 137,
+   "kreise": [
+    {
+     "kreis": "10041",
+     "wert": 9,
+     "plz": 42,
+     "gewicht": 324685
+    },
+    {
+     "kreis": "10044",
+     "wert": 9,
+     "plz": 14,
+     "gewicht": 206094
+    },
+    {
+     "kreis": "10045",
+     "wert": 9,
+     "plz": 9,
+     "gewicht": 144478
+    },
+    {
+     "kreis": "10043",
+     "wert": 8,
+     "plz": 9,
+     "gewicht": 133667
+    },
+    {
+     "kreis": "10042",
+     "wert": 9,
+     "plz": 8,
+     "gewicht": 109336
+    },
+    {
+     "kreis": "10046",
+     "wert": 8,
+     "plz": 8,
+     "gewicht": 88056
+    },
+    {
+     "kreis": "07340",
+     "wert": 7,
+     "plz": 24,
+     "gewicht": 69807
+    },
+    {
+     "kreis": "07317",
+     "wert": 7,
+     "plz": 5,
+     "gewicht": 39576
+    },
+    {
+     "kreis": "07336",
+     "wert": 8,
+     "plz": 12,
+     "gewicht": 34923
+    },
+    {
+     "kreis": "07320",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 33355
+    },
+    {
+     "kreis": "07335",
+     "wert": 9,
+     "plz": 8,
+     "gewicht": 27376
+    }
+   ]
+  },
+  "67": {
+   "referenz": 10.084,
+   "abdeckung": 1,
+   "plzGesamt": 191,
+   "kreise": [
+    {
+     "kreis": "07314",
+     "wert": 11,
+     "plz": 15,
+     "gewicht": 164828
+    },
+    {
+     "kreis": "07338",
+     "wert": 11,
+     "plz": 22,
+     "gewicht": 155525
+    },
+    {
+     "kreis": "07332",
+     "wert": 10,
+     "plz": 35,
+     "gewicht": 134221
+    },
+    {
+     "kreis": "07312",
+     "wert": 10,
+     "plz": 6,
+     "gewicht": 100571
+    },
+    {
+     "kreis": "07319",
+     "wert": 10,
+     "plz": 5,
+     "gewicht": 86403
+    },
+    {
+     "kreis": "07335",
+     "wert": 9,
+     "plz": 23,
+     "gewicht": 78706
+    },
+    {
+     "kreis": "07331",
+     "wert": 10,
+     "plz": 15,
+     "gewicht": 78476
+    },
+    {
+     "kreis": "07333",
+     "wert": 9,
+     "plz": 28,
+     "gewicht": 74728
+    },
+    {
+     "kreis": "07316",
+     "wert": 10,
+     "plz": 4,
+     "gewicht": 52709
+    },
+    {
+     "kreis": "07318",
+     "wert": 11,
+     "plz": 4,
+     "gewicht": 49874
+    },
+    {
+     "kreis": "07311",
+     "wert": 11,
+     "plz": 2,
+     "gewicht": 48107
+    },
+    {
+     "kreis": "07336",
+     "wert": 8,
+     "plz": 12,
+     "gewicht": 34923
+    },
+    {
+     "kreis": "07334",
+     "wert": 10,
+     "plz": 7,
+     "gewicht": 34139
+    },
+    {
+     "kreis": "07337",
+     "wert": 9,
+     "plz": 6,
+     "gewicht": 33945
+    },
+    {
+     "kreis": "07339",
+     "wert": 10,
+     "plz": 4,
+     "gewicht": 26609
+    },
+    {
+     "kreis": "07133",
+     "wert": 9,
+     "plz": 6,
+     "gewicht": 25984
+    },
+    {
+     "kreis": "07340",
+     "wert": 7,
+     "plz": 4,
+     "gewicht": 11635
+    }
+   ]
+  },
+  "68": {
+   "referenz": 11.611,
+   "abdeckung": 1,
+   "plzGesamt": 73,
+   "kreise": [
+    {
+     "kreis": "08222",
+     "wert": 12,
+     "plz": 50,
+     "gewicht": 298355
+    },
+    {
+     "kreis": "08226",
+     "wert": 11,
+     "plz": 14,
+     "gewicht": 134646
+    },
+    {
+     "kreis": "06431",
+     "wert": 11,
+     "plz": 7,
+     "gewicht": 73900
+    },
+    {
+     "kreis": "08215",
+     "wert": 11,
+     "plz": 2,
+     "gewicht": 24614
+    },
+    {
+     "kreis": "08221",
+     "wert": 14,
+     "plz": 1,
+     "gewicht": 11084
+    }
+   ]
+  },
+  "69": {
+   "referenz": 11.741,
+   "abdeckung": 1,
+   "plzGesamt": 53,
+   "kreise": [
+    {
+     "kreis": "08226",
+     "wert": 11,
+     "plz": 30,
+     "gewicht": 288527
+    },
+    {
+     "kreis": "08221",
+     "wert": 14,
+     "plz": 13,
+     "gewicht": 144091
+    },
+    {
+     "kreis": "06431",
+     "wert": 11,
+     "plz": 7,
+     "gewicht": 73900
+    },
+    {
+     "kreis": "08225",
+     "wert": 9,
+     "plz": 4,
+     "gewicht": 20812
+    }
+   ]
+  },
+  "70": {
+   "referenz": 14.412,
+   "abdeckung": 1,
+   "plzGesamt": 127,
+   "kreise": [
+    {
+     "kreis": "08111",
+     "wert": 15,
+     "plz": 99,
+     "gewicht": 583635
+    },
+    {
+     "kreis": "08116",
+     "wert": 13,
+     "plz": 13,
+     "gewicht": 112393
+    },
+    {
+     "kreis": "08118",
+     "wert": 13,
+     "plz": 9,
+     "gewicht": 89135
+    },
+    {
+     "kreis": "08119",
+     "wert": 13,
+     "plz": 6,
+     "gewicht": 62872
+    },
+    {
+     "kreis": "08115",
+     "wert": 13,
+     "plz": 1,
+     "gewicht": 9616
+    },
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 1,
+     "gewicht": 6646
+    }
+   ]
+  },
+  "71": {
+   "referenz": 12.848,
+   "abdeckung": 1,
+   "plzGesamt": 101,
+   "kreise": [
+    {
+     "kreis": "08115",
+     "wert": 13,
+     "plz": 39,
+     "gewicht": 375029
+    },
+    {
+     "kreis": "08118",
+     "wert": 13,
+     "plz": 29,
+     "gewicht": 287212
+    },
+    {
+     "kreis": "08119",
+     "wert": 13,
+     "plz": 26,
+     "gewicht": 272445
+    },
+    {
+     "kreis": "08236",
+     "wert": 10,
+     "plz": 4,
+     "gewicht": 26650
+    },
+    {
+     "kreis": "08125",
+     "wert": 11,
+     "plz": 3,
+     "gewicht": 18943
+    },
+    {
+     "kreis": "03241",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 10847
+    }
+   ]
+  },
+  "72": {
+   "referenz": 10.978,
+   "abdeckung": 1,
+   "plzGesamt": 140,
+   "kreise": [
+    {
+     "kreis": "08415",
+     "wert": 12,
+     "plz": 32,
+     "gewicht": 284495
+    },
+    {
+     "kreis": "08416",
+     "wert": 12,
+     "plz": 20,
+     "gewicht": 232897
+    },
+    {
+     "kreis": "08417",
+     "wert": 9,
+     "plz": 29,
+     "gewicht": 193339
+    },
+    {
+     "kreis": "08116",
+     "wert": 13,
+     "plz": 16,
+     "gewicht": 138330
+    },
+    {
+     "kreis": "08237",
+     "wert": 9,
+     "plz": 16,
+     "gewicht": 114730
+    },
+    {
+     "kreis": "08437",
+     "wert": 9,
+     "plz": 12,
+     "gewicht": 63724
+    },
+    {
+     "kreis": "08235",
+     "wert": 10,
+     "plz": 9,
+     "gewicht": 53727
+    },
+    {
+     "kreis": "08325",
+     "wert": 9,
+     "plz": 3,
+     "gewicht": 18306
+    },
+    {
+     "kreis": "08425",
+     "wert": 10,
+     "plz": 2,
+     "gewicht": 8773
+    },
+    {
+     "kreis": "08111",
+     "wert": 15,
+     "plz": 1,
+     "gewicht": 5895
+    }
+   ]
+  },
+  "73": {
+   "referenz": 11.22,
+   "abdeckung": 1,
+   "plzGesamt": 141,
+   "kreise": [
+    {
+     "kreis": "08136",
+     "wert": 10,
+     "plz": 55,
+     "gewicht": 311598
+    },
+    {
+     "kreis": "08116",
+     "wert": 13,
+     "plz": 33,
+     "gewicht": 285305
+    },
+    {
+     "kreis": "08117",
+     "wert": 10,
+     "plz": 42,
+     "gewicht": 253203
+    },
+    {
+     "kreis": "08119",
+     "wert": 13,
+     "plz": 10,
+     "gewicht": 104786
+    },
+    {
+     "kreis": "08425",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 4386
+    }
+   ]
+  },
+  "74": {
+   "referenz": 10.912,
+   "abdeckung": 1,
+   "plzGesamt": 174,
+   "kreise": [
+    {
+     "kreis": "08125",
+     "wert": 11,
+     "plz": 51,
+     "gewicht": 322037
+    },
+    {
+     "kreis": "08127",
+     "wert": 10,
+     "plz": 36,
+     "gewicht": 200597
+    },
+    {
+     "kreis": "08118",
+     "wert": 13,
+     "plz": 16,
+     "gewicht": 158462
+    },
+    {
+     "kreis": "08226",
+     "wert": 11,
+     "plz": 14,
+     "gewicht": 134646
+    },
+    {
+     "kreis": "08121",
+     "wert": 12,
+     "plz": 12,
+     "gewicht": 131653
+    },
+    {
+     "kreis": "08225",
+     "wert": 9,
+     "plz": 24,
+     "gewicht": 124869
+    },
+    {
+     "kreis": "08126",
+     "wert": 10,
+     "plz": 18,
+     "gewicht": 115335
+    },
+    {
+     "kreis": "09663",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 8235
+    },
+    {
+     "kreis": "05315",
+     "wert": 14,
+     "plz": 1,
+     "gewicht": 7588
+    },
+    {
+     "kreis": "08128",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 7414
+    },
+    {
+     "kreis": "08136",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 5665
+    }
+   ]
+  },
+  "75": {
+   "referenz": 10.279,
+   "abdeckung": 1,
+   "plzGesamt": 68,
+   "kreise": [
+    {
+     "kreis": "08236",
+     "wert": 10,
+     "plz": 26,
+     "gewicht": 173228
+    },
+    {
+     "kreis": "08231",
+     "wert": 10,
+     "plz": 14,
+     "gewicht": 135087
+    },
+    {
+     "kreis": "08235",
+     "wert": 10,
+     "plz": 17,
+     "gewicht": 101484
+    },
+    {
+     "kreis": "08215",
+     "wert": 11,
+     "plz": 8,
+     "gewicht": 98454
+    },
+    {
+     "kreis": "08125",
+     "wert": 11,
+     "plz": 2,
+     "gewicht": 12629
+    },
+    {
+     "kreis": "07314",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 10989
+    },
+    {
+     "kreis": "08115",
+     "wert": 13,
+     "plz": 1,
+     "gewicht": 9616
+    }
+   ]
+  },
+  "76": {
+   "referenz": 10.856,
+   "abdeckung": 1,
+   "plzGesamt": 153,
+   "kreise": [
+    {
+     "kreis": "08215",
+     "wert": 11,
+     "plz": 27,
+     "gewicht": 332282
+    },
+    {
+     "kreis": "08212",
+     "wert": 12,
+     "plz": 56,
+     "gewicht": 308197
+    },
+    {
+     "kreis": "08216",
+     "wert": 10,
+     "plz": 20,
+     "gewicht": 171375
+    },
+    {
+     "kreis": "07334",
+     "wert": 10,
+     "plz": 20,
+     "gewicht": 97539
+    },
+    {
+     "kreis": "07337",
+     "wert": 9,
+     "plz": 14,
+     "gewicht": 79205
+    },
+    {
+     "kreis": "08211",
+     "wert": 11,
+     "plz": 12,
+     "gewicht": 56526
+    },
+    {
+     "kreis": "07313",
+     "wert": 11,
+     "plz": 4,
+     "gewicht": 48202
+    },
+    {
+     "kreis": "07340",
+     "wert": 7,
+     "plz": 3,
+     "gewicht": 8726
+    },
+    {
+     "kreis": "08235",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 5970
+    }
+   ]
+  },
+  "77": {
+   "referenz": 10.822,
+   "abdeckung": 1,
+   "plzGesamt": 69,
+   "kreise": [
+    {
+     "kreis": "08317",
+     "wert": 11,
+     "plz": 60,
+     "gewicht": 436212
+    },
+    {
+     "kreis": "08216",
+     "wert": 10,
+     "plz": 6,
+     "gewicht": 51412
+    },
+    {
+     "kreis": "08325",
+     "wert": 9,
+     "plz": 2,
+     "gewicht": 12204
+    },
+    {
+     "kreis": "08237",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 7171
+    }
+   ]
+  },
+  "78": {
+   "referenz": 10.362,
+   "abdeckung": 1,
+   "plzGesamt": 117,
+   "kreise": [
+    {
+     "kreis": "08335",
+     "wert": 12,
+     "plz": 34,
+     "gewicht": 291397
+    },
+    {
+     "kreis": "08326",
+     "wert": 9,
+     "plz": 29,
+     "gewicht": 213922
+    },
+    {
+     "kreis": "08327",
+     "wert": 10,
+     "plz": 33,
+     "gewicht": 140692
+    },
+    {
+     "kreis": "08325",
+     "wert": 9,
+     "plz": 18,
+     "gewicht": 109834
+    },
+    {
+     "kreis": "08435",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 7374
+    },
+    {
+     "kreis": "08317",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 7270
+    },
+    {
+     "kreis": "09671",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 5177
+    }
+   ]
+  },
+  "79": {
+   "referenz": 11.712,
+   "abdeckung": 1,
+   "plzGesamt": 179,
+   "kreise": [
+    {
+     "kreis": "08315",
+     "wert": 11,
+     "plz": 51,
+     "gewicht": 271977
+    },
+    {
+     "kreis": "08336",
+     "wert": 12,
+     "plz": 40,
+     "gewicht": 237212
+    },
+    {
+     "kreis": "08311",
+     "wert": 14,
+     "plz": 31,
+     "gewicht": 236236
+    },
+    {
+     "kreis": "08337",
+     "wert": 10,
+     "plz": 32,
+     "gewicht": 171777
+    },
+    {
+     "kreis": "08316",
+     "wert": 11,
+     "plz": 25,
+     "gewicht": 169470
+    }
+   ]
+  },
+  "80": {
+   "referenz": 20.978,
+   "abdeckung": 1,
+   "plzGesamt": 129,
+   "kreise": [
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 129,
+     "gewicht": 857343
+    },
+    {
+     "kreis": "09184",
+     "wert": 18,
+     "plz": 1,
+     "gewicht": 6414
+    }
+   ]
+  },
+  "81": {
+   "referenz": 20.786,
+   "abdeckung": 1,
+   "plzGesamt": 93,
+   "kreise": [
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 88,
+     "gewicht": 584854
+    },
+    {
+     "kreis": "09184",
+     "wert": 18,
+     "plz": 4,
+     "gewicht": 25656
+    },
+    {
+     "kreis": "09772",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 6084
+    }
+   ]
+  },
+  "82": {
+   "referenz": 15.181,
+   "abdeckung": 1,
+   "plzGesamt": 119,
+   "kreise": [
+    {
+     "kreis": "09179",
+     "wert": 16,
+     "plz": 26,
+     "gewicht": 216912
+    },
+    {
+     "kreis": "09188",
+     "wert": 16,
+     "plz": 17,
+     "gewicht": 138926
+    },
+    {
+     "kreis": "09184",
+     "wert": 18,
+     "plz": 18,
+     "gewicht": 115452
+    },
+    {
+     "kreis": "09190",
+     "wert": 12,
+     "plz": 24,
+     "gewicht": 94664
+    },
+    {
+     "kreis": "09180",
+     "wert": 13,
+     "plz": 22,
+     "gewicht": 89322
+    },
+    {
+     "kreis": "09173",
+     "wert": 14,
+     "plz": 10,
+     "gewicht": 64894
+    },
+    {
+     "kreis": "09181",
+     "wert": 12,
+     "plz": 2,
+     "gewicht": 6720
+    },
+    {
+     "kreis": "09771",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 5457
+    }
+   ]
+  },
+  "83": {
+   "referenz": 12.818,
+   "abdeckung": 1,
+   "plzGesamt": 152,
+   "kreise": [
+    {
+     "kreis": "09187",
+     "wert": 13,
+     "plz": 50,
+     "gewicht": 256815
+    },
+    {
+     "kreis": "09189",
+     "wert": 11,
+     "plz": 41,
+     "gewicht": 164020
+    },
+    {
+     "kreis": "09172",
+     "wert": 12,
+     "plz": 17,
+     "gewicht": 105108
+    },
+    {
+     "kreis": "09182",
+     "wert": 16,
+     "plz": 18,
+     "gewicht": 96730
+    },
+    {
+     "kreis": "09173",
+     "wert": 14,
+     "plz": 10,
+     "gewicht": 64894
+    },
+    {
+     "kreis": "09163",
+     "wert": 13,
+     "plz": 5,
+     "gewicht": 64453
+    },
+    {
+     "kreis": "09183",
+     "wert": 10,
+     "plz": 8,
+     "gewicht": 35930
+    },
+    {
+     "kreis": "09175",
+     "wert": 15,
+     "plz": 3,
+     "gewicht": 19502
+    }
+   ]
+  },
+  "84": {
+   "referenz": 10.292,
+   "abdeckung": 1,
+   "plzGesamt": 133,
+   "kreise": [
+    {
+     "kreis": "09274",
+     "wert": 10,
+     "plz": 34,
+     "gewicht": 156575
+    },
+    {
+     "kreis": "09171",
+     "wert": 10,
+     "plz": 20,
+     "gewicht": 113018
+    },
+    {
+     "kreis": "09277",
+     "wert": 9,
+     "plz": 23,
+     "gewicht": 98962
+    },
+    {
+     "kreis": "09183",
+     "wert": 10,
+     "plz": 19,
+     "gewicht": 85333
+    },
+    {
+     "kreis": "09261",
+     "wert": 12,
+     "plz": 10,
+     "gewicht": 68741
+    },
+    {
+     "kreis": "09279",
+     "wert": 9,
+     "plz": 9,
+     "gewicht": 56659
+    },
+    {
+     "kreis": "09177",
+     "wert": 13,
+     "plz": 8,
+     "gewicht": 44655
+    },
+    {
+     "kreis": "09273",
+     "wert": 11,
+     "plz": 7,
+     "gewicht": 36632
+    },
+    {
+     "kreis": "09178",
+     "wert": 14,
+     "plz": 2,
+     "gewicht": 11841
+    },
+    {
+     "kreis": "09189",
+     "wert": 11,
+     "plz": 2,
+     "gewicht": 8001
+    },
+    {
+     "kreis": "09278",
+     "wert": 9,
+     "plz": 2,
+     "gewicht": 6078
+    },
+    {
+     "kreis": "09375",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 4969
+    }
+   ]
+  },
+  "85": {
+   "referenz": 14.066,
+   "abdeckung": 1,
+   "plzGesamt": 164,
+   "kreise": [
+    {
+     "kreis": "09184",
+     "wert": 18,
+     "plz": 30,
+     "gewicht": 192421
+    },
+    {
+     "kreis": "09178",
+     "wert": 14,
+     "plz": 29,
+     "gewicht": 171694
+    },
+    {
+     "kreis": "09174",
+     "wert": 15,
+     "plz": 18,
+     "gewicht": 143929
+    },
+    {
+     "kreis": "09161",
+     "wert": 13,
+     "plz": 8,
+     "gewicht": 139536
+    },
+    {
+     "kreis": "09175",
+     "wert": 15,
+     "plz": 19,
+     "gewicht": 123510
+    },
+    {
+     "kreis": "09186",
+     "wert": 11,
+     "plz": 18,
+     "gewicht": 122681
+    },
+    {
+     "kreis": "09176",
+     "wert": 11,
+     "plz": 25,
+     "gewicht": 109048
+    },
+    {
+     "kreis": "09177",
+     "wert": 13,
+     "plz": 17,
+     "gewicht": 94892
+    },
+    {
+     "kreis": "09185",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 5498
+    },
+    {
+     "kreis": "09274",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 4605
+    }
+   ]
+  },
+  "86": {
+   "referenz": 11.679,
+   "abdeckung": 1,
+   "plzGesamt": 249,
+   "kreise": [
+    {
+     "kreis": "09761",
+     "wert": 13,
+     "plz": 39,
+     "gewicht": 298972
+    },
+    {
+     "kreis": "09772",
+     "wert": 12,
+     "plz": 42,
+     "gewicht": 255516
+    },
+    {
+     "kreis": "09779",
+     "wert": 10,
+     "plz": 46,
+     "gewicht": 134677
+    },
+    {
+     "kreis": "09771",
+     "wert": 11,
+     "plz": 24,
+     "gewicht": 130973
+    },
+    {
+     "kreis": "09181",
+     "wert": 12,
+     "plz": 34,
+     "gewicht": 114246
+    },
+    {
+     "kreis": "09185",
+     "wert": 11,
+     "plz": 17,
+     "gewicht": 93469
+    },
+    {
+     "kreis": "09774",
+     "wert": 10,
+     "plz": 15,
+     "gewicht": 55584
+    },
+    {
+     "kreis": "09190",
+     "wert": 12,
+     "plz": 11,
+     "gewicht": 43388
+    },
+    {
+     "kreis": "09778",
+     "wert": 11,
+     "plz": 9,
+     "gewicht": 25641
+    },
+    {
+     "kreis": "09777",
+     "wert": 11,
+     "plz": 6,
+     "gewicht": 21713
+    },
+    {
+     "kreis": "09773",
+     "wert": 10,
+     "plz": 5,
+     "gewicht": 18236
+    },
+    {
+     "kreis": "08216",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 8569
+    },
+    {
+     "kreis": "09174",
+     "wert": 15,
+     "plz": 1,
+     "gewicht": 7996
+    },
+    {
+     "kreis": "09186",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 6816
+    }
+   ]
+  },
+  "87": {
+   "referenz": 11.08,
+   "abdeckung": 1,
+   "plzGesamt": 108,
+   "kreise": [
+    {
+     "kreis": "09780",
+     "wert": 11,
+     "plz": 24,
+     "gewicht": 153394
+    },
+    {
+     "kreis": "09778",
+     "wert": 11,
+     "plz": 42,
+     "gewicht": 119657
+    },
+    {
+     "kreis": "09777",
+     "wert": 11,
+     "plz": 33,
+     "gewicht": 119424
+    },
+    {
+     "kreis": "09763",
+     "wert": 11,
+     "plz": 6,
+     "gewicht": 65933
+    },
+    {
+     "kreis": "09762",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 46071
+    },
+    {
+     "kreis": "09764",
+     "wert": 12,
+     "plz": 2,
+     "gewicht": 44048
+    }
+   ]
+  },
+  "88": {
+   "referenz": 10.932,
+   "abdeckung": 1,
+   "plzGesamt": 137,
+   "kreise": [
+    {
+     "kreis": "08436",
+     "wert": 11,
+     "plz": 45,
+     "gewicht": 289725
+    },
+    {
+     "kreis": "08435",
+     "wert": 12,
+     "plz": 29,
+     "gewicht": 213834
+    },
+    {
+     "kreis": "08426",
+     "wert": 10,
+     "plz": 37,
+     "gewicht": 206783
+    },
+    {
+     "kreis": "09776",
+     "wert": 12,
+     "plz": 12,
+     "gewicht": 82224
+    },
+    {
+     "kreis": "08437",
+     "wert": 9,
+     "plz": 13,
+     "gewicht": 69034
+    },
+    {
+     "kreis": "08415",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 8890
+    },
+    {
+     "kreis": "08425",
+     "wert": 10,
+     "plz": 2,
+     "gewicht": 8773
+    },
+    {
+     "kreis": "09373",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 7274
+    },
+    {
+     "kreis": "08327",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 4263
+    }
+   ]
+  },
+  "89": {
+   "referenz": 10.792,
+   "abdeckung": 1,
+   "plzGesamt": 129,
+   "kreise": [
+    {
+     "kreis": "09775",
+     "wert": 12,
+     "plz": 21,
+     "gewicht": 182560
+    },
+    {
+     "kreis": "08425",
+     "wert": 10,
+     "plz": 41,
+     "gewicht": 179838
+    },
+    {
+     "kreis": "08135",
+     "wert": 10,
+     "plz": 15,
+     "gewicht": 135241
+    },
+    {
+     "kreis": "08421",
+     "wert": 12,
+     "plz": 10,
+     "gewicht": 128998
+    },
+    {
+     "kreis": "09773",
+     "wert": 10,
+     "plz": 22,
+     "gewicht": 80238
+    },
+    {
+     "kreis": "09774",
+     "wert": 10,
+     "plz": 20,
+     "gewicht": 74112
+    },
+    {
+     "kreis": "08117",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 6029
+    }
+   ]
+  },
+  "90": {
+   "referenz": 10.836,
+   "abdeckung": 1,
+   "plzGesamt": 111,
+   "kreise": [
+    {
+     "kreis": "09564",
+     "wert": 11,
+     "plz": 73,
+     "gewicht": 519490
+    },
+    {
+     "kreis": "09563",
+     "wert": 11,
+     "plz": 8,
+     "gewicht": 131712
+    },
+    {
+     "kreis": "09573",
+     "wert": 10,
+     "plz": 12,
+     "gewicht": 108570
+    },
+    {
+     "kreis": "09574",
+     "wert": 10,
+     "plz": 8,
+     "gewicht": 52059
+    },
+    {
+     "kreis": "09576",
+     "wert": 10,
+     "plz": 4,
+     "gewicht": 30221
+    },
+    {
+     "kreis": "09572",
+     "wert": 11,
+     "plz": 2,
+     "gewicht": 12051
+    },
+    {
+     "kreis": "09373",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 7274
+    },
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 1,
+     "gewicht": 6646
+    },
+    {
+     "kreis": "09575",
+     "wert": 9,
+     "plz": 2,
+     "gewicht": 6120
+    },
+    {
+     "kreis": "08222",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 5967
+    },
+    {
+     "kreis": "09571",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 3287
+    }
+   ]
+  },
+  "91": {
+   "referenz": 9.814,
+   "abdeckung": 1,
+   "plzGesamt": 214,
+   "kreise": [
+    {
+     "kreis": "09571",
+     "wert": 9,
+     "plz": 56,
+     "gewicht": 184053
+    },
+    {
+     "kreis": "09574",
+     "wert": 10,
+     "plz": 18,
+     "gewicht": 117134
+    },
+    {
+     "kreis": "09474",
+     "wert": 10,
+     "plz": 27,
+     "gewicht": 116284
+    },
+    {
+     "kreis": "09572",
+     "wert": 11,
+     "plz": 19,
+     "gewicht": 114480
+    },
+    {
+     "kreis": "09562",
+     "wert": 11,
+     "plz": 8,
+     "gewicht": 102501
+    },
+    {
+     "kreis": "09576",
+     "wert": 10,
+     "plz": 13,
+     "gewicht": 98217
+    },
+    {
+     "kreis": "09577",
+     "wert": 9,
+     "plz": 26,
+     "gewicht": 94670
+    },
+    {
+     "kreis": "09575",
+     "wert": 9,
+     "plz": 28,
+     "gewicht": 85682
+    },
+    {
+     "kreis": "09565",
+     "wert": 10,
+     "plz": 3,
+     "gewicht": 40994
+    },
+    {
+     "kreis": "09561",
+     "wert": 9,
+     "plz": 3,
+     "gewicht": 39700
+    },
+    {
+     "kreis": "09472",
+     "wert": 10,
+     "plz": 7,
+     "gewicht": 24927
+    },
+    {
+     "kreis": "09176",
+     "wert": 11,
+     "plz": 3,
+     "gewicht": 13086
+    },
+    {
+     "kreis": "09573",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 9047
+    },
+    {
+     "kreis": "09371",
+     "wert": 8,
+     "plz": 2,
+     "gewicht": 6942
+    },
+    {
+     "kreis": "09471",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 4229
+    },
+    {
+     "kreis": "09374",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 2749
+    }
+   ]
+  },
+  "92": {
+   "referenz": 8.928,
+   "abdeckung": 1,
+   "plzGesamt": 127,
+   "kreise": [
+    {
+     "kreis": "09376",
+     "wert": 9,
+     "plz": 34,
+     "gewicht": 133046
+    },
+    {
+     "kreis": "09373",
+     "wert": 10,
+     "plz": 17,
+     "gewicht": 123665
+    },
+    {
+     "kreis": "09371",
+     "wert": 8,
+     "plz": 28,
+     "gewicht": 97185
+    },
+    {
+     "kreis": "09374",
+     "wert": 7,
+     "plz": 32,
+     "gewicht": 87963
+    },
+    {
+     "kreis": "09363",
+     "wert": 9,
+     "plz": 10,
+     "gewicht": 42430
+    },
+    {
+     "kreis": "09361",
+     "wert": 10,
+     "plz": 2,
+     "gewicht": 42217
+    },
+    {
+     "kreis": "09377",
+     "wert": 7,
+     "plz": 3,
+     "gewicht": 8705
+    },
+    {
+     "kreis": "09162",
+     "wert": 21,
+     "plz": 1,
+     "gewicht": 6646
+    },
+    {
+     "kreis": "09176",
+     "wert": 11,
+     "plz": 1,
+     "gewicht": 4362
+    },
+    {
+     "kreis": "09372",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 3206
+    }
+   ]
+  },
+  "93": {
+   "referenz": 10.214,
+   "abdeckung": 1,
+   "plzGesamt": 120,
+   "kreise": [
+    {
+     "kreis": "09375",
+     "wert": 10,
+     "plz": 38,
+     "gewicht": 188832
+    },
+    {
+     "kreis": "09362",
+     "wert": 12,
+     "plz": 19,
+     "gewicht": 149664
+    },
+    {
+     "kreis": "09372",
+     "wert": 8,
+     "plz": 39,
+     "gewicht": 125024
+    },
+    {
+     "kreis": "09273",
+     "wert": 11,
+     "plz": 17,
+     "gewicht": 88965
+    },
+    {
+     "kreis": "09376",
+     "wert": 9,
+     "plz": 4,
+     "gewicht": 15652
+    },
+    {
+     "kreis": "09176",
+     "wert": 11,
+     "plz": 2,
+     "gewicht": 8724
+    },
+    {
+     "kreis": "09276",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 3520
+    }
+   ]
+  },
+  "94": {
+   "referenz": 8.867,
+   "abdeckung": 1,
+   "plzGesamt": 161,
+   "kreise": [
+    {
+     "kreis": "09275",
+     "wert": 9,
+     "plz": 36,
+     "gewicht": 194068
+    },
+    {
+     "kreis": "09271",
+     "wert": 9,
+     "plz": 26,
+     "gewicht": 121137
+    },
+    {
+     "kreis": "09278",
+     "wert": 9,
+     "plz": 32,
+     "gewicht": 97251
+    },
+    {
+     "kreis": "09272",
+     "wert": 8,
+     "plz": 26,
+     "gewicht": 75604
+    },
+    {
+     "kreis": "09276",
+     "wert": 8,
+     "plz": 21,
+     "gewicht": 73919
+    },
+    {
+     "kreis": "09262",
+     "wert": 10,
+     "plz": 5,
+     "gewicht": 52894
+    },
+    {
+     "kreis": "09263",
+     "wert": 9,
+     "plz": 3,
+     "gewicht": 47524
+    },
+    {
+     "kreis": "09279",
+     "wert": 9,
+     "plz": 7,
+     "gewicht": 44068
+    },
+    {
+     "kreis": "09277",
+     "wert": 9,
+     "plz": 5,
+     "gewicht": 21513
+    }
+   ]
+  },
+  "95": {
+   "referenz": 8.318,
+   "abdeckung": 1,
+   "plzGesamt": 123,
+   "kreise": [
+    {
+     "kreis": "09475",
+     "wert": 7,
+     "plz": 26,
+     "gewicht": 92675
+    },
+    {
+     "kreis": "09472",
+     "wert": 10,
+     "plz": 21,
+     "gewicht": 74781
+    },
+    {
+     "kreis": "09462",
+     "wert": 11,
+     "plz": 7,
+     "gewicht": 73074
+    },
+    {
+     "kreis": "09479",
+     "wert": 7,
+     "plz": 20,
+     "gewicht": 70959
+    },
+    {
+     "kreis": "09477",
+     "wert": 9,
+     "plz": 20,
+     "gewicht": 68335
+    },
+    {
+     "kreis": "09377",
+     "wert": 7,
+     "plz": 22,
+     "gewicht": 63840
+    },
+    {
+     "kreis": "09464",
+     "wert": 7,
+     "plz": 5,
+     "gewicht": 46484
+    },
+    {
+     "kreis": "09374",
+     "wert": 7,
+     "plz": 2,
+     "gewicht": 5498
+    }
+   ]
+  },
+  "96": {
+   "referenz": 9.427,
+   "abdeckung": 1,
+   "plzGesamt": 121,
+   "kreise": [
+    {
+     "kreis": "09471",
+     "wert": 10,
+     "plz": 34,
+     "gewicht": 143788
+    },
+    {
+     "kreis": "09473",
+     "wert": 8,
+     "plz": 18,
+     "gewicht": 84518
+    },
+    {
+     "kreis": "09461",
+     "wert": 11,
+     "plz": 9,
+     "gewicht": 75087
+    },
+    {
+     "kreis": "09478",
+     "wert": 9,
+     "plz": 12,
+     "gewicht": 67716
+    },
+    {
+     "kreis": "09476",
+     "wert": 8,
+     "plz": 17,
+     "gewicht": 65009
+    },
+    {
+     "kreis": "09463",
+     "wert": 8,
+     "plz": 8,
+     "gewicht": 40907
+    },
+    {
+     "kreis": "09674",
+     "wert": 8,
+     "plz": 9,
+     "gewicht": 30122
+    },
+    {
+     "kreis": "16072",
+     "wert": 7,
+     "plz": 4,
+     "gewicht": 27980
+    },
+    {
+     "kreis": "11000",
+     "wert": 17,
+     "plz": 2,
+     "gewicht": 20234
+    },
+    {
+     "kreis": "09572",
+     "wert": 11,
+     "plz": 2,
+     "gewicht": 12051
+    },
+    {
+     "kreis": "09675",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 6080
+    },
+    {
+     "kreis": "06412",
+     "wert": 16,
+     "plz": 1,
+     "gewicht": 5279
+    },
+    {
+     "kreis": "05314",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 5106
+    },
+    {
+     "kreis": "09678",
+     "wert": 8,
+     "plz": 1,
+     "gewicht": 3945
+    },
+    {
+     "kreis": "09472",
+     "wert": 10,
+     "plz": 1,
+     "gewicht": 3561
+    },
+    {
+     "kreis": "09477",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 3417
+    },
+    {
+     "kreis": "09575",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 3060
+    }
+   ]
+  },
+  "97": {
+   "referenz": 9.255,
+   "abdeckung": 1,
+   "plzGesamt": 236,
+   "kreise": [
+    {
+     "kreis": "09679",
+     "wert": 11,
+     "plz": 50,
+     "gewicht": 160879
+    },
+    {
+     "kreis": "08128",
+     "wert": 9,
+     "plz": 17,
+     "gewicht": 126045
+    },
+    {
+     "kreis": "09677",
+     "wert": 8,
+     "plz": 42,
+     "gewicht": 125814
+    },
+    {
+     "kreis": "09663",
+     "wert": 12,
+     "plz": 15,
+     "gewicht": 123524
+    },
+    {
+     "kreis": "09678",
+     "wert": 8,
+     "plz": 28,
+     "gewicht": 110459
+    },
+    {
+     "kreis": "09672",
+     "wert": 8,
+     "plz": 24,
+     "gewicht": 103447
+    },
+    {
+     "kreis": "09675",
+     "wert": 9,
+     "plz": 14,
+     "gewicht": 85117
+    },
+    {
+     "kreis": "09673",
+     "wert": 8,
+     "plz": 17,
+     "gewicht": 79430
+    },
+    {
+     "kreis": "09662",
+     "wert": 9,
+     "plz": 7,
+     "gewicht": 53938
+    },
+    {
+     "kreis": "09674",
+     "wert": 8,
+     "plz": 16,
+     "gewicht": 53551
+    },
+    {
+     "kreis": "09676",
+     "wert": 10,
+     "plz": 5,
+     "gewicht": 19876
+    },
+    {
+     "kreis": "06433",
+     "wert": 12,
+     "plz": 1,
+     "gewicht": 10305
+    },
+    {
+     "kreis": "09575",
+     "wert": 9,
+     "plz": 2,
+     "gewicht": 6120
+    }
+   ]
+  },
+  "98": {
+   "referenz": 7.168,
+   "abdeckung": 1,
+   "plzGesamt": 46,
+   "kreise": [
+    {
+     "kreis": "16066",
+     "wert": 7,
+     "plz": 17,
+     "gewicht": 114420
+    },
+    {
+     "kreis": "16069",
+     "wert": 7,
+     "plz": 11,
+     "gewicht": 60691
+    },
+    {
+     "kreis": "16070",
+     "wert": 8,
+     "plz": 7,
+     "gewicht": 53501
+    },
+    {
+     "kreis": "16054",
+     "wert": 7,
+     "plz": 8,
+     "gewicht": 36307
+    },
+    {
+     "kreis": "16072",
+     "wert": 7,
+     "plz": 4,
+     "gewicht": 27980
+    },
+    {
+     "kreis": "16073",
+     "wert": 7,
+     "plz": 4,
+     "gewicht": 25278
+    }
+   ]
+  },
+  "99": {
+   "referenz": 7.554,
+   "abdeckung": 1,
+   "plzGesamt": 107,
+   "kreise": [
+    {
+     "kreis": "16051",
+     "wert": 9,
+     "plz": 28,
+     "gewicht": 219549
+    },
+    {
+     "kreis": "16067",
+     "wert": 7,
+     "plz": 14,
+     "gewicht": 136933
+    },
+    {
+     "kreis": "16064",
+     "wert": 6,
+     "plz": 11,
+     "gewicht": 96458
+    },
+    {
+     "kreis": "16071",
+     "wert": 8,
+     "plz": 12,
+     "gewicht": 82868
+    },
+    {
+     "kreis": "16063",
+     "wert": 7,
+     "plz": 12,
+     "gewicht": 81566
+    },
+    {
+     "kreis": "16062",
+     "wert": 6,
+     "plz": 9,
+     "gewicht": 81502
+    },
+    {
+     "kreis": "16055",
+     "wert": 9,
+     "plz": 5,
+     "gewicht": 65528
+    },
+    {
+     "kreis": "16068",
+     "wert": 7,
+     "plz": 10,
+     "gewicht": 61917
+    },
+    {
+     "kreis": "16070",
+     "wert": 8,
+     "plz": 7,
+     "gewicht": 53501
+    },
+    {
+     "kreis": "16065",
+     "wert": 6,
+     "plz": 4,
+     "gewicht": 26384
+    }
+   ]
+  },
+  "01": {
+   "referenz": 7.777,
+   "abdeckung": 1,
+   "plzGesamt": 122,
+   "kreise": [
+    {
+     "kreis": "14612",
+     "wert": 9,
+     "plz": 49,
+     "gewicht": 530537
+    },
+    {
+     "kreis": "14628",
+     "wert": 7,
+     "plz": 29,
+     "gewicht": 245143
+    },
+    {
+     "kreis": "14627",
+     "wert": 7,
+     "plz": 20,
+     "gewicht": 240368
+    },
+    {
+     "kreis": "14625",
+     "wert": 6,
+     "plz": 14,
+     "gewicht": 121366
+    },
+    {
+     "kreis": "12066",
+     "wert": 7,
+     "plz": 10,
+     "gewicht": 72289
+    }
+   ]
+  },
+  "02": {
+   "referenz": 6,
+   "abdeckung": 1,
+   "plzGesamt": 51,
+   "kreise": [
+    {
+     "kreis": "14626",
+     "wert": 6,
+     "plz": 33,
+     "gewicht": 245867
+    },
+    {
+     "kreis": "14625",
+     "wert": 6,
+     "plz": 19,
+     "gewicht": 164711
+    }
+   ]
+  },
+  "03": {
+   "referenz": 7.011,
+   "abdeckung": 1,
+   "plzGesamt": 35,
+   "kreise": [
+    {
+     "kreis": "12071",
+     "wert": 6,
+     "plz": 12,
+     "gewicht": 110580
+    },
+    {
+     "kreis": "12052",
+     "wert": 8,
+     "plz": 13,
+     "gewicht": 94778
+    },
+    {
+     "kreis": "12066",
+     "wert": 7,
+     "plz": 5,
+     "gewicht": 36145
+    },
+    {
+     "kreis": "12062",
+     "wert": 6,
+     "plz": 4,
+     "gewicht": 28214
+    },
+    {
+     "kreis": "12073",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 10709
+    },
+    {
+     "kreis": "05515",
+     "wert": 13,
+     "plz": 1,
+     "gewicht": 7874
+    }
+   ]
+  },
+  "04": {
+   "referenz": 8.299,
+   "abdeckung": 1,
+   "plzGesamt": 139,
+   "kreise": [
+    {
+     "kreis": "14713",
+     "wert": 10,
+     "plz": 57,
+     "gewicht": 608013
+    },
+    {
+     "kreis": "14729",
+     "wert": 7,
+     "plz": 33,
+     "gewicht": 260706
+    },
+    {
+     "kreis": "14730",
+     "wert": 7,
+     "plz": 21,
+     "gewicht": 200778
+    },
+    {
+     "kreis": "16077",
+     "wert": 6,
+     "plz": 8,
+     "gewicht": 87955
+    },
+    {
+     "kreis": "12062",
+     "wert": 6,
+     "plz": 10,
+     "gewicht": 70536
+    },
+    {
+     "kreis": "14522",
+     "wert": 6,
+     "plz": 6,
+     "gewicht": 44665
+    },
+    {
+     "kreis": "14612",
+     "wert": 9,
+     "plz": 3,
+     "gewicht": 32482
+    },
+    {
+     "kreis": "05114",
+     "wert": 9,
+     "plz": 1,
+     "gewicht": 14400
+    }
+   ]
+  },
+  "06": {
+   "referenz": 6.838,
+   "abdeckung": 1,
+   "plzGesamt": 164,
+   "kreise": [
+    {
+     "kreis": "15002",
+     "wert": 8,
+     "plz": 34,
+     "gewicht": 227639
+    },
+    {
+     "kreis": "15088",
+     "wert": 7,
+     "plz": 22,
+     "gewicht": 182677
+    },
+    {
+     "kreis": "15084",
+     "wert": 6,
+     "plz": 20,
+     "gewicht": 175217
+    },
+    {
+     "kreis": "15082",
+     "wert": 7,
+     "plz": 21,
+     "gewicht": 134576
+    },
+    {
+     "kreis": "15087",
+     "wert": 6,
+     "plz": 19,
+     "gewicht": 130162
+    },
+    {
+     "kreis": "15091",
+     "wert": 7,
+     "plz": 21,
+     "gewicht": 122230
+    },
+    {
+     "kreis": "15089",
+     "wert": 6,
+     "plz": 12,
+     "gewicht": 84137
+    },
+    {
+     "kreis": "15001",
+     "wert": 7,
+     "plz": 9,
+     "gewicht": 76062
+    },
+    {
+     "kreis": "15085",
+     "wert": 7,
+     "plz": 8,
+     "gewicht": 61373
+    },
+    {
+     "kreis": "16065",
+     "wert": 6,
+     "plz": 6,
+     "gewicht": 39576
+    },
+    {
+     "kreis": "16068",
+     "wert": 7,
+     "plz": 1,
+     "gewicht": 6192
+    }
+   ]
+  },
+  "07": {
+   "referenz": 7.419,
+   "abdeckung": 1,
+   "plzGesamt": 75,
+   "kreise": [
+    {
+     "kreis": "16053",
+     "wert": 11,
+     "plz": 8,
+     "gewicht": 110076
+    },
+    {
+     "kreis": "16052",
+     "wert": 6,
+     "plz": 10,
+     "gewicht": 95695
+    },
+    {
+     "kreis": "16076",
+     "wert": 6,
+     "plz": 16,
+     "gewicht": 94488
+    },
+    {
+     "kreis": "16074",
+     "wert": 7,
+     "plz": 11,
+     "gewicht": 84040
+    },
+    {
+     "kreis": "16075",
+     "wert": 7,
+     "plz": 16,
+     "gewicht": 77859
+    },
+    {
+     "kreis": "16073",
+     "wert": 7,
+     "plz": 12,
+     "gewicht": 75833
+    },
+    {
+     "kreis": "14523",
+     "wert": 6,
+     "plz": 3,
+     "gewicht": 17454
+    }
+   ]
+  },
+  "08": {
+   "referenz": 6,
+   "abdeckung": 1,
+   "plzGesamt": 85,
+   "kreise": [
+    {
+     "kreis": "14524",
+     "wert": 6,
+     "plz": 29,
+     "gewicht": 249614
+    },
+    {
+     "kreis": "14523",
+     "wert": 6,
+     "plz": 35,
+     "gewicht": 203634
+    },
+    {
+     "kreis": "14521",
+     "wert": 6,
+     "plz": 21,
+     "gewicht": 105715
+    }
+   ]
+  },
+  "09": {
+   "referenz": 6,
+   "abdeckung": 1,
+   "plzGesamt": 121,
+   "kreise": [
+    {
+     "kreis": "14522",
+     "wert": 6,
+     "plz": 34,
+     "gewicht": 253101
+    },
+    {
+     "kreis": "14511",
+     "wert": 6,
+     "plz": 37,
+     "gewicht": 245150
+    },
+    {
+     "kreis": "14521",
+     "wert": 6,
+     "plz": 43,
+     "gewicht": 216464
+    },
+    {
+     "kreis": "14524",
+     "wert": 6,
+     "plz": 7,
+     "gewicht": 60252
+    }
+   ]
+  }
+ }
+}
