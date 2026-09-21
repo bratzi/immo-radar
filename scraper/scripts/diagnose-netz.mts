@@ -46,9 +46,20 @@ const URL = "https://www.immowelt.de/suche/kaufen/haus/mehrfamilienhaus/guenstig
 interface Mitschnitt {
   url: string;
   status: number;
+  typ: string;
   laenge: number;
   koerper: string;
 }
+
+/**
+ * Die Antwort, auf die es ankommt. Bleibt ihr Koerper leer, sagt dieser Lauf
+ * ueber PLZ und Trefferzahl NICHTS -- und darf nicht als "nein" gelesen
+ * werden. Genau das ist beim ersten Versuch passiert: Der Koerper wurde nur
+ * bei `content-type: json` geholt, `classified-search` liefert aber einen
+ * anderen Typ. Ergebnis war ein sauber aussehendes "nein/nein" ueber 0
+ * gelesene Zeichen.
+ */
+const KERNDIENST = /classified-search|serp-bff\/search|getlistitems/i;
 
 const mitschnitte: Mitschnitt[] = [];
 
@@ -61,14 +72,18 @@ const page = await browser.newPage();
 page.on("response", async (antwort) => {
   const url = antwort.url();
   if (!/classified-search|serp-bff|getlistitems|graphql|\/api\//i.test(url)) return;
+  const typ = antwort.headers()["content-type"] ?? "(ohne)";
   try {
-    const typ = antwort.headers()["content-type"] ?? "";
-    if (!/json/i.test(typ)) {
-      mitschnitte.push({ url, status: antwort.status(), laenge: 0, koerper: "" });
+    // Koerper IMMER holen, nicht nur bei JSON. Der Content-Type ist ein
+    // Versprechen der Gegenseite, kein Beweis -- und `classified-search`
+    // haelt es nicht. Nur Binaeres wird ausgelassen, dort steht nichts zu
+    // lesen.
+    if (/^(image|font|video|audio)\//i.test(typ)) {
+      mitschnitte.push({ url, status: antwort.status(), typ, laenge: 0, koerper: "" });
       return;
     }
     const koerper = await antwort.text();
-    mitschnitte.push({ url, status: antwort.status(), laenge: koerper.length, koerper });
+    mitschnitte.push({ url, status: antwort.status(), typ, laenge: koerper.length, koerper });
   } catch {
     // Eine Antwort, deren Koerper nicht mehr da ist, ist kein Fehler des
     // Laufs -- sie faellt nur aus der Messung.
@@ -97,8 +112,34 @@ if ((await weiter.count()) === 0) {
 
 console.log(`\n=== 3. Mitgeschnittene Datenantworten ===`);
 console.log(`  ${mitschnitte.length} Antworten aufgefangen`);
-for (const m of mitschnitte) {
-  console.log(`  HTTP ${m.status}  ${m.laenge} Zeichen  ${m.url.slice(0, 110)}`);
+// Nur die Kerndienste einzeln auflisten -- die uebrigen 60 sind Werbe- und
+// Zaehlpixel und verstopfen das Log.
+const kern = mitschnitte.filter((m) => KERNDIENST.test(m.url));
+console.log(`  davon Kerndienste (Ergebnisliste): ${kern.length}`);
+for (const m of kern) {
+  console.log(`  HTTP ${m.status}  ${m.laenge} Zeichen  [${m.typ}]  ${m.url.slice(0, 100)}`);
+}
+for (const m of mitschnitte.filter((x) => !KERNDIENST.test(x.url) && x.laenge > 500)) {
+  console.log(`  (sonstige, ${m.laenge} Zeichen) ${m.url.slice(0, 90)}`);
+}
+
+// DIE WACHE. Ohne sie sieht "nichts gefunden" aus wie "nicht vorhanden".
+const kernGelesen = kern.filter((m) => m.laenge > 0);
+if (kern.length === 0) {
+  console.log("");
+  console.log("  !! KEIN Kerndienst aufgefangen. Dieser Lauf sagt ueber PLZ und");
+  console.log("     Trefferzahl NICHTS -- er hat die Antwort nie gesehen.");
+} else if (kernGelesen.length === 0) {
+  console.log("");
+  console.log("  !! Kerndienst da, aber KEIN Zeichen gelesen. Dieser Lauf sagt");
+  console.log("     ueber PLZ und Trefferzahl NICHTS. Nicht als 'nein' lesen.");
+} else {
+  console.log("");
+  console.log(`  ${kernGelesen.length} Kerndienst-Antworten mit Inhalt gelesen -- auswertbar.`);
+  // Ein Blick in den Anfang, damit das Format sichtbar wird statt geraten.
+  const groesste = [...kernGelesen].sort((a, b) => b.laenge - a.laenge)[0];
+  console.log(`  Typ: ${groesste.typ}`);
+  console.log(`  Anfang: ${JSON.stringify(groesste.koerper.slice(0, 400))}`);
 }
 if (mitschnitte.length === 0) {
   console.log("  KEINE. Dann laedt die Seite ihre Ergebnisse nicht ueber einen");
@@ -151,6 +192,15 @@ for (const m of mitschnitte) {
     (wert) => typeof wert === "string" && /^\d{5}$/.test(wert),
     8
   );
+  // Faellt der Koerper nicht als JSON auseinander, wenigstens roh nachsehen:
+  // Eine PLZ neben einem Ortsnamen ist auch in HTML ein Befund.
+  if (funde.length === 0 && KERNDIENST.test(m.url)) {
+    const roh = [...new Set(m.koerper.match(/\d{5}/g) ?? [])].slice(0, 8);
+    if (roh.length > 0) {
+      plzGefunden = true;
+      console.log(`  ROH (kein JSON) in ${m.url.slice(0, 60)}: ${roh.join(", ")}`);
+    }
+  }
   if (funde.length > 0) {
     plzGefunden = true;
     console.log(`  in ${m.url.slice(0, 70)}:`);
@@ -180,9 +230,16 @@ for (const m of mitschnitte) {
 if (!zahlGefunden) console.log("  kein Zaehlfeld gefunden");
 
 console.log(`\n=== FAZIT ===`);
-console.log(`  Datenantworten aufgefangen: ${mitschnitte.length}`);
-console.log(`  PLZ im JSON:                ${plzGefunden ? "JA" : "nein"}`);
-console.log(`  Trefferzahl im JSON:        ${zahlGefunden ? "JA" : "nein"}`);
+console.log(`  Antworten aufgefangen:      ${mitschnitte.length}`);
+console.log(`  davon Kerndienst MIT Inhalt: ${kernGelesen.length}`);
+if (kernGelesen.length === 0) {
+  console.log(`  PLZ:                        NICHT GEMESSEN`);
+  console.log(`  Trefferzahl:                NICHT GEMESSEN`);
+  console.log(`  -> Kein Befund. Nicht als "nein" weiterreichen.`);
+} else {
+  console.log(`  PLZ im Kerndienst:          ${plzGefunden ? "JA" : "nein"}`);
+  console.log(`  Trefferzahl im Kerndienst:  ${zahlGefunden ? "JA" : "nein"}`);
+}
 console.log(`  -> JA/JA hiesse: die Detailphase ist fuer PLZ ueberfluessig (B6),`);
 console.log(`     und A16 waere ohne zweiten Vollstaendigkeitsmassstab geloest.`);
 
