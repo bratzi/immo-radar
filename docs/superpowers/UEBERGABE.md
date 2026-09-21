@@ -1,22 +1,48 @@
 # Übergabe — Stand 2026-09-21 (vierte Sitzung des Tages)
 
-## ZUERST LESEN: ein Kontrolllauf war beim Sitzungsende noch offen
+## ZUERST LESEN: es fehlt ein TIEFER Lauf, nicht Code
 
-**Lauf `35591430618`** (`scrape.yml`, gestartet 2026-09-21 um 10:56 UTC)
-ist die Probe darauf, dass die neue Zusammenfassungszeile **am richtigen
-Aufrufort** steht. Die Unit-Tests prüfen die Funktion, nicht die
-Verdrahtung — und genau diese Verwechslung hat dieses Projekt schon einmal
-Zeit gekostet.
+Zwei offene Punkte warten auf **denselben** Auslöser und sind zusammen zu
+messen, sobald der Immowelt-Sweep wieder normale Mengen sieht:
 
 ```
-gh run view 35591430618 --json conclusion -q .conclusion
-gh run view 35591430618 --log | grep -oE "Immowelt-Sweep: .* bearbeiteten Regionen.*"
+# Ist der letzte Lauf tief oder flach? Eine Zeile sagt es jetzt:
+gh run list --workflow=scrape.yml --limit 1 --json databaseId -q ".[0].databaseId"
+gh run view <ID> --log | grep -oE "Immowelt-Sweep: .* bearbeiteten Regionen.*"
 ```
 
-**Erwartet:** genau eine solche Zeile je Lauf. Bei einem flachen Lauf endet
-sie auf `FLACHER LAUF: jede Region blieb bei hoechstens 45 Karten stehen`.
-Steht die Zeile **gar nicht** im Log, ist die Verdrahtung falsch, nicht die
-Funktion.
+Steht dort **kein** `FLACHER LAUF`, ist der Augenblick da:
+
+1. **B11 Schritt 3** — Bewertungsdauer geteilt durch bewertete Objekte.
+   Erwartet rund **0,11 s je Objekt**; deutlich darüber heißt, Supabase ist
+   der Engpass und nicht die Rundenzahl — dann `BEWERTUNGSBREITE` prüfen,
+   nicht den Deckel. Erst hier greift der auf 3.000 angehobene Deckel
+   überhaupt.
+2. **B6 Schritt 4** — Weg (e) bei normaler Sweep-Menge erneut messen.
+
+Alternativ die übersichtlichere Messung ohne GitHub-Umweg:
+
+```
+cd scraper && npx tsx scripts/messung-flache-laeufe.mts
+```
+
+## Der Kontrolllauf ist ausgewertet — die Zeile steht im Log
+
+**Lauf `35591430618`, erfolgreich.** Die neue Zusammenfassung erscheint
+**genau einmal** je Lauf und am richtigen Aufrufort:
+
+```
+Immowelt-Sweep: 16 von 16 bearbeiteten Regionen unvollstaendig, 644 Objekte
+gegen 20953 ausgewiesene Treffer (4 ohne Trefferzahl im Titel). FLACHER
+LAUF: jede Region blieb bei hoechstens 45 Karten stehen -- eine
+Ergebnisseite. Seite 2 kam leer (BACKLOG B9). Dieser Lauf hat den Bestand
+praktisch nicht erneuert.
+```
+
+Die Zahl **4 ohne Trefferzahl** ist dabei die Probe darauf, dass „nicht
+gemessen“ nicht als „null Treffer“ durchgeht — sie deckt sich mit den vier
+bekannten Regionen aus `istRegionVollstaendig`. Der Lauf selbst: 0 Fehler,
+0 Meldungen, `644 von 644 Kandidaten bearbeitet, keiner bleibt uebrig`.
 
 ## Was diese Sitzung gebaut hat
 

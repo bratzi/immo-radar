@@ -2171,6 +2171,24 @@ Zusammenfassung je Lauf.
         Wäre das eine kleine Region (`hb` hat 202 Objekte), hätte eine
         Zeile „flacher Lauf“ geraten statt gemessen.
 
+      **Im Betrieb belegt** (Lauf `35591430618`, 2026-09-21): Die Zeile
+      steht **genau einmal** im Log, nicht sechzehnmal, und trifft zu:
+
+      ```
+      Immowelt-Sweep: 16 von 16 bearbeiteten Regionen unvollstaendig, 644
+      Objekte gegen 20953 ausgewiesene Treffer (4 ohne Trefferzahl im
+      Titel). FLACHER LAUF: jede Region blieb bei hoechstens 45 Karten
+      stehen -- eine Ergebnisseite.
+      ```
+
+      Die **4 ohne Trefferzahl** decken sich mit den vier bekannten
+      Regionen aus `istRegionVollstaendig` — die Probe darauf, dass
+      „nicht gemessen“ nicht als „null Treffer“ durchgeht.
+
+      **Warum das überhaupt geprüft wurde:** Die sechs Unit-Tests prüfen
+      die Funktion, nicht den Aufrufort. Genau diese Verwechslung hat
+      dieses Projekt schon einmal Zeit gekostet.
+
 - [x] **Schritt 2: Die Reihenfolge der Löschwache bleibt unangetastet —
       eingehalten.** `pruefeMengenplausibilitaet` ist nicht angefasst;
       „unvollständig“ greift weiterhin zuerst und fail-closed.
