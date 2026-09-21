@@ -5,6 +5,7 @@ import {
   type ImmoweltListSummary,
 } from "./list.js";
 import { parseImmoweltDetailPage, type ImmoweltDetailData } from "./detail.js";
+import { abbrechenNachProbe, PROBE_GROESSE } from "./probe.js";
 import {
   rotiereAuswahl,
   sweepStartVersatz,
@@ -723,6 +724,10 @@ export async function erfasseImmoweltDetails(
   // einzeln gemeldet -- 144 gleichlautende Zeilen verstopfen das Log und
   // verbergen die eine Zahl, auf die es ankommt.
   let abgewiesen = 0;
+  // Ausserhalb des try, weil die Schlusszeile unten die TATSAECHLICH
+  // versuchten Abrufe nennen muss -- nach einem Abbruch durch die
+  // Stichprobe sind das weniger als die uebergebenen externalIds.
+  let versuchteAbrufe = 0;
   try {
     const page: Page = await browser.newPage();
 
@@ -751,6 +756,19 @@ export async function erfasseImmoweltDetails(
     for (const externalId of externalIds) {
       const zusammenfassung = zusammenfassungen.get(externalId);
       if (zusammenfassung === undefined) continue;
+      // Stichprobe: Ist die Sperre aktiv, scheitern nicht ein paar Abrufe,
+      // sondern alle -- gemessen 75 von 75. Die uebrigen 22 kosteten dann
+      // dreieinhalb Minuten und 22 Anfragen gegen eine Quelle, die gerade
+      // zumacht. Begruendung und Zahlen in `probe.ts`.
+      if (abbrechenNachProbe({ versucht: versuchteAbrufe, erfasst: ergebnisse.length })) {
+        console.warn(
+          `Immowelt-Details: Stichprobe von ${PROBE_GROESSE} Abrufen lieferte nichts -- ` +
+            `die uebrigen ${externalIds.length - versuchteAbrufe} werden nicht versucht. ` +
+            `Der naechste Lauf probiert erneut.`
+        );
+        break;
+      }
+      versuchteAbrufe += 1;
       // Drossel vor jedem Abruf -- auch vor dem ersten. Das ist zugleich die
       // kurze Ruhe nach der Suchseite, die die manuelle Probe vor der ersten
       // erfolgreichen Detailnavigation brauchte. Das Aufwaermen oben ist ein
@@ -792,7 +810,7 @@ export async function erfasseImmoweltDetails(
   }
   if (abgewiesen > 0) {
     console.warn(
-      `Immowelt-Details: ${abgewiesen} von ${externalIds.length} Abrufen ohne Datenmodell, ` +
+      `Immowelt-Details: ${abgewiesen} von ${versuchteAbrufe} Abrufen ohne Datenmodell, ` +
         `${ergebnisse.length} erfasst. Bei einem Totalausfall zuerst den oben genannten ` +
         `Grund lesen -- eine Sperre erfordert Drosselung, eine Strukturaenderung den Parser.`
     );
