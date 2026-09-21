@@ -1741,10 +1741,21 @@ nebeneinanderzustellen ist genau der Fehler, den dieses Projekt bei „54 statt
   Naheliegender Verdacht, **ungeprüft**: `/expose/`-Detailseiten sind von
   Rechenzentrums-Adressen gesperrt (siehe `UEBERGABE.md`, „Fallen") — eine
   Zeile, die nur aus einer Expose-URL besteht, passt zu diesem Muster.
-- [ ] **Schritt 4: E-7 nachziehen.** Die vom Nutzer am 2026-09-13 entschiedene
-  Kategorie **„Objekte ohne Region"** ist im Dashboard **nirgends gebaut** —
-  geprüft am 2026-09-19, es gibt weder Filterknopf noch Bereich. Diese
-  Entscheidung steht also seit Wochen unerfüllt.
+- [x] **Schritt 4: E-7 nachgezogen — ERLEDIGT (`cb3653b`).** Die vom Nutzer am
+  2026-09-13 entschiedene Kategorie **„Objekte ohne Region"** ist gebaut:
+  `OHNE_REGION` in `web/src/logik/filter.ts`, ein eigener, **abgesetzt** unter
+  den 16 Ländern stehender Wahlknopf in `Filterleiste.tsx` mit Zähler und
+  Klartext, und bewusst **keine** Kachel auf der Karte — ein Objekt ohne
+  Region hat keinen Ort, eine Kachel wäre eine Behauptung über seine Lage.
+  Behoben ist damit auch der eigentliche Schaden: Bis dahin fiel jedes Objekt
+  mit `bundesland = null` heraus, sobald ein Bundesland gewählt war, und es
+  gab keinen Weg zurück. Betrifft 35 Objekte (gemessen 2026-09-20).
+
+  **Dieser Eintrag war beim Lesen bereits überholt.** Der Befund „nirgends
+  gebaut" wurde am **2026-09-19** aufgenommen, gebaut wurde am **2026-09-20** —
+  einen Tag später, in derselben Kartenarbeit. Geprüft am 2026-09-22: 203
+  Web-Tests grün, `tsc` sauber. **Eine Prämisse aus dem Backlog ist selbst
+  prüfbar, bevor Arbeit darauf gestapelt wird.**
 
 </details>
 
