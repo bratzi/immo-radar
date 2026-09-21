@@ -430,3 +430,57 @@ export async function ladeLetzteRegionsSweeps(
   }
   return letzte;
 }
+
+/**
+ * So viele Zeilen holt die Markenabfrage. Weil ABSTEIGEND NACH MENGE
+ * sortiert wird, steht das Maximum jeder Region zwangslaeufig unter den
+ * ersten Zeilen -- 16 Regionen brauchen 16 Zeilen, alles darueber ist
+ * Reserve. Das Limit kann die Marke damit nicht abschneiden.
+ */
+const HOCHWASSER_ZEILEN = 200;
+
+/**
+ * Die groesste je gesehene Menge je Region -- der zweite
+ * Vollstaendigkeitsmassstab aus BACKLOG A16, fuer Regionen, deren
+ * Trefferzahl das Portal nie nennt.
+ *
+ * SORTIERT NACH MENGE, NICHT NACH ZEIT, und das ist der Kern: Eine Abfrage
+ * der juengsten N Zeilen waere ein gleitendes Fenster, und ein Fenster faellt
+ * durch. Gemessen am 2026-09-21: Das Maximum ueber die letzten zehn Laeufe
+ * erzeugte 43 falsche Freigaben, weil der flache Zustand laenger anhaelt als
+ * zehn Laeufe. `ladeLetzteRegionsSweeps` mit REGIONS_HISTORIE_ZEILEN = 200
+ * deckt bei 492 Zeilen (Stand 2026-09-21) nur rund zwoelf je Region -- an
+ * dieser Abfrage darf die Marke deshalb NICHT haengen.
+ *
+ * `null` heisst "Historie nicht lesbar" und fuehrt fail-closed dazu, dass
+ * jede Region ohne Trefferzahl als unvollstaendig gilt. Eine leere Map heisst
+ * "noch nie gelaufen" und fuehrt zum selben Urteil, aber aus einem anderen
+ * Grund -- die beiden bleiben unterscheidbar.
+ */
+export async function ladeHochwassermarken(
+  supabase: SupabaseClient,
+  source: string
+): Promise<Map<string, number> | null> {
+  const { data, error } = await supabase
+    .from("sweep_region_runs")
+    .select("partition, gesehene_objekte")
+    .eq("source", source)
+    .order("gesehene_objekte", { ascending: false })
+    .limit(HOCHWASSER_ZEILEN);
+  if (error !== null || data === null) {
+    console.warn(
+      "sweep_region_runs: Marken nicht lesbar, jede Region ohne Trefferzahl bleibt unvollstaendig",
+      error
+    );
+    return null;
+  }
+  const marken = new Map<string, number>();
+  for (const zeile of data as { partition: string; gesehene_objekte: number }[]) {
+    if (!Number.isFinite(zeile.gesehene_objekte)) continue;
+    const bisher = marken.get(zeile.partition);
+    if (bisher === undefined || zeile.gesehene_objekte > bisher) {
+      marken.set(zeile.partition, zeile.gesehene_objekte);
+    }
+  }
+  return marken;
+}

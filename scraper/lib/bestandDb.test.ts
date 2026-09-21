@@ -9,6 +9,7 @@ import {
   loescheAbgelaufene,
   quelleHatLoeschhoheit,
   ladeLetzteRegionsSweeps,
+  ladeHochwassermarken,
 } from "./bestandDb.js";
 
 /**
@@ -492,5 +493,41 @@ describe("ladeBekannteListings -- Blaetterung unter Zeilenbewegung", () => {
     const verschiedene = new Set(geladen.map((z) => z.id));
     expect(geladen.length).toBe(anzahl);
     expect(verschiedene.size).toBe(anzahl);
+  });
+});
+
+describe("ladeHochwassermarken", () => {
+  it("liefert je Region die groesste je gesehene Menge", async () => {
+    const { client, abfragen } = fakeRegionsHistorie({
+      zeilen: [
+        { partition: "nw", gesehene_objekte: 6807 },
+        { partition: "bw", gesehene_objekte: 4920 },
+        { partition: "nw", gesehene_objekte: 40 },
+        { partition: "bw", gesehene_objekte: 41 },
+      ],
+    });
+
+    const marken = await ladeHochwassermarken(client, "immowelt");
+
+    expect(marken).not.toBeNull();
+    expect(marken!.get("nw")).toBe(6807);
+    expect(marken!.get("bw")).toBe(4920);
+    expect(abfragen).toEqual([{ tabelle: "sweep_region_runs", source: "immowelt" }]);
+  });
+
+  it("liefert null, wenn die Historie nicht lesbar ist", async () => {
+    // Fail-closed: keine Marke heisst kein Massstab heisst unvollstaendig.
+    // Genauso handhabt es `ladeLetzteRegionsSweeps` schon heute.
+    const { client } = fakeRegionsHistorie({ fehler: true });
+    expect(await ladeHochwassermarken(client, "immowelt")).toBeNull();
+  });
+
+  it("liefert eine leere Map, wenn es noch keine Zeile gibt", async () => {
+    // Leer ist NICHT dasselbe wie nicht lesbar: hier hat noch nie ein Lauf
+    // stattgefunden, und jede Region bekommt korrekt keinen Massstab.
+    const { client } = fakeRegionsHistorie({ zeilen: [] });
+    const marken = await ladeHochwassermarken(client, "immowelt");
+    expect(marken).not.toBeNull();
+    expect(marken!.size).toBe(0);
   });
 });
