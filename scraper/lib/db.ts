@@ -59,6 +59,11 @@ export interface ListingVersionData {
   caseNumber?: string | null;
   rawNoticeText?: string | null;
   dataGaps?: string[];
+  /**
+   * true, wenn fuer dieses Objekt in diesem Lauf eine Detailseite abgerufen
+   * wurde. Steuert `last_detail_at` -- siehe `listingUpsertZeile`.
+   */
+  detailGelesen?: boolean;
 }
 
 export interface UpsertResult extends VersionDiffResult {
@@ -106,7 +111,19 @@ export function versionInsertZeile(
  * wird -- gleiches Muster wie `versionInsertZeile`.
  */
 export function listingUpsertZeile(
-  data: Pick<ListingVersionData, "source" | "externalId" | "url"> & { fundort?: string | null },
+  data: Pick<ListingVersionData, "source" | "externalId" | "url"> & {
+    fundort?: string | null;
+    /**
+     * true, wenn fuer dieses Objekt in diesem Lauf eine Detailseite abgerufen
+     * wurde. Steuert `last_detail_at`.
+     *
+     * BIS ZUM 2026-09-21 STAND HIER BEDINGUNGSLOS `jetzt` (B8-1). Jedes
+     * bewertete Immowelt-Objekt sah damit "frisch im Detail erfasst" aus,
+     * obwohl nur die Titelzeile der Ergebnisliste gelesen worden war --
+     * `ladeVeralteteExternalIds` war fuer Immowelt deshalb unbrauchbar.
+     */
+    detailGelesen?: boolean;
+  },
   jetzt: string
 ): Record<string, unknown> {
   return {
@@ -114,9 +131,13 @@ export function listingUpsertZeile(
     external_id: data.externalId,
     url: data.url,
     last_seen: jetzt,
-    // Das Objekt wurde gerade im Detail erfasst, ist also wieder da.
+    // Das Objekt wurde gerade gesehen, ist also wieder da.
     disappeared_at: null,
-    last_detail_at: jetzt,
+    // WEGLASSEN, nicht null schreiben: Ein Upsert aendert nur die Spalten, die
+    // er nennt. Ein null loeschte den Zeitstempel eines Objekts, das frueher
+    // sehr wohl im Detail erfasst wurde -- und holte es damit in jedem Lauf
+    // erneut in die Detailauswahl.
+    ...(data.detailGelesen === true ? { last_detail_at: jetzt } : {}),
     // null = nicht zuzuordnen. Bewusst kein Default auf irgendeine Region:
     // ein falscher Fundort waere schlimmer als gar keiner, weil er ein Objekt
     // in den Geltungsbereich eines Sweeps zoege, der es nie gesehen hat.
@@ -183,10 +204,9 @@ export async function upsertListingOhneBewertung(
   }
 ): Promise<void> {
   const jetzt = new Date().toISOString();
-  const { error } = await supabase.from("listings").upsert(
-    { ...listingUpsertZeile(daten, jetzt), last_detail_at: daten.detailGelesen ? jetzt : null },
-    { onConflict: "source,external_id" }
-  );
+  const { error } = await supabase
+    .from("listings")
+    .upsert(listingUpsertZeile(daten, jetzt), { onConflict: "source,external_id" });
   if (error) throw error;
 }
 

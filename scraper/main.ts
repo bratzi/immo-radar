@@ -623,6 +623,11 @@ async function main() {
       rawNoticeText: termin.rawNoticeText,
       sourceDataGaps: termin.dataGaps,
       attachments: termin.attachments,
+      // ZVG kommt ausschliesslich ueber die Detailseite an ein Objekt. Ohne
+      // diesen Schalter bliebe `last_detail_at` seit B8-1 leer, und
+      // `ladeVeralteteExternalIds` holte dieselben Termine in JEDEM Lauf
+      // erneut -- ein stehender Rueckstand, nur teurer.
+      detailGelesen: true,
     }, meldebudget);
   }
   // Die Bekanntmachung wurde gelesen, sie nennt nur keinen verwertbaren

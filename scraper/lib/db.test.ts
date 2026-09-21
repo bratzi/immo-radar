@@ -118,7 +118,9 @@ describe("listingUpsertZeile", () => {
     const zeile = listingUpsertZeile(basis, jetzt);
     expect(zeile.disappeared_at).toBeNull();
     expect(zeile.last_seen).toBe(jetzt);
-    expect(zeile.last_detail_at).toBe(jetzt);
+    // `last_detail_at` haengt seit B8-1 am Schalter `detailGelesen` und steht
+    // hier nicht mehr bedingungslos. `basis` setzt ihn nicht.
+    expect("last_detail_at" in zeile).toBe(false);
   });
 });
 
@@ -175,7 +177,9 @@ describe("upsertListingOhneBewertung", () => {
       fundort: null,
     });
 
-    expect(zeile.last_detail_at).toBeNull();
+    // Weggelassen statt null: Ein null loeschte den Zeitstempel eines Objekts,
+    // das frueher sehr wohl im Detail erfasst wurde (B8-1).
+    expect("last_detail_at" in zeile).toBe(false);
     expect(zeile.disappeared_at).toBeNull();
     expect(zeile.last_seen).toEqual(expect.any(String));
   });
@@ -225,7 +229,7 @@ describe("upsertListingOhneBewertung", () => {
       fundort: null,
     });
 
-    expect(zeile.last_detail_at).toBeNull();
+    expect("last_detail_at" in zeile).toBe(false);
   });
 });
 
@@ -420,5 +424,36 @@ describe("bereitsGemeldeteListingIds", () => {
     );
 
     expect((await bereitsGemeldeteListingIds(client, [listingId])).size).toBe(0);
+  });
+});
+
+describe("listingUpsertZeile -- last_detail_at haengt am Schalter (B8-1)", () => {
+  it("setzt last_detail_at, wenn die Detailseite gelesen wurde", () => {
+    const zeile = listingUpsertZeile(
+      { source: "immowelt", externalId: "a", url: "https://x.invalid", detailGelesen: true },
+      "2026-09-21T10:00:00.000Z"
+    );
+    expect(zeile.last_detail_at).toBe("2026-09-21T10:00:00.000Z");
+  });
+
+  it("LAESST DIE SPALTE WEG, wenn keine Detailseite gelesen wurde", () => {
+    // Weglassen, nicht null schreiben. Ein null LOESCHT den Zeitstempel eines
+    // Objekts, das frueher sehr wohl im Detail erfasst wurde -- der Upsert
+    // aendert nur die Spalten, die er nennt.
+    const zeile = listingUpsertZeile(
+      { source: "immowelt", externalId: "a", url: "https://x.invalid" },
+      "2026-09-21T10:00:00.000Z"
+    );
+    expect("last_detail_at" in zeile).toBe(false);
+  });
+
+  it("schreibt die uebrigen Spalten unveraendert", () => {
+    const zeile = listingUpsertZeile(
+      { source: "immowelt", externalId: "a", url: "https://x.invalid", fundort: "he" },
+      "2026-09-21T10:00:00.000Z"
+    );
+    expect(zeile.last_seen).toBe("2026-09-21T10:00:00.000Z");
+    expect(zeile.disappeared_at).toBeNull();
+    expect(zeile.fundort).toBe("he");
   });
 });

@@ -160,6 +160,16 @@ export interface PipelineCandidate {
   sourceDataGaps?: string[];
   /** Oeffentlich abrufbare Objektfotos (Immowelt-CDN) fuer den Bildversand. */
   photoUrls?: string[];
+  /**
+   * true, wenn fuer dieses Objekt in diesem Lauf eine Detailseite abgerufen
+   * wurde. Steuert `last_detail_at` und damit, wann die Detailseite erneut
+   * geholt wird (siehe `listingUpsertZeile`).
+   *
+   * ZVG setzt das immer -- dort gibt es keinen anderen Weg zu einem Objekt.
+   * Immowelt setzt es nur fuer die Detailscheibe; die Bewertung aus der
+   * Titelzeile der Ergebnisliste liest keine Detailseite.
+   */
+  detailGelesen?: boolean;
   /** PDF-Anhaenge (ZVG); nur mit Referer auf die Detailseite abrufbar. */
   attachments?: { url: string; filename: string }[];
 }
@@ -315,6 +325,7 @@ export async function processCandidate(
     caseNumber: candidate.caseNumber,
     rawNoticeText: candidate.rawNoticeText,
     dataGaps: [...dataGaps],
+    detailGelesen: candidate.detailGelesen,
   });
 
   const listingSummary: ListingSummary = {
