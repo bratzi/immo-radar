@@ -20,20 +20,29 @@ Erwartet: `massstab = 'hochwassermarke'` mit gefüllter `referenz_menge` für
 `nw`, `bw`, `mv`, `sh`; `massstab = 'gemeldete_treffer'` für die übrigen
 zwölf. Steht irgendwo `keiner`, ist die Marke nicht geladen worden.
 
-**Die Migration muss vorher gelaufen sein.** `speichereRegionsLaeufe` fängt
-Insert-Fehler nur mit `console.warn` ab — fehlen die Spalten, verliert jeder
-Lauf still seine Regionszeilen, und im Log steht dazu **eine** Zeile:
+## DIE MIGRATION IST NOCH NICHT GELAUFEN (Stand 2026-09-21, 14:05 UTC)
 
-```
-gh run view <ID> --log | grep -i "sweep_region_runs"
-```
-
-Erwartet: **keine Zeile**. Steht dort „nicht geschrieben", fehlt das SQL:
+**Gemessen, nicht vermutet:** `npx tsx scripts/pruefe-massstaebe.mts` antwortet
+`column sweep_region_runs.massstab does not exist`. Das SQL unten ist der
+**erste Handgriff** der nächsten Sitzung — vor jeder anderen Arbeit.
 
 ```sql
 alter table sweep_region_runs add column massstab text;
 alter table sweep_region_runs add column referenz_menge integer;
 ```
+
+Bis dahin verliert jeder Scrape-Lauf **still** seine Regionszeilen:
+`speichereRegionsLaeufe` fängt Insert-Fehler nur mit `console.warn` ab. Der
+Lauf stürzt nicht ab, die Marke sinkt dadurch auch nicht (sie ist ein
+Maximum) — aber die Historie bekommt Lücken. Im Actions-Log steht dazu genau
+**eine** Zeile, leicht zu übersehen:
+
+```
+gh run view <ID> --log | grep -i "sweep_region_runs"
+```
+
+Erwartet: **keine Zeile**. Steht dort „nicht geschrieben", fehlt das SQL von
+oben.
 
 ## Was diese Sitzung gebaut hat
 
