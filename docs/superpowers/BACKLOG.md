@@ -2064,42 +2064,121 @@ Detailphase überhaupt trägt. Ein Vorrang für Objekte, deren Seiten alle
 abgewiesen werden, wäre nur ein schnellerer Weg ins Nichts.
 
 
-## B9. Ein Mengeneinbruch um den Faktor 7 erzeugt keine Warnung
+## B9. Kein Mengeneinbruch, sondern zwei Betriebszustände — GEMESSEN (2026-09-21)
 
-**Herkunft:** B6 Schritt 4, 2026-09-21.
+**Herkunft:** B6 Schritt 4, 2026-09-21. **Die Prämisse hat die Messung
+widerlegt**, deshalb steht der Befund vor der ursprünglichen Beschreibung.
 
-**Der Vorfall:** Am 2026-09-20 fiel die vom Immowelt-Sweep gesehene Menge von
-**4.789** (17:45 UTC) auf **644** (19:52) und blieb über drei Läufe dort,
-bevor sie sich von selbst erholte (6.807 am 21.09., 01:56). Jede der 16
-Regionen war binnen vier Minuten „abgearbeitet" — die Signatur eines
-Soft-Blocks auf der Ergebnisliste, nicht eines leeren Marktes.
+### Der Befund: das ist kein Vorfall, das ist jeder vierte Lauf
 
-**Was gut war:** Die Löschwache hat gehalten. Im Log steht
-`immowelt: Loeschung ausgesetzt (strukturell teilweise, erwartet) — Sweep war
-unvollständig`. Kein einziges Objekt wurde fälschlich als Abgang markiert.
-Genau dafür ist die Fail-closed-Umstellung gebaut, und sie hat unter echter
-Belastung funktioniert.
+Gemessen mit `scraper/scripts/messung-flache-laeufe.mts` über alle 476
+Zeilen in `sweep_region_runs` (13,1 Tage, ab 2026-09-08):
 
-**Was fehlt:** Es gab **keine Warnzeile**. `pruefeMengenplausibilitaet`
-(`lib/plausibilitaet.ts`) prüft als Erstes `!vollstaendig` und kehrt sofort
-mit „Sweep war unvollständig." zurück — der Mengenvergleich dahinter wird bei
-Immowelt nie erreicht, weil `vollstaendig` dort strukturell hart `false` ist.
-Für die Löschentscheidung ist das richtig. Für das **Bemerken** ist es eine
-Lücke: Die 641 stehen in einer Logzeile, die jemand lesen müsste.
+| | |
+|---|---|
+| Läufe insgesamt | **84** |
+| davon **FLACH** — jede Region bleibt auf Seite 1 | **20 = 24 %** |
+| davon tief — keine Region auf Seite 1 stehengeblieben | 59 |
+| gemischt | 5 |
 
-**Vorsicht bei der Behebung:** Die Wache darf ihre Reihenfolge **nicht**
-ändern — „unvollständig" muss weiterhin zuerst und fail-closed greifen. Eine
-Warnung ist etwas anderes als eine Erlaubnis, und beides in dieselbe Funktion
-zu legen wäre genau die Vermischung, die B-2 aufgeräumt hat. Der Ort ist eher
-eine eigene, rein meldende Prüfung gegen die Sweep-Historie, die es mit
-`ladeSweepHistorie` schon gibt.
+**Eine Regionszeile trägt entweder die volle Menge oder rund 40.** Vierzig
+ist genau eine Ergebnisseite. Der „Einbruch von 4.789 auf 644" ist kein
+Einbruch, sondern der Wechsel in den flachen Zustand: 16 Regionen mal 40
+Karten sind 640.
 
-**Offen ist auch die Schwelle.** Faktor 7 ist eindeutig, aber der normale Lauf
-schwankt von Natur aus stark: 4.789 gegen 6.807 sind beides gesunde Läufe, je
-nachdem, welche Region die Rotation erwischt. Eine Warnung, die das nicht
-berücksichtigt, meldet ständig — und eine Warnung, die 94 % der Läufe trägt,
-warnt vor nichts (die Lehre aus 3.6).
+**Und er hält an.** Alle vier Läufe des 2026-09-21 nach 02:22 UTC waren
+flach — 650, 644, 645, 607 Objekte. Der letzte tiefe Lauf war
+`35552491138` (nw, 6.807 Karten über 170 Seiten).
 
+### Was im flachen Zustand wirklich passiert
+
+Die Logzeile trennt die beiden Zustände eindeutig:
+
+```
+tief  (Lauf 35552491138):  Immowelt-Sweep nw: 170 Seiten, 6807 Karten, gemeldet ?.
+flach (Lauf 35588951096):  Immowelt-Sweep nw:   2 Seiten,   40 Karten, gemeldet ?.
+                           Immowelt-Sweep by:   2 Seiten,   40 Karten, gemeldet 5130.
+```
+
+**Seite 2 ist leer.** Der Blätterknopf ist da, der Klick geht durch,
+`wartetAufNeueListe` meldet eine neue Liste — und `parseImmoweltListPage`
+findet null Karten. Danach fehlt der Knopf, die Schleife bricht bei
+`seite = 2` ab. Genau deshalb steht „2 Seiten, 40 Karten" im Log und nicht
+„1 Seite".
+
+**Das Portal widerspricht sich dabei selbst:** Der Seitentitel weist für
+`by` weiterhin **5.130** Treffer aus, geliefert werden 40.
+
+**Es ist nicht das Consent-Banner.** Beide Läufe bestätigen es über
+denselben Selektor; der flache Lauf hat sogar eine Meldung weniger.
+
+### Was zu korrigieren ist
+
+- **„Es gab keine Warnzeile" stimmt nicht.** `regionUnvollstaendigMeldung`
+  schreibt sie, sechzehnmal: *„nur 40 von gemeldet 5130 Objekten
+  eingesammelt — Region unvollstaendig."* Was fehlt, ist **eine** Zeile je
+  Lauf statt sechzehn, die niemand liest.
+- **Die Löschwache hat wieder gehalten.** Kein Objekt wurde fälschlich als
+  Abgang markiert. Dafür ist fail-closed gebaut.
+
+### Die Schwellenfrage ist erledigt — es braucht keine Schwelle
+
+Der erste Versuch verglich jede Region mit ihrem **eigenen Median** der
+letzten zehn Läufe. Das Ergebnis widerlegt den Ansatz:
+
+```
+Schwelle 30 %: meldet 102 von 412 Laeufen = 24,8 %
+Vorfallfenster 2026-09-20: faengt 1 von 49 Regionszeilen
+```
+
+**Eine Warnung, die ein Viertel aller Läufe trägt und den Vorfall trotzdem
+verpasst.** Der Grund: Der Median war mitgesunken — nach mehreren flachen
+Läufen steht er selbst bei 40, und 40 gegen 40 ist kein Einbruch. *Ein
+Maßstab, der den Ausfall mitmacht, misst ihn nicht.*
+
+**Der tragfähige Schnitt braucht keinen Median:** Eine Region meldet im
+Titel eine Trefferzahl und liefert eine Seite. Das steht in der Zeile
+selbst. `istRegionVollstaendig` rechnet es bereits aus — es fehlt nur die
+Zusammenfassung je Lauf.
+
+- [ ] **Schritt 1: Eine Zeile je Lauf.** Nach der Regionsschleife in
+      `scrapers/immowelt/index.ts`: wie viele der abgearbeiteten Regionen
+      unvollständig blieben, wie viele Objekte gesehen wurden gegen die
+      Summe der ausgewiesenen Trefferzahlen. Sie fiele bei 24 % der Läufe
+      auf — das ist keine zu empfindliche Warnung, sondern der gemessene
+      Anteil.
+- [ ] **Schritt 2: Die Reihenfolge der Löschwache bleibt unangetastet.**
+      „unvollständig" muss weiterhin zuerst und fail-closed greifen. Eine
+      Warnung ist etwas anderes als eine Erlaubnis; beides in dieselbe
+      Funktion zu legen wäre die Vermischung, die B-2 aufgeräumt hat. Der
+      Ort ist eine rein meldende Prüfung.
+
+### Was das für die Abdeckung heißt — die eigentliche Nachricht
+
+Ein tiefer Lauf schafft **eine** Region: `nw` allein sind 170 Seiten und
+das ganze Zeitbudget. Ein flacher Lauf schafft alle 16 und bringt nichts.
+Daraus ergibt sich die Kadenz je Region (gemessen über 13,1 Tage):
+
+| Region | Objekte | tiefe Läufe/Tag | Tage bis neu bewertet, Deckel 600 | Deckel 3.000 |
+|---|---|---|---|---|
+| `bw` | 4.920 | 0,69 | **11,9** | 2,4 |
+| `ni` | 3.105 | 0,46 | **11,3** | 2,3 |
+| `he` | 2.573 | 0,38 | **11,2** | 2,2 |
+| `rp` | 2.654 | 0,46 | 9,7 | 1,9 |
+| `sn` | 1.925 | 0,38 | 8,4 | 1,7 |
+| `nw` | 6.995 | 1,45 | 8,0 | 1,6 |
+| `hb` | 202 | 0,53 | 0,6 | 0,1 |
+
+**Damit ist die Zahl „8,5 Tage" aus B11 präzisiert:** Sie war ein
+Quellenmittel. Regionsgenau reicht die Spanne von 0,6 bis 11,9 Tagen, und
+die schlechtesten sind die großen. Der angehobene Deckel bringt sie alle
+unter 2,5 Tage.
+
+**Offen und bewusst nicht hier verfolgt:** *Warum* Seite 2 leer kommt. Das
+ist dieselbe Frage wie die 403 auf `/expose/` (B6) — ein Bot-Schutz, der
+sich binnen eines Tages ändert, und damit eine Infrastruktur- und keine
+Codefrage. Die Messung sagt nur, **dass** es 24 % der Läufe trifft und
+**dass** die Zustände sauber zu trennen sind.
 
 ## B10. Gemessen: Immowelt liefert nichts Reicheres, das wir wegwerfen
 
@@ -2215,17 +2294,27 @@ Meldungen sähen dasselbe freie Kontingent.
       belegte Zeit**: 3.000 × 0,11 s ≈ 5,5 min — genau so lange, wie die
       Bewertung vor der Nebenläufigkeit für 600 Objekte brauchte. Der Lauf
       wird dadurch nicht länger als der längste bisherige (50 min gegen 75).
-      **Wirkung:** ein Objekt wird statt alle 8,5 Tage alle **1,7 Tage** neu
-      bewertet.
+      **Wirkung, regionsgenau gemessen** (B9, 13,1 Tage Historie): Die
+      schlechtesten Regionen sind die größten -- `bw` 11,9 Tage auf 2,4,
+      `ni` 11,3 auf 2,3, `he` 11,2 auf 2,2, `nw` 8,0 auf 1,6. Die früher
+      genannten 8,5 Tage waren ein Quellenmittel und haben diese Spreizung
+      verdeckt.
 
-- [ ] **Schritt 3: Unter normaler Sweep-Menge nachmessen.** Die 0,11 s je
-      Objekt sind an rund 590 Objekten gemessen, nicht an 3.000 — Immowelt
-      lieferte an diesem Tag nur 645 statt der üblichen rund 6.800. Der
-      Deckel von 3.000 hat deshalb **noch gar nicht gegriffen**. Erst ein
-      Lauf mit normaler Menge zeigt, ob die Kosten je Objekt gleich bleiben.
-      Rechnung: Bewertungsdauer geteilt durch bewertete Objekte. Deutlich
-      über 0,11 s heißt: Supabase ist der Engpass, nicht die Rundenzahl —
-      dann `BEWERTUNGSBREITE` prüfen, nicht den Deckel.
+- [ ] **Schritt 3: Unter normaler Sweep-Menge nachmessen — steht noch aus.**
+      Der Kontrolllauf `35590195623` mit dem neuen Deckel lief sauber
+      (0 Fehler, 2 Meldungen, 7 min 27 s im Ganzen) und brachte zum ersten
+      Mal `607 von 607 Kandidaten bearbeitet, keiner bleibt übrig` —
+      **aber genau deshalb beweist er nichts über den Deckel: Er hat nicht
+      gegriffen.** Alle vier Läufe des 2026-09-21 nach 02:22 UTC waren flach
+      (B9), der Sweep sah 607 statt 6.800 Objekte.
+
+      Gemessen wurde dabei immerhin, dass die Kosten je Objekt nicht steigen:
+      **596 Objekte in 49 s = 0,082 s** gegen 0,11 s im Lauf davor.
+
+      Die eigentliche Prüfung braucht einen **tiefen** Lauf. Rechnung:
+      Bewertungsdauer geteilt durch bewertete Objekte. Deutlich über 0,11 s
+      heißt: Supabase ist der Engpass, nicht die Rundenzahl — dann
+      `BEWERTUNGSBREITE` prüfen, nicht den Deckel.
 
 **Der Rückweg ist eine Zahl:** `BEWERTUNGSBREITE = 1` ergibt exakt das alte
 Verhalten. Kein Umbau nötig.
