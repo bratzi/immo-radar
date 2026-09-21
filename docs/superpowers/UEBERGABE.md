@@ -20,11 +20,17 @@ Steht dort **kein** `FLACHER LAUF`, ist der Augenblick da:
    überhaupt.
 2. **B6 Schritt 4** — Weg (e) bei normaler Sweep-Menge erneut messen.
 
-Alternativ die übersichtlichere Messung ohne GitHub-Umweg:
+**Die beiden Werkzeuge dafür liegen im Repo** — beide mit einer Wache, die
+`NICHT GEMESSEN` von `nein` unterscheidet:
 
 ```
-cd scraper && npx tsx scripts/messung-flache-laeufe.mts
+scripts/auswerte-lauf.sh <Laufnummer>          # Phasendauern, Kennzahlen, Fehler
+cd scraper && npx tsx scripts/messung-flache-laeufe.mts   # flach oder tief, ueber die ganze Historie
 ```
+
+`auswerte-lauf.sh` kennt die Anker, an denen sich die Phasen im Actions-Log
+trennen. Die standen bis zum 2026-09-21 nirgends und waren jedes Mal neu zu
+suchen.
 
 ## Der Kontrolllauf ist ausgewertet — die Zeile steht im Log
 
