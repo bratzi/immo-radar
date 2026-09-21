@@ -2101,6 +2101,79 @@ berücksichtigt, meldet ständig — und eine Warnung, die 94 % der Läufe träg
 warnt vor nichts (die Lehre aus 3.6).
 
 
+## B10. Gemessen: Immowelt liefert nichts Reicheres, das wir wegwerfen
+
+**Herkunft:** 2026-09-21. Die Frage hinter B6, gestellt bevor weiter an der
+Detailsperre gedreht wird: **Brauchen wir die Detailseiten überhaupt?**
+
+**Die Vermutung war:** Der Sweep lädt die Ergebnisliste mit einem echten
+Browser, und Immowelt lädt Seite 2+ clientseitig über `classified-search`
+bzw. `serp-bff/search` nach. Diese Antworten fliegen ohnehin durch unseren
+Browser. Trügen sie PLZ und Gesamttrefferzahl, wären B6 (einheitliche
+Daten), A11 (bundeslandgenaue Miete) und A16 (Vollständigkeitsmaßstab für
+`nw`, `bw`, `mv`, `sh`) auf einen Schlag erledigt — ohne einen einzigen
+zusätzlichen Abruf und ohne die robots.txt-Abwägung anzufassen, denn das
+Skript **hört nur zu**.
+
+**Gemessen** mit `scraper/scripts/diagnose-netz.mts` (Lauf `35587430113`,
+Nordrhein-Westfalen — größte Region und eine der vier ohne Trefferzahl im
+Titel):
+
+```
+Antworten aufgefangen:       58
+davon Kerndienst MIT Inhalt: 12
+classified-search:           HTTP 200, 1.030.989 Zeichen
+Typ:                         text/html; charset=utf-8
+Anfang:                      "<!DOCTYPE html>
+<html lang=\"de\">..."
+PLZ im Kerndienst:           nein
+Trefferzahl im Kerndienst:   nein
+```
+
+**DER BEFUND: `classified-search` ist kein Datendienst.** Es liefert die
+fertig gerenderte Seite 2 als HTML — genau das, was
+`parseImmoweltListPage` ohnehin schon verarbeitet. Es gibt nichts
+Reicheres mitzulesen, weil es nichts Reicheres gibt.
+
+**Folge:** Die Titelzeile der Ergebniskarte ist nicht eine von mehreren
+Quellen, sondern **die einzige**, die der erlaubte Weg hergibt. Damit ist
+belegt, was bisher nur angenommen war:
+
+- **B6** („einheitliche Infos ganzheitlich auslesen") ist endgültig eine
+  **Infrastrukturfrage**, keine Codefrage. Nur die Detailseite trägt PLZ,
+  Baujahr und Kaltmiete, und sie ist von Rechenzentrums-Adressen
+  überwiegend gesperrt.
+- **A16** bekommt seine Trefferzahl auch aus der Nachladeantwort nicht. Der
+  zweite Vollständigkeitsmaßstab bleibt nötig.
+- **A11** (bundeslandgenaue Mietschätzung) hat keinen billigen Ausweg.
+
+**Unabhängig gegengeprüft** mit `diagnose-liste` (Lauf `35587691307`,
+Bremen, anderes Skript, andere Region):
+
+```
+Seite: 1.593.158 Zeichen
+Fuenfstellige Zahlen im Seiten-HTML: keine
+PLZ-Pfade im Datenmodell (35 Knoten durchsucht): keine gefunden
+```
+
+**Zwei Skripte, zwei Regionen, rund 2,6 Millionen Zeichen HTML — keine
+einzige fünfstellige Zahl.** Das ist kein Messfehler, sondern die
+Seitenarchitektur: Preise tragen einen Tausenderpunkt („75.000"), Kennungen
+sind UUIDs, und eine PLZ steht schlicht nirgends. Nebenbei zeigt die
+Gegenprobe, dass das Datenmodell der Suchseite mit **35 Knoten** praktisch
+leer ist — anders als das der Detailseite.
+
+**Was der Lauf NICHT sagt:** Er hat eine Region zu einem Zeitpunkt gemessen.
+Ändert Immowelt seine Seitenarchitektur auf einen echten JSON-Dienst, lohnt
+die Frage erneut — das Skript liegt dafür im Repo.
+
+**Die Falle, die dieser Spike gekostet hat, steht in der Übergabe:** Der
+erste Lauf meldete ein sauber aussehendes „PLZ: nein / Trefferzahl: nein"
+über **0 gelesene Zeichen**, weil der Körper nur bei
+`content-type: json` geholt wurde. Das Skript hat deshalb jetzt eine Wache,
+die ausdrücklich `NICHT GEMESSEN` meldet statt `nein`.
+
+
 # Teil C — Bewusst zurückgestellt
 
 Aus früheren Entwürfen, mit Begründung. Nur auf ausdrücklichen Wunsch.
