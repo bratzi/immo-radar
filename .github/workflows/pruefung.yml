@@ -26,6 +26,7 @@ on:
           - diagnose-overlays
           - diagnose-detail
           - diagnose-liste
+          - diagnose-netz
       region:
         description: "Regionscode fuer pruefe-region (hb, he, nw, by, ...)"
         required: false
