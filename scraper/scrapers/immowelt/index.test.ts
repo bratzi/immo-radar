@@ -10,6 +10,7 @@ import {
   laufZusammenfassung,
   baueRegionLauf,
   markeFuer,
+  fasseDetailAbweisungenZusammen,
 } from "./index.js";
 import type { MassstabArt } from "../../lib/regionsMassstab.js";
 
@@ -258,21 +259,21 @@ describe("beurteileDetailAntwort", () => {
   it("nennt einen abgewiesenen Abruf beim Namen, statt die Struktur zu verdaechtigen", () => {
     const urteil = beurteileDetailAntwort(403, 1500, false);
     expect(urteil).not.toBeNull();
-    expect(urteil).toMatch(/403/);
-    expect(urteil).toMatch(/abgewiesen/i);
-    expect(urteil).not.toMatch(/Struktur/i);
+    expect(urteil?.text).toMatch(/403/);
+    expect(urteil?.text).toMatch(/abgewiesen/i);
+    expect(urteil?.text).not.toMatch(/Struktur/i);
   });
 
   it("erkennt den Soft-Block: HTTP 200 mit leerer Huelle", () => {
     // DataDome antwortet auch mit 200 und ~1,5 kB Huelle statt der Seite.
     const urteil = beurteileDetailAntwort(200, 1500, false);
-    expect(urteil).toMatch(/Huelle|HÃ¼lle/);
-    expect(urteil).not.toMatch(/Struktur/i);
+    expect(urteil?.text).toMatch(/Huelle|HÃ¼lle/);
+    expect(urteil?.text).not.toMatch(/Struktur/i);
   });
 
   it("verdaechtigt die Struktur NUR bei einer vollstaendigen Seite ohne Datenmodell", () => {
     const urteil = beurteileDetailAntwort(200, 650_000, false);
-    expect(urteil).toMatch(/Struktur/i);
+    expect(urteil?.text).toMatch(/Struktur/i);
   });
 
   it("meldet nichts, wenn die Seite in Ordnung ist", () => {
@@ -282,6 +283,60 @@ describe("beurteileDetailAntwort", () => {
   it("behandelt eine fehlende Antwort als nicht beurteilbar, nicht als in Ordnung", () => {
     // page.goto kann null liefern. Das ist kein Beleg fuer eine heile Seite.
     expect(beurteileDetailAntwort(null, 0, false)).not.toBeNull();
+  });
+
+  it("nennt zu jedem Urteil auch seine Art, nicht nur den Fliesstext", () => {
+    // Der Fliesstext ist fuer Menschen, die Art fuer die Zaehlung. Ohne sie
+    // muesste die Schlusszeile den Text wieder auseinandernehmen.
+    expect(beurteileDetailAntwort(403, 1500, false)?.art).toBe("abgewiesen");
+    expect(beurteileDetailAntwort(200, 1500, false)?.art).toBe("huelle");
+    expect(beurteileDetailAntwort(200, 650_000, false)?.art).toBe("struktur");
+    expect(beurteileDetailAntwort(null, 0, false)?.art).toBe("keine_antwort");
+  });
+});
+
+describe("fasseDetailAbweisungenZusammen", () => {
+  // WARUM ES DIESE FUNKTION GIBT -- gemessen am 2026-09-21, Lauf 35605988763:
+  // Die Schlusszeile meldete "24 von 25 Abrufen ohne Datenmodell" und riet,
+  // "den oben genannten Grund" zu lesen. Oben standen DREI Gruende, weil die
+  // Schleife nur die ersten drei protokolliert (`if (abgewiesen <= 3)`).
+  // Fuer 21 der 24 Abweisungen stand der Grund nirgends. Genau die
+  // Unterscheidung, um die es bei B6 Schritt 4 geht -- Sperre oder
+  // Strukturaenderung -- war damit nicht ablesbar.
+
+  it("nennt jede Art mit ihrer Zahl", () => {
+    const zeile = fasseDetailAbweisungenZusammen({
+      abgewiesen: 3,
+      huelle: 21,
+      struktur: 0,
+      keine_antwort: 0,
+    });
+    expect(zeile).toMatch(/abgewiesen 3/);
+    expect(zeile).toMatch(/huelle 21/i);
+  });
+
+  it("nennt auch eine Art mit null, damit keine Gruppe stillschweigend fehlt", () => {
+    // Eine Art, die bei 0 verschwindet, sieht aus wie eine Art, die es nicht
+    // gibt. Der Unterschied entscheidet, ob der Parser oder die Drossel dran
+    // ist.
+    const zeile = fasseDetailAbweisungenZusammen({
+      abgewiesen: 5,
+      huelle: 0,
+      struktur: 0,
+      keine_antwort: 0,
+    });
+    expect(zeile).toMatch(/struktur 0/i);
+    expect(zeile).toMatch(/huelle 0/i);
+  });
+
+  it("summiert ueber alle Arten, nicht nur ueber die genannten", () => {
+    const zeile = fasseDetailAbweisungenZusammen({
+      abgewiesen: 3,
+      huelle: 21,
+      struktur: 1,
+      keine_antwort: 2,
+    });
+    expect(zeile).toMatch(/27/);
   });
 });
 

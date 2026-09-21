@@ -826,28 +826,67 @@ const VOLLE_SEITE_AB_ZEICHEN = 50_000;
  * Eine fehlende Antwort (`status === null`) gilt als nicht beurteilbar, nicht
  * als in Ordnung.
  */
+export type DetailAbweisungsArt = "keine_antwort" | "abgewiesen" | "huelle" | "struktur";
+
+export interface DetailUrteil {
+  /** Fuer die Zaehlung. Der Fliesstext ist fuer Menschen. */
+  art: DetailAbweisungsArt;
+  text: string;
+}
+
 export function beurteileDetailAntwort(
   status: number | null,
   htmlLaenge: number,
   hatDatenmodell: boolean
-): string | null {
+): DetailUrteil | null {
   if (status === null) {
-    return "Keine HTTP-Antwort erhalten -- nicht beurteilbar.";
+    return { art: "keine_antwort", text: "Keine HTTP-Antwort erhalten -- nicht beurteilbar." };
   }
   if (status !== 200) {
-    return `Abruf abgewiesen: HTTP ${status}. Das ist eine Sperre oder ein Fehler der Gegenseite.`;
+    return {
+      art: "abgewiesen",
+      text: `Abruf abgewiesen: HTTP ${status}. Das ist eine Sperre oder ein Fehler der Gegenseite.`,
+    };
   }
   if (hatDatenmodell) return null;
   if (htmlLaenge < VOLLE_SEITE_AB_ZEICHEN) {
-    return (
-      `HTTP 200, aber nur ${htmlLaenge} Zeichen -- eine Huelle statt der Seite. ` +
-      `So sieht DataDomes Soft-Block aus. Antwort darauf ist Drosselung, nicht Umgehung.`
-    );
+    return {
+      art: "huelle",
+      text:
+        `HTTP 200, aber nur ${htmlLaenge} Zeichen -- eine Huelle statt der Seite. ` +
+        `So sieht DataDomes Soft-Block aus. Antwort darauf ist Drosselung, nicht Umgehung.`,
+    };
   }
-  return (
-    `HTTP 200 und ${htmlLaenge} Zeichen, aber kein Datenmodell -- hier kann die ` +
-    `Seitenstruktur tatsaechlich geaendert sein. Erst jetzt lohnt ein Blick in den Parser.`
-  );
+  return {
+    art: "struktur",
+    text:
+      `HTTP 200 und ${htmlLaenge} Zeichen, aber kein Datenmodell -- hier kann die ` +
+      `Seitenstruktur tatsaechlich geaendert sein. Erst jetzt lohnt ein Blick in den Parser.`,
+  };
+}
+
+/**
+ * Die Schlusszeile der Detailphase, nach Urteilsart aufgeschluesselt.
+ *
+ * WARUM AUFGESCHLUESSELT: Die Schleife protokolliert nur die ersten drei
+ * Abweisungen einzeln -- sonst stuenden bei einem Totalausfall 25 gleiche
+ * Zeilen im Log. Lauf 35605988763 (2026-09-21) meldete daraufhin "24 von 25
+ * Abrufen ohne Datenmodell" und riet, "den oben genannten Grund" zu lesen;
+ * oben standen drei Gruende, fuer 21 Abweisungen stand keiner. Genau die
+ * Frage aus B6 Schritt 4 -- Sperre oder Strukturaenderung -- war damit nicht
+ * beantwortbar.
+ *
+ * Ein Record statt einer Map, wie in `fasseOhnePreisZusammen`: Kommt eine
+ * fuenfte Urteilsart dazu, meldet der Typpruefer die fehlende Gruppe.
+ */
+export function fasseDetailAbweisungenZusammen(
+  anzahl: Record<DetailAbweisungsArt, number>
+): string {
+  const gesamt = Object.values(anzahl).reduce((summe, zahl) => summe + zahl, 0);
+  // Auch eine Art mit 0 wird genannt: Eine Gruppe, die bei null verschwindet,
+  // sieht aus wie eine Gruppe, die es nicht gibt.
+  const teile = Object.entries(anzahl).map(([art, zahl]) => `${art} ${zahl}`);
+  return `${gesamt} Abweisungen: ${teile.join(", ")}`;
 }
 
 /**
@@ -892,6 +931,12 @@ export async function erfasseImmoweltDetails(
   // einzeln gemeldet -- 144 gleichlautende Zeilen verstopfen das Log und
   // verbergen die eine Zahl, auf die es ankommt.
   let abgewiesen = 0;
+  const anzahlJeArt: Record<DetailAbweisungsArt, number> = {
+    keine_antwort: 0,
+    abgewiesen: 0,
+    huelle: 0,
+    struktur: 0,
+  };
   // Ausserhalb des try, weil die Schlusszeile unten die TATSAECHLICH
   // versuchten Abrufe nennen muss -- nach einem Abbruch durch die
   // Stichprobe sind das weniger als die uebergebenen externalIds.
@@ -958,8 +1003,12 @@ export async function erfasseImmoweltDetails(
         );
         if (urteil !== null) {
           abgewiesen += 1;
+          anzahlJeArt[urteil.art] += 1;
+          // Nur die ersten drei einzeln -- sonst stehen bei einem
+          // Totalausfall 25 gleiche Zeilen im Log. Die Aufschluesselung
+          // unten deckt die uebrigen ab.
           if (abgewiesen <= 3) {
-            console.warn(`Immowelt-Detailseite ${zusammenfassung.url}: ${urteil}`);
+            console.warn(`Immowelt-Detailseite ${zusammenfassung.url}: ${urteil.text}`);
           }
           continue;
         }
@@ -979,8 +1028,9 @@ export async function erfasseImmoweltDetails(
   if (abgewiesen > 0) {
     console.warn(
       `Immowelt-Details: ${abgewiesen} von ${versuchteAbrufe} Abrufen ohne Datenmodell, ` +
-        `${ergebnisse.length} erfasst. Bei einem Totalausfall zuerst den oben genannten ` +
-        `Grund lesen -- eine Sperre erfordert Drosselung, eine Strukturaenderung den Parser.`
+        `${ergebnisse.length} erfasst. ${fasseDetailAbweisungenZusammen(anzahlJeArt)}. ` +
+        `abgewiesen und huelle heiszen Sperre und verlangen Drosselung, struktur verlangt ` +
+        `den Parser.`
     );
   }
   return ergebnisse;
