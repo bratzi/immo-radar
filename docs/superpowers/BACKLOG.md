@@ -2194,12 +2194,38 @@ gleichzeitig, der **Meldeteil** unverändert streng nacheinander. Zwischen
 `darfSenden` und `verbuchen` liegt ein Telegram-Versand; zwei parallele
 Meldungen sähen dasselbe freie Kontingent.
 
-- [ ] **Schritt 1: Lauf `35588951096` auswerten.** Erwartet: Bewertung von
-      ~6 min auf ~1 min, keine neuen `Kandidat fehlgeschlagen`-Zeilen,
-      `Meldungen: n von hoechstens 25` nie über 25.
-- [ ] **Schritt 2: Erst danach `MAX_BEWERTUNGEN_IMMOWELT` anheben.** Bewusst
-      nicht zusammen geändert, sonst ist nicht zu sagen, was gewirkt hat.
-      Vor dem Anheben die Laufzeit **und** die Fehlerzahl lesen.
+- [x] **Schritt 1: Lauf `35588951096` ausgewertet (2026-09-21).** Zwei Läufe
+      eine Stunde auseinander, mit praktisch gleicher Last — 644 gegen 645
+      gesehene Objekte, je 600 ausgewählt:
+
+      | | Lauf `35585454873` (nacheinander) | Lauf `35588951096` (nebenläufig) |
+      |---|---|---|
+      | Bewertung allein | **5 min 22 s** für 590 Objekte | **1 min 04 s** für 588 Objekte |
+      | je Objekt | 0,55 s | **0,11 s — Faktor 5,0** |
+      | Sweep allein | 4 min 15 s | 4 min 16 s (unverändert, Kontrolle) |
+      | `Kandidat fehlgeschlagen` | 0 | **0** |
+      | Meldungen | 3 von 25 | **1 von 25** |
+      | ganzer Lauf | rund 14 min | **9 min 42 s** gegen `timeout-minutes: 75` |
+
+      Der unveränderte Sweep ist die Kontrolle: Nur die Bewertungsphase hat
+      sich bewegt, nicht der Runner und nicht die Gegenseite.
+
+- [x] **Schritt 2: `MAX_BEWERTUNGEN_IMMOWELT` von 600 auf 3.000 angehoben.**
+      Die Grenze ist nicht „so viel wie möglich", sondern **die bereits
+      belegte Zeit**: 3.000 × 0,11 s ≈ 5,5 min — genau so lange, wie die
+      Bewertung vor der Nebenläufigkeit für 600 Objekte brauchte. Der Lauf
+      wird dadurch nicht länger als der längste bisherige (50 min gegen 75).
+      **Wirkung:** ein Objekt wird statt alle 8,5 Tage alle **1,7 Tage** neu
+      bewertet.
+
+- [ ] **Schritt 3: Unter normaler Sweep-Menge nachmessen.** Die 0,11 s je
+      Objekt sind an rund 590 Objekten gemessen, nicht an 3.000 — Immowelt
+      lieferte an diesem Tag nur 645 statt der üblichen rund 6.800. Der
+      Deckel von 3.000 hat deshalb **noch gar nicht gegriffen**. Erst ein
+      Lauf mit normaler Menge zeigt, ob die Kosten je Objekt gleich bleiben.
+      Rechnung: Bewertungsdauer geteilt durch bewertete Objekte. Deutlich
+      über 0,11 s heißt: Supabase ist der Engpass, nicht die Rundenzahl —
+      dann `BEWERTUNGSBREITE` prüfen, nicht den Deckel.
 
 **Der Rückweg ist eine Zahl:** `BEWERTUNGSBREITE = 1` ergibt exakt das alte
 Verhalten. Kein Umbau nötig.

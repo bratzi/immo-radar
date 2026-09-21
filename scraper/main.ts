@@ -142,13 +142,44 @@ const MAX_MELDUNGEN_JE_LAUF = 25;
  *
  * Was der Rest NICHT tut: sich zuverlaessig ueber Folgelaeufe verteilen. Das
  * stand hier bis zum 2026-09-08 und war gemessen falsch. Die Auswahl streut
- * seit `streueAuswahl` wenigstens ueber alle Regionen statt ein
- * zusammenhaengendes Stueck zu schneiden, aber sie deckt je Lauf 600 von
- * zuletzt 9.329 gesehenen Objekten ab. Wer diesen Deckel anfasst, misst
- * vorher die Laufzeit -- ein Kill durch `timeout-minutes` trifft VOR dem
- * Abgleichs- und Loeschblock.
+ * seit `streueAuswahl` ueber alle Regionen, statt ein zusammenhaengendes
+ * Stueck zu schneiden -- aber was ein Lauf auslaesst, holt kein spaeterer
+ * gezielt nach. Wer diesen Deckel anfasst, misst vorher die Laufzeit -- ein
+ * Kill durch `timeout-minutes` trifft VOR dem Abgleichs- und Loeschblock.
+ *
+ * WARUM 3.000 UND NICHT MEHR 600: Zwei Laeufe am 2026-09-21, eine Stunde
+ * auseinander und mit praktisch gleicher Last (644 und 645 gesehene
+ * Objekte, je 600 ausgewaehlt), messen die Wirkung von `BEWERTUNGSBREITE`:
+ *
+ *   Lauf 35585454873, nacheinander:  590 Objekte in 5 min 22 s = 0,55 s je Objekt
+ *   Lauf 35588951096, nebenlaeufig:  588 Objekte in 1 min 04 s = 0,11 s je Objekt
+ *
+ * Beide Laeufe: 0 Zeilen `Kandidat fehlgeschlagen`, Meldebudget eingehalten.
+ *
+ * DAS ZEITBUDGET BLEIBT DAMIT UNVERAENDERT: 3.000 Objekte kosten 3.000 mal
+ * 0,11 s, also rund 5,5 min -- genau so viel, wie die Bewertung VOR der
+ * Nebenlaeufigkeit fuer 600 Objekte gebraucht hat. Der Deckel steigt um das
+ * Fuenffache, ohne dass der Lauf laenger wird als der laengste echte Lauf
+ * bisher (50 min gegen `timeout-minutes: 75`). Das ist die Grenze: nicht
+ * "so viel wie moeglich", sondern "so viel, wie in die bereits belegte Zeit
+ * passt".
+ *
+ * WAS ER BRINGT: Bei real 4,5 Laeufen am Tag und ueber 23.000 Objekten im
+ * Bestand faellt die Zeit bis zur Neubewertung eines Objekts von 8,5 auf
+ * 1,7 Tage. Darum geht es -- nicht um Laufzeit, sondern darum, wie spaet
+ * eine Preissenkung auffaellt.
+ *
+ * WAS HIER EXTRAPOLIERT IST: Die 0,11 s je Objekt sind an rund 590 Objekten
+ * gemessen, nicht an 3.000. Angenommen ist, dass die Kosten je Objekt
+ * gleich bleiben -- die Breite bleibt ja 6, nur die Phase dauert laenger.
+ * DER NAECHSTE LAUF MIT NORMALER SWEEP-MENGE IST DIE PRUEFUNG DAFUER:
+ * Bewertungsdauer gegen ausgewertete Objekte rechnen. Liegt sie deutlich
+ * ueber 0,11 s je Objekt, ist Supabase der Engpass und nicht die Rundenzahl.
+ *
+ * DER RUECKWEG IST DIESE ZAHL: `600` stellt das Verhalten vom 2026-09-21
+ * wieder her.
  */
-const MAX_BEWERTUNGEN_IMMOWELT = 600;
+const MAX_BEWERTUNGEN_IMMOWELT = 3000;
 
 /**
  * Hoechstzahl Immowelt-Detailseiten, die ein Lauf holt.
@@ -185,27 +216,37 @@ const TELEGRAM_SENDEABSTAND_MS = 500;
 /**
  * Wie viele Immowelt-Objekte gleichzeitig bewertet werden.
  *
- * DAS GEMESSENE PROBLEM: Ein bewertetes Objekt kostet rund 0,6 s, und fast
- * alles davon ist Warten auf die Datenbank -- `upsertListingAndVersion`
- * macht drei Runden nacheinander bei rund 100 ms Umlaufzeit. Auf den Deckel
- * von `MAX_BEWERTUNGEN_IMMOWELT` gerechnet sind das sechs Minuten, mehr als
- * der Sweep selbst braucht (gemessen am Lauf 35539155621).
+ * DAS GEMESSENE PROBLEM: Ein bewertetes Objekt kostete nacheinander rund
+ * 0,55 s, und fast alles davon war Warten auf die Datenbank --
+ * `upsertListingAndVersion` macht drei Runden nacheinander bei rund 100 ms
+ * Umlaufzeit. Auf den damaligen Deckel von 600 gerechnet sind das sechs
+ * Minuten, mehr als der Sweep selbst braucht (Lauf 35539155621).
  *
- * WAS DAS KOSTET, und zwar nicht an Zeit: Bei 600 Bewertungen je Lauf, real
- * 4,5 Laeufen am Tag und ueber 23.000 Objekten im Bestand wird ein Objekt
- * nur alle **8,5 Tage** neu bewertet. So spaet faellt eine Preissenkung auf
- * -- bei einem Werkzeug, dessen Kernversprechen Preissenkungen sind.
+ * WAS DAS KOSTETE, und zwar nicht an Zeit: Bei 600 Bewertungen je Lauf,
+ * real 4,5 Laeufen am Tag und ueber 23.000 Objekten im Bestand wurde ein
+ * Objekt nur alle 8,5 Tage neu bewertet. So spaet faellt eine Preissenkung
+ * auf -- bei einem Werkzeug, dessen Kernversprechen Preissenkungen sind.
+ *
+ * WAS SIE GEBRACHT HAT: Zwei Laeufe am 2026-09-21 mit praktisch gleicher
+ * Last messen den Unterschied als Faktor 5,0 -- 0,55 s je Objekt
+ * nacheinander gegen 0,11 s nebenlaeufig, bei 0 Fehlerzeilen. Die
+ * Herleitung und was daraus fuer den Deckel folgt, steht bei
+ * `MAX_BEWERTUNGEN_IMMOWELT`. Der Gewinn ist dort eingeloest, nicht hier:
+ * nicht als kuerzerer Lauf, sondern als fuenffach groessere Scheibe.
  *
  * WARUM 6 UND NICHT 20: Die Gegenseite ist hier die eigene Datenbank, nicht
  * ein fremdes Portal -- es gibt also keine Drossel zu beachten. Aber
  * Supabase deckelt gleichzeitige Anfragen, und ein Lauf, der in sein Limit
  * rennt, ist teurer als einer, der eine Minute laenger braucht. Sechs ist
  * bewusst vorsichtig; wer ihn anhebt, misst vorher die Laufzeit UND die
- * Fehlerzahl im Log.
+ * Fehlerzahl im Log. Seit der Deckel bei 3.000 steht, dauert die
+ * nebenlaeufige Phase ohnehin laenger -- erst diese Last zeigt, ob Supabase
+ * bei Breite 6 noch Luft hat.
  *
  * DER RUECKWEG IST DIESE ZAHL: `1` ergibt exakt das alte Verhalten, Objekt
  * fuer Objekt. Macht Nebenlaeufigkeit im Betrieb Aerger, genuegt diese eine
- * Aenderung -- kein Umbau.
+ * Aenderung -- kein Umbau. Dann aber gehoert `MAX_BEWERTUNGEN_IMMOWELT`
+ * mit zurueck auf 600, sonst dauert die Bewertung allein eine halbe Stunde.
  */
 const BEWERTUNGSBREITE = 6;
 
