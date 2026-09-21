@@ -623,7 +623,7 @@ im Repo.
 
 ---
 
-## A11. Die Mietschätzung hat keine Quelle im Repo — und verschiebt jede siebte Meldeklasse
+## A11. Die Mietschätzung hat keine Quelle im Repo — PLZ-Stufe BELEGT (2026-09-21), Bundeslandstufe offen
 
 **Untersucht am 2026-09-08** für C-1 und C-2. Die Tabelle ist **besser als ihr
 Ruf und schlechter dokumentiert als jede andere Zahl im Projekt.**
@@ -706,28 +706,74 @@ rutscht. Die A9-Untergrenze wirkt genau wie beabsichtigt.
       **Erledigt.** Der Fehler ging gegen den Nutzer: zu niedrige Miete heiszt
       zu schlechter Kaufpreisfaktor, ein lohnendes Objekt fiele unter die
       Meldeschwelle.
-- [ ] **Schritt 3 (B3):** INKAR-Indikator **2113 „Angebotsmietpreise"**
-      (BBSR, Kreisebene, 2010–2024, gleiche Bezugsgroesse wie der Code) als
-      CSV exportieren und als Pruefdatei ins Repo legen. Danach ein Test, der
-      jeden der 95 Werte gegen seinen Referenzkreis haelt und bei mehr als
-      ±25 % fehlschlaegt. **Die Zuordnung PLZ-Zweisteller → Referenzkreis muss
-      von Hand entstehen und im Repo stehen** — sie ist die eigentliche
-      Arbeit, nicht der Test.
+- [x] **Schritt 3 (B3): ERLEDIGT (2026-09-21, `6a19051`).** INKAR-Indikator
+      **2113 „Wiedervermietungsmieten inserierter Wohnungen
+      (Angebotsmieten)"**, Kreisebene, Stand 2024, liegt als
+      `scraper/lib/mietPruefdaten.generated.json` im Repo. Test:
+      `scraper/lib/rentEstimate.pruefdaten.test.ts`, Erzeuger:
+      `scraper/scripts/erzeuge-mietpruefdaten.mts`.
+
+      **Ergebnis über alle 95 Werte:** Mittel **+6,2 %**, Median +6,7 %,
+      **95 von 95 innerhalb ±25 %**, 78 innerhalb ±15 %. Größte
+      Abweichungen: `58` +22,5 %, `13` −23,2 %.
+
+      **Zwei Annahmen dieses Eintrags waren falsch, beide gemessen:**
+
+      1. *„Die undokumentierte INKAR-API lieferte leere Antworten."* Sie
+         antwortet. Der Fehler war kein leeres Ergebnis, sondern die
+         Zertifikatskette: inkar.de sendet sie unvollständig, Node bricht
+         mit `UNABLE_TO_VERIFY_LEAF_SIGNATURE` ab, curl und Browser nicht.
+         Mit `tls.getCACertificates("system")` antwortet sie vollständig.
+         Die Endpunkte stammen aus dem R-Paket `bonn`: `/Wizard/GetBereiche`,
+         `/Wizard/GetIndikatorenZuBereich`, `/Wizard/GetMöglich`,
+         `/Table/GetDataTable`. **Kein Handexport, kein CSV-Download.**
+      2. *„Die Zuordnung PLZ-Zweisteller → Referenzkreis muss von Hand
+         entstehen."* Sie ist ableitbar: GeoNames `DE.zip` trägt in Spalte 9
+         den Kreisschlüssel, dieselbe Quelle, aus der schon
+         `plzBundesland.generated.json` stammt. Statt eines handverlesenen
+         Referenzkreises gehen **alle** Kreise eines Zweistellers ein,
+         gewichtet nach Einwohnern (INKAR „Bevölkerung gesamt", 2023). Nach
+         PLZ-Zahl gewichtet lag ein Zweisteller außerhalb ±25 %, nach
+         Einwohnern keiner.
+
+      **Das Vorzeichen dreht sich gegenüber Schritt 1** (dort −8,5 % gegen
+      Zensus, hier +6,2 % gegen INKAR). Kein Quellenwiderspruch, sondern ein
+      Maßstabsunterschied: Die Referenz mittelt das ganze Gebiet eines
+      Zweistellers, die handrecherchierten Werte zielen auf die Kernstadt.
+
+      **Nebenbefund, nicht behoben — er geht gegen den Nutzer:** Die drei
+      Berliner Zweisteller sind die größten Unterschätzungen (`13` −23,2 %,
+      `12` −19,8 %, `10` −13,5 %; INKAR nennt für Berlin 17 €/m²). Zu
+      niedrige Miete heißt zu schlechter Kaufpreisfaktor — ein lohnendes
+      Objekt fiele unter die Meldeschwelle. Eine Korrektur verschiebt den
+      Berliner Bundeslandmittelwert mit und gehört deshalb gemessen, nicht
+      nebenbei erledigt.
 - [ ] **Schritt 4 — Entscheidung des Nutzers:** Darf eine bundeslandgenaue
       Schaetzung ueberhaupt eine Meldung ausloesen? Diese Objekte stellen 339
       der 409 Meldekandidaten, und ihre Unschaerfe umfasst in NRW und Bayern
       das gesamte ±30-%-Band. Alternative: speichern und im Dashboard zeigen,
       aber nicht per Telegram melden.
 
-**Ehrliche Fehlanzeige:** Eine frei *automatisiert* abrufbare Tabelle mit
-Angebotsmieten je Kreis gibt es nicht. Der Deutschlandatlas antwortet
-Nicht-Browser-Clients mit HTTP 400, die undokumentierte INKAR-API lieferte
-leere Antworten. Der Export aus Schritt 3 ist Handarbeit — einmalig.
+      **Seit Schritt 3 nicht mehr blind zu entscheiden:** Die PLZ-Stufe ist
+      jetzt belegt (95 von 95 innerhalb ±25 %). Die Unschärfe der
+      Bundeslandstufe ist damit keine Eigenschaft der Tabelle, sondern der
+      Mittelung über ein ganzes Land — und die ist in diesem Eintrag bereits
+      beziffert (NRW −37,1 % bis +59,7 %, Bayern −34,8 % bis +67,1 %).
 
-**Abnahme:** C-1 gilt als erfuellt, wenn im Repo an der Tabelle steht, gegen
-welche Quelle sie geprueft wurde, mit welchem Ergebnis und zu welchem Stand,
-und wenn der Test aus Schritt 3 gruen laeuft **und bei einer kuenstlich um
-30 % verschobenen Tabelle rot wird**. C-2 ist mit diesem Eintrag erfuellt.
+**Abnahme: C-1 ERFUELLT (2026-09-21).** Verlangt war: im Repo steht an der
+Tabelle, gegen welche Quelle sie geprueft wurde, mit welchem Ergebnis und zu
+welchem Stand, der Test laeuft gruen **und wird bei einer kuenstlich um 30 %
+verschobenen Tabelle rot**. Alle drei Teile belegt:
+
+- Der Kommentarblock ueber `REGIONALE_MIETE_PRO_M2` nennt Quelle (INKAR 2113),
+  Ergebnis (n = 95, Mittel +6,2 %, 95 von 95 innerhalb ±25 %) und Stand (2024).
+- `npx vitest run lib/rentEstimate.pruefdaten.test.ts` — 4 Tests gruen.
+- Die 30-%-Verschiebung ist **als eigener Testfall fest verdrahtet**, in beide
+  Richtungen (`1.3` und `0.7`), nicht nur einmal von Hand geprueft. Zusaetzlich
+  einmal von Hand rot gesehen: `"58"` auf 14,0 gesetzt ergibt
+  `58: Tabelle 14 gegen INKAR 7.35 (90.5 %)`.
+
+C-2 ist mit diesem Eintrag erfuellt.
 
 ---
 

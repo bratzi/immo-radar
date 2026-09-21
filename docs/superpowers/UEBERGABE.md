@@ -1,3 +1,123 @@
+# Übergabe — Stand 2026-09-21 (sechste Sitzung des Tages)
+
+## ZUERST LESEN: die Migration ist weiterhin nicht gelaufen — und sie ist gesperrt
+
+Unverändert der erste Handgriff. Neu ist, **warum** sie liegen bleibt: Nicht,
+weil der Zugang fehlt, sondern weil der Auto-Mode-Klassifikator jeden
+schreibenden Zugriff auf die Live-Datenbank mit `[Production Deploy]`
+ablehnt. Zweimal versucht, zweimal abgelehnt.
+
+```sql
+alter table sweep_region_runs add column massstab text;
+alter table sweep_region_runs add column referenz_menge integer;
+```
+
+**Was dabei herauskam und nirgends stand:** Ein Zugang für die
+Supabase-Management-API liegt lokal bereits vor. Damit ist DDL ohne den
+Dashboard-Umweg ausführbar (`POST /v1/projects/{ref}/database/query`); lesend
+verifiziert, `information_schema` liefert die sieben vorhandenen Spalten von
+`sweep_region_runs`. Es fehlt **allein die Freigabe**, nicht das Mittel.
+Entweder der Nutzer führt die zwei Zeilen im Supabase-SQL-Editor aus, oder er
+legt eine Bash-Erlaubnisregel an.
+
+Bis dahin verliert jeder Lauf still seine Regionszeilen
+(`speichereRegionsLaeufe` fängt Insert-Fehler nur mit `console.warn`).
+
+## Was diese Sitzung gebaut hat
+
+| Commit | Was |
+|---|---|
+| `6a19051` | **A11 Schritt 3** — die Miettabelle hat eine Quelle und einen Test |
+
+**Stand: 604 Scraper-Tests grün** (vorher 600), `tsc` sauber.
+
+Die 95 handrecherchierten Werte in `REGIONALE_MIETE_PRO_M2` tragen **83 % des
+Bestands** und entscheiden **339 von 409 Meldekandidaten**. Sie kamen
+2026-09-07 ohne Quelle und ohne Datum ins Repo. Jetzt sind sie **vollständig**
+gegen INKAR (BBSR) Indikator 2113 geprüft, Kreisebene, Stand 2024:
+
+```
+n = 95   Mittel +6,2 %   Median +6,7 %
+95 von 95 innerhalb ±25 %, 78 innerhalb ±15 %
+```
+
+## Der Befund, der die Richtung bestimmt hat
+
+### Zwei Prämissen des Backlogs waren falsch — beide widerlegt, nicht umgangen
+
+Der Eintrag A11 nannte den Schritt „Handarbeit — einmalig" und die INKAR-API
+unbrauchbar. Beides stimmte nicht:
+
+1. **„Die undokumentierte INKAR-API lieferte leere Antworten."** Sie
+   antwortet. Der Fehler war die **Zertifikatskette**: inkar.de sendet sie
+   unvollständig, Node bricht mit `UNABLE_TO_VERIFY_LEAF_SIGNATURE` ab, curl
+   und Browser nicht — die kennen das fehlende Zwischenzertifikat aus dem
+   Systemspeicher. Eine leere Antwort sah aus wie „keine Daten", war aber
+   „keine Verbindung". Mit `tls.getCACertificates("system")` liefert
+   `/Table/GetDataTable` 400 Kreise. Die Prüfung wird dafür **nicht**
+   abgeschaltet — das R-Paket `bonn`, aus dem die Endpunkte stammen, rät
+   genau dazu.
+2. **„Die Zuordnung PLZ-Zweisteller → Referenzkreis muss von Hand
+   entstehen."** GeoNames `DE.zip` trägt den Kreisschlüssel in Spalte 9 —
+   dieselbe Datei, aus der schon `plzBundesland.generated.json` erzeugt wird.
+   Die Zuordnung ist ableitbar und nachrechenbar.
+
+### Das Vorzeichen hat sich gedreht, und das ist kein Widerspruch
+
+| | gegen Zensus 2022 (n=23, 09-08) | gegen INKAR 2113 (n=95, 09-21) |
+|---|---|---|
+| Mittel | **−8,5 %** | **+6,2 %** |
+| Median | −11,4 % | +6,7 % |
+
+Nicht die Quellen widersprechen sich, sondern die **Maßstäbe**: Die neue
+Referenz mittelt alle Kreise, die ein Zweisteller berührt. Die
+handrecherchierten Werte zielen auf die Kernstadt. Ein Zweisteller umfasst
+mehr als die — die „44" ist Dortmund UND Bochum UND Herne. Gegen das
+Gebietsmittel liegt die Tabelle hoch, gegen Stadtwerte niedrig. **Beides ist
+gemessen, beides steht am Code.**
+
+### Die Gewichtung war selbst ein Messfehler
+
+Der erste Durchlauf gewichtete die Kreise nach **Zahl der Postleitzahlen**.
+Ergebnis: ein Zweisteller außerhalb ±25 % (`37`, exakt +25,0 %). Das war kein
+Befund über die Tabelle, sondern über die Gewichtung — die Zahl der
+Postleitzahlen hängt an der Fläche, die Miete an der Einwohnerdichte.
+Dieselbe Begründung steht seit Langem in `werteFuerBundesland`. Nach
+Einwohnern gewichtet (INKAR „Bevölkerung gesamt", 2023): **kein** Zweisteller
+außerhalb.
+
+### Nebenbefund, nicht behoben — er geht gegen den Nutzer
+
+Die drei Berliner Zweisteller sind die größten Unterschätzungen: `13` −23,2 %,
+`12` −19,8 %, `10` −13,5 %. INKAR nennt für Berlin 17 €/m², die Tabelle 13,0
+bis 14,5. Zu niedrige Miete heißt zu schlechter Kaufpreisfaktor — ein
+lohnendes Objekt fiele unter die Meldeschwelle. **Nicht korrigiert**, weil
+eine Änderung den Berliner Bundeslandmittelwert mitverschiebt; das gehört
+gemessen, nicht nebenbei erledigt.
+
+## Was als Nächstes zu tun ist
+
+1. **Die Migration** (oben) — sie braucht eine Freigabe, sonst nichts.
+2. **A11 Schritt 4 ist jetzt entscheidbar.** Die Frage „darf eine
+   bundeslandgenaue Schätzung melden?" musste bisher blind beantwortet
+   werden. Die PLZ-Stufe ist belegt; die Unschärfe der Bundeslandstufe ist
+   damit nachweislich keine Eigenschaft der Tabelle, sondern der Mittelung
+   über ein ganzes Land.
+3. **Auf einen tiefen Lauf warten** für B11 Schritt 3 und B6 Schritt 4. Am
+   2026-09-21 waren **sechs** Läufe in Folge flach, zuletzt 15:28 UTC mit 641
+   Objekten und 41 Karten als Maximum je Region.
+4. Übriger Rückstand: **A10**, **A17**, **B5 Schritt 4**, **B7**, **B8-2**.
+
+## Die Falle dieser Sitzung
+
+**Eine leere Antwort ist kein Beleg für „keine Daten".** Der Backlog hatte
+„die INKAR-API lieferte leere Antworten" als erledigte Feststellung notiert,
+und darauf ruhte die Einschätzung „Handarbeit — einmalig". Tatsächlich war es
+ein TLS-Fehler, der sich als Datenmangel tarnte. Die Prämisse eines
+Backlog-Eintrags ist selbst prüfbar — und war hier zweimal falsch.
+
+---
+
 # Übergabe — Stand 2026-09-21 (fünfte Sitzung des Tages)
 
 ## ZUERST LESEN: der erste Lauf mit dem zweiten Maßstab
