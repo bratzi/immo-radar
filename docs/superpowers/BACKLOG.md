@@ -2174,6 +2174,70 @@ erste Lauf meldete ein sauber aussehendes „PLZ: nein / Trefferzahl: nein"
 die ausdrücklich `NICHT GEMESSEN` meldet statt `nein`.
 
 
+## B11. Die Bewertung ist nebenläufig — der Deckel wartet auf die Messung
+
+**Herkunft:** 2026-09-21, Commit `39616c5`.
+
+**Das gemessene Problem:** Ein bewertetes Objekt kostet rund **0,6 s**, und
+fast alles davon ist Warten. `upsertListingAndVersion` macht drei
+Datenbankrunden nacheinander bei rund 100 ms Umlaufzeit. Auf den Deckel von
+600 gerechnet sind das sechs Minuten — **mehr als der Sweep selbst braucht**
+(Lauf `35539155621`: Sweep 4 min, Bewertung 6 min).
+
+**Was das kostet, und zwar nicht an Zeit:** Bei 600 Bewertungen je Lauf,
+real 4,5 Läufen am Tag und über 23.000 Objekten im Bestand wird ein Objekt
+nur alle **8,5 Tage** neu bewertet. So spät fällt eine Preissenkung auf — bei
+einem Werkzeug, dessen Kernversprechen Preissenkungen sind.
+
+**Gebaut:** Rechnen und Schreiben laufen zu `BEWERTUNGSBREITE` (6)
+gleichzeitig, der **Meldeteil** unverändert streng nacheinander. Zwischen
+`darfSenden` und `verbuchen` liegt ein Telegram-Versand; zwei parallele
+Meldungen sähen dasselbe freie Kontingent.
+
+- [ ] **Schritt 1: Lauf `35588951096` auswerten.** Erwartet: Bewertung von
+      ~6 min auf ~1 min, keine neuen `Kandidat fehlgeschlagen`-Zeilen,
+      `Meldungen: n von hoechstens 25` nie über 25.
+- [ ] **Schritt 2: Erst danach `MAX_BEWERTUNGEN_IMMOWELT` anheben.** Bewusst
+      nicht zusammen geändert, sonst ist nicht zu sagen, was gewirkt hat.
+      Vor dem Anheben die Laufzeit **und** die Fehlerzahl lesen.
+
+**Der Rückweg ist eine Zahl:** `BEWERTUNGSBREITE = 1` ergibt exakt das alte
+Verhalten. Kein Umbau nötig.
+
+**Vorsicht beim Anheben der Breite:** Die Gegenseite ist hier die eigene
+Datenbank, nicht ein fremdes Portal — es gibt keine Drossel zu beachten.
+Aber Supabase deckelt gleichzeitige Anfragen, und ein Lauf, der in sein Limit
+rennt, ist teurer als einer, der eine Minute länger braucht.
+
+## B12. ZVG ohne Browser — belegt, aber bewusst nicht umgesetzt
+
+**Herkunft:** 2026-09-21, aus der Arbeit am ZVG-Link.
+
+**Der Fund:** Die ZVG-Terminsuche läuft **ohne Browser** per einfachem
+HTTP-POST gegen `index.php?button=Suchen`. Zwei Felder genügen —
+`land_abk` und `plz`; `obj=4` filtert auf Mehrfamilienhäuser. Verifiziert
+ohne Referer, mit fremdem Referer und mit Origin-Header.
+
+**Warum es trotzdem nicht umgesetzt wird:**
+
+| | |
+|---|---|
+| ZVG-Anteil an der Laufzeit | **52 s von 11 min — 8 %** |
+| möglicher Gewinn | höchstens ~30 s |
+| berührt | die **einzige Quelle mit Löschhoheit** |
+
+Das ist das schlechteste Verhältnis von Gewinn zu Risiko im Projekt. Der
+Browser wird für Immowelt ohnehin gestartet; ZVG teilt ihn sich nur.
+
+**Wann es sich lohnen würde:** Falls Immowelt je ganz wegfällt und ZVG die
+einzige Quelle wird — dann spart der Verzicht auf Playwright den ganzen
+Browserstart. Vorher nicht.
+
+**Offen und ungeprüft:** Die Paginierung per POST. `&seite=` allein
+genügt nicht; das JavaScript der Seite reicht zusätzlich `l`, `r` und
+`all` mit, deren Herkunft nicht untersucht wurde.
+
+
 # Teil C — Bewusst zurückgestellt
 
 Aus früheren Entwürfen, mit Begründung. Nur auf ausdrücklichen Wunsch.

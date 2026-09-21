@@ -1,3 +1,150 @@
+# Übergabe — Stand 2026-09-21 (dritte Sitzung des Tages)
+
+## ZUERST LESEN: ein Messlauf war beim Sitzungsende noch offen
+
+**Lauf `35588951096`** (`scrape.yml`, gestartet 2026-09-21 gegen 12:30 Uhr
+Ortszeit) prüft, ob die **nebenläufige Bewertung** trägt. Das ist der erste
+Handgriff der nächsten Sitzung:
+
+```
+gh run view 35588951096 --json conclusion -q .conclusion
+gh run view 35588951096 --log | grep -oE "2026-[0-9:T.Z-]+ (Immowelt: Sweep gestartet|ZVG-Portal: Sweep gestartet)"
+gh run view 35588951096 --log | grep -oE "Immowelt-Detail:.*|Immowelt: [0-9]+ von [0-9]+ gesehenen"
+```
+
+**Was die Zahlen bedeuten:**
+
+| Gemessen wird | Vorher (Lauf `35585454873`) | Erwartet |
+|---|---|---|
+| Immowelt-Sweep **und** Bewertung zusammen | 9 min 37 s | **rund 5 min** |
+| davon Bewertung allein | ~6 min für 590 Objekte | **rund 1 min** |
+| Fehlerzeilen `Kandidat fehlgeschlagen` | 0 | **weiterhin 0** |
+| `Meldungen: n von hoechstens 25` | 1 | plausibel, **nie über 25** |
+
+**Trägt es** — Bewertung deutlich schneller, keine neuen Fehler, Meldebudget
+eingehalten —, dann ist der nächste Schritt, **`MAX_BEWERTUNGEN_IMMOWELT`
+von 600 anzuheben** (`scraper/main.ts`). Das ist der eigentliche Nutzen:
+Heute wird ein Objekt nur alle **8,5 Tage** neu bewertet, und so spät fällt
+eine Preissenkung auf. Bewusst **nicht** zusammen mit der Nebenläufigkeit
+geändert, damit zu sehen bleibt, was gewirkt hat.
+
+**Trägt es nicht**, ist der Rückweg **eine Zahl**: `BEWERTUNGSBREITE = 1` in
+`main.ts` stellt exakt das alte Verhalten her. Kein Umbau nötig.
+
+## Was diese Sitzung gebaut hat
+
+| Commit | Was |
+|---|---|
+| `7a3f722` | Detailphase bricht nach erfolgloser Stichprobe ab (3 statt 25 Abrufe) |
+| `39616c5` | **Bewertung nebenläufig**, Meldeteil weiter in Reihe |
+| `5331257` | B10 — gemessen: Immowelt liefert nichts Reicheres |
+| `b0d4178` | Detailphase läuft vor dem Sweep |
+| `0440b58` | **ZVG-Link behoben** — Terminsuche statt `error` |
+| `ef934fe` | B8-1 — `last_detail_at` hängt wirklich am Schalter |
+| `cb3653b` | E-7 — Kategorie „Objekte ohne Region" gebaut |
+| `028f523` | B5 gemessen — kein Fehler, sondern der A-4-Pfad |
+| `e1628b3` | Bilddeckel greift auch beim Laden |
+| `d2e7bc5` | Detailphase wieder eingehängt, gedeckelt auf 25 |
+
+**Stand: 561 Scraper-Tests grün, 203 Web-Tests grün** (1 übersprungen),
+`tsc` und `vite build` sauber, alles auf `main` gepusht.
+
+## Die drei Befunde, die die Richtung bestimmen
+
+### 1. Die Immowelt-Detailsperre besteht — und ist nicht durch Code zu lösen
+
+75 Abrufe über drei Produktionsläufe, **alle HTTP 403**, darunter 25 in einem
+Lauf mit völlig gesundem Sweep. Die Momentaufnahme vom 20.09. (5 von 5) war
+die Ausnahme.
+
+**Weg (e) ist gebaut** — die Phase läuft jetzt vor dem Sweep, auf
+unverbrauchtem Runner. Der erste Lauf damit brachte 0 von 25, **taugt aber
+nicht als Widerlegung**: Immowelt machte zum Messzeitpunkt generell dicht
+(644 statt 6.800 gesehene Objekte). **Zu wiederholen, wenn der Sweep wieder
+normale Mengen sieht.**
+
+**Nicht weiter daran drehen.** Die verbliebenen Erklärungen — veraltete
+`search=`-Parameter in gespeicherten URLs, unpassender Referer — sind
+Rätselraten um einen Bot-Schutz, der sich binnen eines Tages ändert.
+
+### 2. Es gibt nichts Reicheres mitzulesen (B10)
+
+`classified-search` liefert **`text/html` mit 1 MB** — die fertig gerenderte
+Seite 2, genau das, was `parseImmoweltListPage` ohnehin verarbeitet. Kein
+Datendienst. Zweifach geprüft, zwei Regionen, rund 2,6 Millionen Zeichen, und
+in keinem eine fünfstellige Zahl.
+
+**Damit ist B6 endgültig eine Infrastruktur- und keine Codefrage.** Wer
+einheitliche Daten will, braucht eine nicht gesperrte Adresse — kein
+besseres Parsing. A16 bekommt seine Trefferzahl auch von dort nicht.
+
+### 3. ZVG ist 8 % der Laufzeit — nicht anfassen
+
+Gemessen: **52 Sekunden** für alle 16 Bundesländer inklusive Detailphase,
+gegen 9 min 37 s für Immowelt.
+
+**Ein Fund, der dokumentiert gehört, aber nicht umgesetzt werden sollte:**
+Die ZVG-Terminsuche läuft auch **ohne Browser** per einfachem HTTP-POST
+(`index.php?button=Suchen`, Felder `land_abk` und `plz` genügen — am
+2026-09-21 verifiziert). Ein Umbau spart höchstens 30 Sekunden, berührt aber
+die **einzige Quelle mit Löschhoheit**. Schlechtestes Verhältnis von Gewinn
+zu Risiko im ganzen Projekt.
+
+## Was als Nächstes zu tun ist
+
+1. **Den Messlauf auswerten** (oben), dann `MAX_BEWERTUNGEN_IMMOWELT`
+   anheben.
+2. **Weg (e) erneut messen**, sobald der Sweep normale Mengen sieht.
+3. **B6 Schritt 2, Weg (d)** — Entscheidung des Nutzers, Infrastrukturfrage.
+4. **A16** — zweiter Vollständigkeitsmaßstab, der letzte Block für B1.
+5. Übriger Rückstand: **A10**, **A11 Schritt 4**, **B7**, **B8-2**, **B9**.
+
+## Drei Vorschläge, die die Messung widerlegt hat
+
+Ein Kapitel zur Warnung, denn alle drei klangen plausibel:
+
+- **„Die 600er-Bewertungsgrenze ist ein Rudiment."** Falsch — 0,6 s je Objekt
+  mal 9.747 sind über eine Stunde. Die Grenze war hart nötig. (Erst die
+  Nebenläufigkeit ändert das.)
+- **„Die doppelte Rotation ist überflüssig."** Falsch — bei 403-Antworten
+  bleibt `last_detail_at` leer, dieselben 25 kämen im nächsten Lauf wieder.
+- **„Die drei Zählweisen für ‚ohne Region' gehören vereinheitlicht."**
+  Falscher Schnitt — **35** (`partitionEinesListings` null), **356**
+  (Snapshot `bundesland` null) und **398** (ohne `listing_versions`) sind
+  drei verschiedene **Fragen**, nicht drei Antworten auf eine. Sie gehören
+  benannt, nicht zusammengelegt.
+
+## Die Falle dieser Sitzung — dreimal dieselbe
+
+**Eine Messung, die nichts findet, weil sie nichts anschaut, sieht aus wie
+ein Befund.** An einem Tag dreimal zugeschnappt:
+
+1. Der E-7-Browsercheck las `21.897 Objekte` aus der Kopfzeile — die
+   Bestandsgröße, nicht die gefilterte Menge — und meldete „unverändert".
+2. Der ZVG-Vergleich sagte achtmal NEIN, weil Python unter Windows CRLF
+   schreibt und das `` an der Id klebte. Die Suche war die ganze Zeit
+   richtig.
+3. Die Netz-Diagnose meldete „PLZ: nein / Trefferzahl: nein" über **0
+   gelesene Zeichen** — der Körper wurde nur bei `content-type: json` geholt.
+
+**Die Lehre ist als Erinnerung gesichert**
+(`messung-muss-sich-selbst-pruefen`): Jedes Messskript bekommt eine Wache,
+die `NICHT GEMESSEN` von `nein` unterscheidet. Und: **Ein gleichförmiges
+negatives Ergebnis verdächtigt zuerst die Messung, nicht den Gegenstand.**
+
+Zwei weitere Fallen dieser Sitzung:
+
+- **Ein Docstring, der eine Regel erklärt, ist kein Beleg, dass der Code sie
+  befolgt.** `lib/db.ts` beschrieb über dreißig Zeilen, warum
+  `last_detail_at` am Schalter hängt — dreißig Zeilen darüber setzte
+  `listingUpsertZeile` es bedingungslos (B8-1, behoben).
+- **Ein Formular hat mehr Felder, als die Seite zeigt.** Die sichtbare
+  ZVG-Maske kennt Bundesland, Amtsgericht und Aktenzeichen — im HTML stehen
+  zusätzlich `plz`, `ort`, `ortsteil`, `str` und `hnr`. Genau die lösten den
+  ZVG-Link.
+
+---
+
 # Übergabe — Stand 2026-09-21 (zweite Sitzung des Tages)
 
 ## Die Detailphase läuft jetzt vor dem Sweep — und der ZVG-Link funktioniert wieder
@@ -72,7 +219,8 @@ mit „falsche Parameter übergeben". `logik/zvgSuche.ts` hat deshalb eine
 
 - **Eine Messung, die überall dasselbe meldet, misst meistens sich selbst.**
   Der Vergleich „ist die gesuchte ZVG-Id in den Treffern?" sagte achtmal
-  NEIN — weil Python unter Windows CRLF schreibt und das `` an der Id
+  NEIN — weil Python unter Windows CRLF schreibt und das `
+` an der Id
   klebte. Die Suche war die ganze Zeit richtig. Dieselbe Falle schlug
   vorher schon beim E-7-Browsercheck zu.
 - **Ein Formular hat mehr Felder, als die Seite zeigt.** Die sichtbare
