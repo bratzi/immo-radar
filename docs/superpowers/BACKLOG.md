@@ -2068,10 +2068,36 @@ Befunde geführt werden:
 > um weiter Zeit zu investieren. Die Diagnose `diagnose-netz` prüft
 > stattdessen, ob wir die PLZ überhaupt brauchen.
 
-- [ ] **Schritt 4, neu: Die Messung lesen.** Nach dem ersten Produktionslauf
-      mit der neuen Phase die Zeile `Immowelt-Detail: n von 25` auswerten und
-      hier festhalten. Davon hängt ab, ob der Deckel steigt, ob der Parser
-      nachgezogen werden muss und ob B8 überhaupt lohnt.
+- [x] **Schritt 4, neu: Die Messung gelesen (2026-09-21) — die Detailphase
+      trägt NICHT.** Über vier Läufe:
+
+      | Lauf | gelesen | Abweisungen | protokollierte Gründe |
+      |---|---|---|---|
+      | `35605988763` | 1 von 25 | 24 | 3× HTTP 403, **21 ohne Grund** |
+      | `35618600494` | 0 von 25 | 3 | 3× HTTP 403 |
+      | `35656292026` | 0 von 25 | 3 | 3× HTTP 403 |
+      | `35658760777` | 0 von 25 | 3 | 3× HTTP 403 |
+
+      In den drei jüngsten Läufen griff die Stichprobensperre nach drei
+      Abrufen — **jeder einzelne davon HTTP 403**. Das ist eine Sperre, keine
+      Strukturänderung; der Parser ist nicht dran. Insgesamt **1 von 34
+      Abrufen** erfolgreich.
+
+      **Die drei Folgefragen dieses Schritts sind damit beantwortet:**
+
+      - *Steigt der Deckel?* **Nein.** Ein höherer Deckel vervielfacht nur
+        abgewiesene Abrufe gegen eine Quelle, die gerade zumacht.
+      - *Muss der Parser nachgezogen werden?* **Nein.** Kein einziger
+        protokollierter Grund lautet „Struktur".
+      - *Lohnt B8?* **Nein**, solange das so bleibt — siehe dort.
+
+      **Eine Lücke ist dabei aufgefallen und behoben (`65b4cf5`):** Die
+      Schleife protokolliert nur die ersten drei Abweisungen einzeln, die
+      Schlusszeile riet aber, „den oben genannten Grund" zu lesen. Für 21 der
+      24 Abweisungen im ersten Lauf stand nirgends ein Grund. Die Schlusszeile
+      weist die vier Urteilsarten jetzt einzeln aus. **Der nächste Lauf
+      liefert damit die vollständige Aufschlüsselung** — die obige Aussage
+      ruht auf 12 protokollierten Gründen, nicht auf allen 33.
 
 **Hängt zusammen mit:** A10 (Cron-Takt), A11 (Mietschätzung — die
 Bundeslandstufe existiert nur, weil die PLZ fehlt), B1 (Löschhoheit braucht
@@ -2141,6 +2167,14 @@ rotieren.
 **Reihenfolge:** Beides lohnt erst, wenn die Messung aus B6 sagt, dass die
 Detailphase überhaupt trägt. Ein Vorrang für Objekte, deren Seiten alle
 abgewiesen werden, wäre nur ein schnellerer Weg ins Nichts.
+
+**Die Messung liegt vor (2026-09-21, B6 Schritt 4): Sie trägt nicht.** 1 von
+34 Abrufen über vier Läufe, jeder protokollierte Grund HTTP 403. **B8-2 ist
+damit nicht gesperrt, sondern zwecklos** — der saubere Vorrang „hole die
+Objekte ohne PLZ" führte zu 10.546 Objekten, deren Detailseiten abgewiesen
+werden. Erst wenn die Sperre nachlässt, wird aus dem zwecklosen Vorrang
+wieder ein lohnender. **Der Auslöser, auf den zu warten ist, ist nicht ein
+tiefer Lauf, sondern eine Detailphase, die überhaupt etwas liest.**
 
 
 ## B9. Kein Mengeneinbruch, sondern zwei Betriebszustände — GEMESSEN (2026-09-21)

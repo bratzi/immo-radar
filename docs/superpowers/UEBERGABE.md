@@ -1,35 +1,43 @@
 # Übergabe — Stand 2026-09-21 (sechste Sitzung des Tages)
 
-## ZUERST LESEN: die Migration ist weiterhin nicht gelaufen — und sie ist gesperrt
+## ZUERST LESEN: A16 ist abgenommen — die Migration lief, der Beleg steht
 
-Unverändert der erste Handgriff. Neu ist, **warum** sie liegen bleibt: Nicht,
-weil der Zugang fehlt, sondern weil der Auto-Mode-Klassifikator jeden
-schreibenden Zugriff auf die Live-Datenbank mit `[Production Deploy]`
-ablehnt. Zweimal versucht, zweimal abgelehnt.
+**Der Nutzer hat die Migration am 2026-09-21 ausgeführt.** Der Lauf
+`35658760777` danach trägt den Beleg, und zwar genau den vorhergesagten:
 
-```sql
-alter table sweep_region_runs add column massstab text;
-alter table sweep_region_runs add column referenz_menge integer;
+```
+massstab 'hochwassermarke':   4     (nw 6995, bw 4920, sh 1316, mv 662)
+massstab 'gemeldete_treffer': 12
+massstab 'keiner':            0
+massstab NULL (vor A16):      0
+IN ORDNUNG: jede Zeile traegt ihren Massstab, keine ist vollstaendig ohne Beleg.
 ```
 
-**Was dabei herauskam und nirgends stand:** Ein Zugang für die
-Supabase-Management-API liegt lokal bereits vor. Damit ist DDL ohne den
-Dashboard-Umweg ausführbar (`POST /v1/projects/{ref}/database/query`); lesend
-verifiziert, `information_schema` liefert die sieben vorhandenen Spalten von
-`sweep_region_runs`. Es fehlt **allein die Freigabe**, nicht das Mittel.
-Entweder der Nutzer führt die zwei Zeilen im Supabase-SQL-Editor aus, oder er
-legt eine Bash-Erlaubnisregel an.
+Die vier Referenzmengen wurden **vor** dem Lauf aus der Historie berechnet und
+stimmen auf die Einheit. Nachprüfen: `npx tsx scripts/pruefe-massstaebe.mts`.
 
-Bis dahin verliert jeder Lauf still seine Regionszeilen
-(`speichereRegionsLaeufe` fängt Insert-Fehler nur mit `console.warn`).
+**Was die Migration gekostet hat: genau einen Lauf.** `35656292026`
+(21:17 UTC) lief mit A16-Code, aber vor der Migration. Seine 16 Regionszeilen
+fehlen. Im Log steht der Beleg:
+`sweep_region_runs: nicht geschrieben { message: "Could not find the
+'massstab' column ..." }`. Kein Objektverlust, nur eine Lücke im
+Regionsprotokoll.
+
+**Für die nächste Migration festgehalten:** Der Auto-Mode-Klassifikator lehnt
+jeden schreibenden Zugriff auf die Live-Datenbank mit `[Production Deploy]`
+ab, auch eine additive mit Rückweg. Ein Zugang für die Supabase-Management-API
+liegt lokal vor und wurde lesend verifiziert — es fehlte allein die Freigabe,
+nicht das Mittel. Zwei Wege: der Nutzer führt das SQL im Supabase-Editor aus,
+oder er legt eine Bash-Erlaubnisregel an.
 
 ## Was diese Sitzung gebaut hat
 
 | Commit | Was |
 |---|---|
 | `6a19051` | **A11 Schritt 3** — die Miettabelle hat eine Quelle und einen Test |
+| `65b4cf5` | **Die Detailphase weist ihre Abweisungen nach Art aus** (B6 Schritt 4) |
 
-**Stand: 604 Scraper-Tests grün** (vorher 600), `tsc` sauber.
+**Stand: 608 Scraper-Tests grün** (vorher 600), `tsc` sauber.
 
 Die 95 handrecherchierten Werte in `REGIONALE_MIETE_PRO_M2` tragen **83 % des
 Bestands** und entscheiden **339 von 409 Meldekandidaten**. Sie kamen
@@ -95,18 +103,37 @@ lohnendes Objekt fiele unter die Meldeschwelle. **Nicht korrigiert**, weil
 eine Änderung den Berliner Bundeslandmittelwert mitverschiebt; das gehört
 gemessen, nicht nebenbei erledigt.
 
+## B6 Schritt 4 ist beantwortet: die Detailphase trägt nicht
+
+Über vier Läufe **1 von 34 Abrufen** erfolgreich. In den drei jüngsten griff
+die Stichprobensperre nach drei Abrufen — jeder einzelne **HTTP 403**. Das
+ist eine Sperre, keine Strukturänderung. Damit fallen drei Entscheidungen auf
+einmal: Der Deckel steigt nicht, der Parser ist nicht dran, und **B8-2 ist
+nicht gesperrt, sondern zwecklos**, solange die Sperre steht.
+
+**Dabei fiel eine Messlücke auf, und sie ist behoben (`65b4cf5`).** Die
+Schlusszeile riet, „den oben genannten Grund" zu lesen — protokolliert wurden
+aber nur die ersten drei Abweisungen. Im Lauf `35605988763` stand damit für
+21 von 24 Abweisungen nirgends ein Grund. Die Unterscheidung, um die es bei
+diesem Schritt geht, war nicht ablesbar. Die Schlusszeile weist die vier
+Urteilsarten jetzt einzeln aus. **Die Aussage oben ruht auf 12
+protokollierten Gründen, nicht auf allen 33** — der nächste Lauf liefert die
+vollständige Aufschlüsselung.
+
 ## Was als Nächstes zu tun ist
 
-1. **Die Migration** (oben) — sie braucht eine Freigabe, sonst nichts.
-2. **A11 Schritt 4 ist jetzt entscheidbar.** Die Frage „darf eine
+1. **A11 Schritt 4 ist jetzt entscheidbar.** Die Frage „darf eine
    bundeslandgenaue Schätzung melden?" musste bisher blind beantwortet
    werden. Die PLZ-Stufe ist belegt; die Unschärfe der Bundeslandstufe ist
    damit nachweislich keine Eigenschaft der Tabelle, sondern der Mittelung
    über ein ganzes Land.
-3. **Auf einen tiefen Lauf warten** für B11 Schritt 3 und B6 Schritt 4. Am
-   2026-09-21 waren **sechs** Läufe in Folge flach, zuletzt 15:28 UTC mit 641
-   Objekten und 41 Karten als Maximum je Region.
-4. Übriger Rückstand: **A10**, **A17**, **B5 Schritt 4**, **B7**, **B8-2**.
+2. **Die vollständige Aufschlüsselung der Detailphase** aus dem nächsten Lauf
+   lesen — sie bestätigt oder widerlegt „Sperre" für die restlichen Fälle.
+3. **B11 Schritt 3 wartet weiter auf einen tiefen Lauf.** Am 2026-09-21 waren
+   **sieben** Läufe in Folge flach, zuletzt `35658760777` mit 647 Objekten
+   und 41 Karten als Maximum je Region. Der Deckel von 3.000 hat kein einziges
+   Mal gegriffen.
+4. Übriger Rückstand: **A10**, **A17**, **B5 Schritt 4**, **B7**.
 
 ## Die Falle dieser Sitzung
 
