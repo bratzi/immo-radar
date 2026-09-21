@@ -242,6 +242,75 @@ export function regionUnvollstaendigMeldung(
 }
 
 /**
+ * Bis zu so vielen Karten gilt eine Region als "nur Seite 1 bekommen".
+ * Eine Ergebnisseite traegt 40 Karten; die Reserve faengt die gelegentliche
+ * 41. oder 42. ab, die der Sweep beim Blaettern doppelt sieht.
+ */
+export const EINE_ERGEBNISSEITE = 45;
+
+/**
+ * Ab so vielen bearbeiteten Regionen ist "alle blieben auf Seite 1" ein
+ * Muster und kein Zufall. Ein tiefer Lauf schafft oft nur EINE Region; waere
+ * das eine kleine (hb hat 202 Objekte) oder brechend, sagte eine Zeile
+ * "flacher Lauf", wo nur wenig zu holen war. Geraten wird hier nichts.
+ */
+const FLACH_MINDESTREGIONEN = 2;
+
+/**
+ * EINE Zeile je Lauf ueber alle Regionen -- die Zusammenfassung, die im Log
+ * bisher fehlte.
+ *
+ * WARUM ES SIE BRAUCHT: Am 2026-09-20 fiel die gesehene Menge von 4.789 auf
+ * 644 und blieb dort. Die Information stand im Log -- sechzehnmal, als
+ * `regionUnvollstaendigMeldung` je Region, zwischen Hunderten anderer
+ * Zeilen. Niemand liest sechzehn Zeilen. Diese eine ist dafuer da.
+ *
+ * WAS DIE MESSUNG DAZU SAGT (BACKLOG B9, 476 Regionszeilen ueber 13,1 Tage):
+ * Der Einbruch war kein Vorfall, sondern ein Betriebszustand, der 24 % der
+ * Laeufe trifft. Eine Regionszeile traegt entweder die volle Menge oder rund
+ * 40 -- genau eine Ergebnisseite. Deshalb genuegt hier ein Vergleich mit
+ * EINE_ERGEBNISSEITE, und es braucht KEINE Prozentschwelle gegen einen
+ * Median: Der Median sinkt nach ein paar flachen Laeufen mit und misst den
+ * Ausfall dann nicht mehr (nachgerechnet, 24,8 % Fehlalarme und den Vorfall
+ * trotzdem verpasst).
+ *
+ * WAS SIE NICHT TUT: ueber das Loeschen entscheiden. Die Wache dafuer ist
+ * `pruefeMengenplausibilitaet`, sie greift zuerst und fail-closed. Eine
+ * Warnung ist etwas anderes als eine Erlaubnis; beides in eine Funktion zu
+ * legen waere die Vermischung, die B-2 aufgeraeumt hat.
+ *
+ * Regionen OHNE Trefferzahl im Titel werden getrennt gezaehlt und nicht als
+ * null Treffer summiert -- sonst sieht "nicht gemessen" aus wie "nichts da".
+ */
+export function laufZusammenfassung(regionLaeufe: RegionLauf[]): string {
+  if (regionLaeufe.length === 0) {
+    return "Immowelt-Sweep: keine Region bearbeitet -- nichts gemessen.";
+  }
+  const regionen = regionLaeufe.length;
+  const unvollstaendig = regionLaeufe.filter((l) => !l.vollstaendig).length;
+  const ohneTrefferzahl = regionLaeufe.filter((l) => l.gemeldeteTreffer === null).length;
+  const gesehen = regionLaeufe.reduce((summe, l) => summe + l.gesehene, 0);
+  const ausgewiesen = regionLaeufe.reduce((summe, l) => summe + (l.gemeldeteTreffer ?? 0), 0);
+  const flach =
+    regionen >= FLACH_MINDESTREGIONEN &&
+    regionLaeufe.every((l) => l.gesehene <= EINE_ERGEBNISSEITE);
+
+  const kopf =
+    unvollstaendig === 0
+      ? `Immowelt-Sweep: ${regionen} von ${regionen} bearbeiteten Regionen vollstaendig, ` +
+        `${gesehen} Objekte.`
+      : `Immowelt-Sweep: ${unvollstaendig} von ${regionen} bearbeiteten Regionen ` +
+        `unvollstaendig, ${gesehen} Objekte gegen ${ausgewiesen} ausgewiesene Treffer ` +
+        `(${ohneTrefferzahl} ohne Trefferzahl im Titel).`;
+  if (!flach) return kopf;
+  return (
+    `${kopf} FLACHER LAUF: jede Region blieb bei hoechstens ${EINE_ERGEBNISSEITE} Karten ` +
+    `stehen -- eine Ergebnisseite. Seite 2 kam leer (BACKLOG B9). Dieser Lauf hat den ` +
+    `Bestand praktisch nicht erneuert.`
+  );
+}
+
+/**
  * Wie oft ein abgefangener "naechste Seite"-Klick wiederholt wird, und wie viel
  * Zeit das Consent-Banner beim jeweiligen Versuch bekommt.
  *
@@ -595,6 +664,10 @@ export async function sweepImmowelt(
       `wegen Zeitbudget auf Folgelaeufe zurueckgestellt).`
   );
   console.log(`Immowelt-Sweep: ${zusammenfassungen.size} Mehrfamilienhaus-Kandidaten.`);
+  // Die EINE Zeile ueber alle Regionen. Steht bewusst hinter den beiden
+  // obigen: Wer das Log ueberfliegt, findet hier den Zustand des Laufs,
+  // ohne sechzehn Regionszeilen lesen zu muessen.
+  console.log(laufZusammenfassung(regionLaeufe));
   return {
     sweep: {
       source: "immowelt",

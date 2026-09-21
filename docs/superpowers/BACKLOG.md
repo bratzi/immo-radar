@@ -2141,17 +2141,29 @@ Titel eine Trefferzahl und liefert eine Seite. Das steht in der Zeile
 selbst. `istRegionVollstaendig` rechnet es bereits aus — es fehlt nur die
 Zusammenfassung je Lauf.
 
-- [ ] **Schritt 1: Eine Zeile je Lauf.** Nach der Regionsschleife in
-      `scrapers/immowelt/index.ts`: wie viele der abgearbeiteten Regionen
-      unvollständig blieben, wie viele Objekte gesehen wurden gegen die
-      Summe der ausgewiesenen Trefferzahlen. Sie fiele bei 24 % der Läufe
-      auf — das ist keine zu empfindliche Warnung, sondern der gemessene
-      Anteil.
-- [ ] **Schritt 2: Die Reihenfolge der Löschwache bleibt unangetastet.**
-      „unvollständig" muss weiterhin zuerst und fail-closed greifen. Eine
-      Warnung ist etwas anderes als eine Erlaubnis; beides in dieselbe
-      Funktion zu legen wäre die Vermischung, die B-2 aufgeräumt hat. Der
-      Ort ist eine rein meldende Prüfung.
+- [x] **Schritt 1: Eine Zeile je Lauf — GEBAUT.** `laufZusammenfassung`
+      in `scrapers/immowelt/index.ts`, aufgerufen am Ende von
+      `sweepImmowelt`. Sie nennt: wie viele der bearbeiteten Regionen
+      unvollständig blieben, wie viele Objekte gegen wie viele ausgewiesene
+      Treffer, und — getrennt gezählt — wie viele Regionen gar keine
+      Trefferzahl im Titel trugen. Blieb **jede** Region bei höchstens einer
+      Ergebnisseite und waren es mindestens zwei Regionen, hängt sie
+      `FLACHER LAUF` an.
+
+      Zwei Entscheidungen, die die Messung erzwungen hat:
+
+      - **Keine Prozentschwelle.** Der Vergleich mit `EINE_ERGEBNISSEITE`
+        (45) braucht keinen Median — und ein Median wäre falsch, siehe
+        oben.
+      - **Mindestens zwei Regionen.** Ein tiefer Lauf schafft oft nur eine.
+        Wäre das eine kleine Region (`hb` hat 202 Objekte), hätte eine
+        Zeile „flacher Lauf“ geraten statt gemessen.
+
+- [x] **Schritt 2: Die Reihenfolge der Löschwache bleibt unangetastet —
+      eingehalten.** `pruefeMengenplausibilitaet` ist nicht angefasst;
+      „unvollständig“ greift weiterhin zuerst und fail-closed.
+      `laufZusammenfassung` ist rein meldend, gibt einen String zurück und
+      entscheidet nichts. Eine Warnung ist etwas anderes als eine Erlaubnis.
 
 ### Was das für die Abdeckung heißt — die eigentliche Nachricht
 
