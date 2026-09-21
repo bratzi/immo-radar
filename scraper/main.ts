@@ -164,10 +164,17 @@ const MAX_MELDUNGEN_JE_LAUF = 25;
  * "so viel wie moeglich", sondern "so viel, wie in die bereits belegte Zeit
  * passt".
  *
- * WAS ER BRINGT: Bei real 4,5 Laeufen am Tag und ueber 23.000 Objekten im
- * Bestand faellt die Zeit bis zur Neubewertung eines Objekts von 8,5 auf
- * 1,7 Tage. Darum geht es -- nicht um Laufzeit, sondern darum, wie spaet
- * eine Preissenkung auffaellt.
+ * WAS ER BRINGT: Nicht Laufzeit, sondern wie spaet eine Preissenkung
+ * auffaellt. Regionsgenau gemessen (BACKLOG B9, 13,1 Tage Historie), denn
+ * das frueher hier stehende Quellenmittel von 8,5 Tagen verdeckt die
+ * Spreizung -- die schlechtesten Regionen sind die groessten:
+ *
+ *   bw 4.920 Objekte: 11,9 Tage -> 2,4    ni 3.105: 11,3 -> 2,3
+ *   he 2.573 Objekte: 11,2 Tage -> 2,2    nw 6.995:  8,0 -> 1,6
+ *
+ * Ein Objekt wird nur neu bewertet, wenn SEINE Region tief gesweept wird
+ * und es dabei in die Scheibe faellt. Der Deckel war bis hierher der
+ * bindende der beiden Faktoren; ab 3.000 ist es die Regionskadenz.
  *
  * WAS HIER EXTRAPOLIERT IST: Die 0,11 s je Objekt sind an rund 590 Objekten
  * gemessen, nicht an 3.000. Angenommen ist, dass die Kosten je Objekt
