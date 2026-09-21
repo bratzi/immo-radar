@@ -1960,6 +1960,34 @@ Befunde geführt werden:
 >
 > **Weg (d) bleibt offen** — Detailseiten von einer nicht gesperrten Adresse
 > — und wäre die Antwort, falls die 60 % nicht reichen.
+>
+> ### ERSTER LAUF MIT WEG (e): 0 VON 25 — UND NICHT AUSWERTBAR
+>
+> Lauf `35585454873` (2026-09-21): `Immowelt-Detail: 0 von 25 Detailseiten
+> gelesen (Rueckstand insgesamt 9.747)`. Die Detailphase lief korrekt vor dem
+> Sweep, auf frischem Runner — und bekam trotzdem 25-mal HTTP 403.
+>
+> **Der Lauf taugt aber nicht als Widerlegung.** Im selben Log steht
+> `Immowelt: 590 von 644 gesehenen Objekten` — 644 statt der 4.800 bis 6.800
+> eines gesunden Laufs. Immowelt machte zum Messzeitpunkt generell dicht, so
+> wie am Vorabend. Die Reihenfolge-Hypothese ist damit **weder bestätigt noch
+> widerlegt**; der Test fand unter Blockade statt und ist zu wiederholen,
+> wenn der Sweep wieder normale Mengen sieht.
+>
+> **Zwei Unterschiede zur erfolgreichen Diagnose, bisher übersehen:**
+>
+> 1. **Die Herkunft der URL.** `diagnose-detail` holt die Exposé-URLs
+>    **frisch aus der Suchseite, die es gerade geladen hat**. Weg (e) nimmt
+>    sie aus `listings` — teils tagealt, und ihr `search=`-Parameter stammt
+>    aus einer fremden, längst beendeten Sitzung.
+> 2. **Der Referer passt nicht zur Seite.** Die Diagnose wärmt an genau der
+>    Liste auf, aus der die URL stammt. `erfasseImmoweltDetails` wärmt an
+>    einer festen `AUFWAERM_URL` auf, während die Exposé-URL aus einer
+>    beliebigen anderen Region kommt.
+>
+> **Beides ist Rätselraten um einen Bot-Schutz** und deshalb kein guter Ort,
+> um weiter Zeit zu investieren. Die Diagnose `diagnose-netz` prüft
+> stattdessen, ob wir die PLZ überhaupt brauchen.
 
 - [ ] **Schritt 4, neu: Die Messung lesen.** Nach dem ersten Produktionslauf
       mit der neuen Phase die Zeile `Immowelt-Detail: n von 25` auswerten und
