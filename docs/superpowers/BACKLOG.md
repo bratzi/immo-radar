@@ -2106,6 +2106,18 @@ findet null Karten. Danach fehlt der Knopf, die Schleife bricht bei
 `seite = 2` ab. Genau deshalb steht „2 Seiten, 40 Karten" im Log und nicht
 „1 Seite".
 
+**Nachgezählt statt geschlossen** — die Seitenzahlen zweier flacher Läufe
+(`35588951096`, `35590195623`):
+
+```
+31 von 32 Regionszeilen:  "2 Seiten,  40 Karten"
+ 1 von 32:                "st: 1 Seiten, 0 Karten, gemeldet ?"
+```
+
+Die eine Ausnahme ist kein fehlgeschlagener Klick — dort war schon **Seite 1
+leer**, ohne Karte und ohne Trefferzahl. Kein einziger Klickfehler im Log
+beider Läufe.
+
 **Das Portal widerspricht sich dabei selbst:** Der Seitentitel weist für
 `by` weiterhin **5.130** Treffer aus, geliefert werden 40.
 
