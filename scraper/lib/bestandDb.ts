@@ -337,20 +337,26 @@ export function regionsLaufZeile(source: string, lauf: RegionLauf): Record<strin
     partition: lauf.partition,
     gesehene_objekte: lauf.gesehene,
     gemeldete_treffer: lauf.gemeldeteTreffer,
-    // FAIL-CLOSED AN DER SCHREIBSTELLE, nicht nur beim Rechnen. Ohne
-    // Trefferzahl gibt es keinen Massstab, an dem Vollstaendigkeit zu messen
-    // waere -- die Kombination ist in sich widerspruechlich. Heute kann
-    // `istRegionVollstaendig` sie nicht mehr erzeugen (fail-closed seit
-    // Commit ed46f36, 2026-09-09 08:27 UTC); die acht Altzeilen in
-    // `sweep_region_runs` stammen saemtlich von davor, gemessen in
-    // specs/2026-09-16-vollstaendig-ohne-trefferzahl.md.
+    // FAIL-CLOSED AN DER SCHREIBSTELLE, nicht nur beim Rechnen:
+    // `vollstaendig` ist die Wache vor der Massenloeschung und darf nie ohne
+    // Massstab dastehen.
     //
-    // WARNUNG AN A16: Der zweite Vollstaendigkeitsmassstab fuer Regionen ohne
-    // ausgewiesene Menge laeuft hier gegen eine Sperre. Das ist Absicht. Wer
-    // ihn baut, muss diese Zeile AUSDRUECKLICH aufheben und dabei sagen,
-    // woran Vollstaendigkeit dann gemessen wird -- `vollstaendig` ist die
-    // Wache vor der Massenloeschung, sie darf nicht nebenbei aufgehen.
-    vollstaendig: lauf.gemeldeteTreffer === null ? false : lauf.vollstaendig,
+    // Bis zum 2026-09-21 stand hier `gemeldeteTreffer === null -> false`. Das
+    // war ein STELLVERTRETER fuer "ohne Massstab" und blieb richtig, solange
+    // es nur einen Massstab gab. Seit A16 gibt es einen zweiten -- die
+    // Hochwassermarke der eigenen Historie --, und genau die vier Regionen,
+    // fuer die er gebaut wurde (`nw`, `bw`, `mv`, `sh`), nennen ihre
+    // Trefferzahl nie. Der Stellvertreter wuerde sie weiterhin sperren.
+    //
+    // Die Regel selbst ist unveraendert und wird jetzt an der SACHE geprueft.
+    // Der Beleg steht in derselben Zeile: `massstab` und `referenz_menge`.
+    // Die acht Altzeilen vom 2026-09-08 (gemessen in
+    // specs/2026-09-16-vollstaendig-ohne-trefferzahl.md) tragen dort `null`
+    // und bleiben dadurch als das erkennbar, was sie sind -- Zeilen ohne
+    // Massstab.
+    vollstaendig: lauf.massstab === "keiner" ? false : lauf.vollstaendig,
+    massstab: lauf.massstab,
+    referenz_menge: lauf.referenzMenge,
   };
 }
 
