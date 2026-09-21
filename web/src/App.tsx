@@ -15,6 +15,7 @@ import {
   schalteEintrag,
   wendeFilterAn,
   zaehleOhneAngabe,
+  OHNE_REGION,
   type Filter,
 } from "./logik/filter.ts";
 import { bestimmeBereich, gliedere } from "./logik/gliederung.ts";
@@ -163,7 +164,11 @@ function Dashboard({ ergebnis }: { ergebnis: Ladeergebnis }) {
   // Filter greift, und saehe aus wie "gibt es nicht".
   const zaehlungen = useMemo(
     () => ({
-      bundesland: zaehle(alleObjekte, (o: SnapshotObjekt) => o.bundesland),
+      // `?? OHNE_REGION` statt null: `zaehle` ueberspringt null, und die
+      // Kategorie "Objekte ohne Region" (E-7) braucht ihre Zahl am Knopf wie
+      // jedes Bundesland. So traegt die vorhandene Map sie mit, ohne eine
+      // zweite Schnittstelle.
+      bundesland: zaehle(alleObjekte, (o: SnapshotObjekt) => o.bundesland ?? OHNE_REGION),
       stufe: zaehle(alleObjekte, (o: SnapshotObjekt) => o.stufe),
       zustand: zaehle(alleObjekte, (o: SnapshotObjekt) => o.zustand),
       quelle: zaehle(alleObjekte, (o: SnapshotObjekt) => o.quelle),

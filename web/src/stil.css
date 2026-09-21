@@ -893,6 +893,18 @@ a {
   gap: 5px;
 }
 
+/*
+  Die Kategorie "Objekte ohne Region" (E-7) steht ABGESETZT unter den 16
+  Laendern. Die Entscheidung des Nutzers vom 2026-09-13 verlangt eine eigene,
+  ausdruecklich beschriftete Kategorie -- zwischen die Laender gemischt waere
+  sie ein siebzehntes Bundesland, und genau das ist sie nicht.
+*/
+.wahl--abgesetzt {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--linie);
+}
+
 .wahl__knopf {
   background: var(--flaeche-still);
   border: 1px solid var(--linie);

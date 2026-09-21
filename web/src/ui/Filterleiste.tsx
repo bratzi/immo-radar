@@ -16,7 +16,7 @@
 import { useState, type ReactNode } from "react";
 import type { Sicherheitsstufe, Verfuegbarkeitszustand } from "../daten/snapshot.ts";
 import type { Filter, OhneAngabe } from "../logik/filter.ts";
-import { LEERER_FILTER, istFilterAktiv } from "../logik/filter.ts";
+import { LEERER_FILTER, istFilterAktiv, OHNE_REGION } from "../logik/filter.ts";
 import type { Zustandszaehlung } from "../logik/regionen.ts";
 import { formatiereAnzahl, formatiereProzent } from "../logik/formate.ts";
 
@@ -252,6 +252,34 @@ export function Filterleiste({
               />
             );
           })}
+        </div>
+        {/*
+          Die Kategorie "Objekte ohne Region" (E-7), vom Nutzer am 2026-09-13
+          entschieden: eine EIGENE, ausdruecklich beschriftete Kategorie --
+          nicht in einen anderen Bereich einsortiert. Sie steht deshalb
+          abgesetzt unter den 16 Laendern und nicht zwischen ihnen.
+
+          Ohne sie fielen diese Objekte beim ersten Klick auf die Karte
+          heraus, und es gab keinen Weg zurueck (siehe `inBundeslandAuswahl`).
+
+          Die Karte bekommt dafuer KEINE Kachel: Ein Objekt ohne Region hat
+          keinen Ort, und eine Kachel waere eine Behauptung ueber seine Lage.
+        */}
+        <div className="wahl wahl--abgesetzt">
+          <Wahlknopf
+            name="Ohne Region"
+            anzahl={anzahlJeBundesland.get(OHNE_REGION) ?? 0}
+            titel={
+              "Objekte, deren Bundesland die Quelle nicht nennt und das sich auch nicht aus " +
+              "der Kennung ableiten laesst. Sie erscheinen auf der Karte nirgends -- weder " +
+              "als Punkt noch auf einer Kachel -- und fielen bisher heraus, sobald ein " +
+              "Bundesland gewaehlt war."
+            }
+            gewaehlt={filter.bundeslaender.includes(OHNE_REGION)}
+            umschalten={() =>
+              aendere({ bundeslaender: schalteAuswahl(filter.bundeslaender, OHNE_REGION) })
+            }
+          />
         </div>
         {/*
           Der Klartext, den Entwurf 6.3 ausdruecklich am Regionsfilter

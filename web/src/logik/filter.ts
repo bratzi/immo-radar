@@ -18,7 +18,31 @@ import type {
 } from "../daten/snapshot.ts";
 import { zweistellerMitKoordinate } from "./karte.ts";
 
+/**
+ * Merkwert fuer die Kategorie "Objekte ohne Region" (E-7).
+ *
+ * DIE ENTSCHEIDUNG DES NUTZERS vom 2026-09-13 lautet woertlich: eine
+ * **eigene, ausdruecklich beschriftete Kategorie**, nicht in einen anderen
+ * Bereich einsortiert.
+ *
+ * WAS ER BEHEBT: `bundesland` ist `string | null`, und bis zum 2026-09-20
+ * fiel jedes Objekt mit `null` heraus, sobald irgendein Bundesland gewaehlt
+ * war -- ein Klick auf die Karte liess sie verschwinden, und es gab keinen
+ * Weg zurueck. Gemessen am 2026-09-20 sind das 35 Objekte.
+ *
+ * WARUM IM FELD `bundeslaender` und nicht in einem eigenen: So erbt die
+ * Kategorie Zuruecksetzen, Zaehler und `istFilterAktiv`, ohne dass eine
+ * einzige Stelle davon wissen muss. Auf der Karte trifft der Merkwert auf
+ * keine Kachel und wird dort schlicht nicht gefunden -- das ist richtig so,
+ * denn ein Objekt ohne Region hat keinen Ort, und eine Kachel dafuer waere
+ * eine Behauptung ueber seine Lage.
+ *
+ * Der Wert ist bewusst kein Bundeslandname und kollidiert daher mit keinem.
+ */
+export const OHNE_REGION = "ohne-region";
+
 export interface Filter {
+  /** Bundeslandnamen, dazu ggf. `OHNE_REGION`. */
   bundeslaender: string[];
   /** PLZ-Zweisteller, gewaehlt ueber einen Klick auf die Karte. */
   plzZweisteller: string[];
@@ -123,6 +147,23 @@ function inSpanne(wert: number | null, von: number | null, bis: number | null): 
 }
 
 /** Eine Auswahl. Leere Auswahl heisst "keine Einschraenkung", nicht "nichts". */
+/**
+ * Wie `inAuswahl`, aber mit einer Antwort auf `null`: Ein Objekt ohne Region
+ * gehoert der Kategorie `OHNE_REGION` und sonst keiner.
+ *
+ * `inAuswahl` laesst `null` immer herausfallen, sobald gefiltert wird -- fuer
+ * jedes andere Feld ist das richtig (ein Objekt ohne Quelle gehoert zu keiner
+ * Quelle), fuer das Bundesland ist es der Fehler, den E-7 benennt.
+ */
+export function inBundeslandAuswahl(
+  bundesland: string | null,
+  auswahl: readonly string[]
+): boolean {
+  if (auswahl.length === 0) return true;
+  if (bundesland === null) return auswahl.includes(OHNE_REGION);
+  return auswahl.includes(bundesland);
+}
+
 function inAuswahl(wert: string | null, auswahl: readonly string[]): boolean {
   if (auswahl.length === 0) return true;
   if (wert === null) return false;
@@ -165,7 +206,7 @@ function hatEineDerLuecken(objekt: SnapshotObjekt, gewaehlt: readonly string[]):
  */
 export function wendeFilterAn(objekte: SnapshotObjekt[], filter: Filter): SnapshotObjekt[] {
   return objekte.filter((objekt) => {
-    if (!inAuswahl(objekt.bundesland, filter.bundeslaender)) return false;
+    if (!inBundeslandAuswahl(objekt.bundesland, filter.bundeslaender)) return false;
 
     // Nur bei gesetztem Filter rechnen: Der Zweisteller wird sonst je Objekt bei
     // JEDER Filteraenderung per Regex herausgeschnitten.

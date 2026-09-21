@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SnapshotObjekt } from "../daten/snapshot.ts";
-import { LEERER_FILTER, wendeFilterAn, zaehleOhneAngabe, istFilterAktiv, schalteEintrag } from "./filter.ts";
+import { LEERER_FILTER, wendeFilterAn, zaehleOhneAngabe, istFilterAktiv, schalteEintrag, inBundeslandAuswahl, OHNE_REGION } from "./filter.ts";
 
 function objekt(teil: Partial<SnapshotObjekt> = {}): SnapshotObjekt {
   return {
@@ -304,5 +304,55 @@ describe("schalteEintrag", () => {
     const liste = ["a"];
     schalteEintrag(liste, "b");
     expect(liste).toEqual(["a"]);
+  });
+});
+
+describe("inBundeslandAuswahl -- die Kategorie Objekte ohne Region (E-7)", () => {
+  it("laesst ohne Auswahl alles durch, auch die ohne Region", () => {
+    expect(inBundeslandAuswahl(null, [])).toBe(true);
+    expect(inBundeslandAuswahl("Sachsen", [])).toBe(true);
+  });
+
+  it("laesst ein Objekt ohne Region nur beim Merkwert durch", () => {
+    // Genau der Fall, der E-7 ausmacht: Bis zum 2026-09-20 fiel ein Objekt
+    // ohne Region beim ersten Klick auf die Karte heraus, und es gab keinen
+    // Weg, es zurueckzuholen.
+    expect(inBundeslandAuswahl(null, ["Sachsen"])).toBe(false);
+    expect(inBundeslandAuswahl(null, [OHNE_REGION])).toBe(true);
+  });
+
+  it("laesst den Merkwert kein Objekt MIT Region durchlassen", () => {
+    // Sonst waere er kein Filter, sondern ein Schalter, der alles zeigt.
+    expect(inBundeslandAuswahl("Sachsen", [OHNE_REGION])).toBe(false);
+  });
+
+  it("verbindet Merkwert und Laender mit ODER, wie jedes andere Feld", () => {
+    expect(inBundeslandAuswahl(null, ["Sachsen", OHNE_REGION])).toBe(true);
+    expect(inBundeslandAuswahl("Sachsen", ["Sachsen", OHNE_REGION])).toBe(true);
+    expect(inBundeslandAuswahl("Bayern", ["Sachsen", OHNE_REGION])).toBe(false);
+  });
+});
+
+describe("wendeFilterAn — Objekte ohne Region", () => {
+  const mitRegion = objekt({ id: "mit", bundesland: "Sachsen" });
+  const ohneRegion = objekt({ id: "ohne", bundesland: null });
+  const alle = [mitRegion, ohneRegion];
+
+  it("zeigt beide, solange kein Bundesland gewaehlt ist", () => {
+    expect(wendeFilterAn(alle, LEERER_FILTER).map((o) => o.id)).toEqual(["mit", "ohne"]);
+  });
+
+  it("zeigt bei gewaehltem Merkwert nur die ohne Region", () => {
+    const filter = { ...LEERER_FILTER, bundeslaender: [OHNE_REGION] };
+    expect(wendeFilterAn(alle, filter).map((o) => o.id)).toEqual(["ohne"]);
+  });
+
+  it("zeigt bei gewaehltem Bundesland nur die mit Region", () => {
+    const filter = { ...LEERER_FILTER, bundeslaender: ["Sachsen"] };
+    expect(wendeFilterAn(alle, filter).map((o) => o.id)).toEqual(["mit"]);
+  });
+
+  it("zaehlt den Merkwert als aktiven Filter", () => {
+    expect(istFilterAktiv({ ...LEERER_FILTER, bundeslaender: [OHNE_REGION] })).toBe(true);
   });
 });
