@@ -215,6 +215,27 @@ export function istRegionVollstaendig(
 }
 
 /**
+ * Die Marke einer einzelnen Region aus der geladenen Karte.
+ *
+ * Sieht nach einer Zeile aus, die man in die Blaetterschleife schreiben
+ * koennte -- und genau dort stand sie zuerst. Sie ist hier herausgezogen,
+ * weil ein Test, der den Ausdruck nur NACHBILDET, auch dann gruen bleibt,
+ * wenn im Sweep der falsche Schluessel steht. Der Sweep ruft diese Funktion
+ * auf; damit prueft der Test den Aufrufort und nicht seine Kopie.
+ *
+ * `null` (Historie nicht lesbar) und "Region nicht in der Karte" fallen
+ * bewusst auf dasselbe `null` zusammen: Beide heissen "keine Marke", und
+ * beide fuehren fail-closed zu `massstab: "keiner"`. Ein `undefined` waere
+ * hier gefaehrlich -- es saehe spaeter aus wie ein nicht gesetzter Wert.
+ */
+export function markeFuer(
+  hochwassermarken: Map<string, number> | null,
+  code: string
+): number | null {
+  return hochwassermarken?.get(code) ?? null;
+}
+
+/**
  * Die fertige Protokollzeile einer Region.
  *
  * EIGENE FUNKTION, UND ZWAR WEGEN DES AUFRUFORTS: Die Falle vom 2026-09-21
@@ -604,7 +625,14 @@ export async function sweepImmowelt(
    * nicht lesbar" und faellt auf die Uhr zurueck; eine leere Map heisst "noch
    * nie gesweept" und startet an der ersten Region.
    */
-  letzteRegionsSweeps: Map<string, number> | null = null
+  letzteRegionsSweeps: Map<string, number> | null = null,
+  /**
+   * Die groesste je gesehene Menge je Region -- der zweite
+   * Vollstaendigkeitsmassstab fuer `nw`, `bw`, `mv` und `sh`, die ihre
+   * Trefferzahl nie nennen. `null` heisst "nicht lesbar" und fuehrt
+   * fail-closed dazu, dass diese Regionen unvollstaendig bleiben.
+   */
+  hochwassermarken: Map<string, number> | null = null
 ): Promise<{
   sweep: SweepErgebnis;
   zusammenfassungen: Map<string, ImmoweltListSummary>;
@@ -683,17 +711,18 @@ export async function sweepImmowelt(
         // Freigabe fuer eine Markierung. Sie faengt zwei Faelle ab: die
         // soft-geblockte Region, die lautlos [] liefert, und die am
         // Seitendeckel abgeschnittene.
-        const regionVollstaendig = istRegionVollstaendig(gesammelt, gemeldet, abgeschnitten);
-        if (!regionVollstaendig) {
+        const lauf = baueRegionLauf(
+          region.code,
+          gesammelt,
+          gemeldet,
+          abgeschnitten,
+          markeFuer(hochwassermarken, region.code)
+        );
+        if (!lauf.vollstaendig) {
           console.warn(regionUnvollstaendigMeldung(region.code, gesammelt, gemeldet, titel));
         }
         ausgaenge.push({ art: "erfasst", gemeldet });
-        regionLaeufe.push({
-          partition: region.code,
-          gesehene: gesammelt,
-          gemeldeteTreffer: gemeldet,
-          vollstaendig: regionVollstaendig,
-        });
+        regionLaeufe.push(lauf);
       } catch (err) {
         // Eine abgebrochene Region ist NICHT "null gemeldete Treffer". Sie ist
         // nicht beurteilbar, und das muss bis in die Trefferzahl durchschlagen.
@@ -707,6 +736,11 @@ export async function sweepImmowelt(
           gesehene: 0,
           gemeldeteTreffer: null,
           vollstaendig: false,
+          // Eine abgebrochene Region ist nicht beurteilbar. "keiner" ist hier
+          // die Wahrheit und nicht nur ein Platzhalter: Es wurde an nichts
+          // gemessen.
+          massstab: "keiner",
+          referenzMenge: null,
         });
         console.warn(`Immowelt-Sweep ${region.code}: Fehler`, err);
       }

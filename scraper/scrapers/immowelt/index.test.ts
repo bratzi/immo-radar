@@ -9,6 +9,7 @@ import {
   beurteileDetailAntwort,
   laufZusammenfassung,
   baueRegionLauf,
+  markeFuer,
 } from "./index.js";
 import type { MassstabArt } from "../../lib/regionsMassstab.js";
 
@@ -448,5 +449,44 @@ describe("istRegionVollstaendig mit Marke", () => {
 
   it("verwirft eine Marke von hoechstens einer Ergebnisseite", () => {
     expect(istRegionVollstaendig(40, null, false, 41)).toBe(false);
+  });
+});
+
+describe("markeFuer -- der Aufrufort selbst", () => {
+  // ERSTER ENTWURF DIESES TESTS WAR WERTLOS: Er bildete den Ausdruck aus der
+  // Blaetterschleife nach (`marken.get(region.code) ?? null`) und war sofort
+  // gruen. Damit haette er auch dann gehalten, wenn im Sweep der falsche
+  // Schluessel stuende -- er prueste eine Kopie, nicht den Aufrufort. Deshalb
+  // ist der Ausdruck jetzt eine eigene Funktion, die der Sweep WIRKLICH
+  // aufruft. Das ist die Falle vom 2026-09-21 in ihrer zweiten Gestalt.
+  const marken = new Map([
+    ["nw", 6995],
+    ["bw", 4920],
+  ]);
+
+  it("findet die Marke der Region unter ihrem Code", () => {
+    expect(markeFuer(marken, "nw")).toBe(6995);
+    expect(markeFuer(marken, "bw")).toBe(4920);
+  });
+
+  it("liefert null fuer eine Region ohne Marke", () => {
+    expect(markeFuer(marken, "mv")).toBeNull();
+  });
+
+  it("liefert null, wenn die Historie gar nicht lesbar war", () => {
+    // Fail-closed: `null` heisst "nicht lesbar" und darf nicht in ein
+    // versehentliches `undefined` kippen, das spaeter wie "keine Marke noetig"
+    // aussieht.
+    expect(markeFuer(null, "nw")).toBeNull();
+  });
+
+  it("traegt bis in die fertige Zeile durch", () => {
+    const lauf = baueRegionLauf("nw", 6795, null, false, markeFuer(marken, "nw"));
+    expect(lauf.referenzMenge).toBe(6995);
+    expect(lauf.vollstaendig).toBe(true);
+
+    const ohne = baueRegionLauf("mv", 619, null, false, markeFuer(marken, "mv"));
+    expect(ohne.massstab).toBe("keiner");
+    expect(ohne.vollstaendig).toBe(false);
   });
 });
