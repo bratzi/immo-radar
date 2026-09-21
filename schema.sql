@@ -95,7 +95,16 @@ create table sweep_region_runs (
   started_at timestamptz not null default now(),
   gesehene_objekte integer not null,
   gemeldete_treffer integer,
-  vollstaendig boolean not null
+  vollstaendig boolean not null,
+  -- WORAN die Vollstaendigkeit gemessen wurde: 'gemeldete_treffer',
+  -- 'hochwassermarke' oder 'keiner'. Nullable NUR wegen der acht Altzeilen
+  -- vom 2026-09-08, die aus der Zeit vor jedem Massstab stammen (belegt in
+  -- specs/2026-09-16-vollstaendig-ohne-trefferzahl.md). Sie sind die
+  -- einzigen Zeilen mit vollstaendig=true ohne Beleg, und genau daran
+  -- sollen sie erkennbar bleiben.
+  massstab text,
+  -- Die Menge, gegen die geurteilt wurde. Bei massstab='keiner' null.
+  referenz_menge integer
 );
 
 create index sweep_region_runs_idx
