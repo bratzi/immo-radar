@@ -1,3 +1,106 @@
+# Übergabe — Stand 2026-09-21 (fünfte Sitzung des Tages)
+
+## ZUERST LESEN: der erste Lauf mit dem zweiten Maßstab
+
+A16 ist gebaut. Der nächste Lauf ist der Beleg — und er wird **nicht** so
+aussehen, wie man es erwartet.
+
+**Erwartet wird NICHT, dass `nw`, `bw`, `mv` oder `sh` jetzt vollständig
+sind.** Solange Immowelt flach liefert, reißen 40 Karten jede Marke (`nw`
+6995, `bw` 4920, `sh` 1316, `mv` 662). Dass keine neue vollständige Region
+erscheint, ist der **Beweis, dass der Maßstab wirkt** — nicht, dass er fehlt.
+
+Was der Lauf belegen muss, ist der BELEG in der Zeile:
+
+```
+cd scraper && npx tsx scripts/pruefe-massstaebe.mts
+```
+
+Erwartet: `massstab = 'hochwassermarke'` mit gefüllter `referenz_menge` für
+`nw`, `bw`, `mv`, `sh`; `massstab = 'gemeldete_treffer'` für die übrigen
+zwölf. Steht irgendwo `keiner`, ist die Marke nicht geladen worden.
+
+**Die Migration muss vorher gelaufen sein.** `speichereRegionsLaeufe` fängt
+Insert-Fehler nur mit `console.warn` ab — fehlen die Spalten, verliert jeder
+Lauf still seine Regionszeilen, und im Log steht dazu **eine** Zeile:
+
+```
+gh run view <ID> --log | grep -i "sweep_region_runs"
+```
+
+Erwartet: **keine Zeile**. Steht dort „nicht geschrieben", fehlt das SQL:
+
+```sql
+alter table sweep_region_runs add column massstab text;
+alter table sweep_region_runs add column referenz_menge integer;
+```
+
+## Was diese Sitzung gebaut hat
+
+| Commit | Was |
+|---|---|
+| `571e70d` | **A16 gemessen** — der Vorschlag aus dem Backlog ist widerlegt |
+| `1d73592` | `sweep_region_runs` hält fest, woran gemessen wurde |
+| `60425de` | **Maßstab und Urteil getrennt** (`lib/regionsMassstab.ts`) |
+| `311c668` | Die Schreibsperre hängt am Maßstab statt an der Trefferzahl |
+| `3eba74d` | `baueRegionLauf` — die Zeile entsteht außerhalb der Blätterschleife |
+| `6ece17c` | Die Marke wird geladen und erreicht die Zeile |
+
+**Stand: 600 Scraper-Tests grün** (vorher 567), 203 Web-Tests grün, `tsc` in
+beiden Projekten sauber.
+
+## Der Befund, der die Richtung bestimmt hat
+
+### Der Maßstab aus dem Backlog war fail-open in 63 % der Fälle
+
+A16 schlug den gleitenden **Median** der eigenen Region vor. Geprüft wurde er
+an den zwölf Regionen, für die die Wahrheit bekannt ist — sie nennen ihre
+Trefferzahl. 323 Urteile:
+
+| Kandidat | Fail-open | Fehlalarm | sagt ja | Wahrheit ja |
+|---|---|---|---|---|
+| Median der letzten 10, Toleranz 25 % | **203** | 0 | 257 | 54 |
+| Median der letzten 10, Toleranz 10 % | **203** | 0 | 257 | 54 |
+| Hochwassermarke der letzten 10 | **43** | 0 | 97 | 54 |
+| **Hochwassermarke ganze Historie, 10 %** | **0** | **0** | **54** | **54** |
+
+Die Spalte „sagt ja" ist die Wache: Ein Kandidat, der nie „vollständig" sagt,
+hätte trivial null Fehler und wäre wertlos. Der gewählte sagt genau so oft ja
+wie die Wahrheit.
+
+**Nicht der Schätzer ist das Problem, sondern das Fenster.** Auch das Maximum
+über zehn Läufe fällt durch — der flache Zustand hält länger an als zehn
+Läufe. Am 2026-09-21 waren **fünf Läufe in Folge** flach.
+
+### Der Startfall ist simuliert, nicht geschlossen
+
+Eine Region, deren Historie mit flachen Läufen **beginnt**, bekäme eine Marke
+von 40 — und dann gälte jeder flache Lauf als vollständig. Real nie
+eingetreten (0 von 16 Regionen starteten flach), und die Gegenprobe deckt es
+**nicht** ab: Sie urteilt erst ab der vierten Zeile. Deshalb die Untergrenze
+`EINE_ERGEBNISSEITE = 45`.
+
+## Was als Nächstes zu tun ist
+
+1. **Den ersten Lauf mit dem neuen Maßstab prüfen** (oben).
+2. **Auf einen tiefen Lauf warten**, dann in einem Zug messen: B11 Schritt 3
+   und B6 Schritt 4. Beide weiter blockiert — am 2026-09-21 waren alle fünf
+   Läufe flach, zuletzt `35605988763` mit 640 Objekten.
+3. Übriger Rückstand: **A10**, **A11 Schritt 4**, **A17**, **B5 Schritt 4**,
+   **B7**, **B8-2**.
+
+## Die Falle dieser Sitzung
+
+**Ein Test, der den Aufrufort nachbildet, prüft ihn nicht.** Der erste Entwurf
+des Aufrufort-Tests schrieb `marken.get(region.code) ?? null` in den Test —
+denselben Ausdruck wie im Sweep, aber als Kopie. Er war sofort grün und wäre
+auch bei falschem Schlüssel im Sweep grün geblieben. Erst als der Ausdruck
+eine eigene Funktion wurde (`markeFuer`), die der Sweep wirklich aufruft,
+prüfte der Test den Aufrufort. **Ein Test, der nie rot war, hat nichts
+bewiesen.**
+
+---
+
 # Übergabe — Stand 2026-09-21 (vierte Sitzung des Tages)
 
 ## ZUERST LESEN: es fehlt ein TIEFER Lauf, nicht Code
