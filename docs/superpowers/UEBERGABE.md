@@ -1,3 +1,115 @@
+# Übergabe — Stand 2026-09-21 (vierte Sitzung des Tages)
+
+## ZUERST LESEN: ein Kontrolllauf war beim Sitzungsende noch offen
+
+**Lauf `35591430618`** (`scrape.yml`, gestartet 2026-09-21 um 10:56 UTC)
+ist die Probe darauf, dass die neue Zusammenfassungszeile **am richtigen
+Aufrufort** steht. Die Unit-Tests prüfen die Funktion, nicht die
+Verdrahtung — und genau diese Verwechslung hat dieses Projekt schon einmal
+Zeit gekostet.
+
+```
+gh run view 35591430618 --json conclusion -q .conclusion
+gh run view 35591430618 --log | grep -oE "Immowelt-Sweep: .* bearbeiteten Regionen.*"
+```
+
+**Erwartet:** genau eine solche Zeile je Lauf. Bei einem flachen Lauf endet
+sie auf `FLACHER LAUF: jede Region blieb bei hoechstens 45 Karten stehen`.
+Steht die Zeile **gar nicht** im Log, ist die Verdrahtung falsch, nicht die
+Funktion.
+
+## Was diese Sitzung gebaut hat
+
+| Commit | Was |
+|---|---|
+| `584d05b` | **Bewertungsdeckel 600 → 3.000**, nachdem die Nebenläufigkeit gemessen war |
+| `6def8fe` | **B9 neu gemessen** — kein Einbruch, sondern zwei Betriebszustände |
+| `f3cc8bd` | **Eine Zeile je Lauf** statt sechzehn (`laufZusammenfassung`) |
+| `117736c` | B9 — die Seitenzahlen gezählt, statt sie zu schließen |
+
+**Stand: 567 Scraper-Tests grün**, `tsc` sauber, alles auf `main` gepusht.
+
+## Der Befund, der die Richtung bestimmt
+
+### Der „Mengeneinbruch“ ist kein Vorfall, sondern jeder vierte Lauf
+
+Gemessen über alle 476 Zeilen in `sweep_region_runs` (13,1 Tage), Skript
+liegt im Repo als `scraper/scripts/messung-flache-laeufe.mts`:
+
+```
+Laeufe insgesamt:                               84
+davon FLACH -- jede Region bleibt auf Seite 1:  20 = 24 %
+davon tief:                                     59
+gemischt:                                        5
+```
+
+Eine Regionszeile trägt **entweder die volle Menge oder rund 40**. Vierzig
+ist genau eine Ergebnisseite; 16 Regionen mal 40 sind 640. Der Einbruch
+„von 4.789 auf 644“ ist der Wechsel in diesen Zustand.
+
+**Und er hält an.** Alle vier Läufe des 2026-09-21 nach 02:22 UTC waren
+flach. Der letzte tiefe Lauf war `35552491138` (nw, 6.807 Karten über 170
+Seiten).
+
+**Das blockiert zwei offene Punkte:** B11 Schritt 3 und B6 Schritt 4
+brauchen beide einen **tiefen** Lauf. Solange Immowelt flach liefert, ist
+keiner von beiden zu messen — das ist kein Versäumnis, sondern der Zustand.
+
+### Der Bewertungsdeckel steht auf 3.000 — und hat noch nicht gegriffen
+
+Zwei Läufe eine Stunde auseinander, praktisch gleiche Last:
+
+| | Lauf `35585454873` | Lauf `35588951096` |
+|---|---|---|
+| Bewertung allein | 5 min 22 s für 590 Objekte | **1 min 04 s** für 588 |
+| je Objekt | 0,55 s | **0,11 s — Faktor 5,0** |
+| Sweep allein | 4 min 15 s | 4 min 16 s (**die Kontrolle**) |
+| Fehlerzeilen | 0 | 0 |
+
+Der Deckel steht jetzt so, dass die Bewertung **genau so lange** dauert wie
+vor der Nebenläufigkeit: 3.000 × 0,11 s ≈ 5,5 min. Der Lauf wird dadurch
+nicht länger als der längste bisherige (50 min gegen `timeout-minutes: 75`).
+
+Der Kontrolllauf `35590195623` lief sauber und brachte zum ersten Mal
+`607 von 607 Kandidaten bearbeitet, keiner bleibt uebrig` — **aber genau
+deshalb beweist er nichts über den Deckel: Er hat nicht gegriffen.**
+
+## Was als Nächstes zu tun ist
+
+1. **Den Kontrolllauf auswerten** (oben) — steht die Zeile im Log?
+2. **Auf einen tiefen Lauf warten**, dann in einem Zug messen: B11 Schritt 3
+   (Bewertungsdauer geteilt durch bewertete Objekte, deutlich über 0,11 s
+   heißt Supabase ist der Engpass) **und** B6 Schritt 4 (Weg (e) bei
+   normaler Sweep-Menge).
+3. **A16** — zweiter Vollständigkeitsmaßstab, der letzte Block für B1.
+4. Übriger Rückstand: **A10**, **A11 Schritt 4**, **A17**, **B5 Schritt 4**,
+   **B7**, **B8-2**.
+
+## Drei Dinge, die die Messung widerlegt hat
+
+- **„Der Mengeneinbruch war ein Vorfall am 20.09."** Falsch — es ist ein
+  Betriebszustand, der 24 % der Läufe trifft, seit dem 2026-09-10.
+- **„Es gab keine Warnzeile."** Falsch — es gab sechzehn, je eine pro
+  Region. Was fehlte, war **eine**.
+- **„Eine Prozentschwelle gegen den eigenen Median findet den Einbruch."**
+  Falsch, und zwar doppelt: Sie meldete 24,8 % aller Läufe **und** verpasste
+  den Vorfall. Der Median war mitgesunken. *Ein Maßstab, der den Ausfall
+  mitmacht, misst ihn nicht.*
+
+## Die Falle dieser Sitzung
+
+**Ein Ergebnis, das aus dem Code folgt, ist noch nicht gemessen.** „Seite 2
+ist leer“ stand als Schlussfolgerung im Backlog, bevor irgendjemand die
+Seitenzahlen gezählt hatte. Sie stimmte — 31 von 32 Regionszeilen sagen
+`2 Seiten, 40 Karten` —, aber die 32. sagt etwas anderes (`st: 1 Seiten,
+0 Karten`), und das wäre bei einer geschlossenen statt gezählten Aussage
+verlorengegangen.
+
+Dieselbe Falle in ihrer zweiten Gestalt: **Unit-Tests prüfen die Funktion,
+nicht den Aufrufort.** Deshalb läuft `35591430618`.
+
+---
+
 # Übergabe — Stand 2026-09-21 (dritte Sitzung des Tages)
 
 ## ZUERST LESEN: ein Messlauf war beim Sitzungsende noch offen
@@ -122,7 +234,8 @@ ein Befund.** An einem Tag dreimal zugeschnappt:
 1. Der E-7-Browsercheck las `21.897 Objekte` aus der Kopfzeile — die
    Bestandsgröße, nicht die gefilterte Menge — und meldete „unverändert".
 2. Der ZVG-Vergleich sagte achtmal NEIN, weil Python unter Windows CRLF
-   schreibt und das `` an der Id klebte. Die Suche war die ganze Zeit
+   schreibt und das `
+` an der Id klebte. Die Suche war die ganze Zeit
    richtig.
 3. Die Netz-Diagnose meldete „PLZ: nein / Trefferzahl: nein" über **0
    gelesene Zeichen** — der Körper wurde nur bei `content-type: json` geholt.
