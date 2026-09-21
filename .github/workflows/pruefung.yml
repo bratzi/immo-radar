@@ -89,6 +89,9 @@ jobs:
             diagnose-liste)
               xvfb-run --auto-servernum npx tsx scripts/diagnose-liste.mts
               ;;
+            diagnose-netz)
+              xvfb-run --auto-servernum npx tsx scripts/diagnose-netz.mts
+              ;;
             *)
               echo "Unbekanntes Skript: $SKRIPT" >&2; exit 1
               ;;
