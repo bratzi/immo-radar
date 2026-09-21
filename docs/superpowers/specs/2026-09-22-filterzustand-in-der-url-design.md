@@ -15,7 +15,7 @@ Folgen, alle drei am Bestand nachvollziehbar:
 - Ein **Neuladen wirft sie weg** — auch das versehentliche.
 - Der **Zurück-Knopf verlässt die Seite**, statt den Filter zu lösen.
 
-Der Filter hat **23 Felder** (`Filter` in `web/src/logik/filter.ts:44`).
+Der Filter hat **22 Felder** (`Filter` in `web/src/logik/filter.ts:44`).
 Daneben stehen zwei reine Ansichtszustände: `kartengroesse`
 (`"objekte" | "topTreffer" | "medianDscr"`) und `offen` (welche Bereiche
 aufgeklappt sind).
@@ -26,8 +26,9 @@ Der Backlog nennt drei Fragen. Sie sind beantwortet:
 
 | Frage | Entscheidung | Von wem |
 |---|---|---|
-| Welche Felder gehören in die URL? | Die 23 Filterfelder **und** `kartengroesse`. `offen` **nicht**. | Nutzer, 2026-09-22 |
+| Welche Felder gehören in die URL? | Die 22 Filterfelder **und** `kartengroesse`. `offen` **nicht**. | Nutzer, 2026-09-22 |
 | Wie kurz darf sie bleiben? | Kurz durch **Weglassen** der Standardwerte, nicht durch Kürzel-Tabellen. | Entwurf, Abschnitt 4 |
+| Was ist ein Schritt des Zurück-Knopfes? | Jede abgeschlossene Eingabe. Nur die zwei Datumsfelder ersetzen (korrigiert 2026-09-22, Abschnitt 5). | Nutzer, 2026-09-22 |
 | Was bei einer URL, die nichts trifft? | Auswahl **bleibt stehen**, Liste leer, Grund im Klartext, Knopf zum Lösen. | Entwurf, Abschnitt 6 |
 
 **Warum `offen` draußen bleibt:** Aufgeklappte Bereiche sind Bedienzustand,
@@ -92,17 +93,28 @@ wird unverändert übernommen.
 
 ## 5. Der Zurück-Knopf
 
-**Wahlknöpfe schieben einen Eintrag, Zahlen- und Datumsfelder ersetzen ihn.**
+**Jede abgeschlossene Eingabe schiebt einen Eintrag. Nur die beiden
+Datumsfelder ersetzen ihn.**
 
-Ohne diese Trennung wäre der Zurück-Knopf unbrauchbar: Wer `150000` in ein
-Preisfeld tippt, erzeugte sechs Einträge, und Zurück machte aus `150000` erst
-`15000`. Mit ihr löst Zurück genau die Klicks, die jemand gemacht hat.
+**Korrigiert am 2026-09-22, nachdem der Code nachgesehen wurde.** Der erste
+Entwurf begründete die Trennung damit, dass ein getipptes `150000` sechs
+Verlaufseinträge erzeugte. **Das trifft nicht zu.** Die fünf Spannenfelder
+(Kaufpreis, Wohnfläche, Grundstück, Baujahr, Einheiten) sind unkontrollierte
+Eingabefelder und schreiben über **`onBlur`** (`Filterleiste.tsx:133`
+und `:145`) — einmal je verlassenem Feld, nie je Tastendruck. Ein
+abgeschlossenes Spannenfeld ist damit eine bewusste Einzelhandlung wie ein
+Klick und gehört rückgängig gemacht.
+
+Übrig bleiben **`terminVon` und `terminBis`** (`:553`, `:562`): Sie hängen an
+`onChange` und feuern beim Tippen mehrfach. Nur sie ersetzen.
 
 **Wo die Unterscheidung sitzt:** an der **einen** Änderungsfunktion
-`aendere` (`Filterleiste.tsx:211`), nicht an 23 Aufrufstellen. Sie bekommt
-einen zweiten Parameter mit dem Standard „Schritt". Von den **18**
-`aendere`-Aufrufen sind **8** Zahlen- oder Datumsfelder; nur diese acht
-übergeben ausdrücklich „ersetzen".
+`aendere` (`Filterleiste.tsx:211`), nicht an 18 Aufrufstellen. Sie bekommt
+einen zweiten Parameter mit dem Standard „Schritt"; genau **zwei** Aufrufe
+übergeben „ersetzen".
+
+**Was diese Korrektur zeigt:** Eine Begründung, die plausibel klingt, ist
+keine gemessene. Der Unterschied stand die ganze Zeit im Code.
 
 **Was das nicht hergibt:** Es ist keine Rückgängig-Funktion für die
 Anwendung, sondern Browser-Verlauf. Wer die Seite verlässt und zurückkommt,
@@ -140,9 +152,21 @@ abgestürzte Oberfläche ist die schlechteste Antwort auf einen Tippfehler.
 | `useFilterUrl` | verbindet Fenster und Zustand; **die einzige Stelle, die `history` anfasst** | `filterUrl.ts` |
 | `App.tsx` | ersetzt zwei `useState` durch den Hook | `useFilterUrl` |
 | `Filterleiste.tsx` | `aendere` bekommt den zweiten Parameter | — |
+| `filter.ts` | `leergrund(gefiltert, gesamt, filterAktiv)` — **rein**: warum die Liste leer ist | — |
 
 Die Trennung ist der Punkt: Das Format ist eine reine Funktion und damit ohne
 Browser prüfbar. Der Hook enthält keine Formatlogik.
+
+**Warum kein Komponententest.** `web/` hat heute **14 Testdateien, alle
+reine Logik** (`.ts`) — keinen einzigen Komponententest, kein jsdom, keine
+Testing-Library, und in `vite.config.ts` keinen `test`-Block. Ein
+Komponententest wäre hier zwei neue Entwicklungsabhängigkeiten und ein neues
+Muster, eingeführt nebenbei in einem Filter-Vorgang. Stattdessen wandert die
+Entscheidung in eine reine Funktion (`leergrund`), und die Komponente wird
+dünn: Sie wählt anhand des Ergebnisses den `leertext`. Das ist dasselbe
+Vorgehen wie bei `laenderOhneAbgangserkennung`. Den vorhandenen
+`leertext`-Mechanismus in `Bereich.tsx` gibt es bereits; er wird benutzt,
+nicht ersetzt.
 
 ## 9. Der Beweis
 
@@ -151,14 +175,15 @@ Browser prüfbar. Der Hook enthält keine Formatlogik.
 1. **Hin- und Rückweg über einen Filter mit JEDEM gesetzten Feld.**
    `ausSuchstring(zuSuchstring(f))` ist gleich `f`. Das ist der tragende Test:
    Er fängt ein **vergessenes Feld**, was Einzelfalltests nicht tun. Wird der
-   `Filter` um ein 24. Feld erweitert und das Format nicht nachgezogen,
+   `Filter` um ein 23. Feld erweitert und das Format nicht nachgezogen,
    schlägt er fehl.
 2. **Der leere Filter ergibt eine leere Adresse** — sonst trüge jede frische
    Seite Ballast.
 3. **Ein unbekannter Schlüssel wird ignoriert**, ohne den Rest zu verlieren.
 4. **`kpv=abc` wirft nicht** und ergibt `null`.
-5. **Eine Auswahl, die nichts trifft**, zeigt den Klartext und den Knopf
-   (Komponententest).
+5. **Eine Auswahl, die nichts trifft**, wird als solche erkannt: `leergrund`
+   unterscheidet „kein Bestand" von „der Filter trifft nichts". Reiner
+   Logiktest, kein Komponententest -- siehe unten.
 
 **Die Wache gegen einen trivial grünen Hin- und Rückweg:** Der Testfilter
 wird **nicht** von Hand aufgezählt, sondern aus `LEERER_FILTER` abgeleitet,
@@ -175,7 +200,7 @@ sodass ein neues Feld ohne Zutun im Test landet.
 
 ## 11. Was dieser Entwurf nicht hergibt
 
-Er sagt **nicht**, wie lang die Adressen im Alltag werden. Die 23 Felder sind
+Er sagt **nicht**, wie lang die Adressen im Alltag werden. Die 22 Felder sind
 gezählt, die typische Auswahl ist es nicht — dafür müsste das Dashboard
 benutzt und mitgeschrieben werden. Sollte sich zeigen, dass die üblichen
 Links unhandlich sind, ist das ein eigener, dann **gemessener** Punkt und
