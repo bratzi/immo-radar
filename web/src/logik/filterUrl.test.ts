@@ -65,4 +65,28 @@ describe("zuSuchstring und ausSuchstring", () => {
   it("faellt bei unbekannter Kartengroesse auf objekte zurueck", () => {
     expect(ausSuchstring("karte=gibtesnicht").kartengroesse).toBe("objekte");
   });
+
+  it("uebersteht ein Komma INNERHALB eines Listenwerts unveraendert", () => {
+    // Echter Wert aus der Snapshot-Datei koennte so aussehen. Ein Komma im
+    // Inhalt darf nicht mit dem Trennkomma zwischen Listenelementen
+    // verwechselt werden -- sonst wird aus einem Eintrag beim Neuladen zwei.
+    const filter = { ...LEERER_FILTER, datenluecken: ["Preis fehlt, Miete unklar"] };
+    const such = zuSuchstring(filter, "objekte");
+    expect(ausSuchstring(such).filter.datenluecken).toEqual(["Preis fehlt, Miete unklar"]);
+  });
+
+  it("uebersteht Prozentzeichen und Kaufmanns-Und in einem Listenwert unveraendert", () => {
+    // Dieselbe Klasse Fehler, andere Zeichen: "%" muss beim Lesen nicht
+    // vorzeitig dekodiert und "&" nicht als Feldtrenner missverstanden werden.
+    const filter = { ...LEERER_FILTER, datenluecken: ["Kauf & Miete: 50% unklar"] };
+    const such = zuSuchstring(filter, "objekte");
+    expect(ausSuchstring(such).filter.datenluecken).toEqual(["Kauf & Miete: 50% unklar"]);
+  });
+
+  it("liest ein Listenfeld auch mit fuehrendem Fragezeichen im Suchteil", () => {
+    // Die eigene Zerlegung fuer Listenfelder (siehe Komma-Fix) darf sich
+    // hier nicht anders verhalten als `URLSearchParams` bei den uebrigen
+    // Feldarten -- beide muessen ein fuehrendes "?" gleich tolerieren.
+    expect(ausSuchstring("?st=S2").filter.stufen).toEqual(["S2"]);
+  });
 });
