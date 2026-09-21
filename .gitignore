@@ -9,3 +9,24 @@ dist/
 
 # Erzeugnis des Snapshot-Exports -- gehoert als Artefakt veroeffentlicht, nicht ins Repo
 scraper/snapshot/
+
+# Skills fuer Claude Code -- bewusst NICHT im Repo (entschieden 2026-09-21)
+#
+# .agents/skills/  sind 88 SKILL.md von Dritten (20 aus JuliusBrussee/caveman,
+#   68 von collectivebrain.de), zusammen 963 KB und ohne eine einzige
+#   Lizenzdatei. Dieses Repo ist OEFFENTLICH -- sie hier einzuchecken waere
+#   Weiterverbreitung fremder Inhalte unter unserem Namen. Die
+#   collectivebrain-Skills bitten ausserdem um eine Namenszeile, die der
+#   Nutzer ausdruecklich nicht will.
+# .claude/skills/  sind nur Junctions auf den Ordner darueber -- mit
+#   ABSOLUTEN Pfaden (/c/immo-radar/...). Auf jedem anderen Rechner und in
+#   der CI waeren sie kaputte Verweise.
+# skills-lock.json deckt nur 20 der 88 Skills ab (das caveman-Paket) und
+#   gehoert zu `npx skills`, nicht zum Produkt.
+#
+# Sie sind Werkzeug des Entwicklers, nicht Teil des Scrapers oder des
+# Dashboards. Wo sie herkommen und wie man sie nachzieht, steht im
+# Gedaechtnis unter `collectivebrain-68-skills-installiert`.
+.agents/
+.claude/skills/
+skills-lock.json
