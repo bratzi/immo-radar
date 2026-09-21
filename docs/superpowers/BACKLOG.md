@@ -1046,8 +1046,9 @@ mit genau diesem Titel schreiben, dann das Muster erweitern.
       `34388541806`. Der Befund steht oben.
 - [ ] **Schritt 2 — ENTFÄLLT.** Es gibt kein Muster zu erweitern, die Zahl
       steht nicht da.
-- [ ] **Schritt 3 — verschoben nach A16.** Die drei Regionen können
-      `vollstaendig=true` erst schreiben, wenn es einen zweiten Maßstab gibt.
+- [x] **Schritt 3 — erledigt über A16** (2026-09-21). Die vier Regionen
+      können `vollstaendig=true` jetzt schreiben: gemessen wird gegen die
+      Hochwassermarke ihrer eigenen Historie.
 
 **Abnahme:** erfüllt — die Frage ist beantwortet. Sie liefert weiterhin `null`,
 und jetzt ist belegt, dass das an der Quelle liegt und nicht am Code.
@@ -1130,6 +1131,38 @@ woran Vollständigkeit dann stattdessen gemessen wird — und wo der neue Maßst
 in der Zeile landet, damit `vollstaendig = true` nie wieder ohne Maßstab
 dasteht. Hintergrund und Messung:
 `specs/2026-09-16-vollstaendig-ohne-trefferzahl.md`.
+
+**ERLEDIGT am 2026-09-21 — aber NICHT so, wie oben entworfen.** Der hier
+vorgeschlagene gleitende Median der eigenen Region ist gemessen und
+widerlegt: Er erzeugt **203 von 323** falschen Freigaben, weil 24 % der
+Läufe flach sind und der Median mit dem Ausfall mitsinkt. Gebaut wurde
+stattdessen die **Hochwassermarke über die ganze Historie mit 10 %
+Toleranz** — auf demselben Prüffeld fehlerfrei (0 Fail-open, 0 Fehlalarm,
+und sie sagt genau so oft „vollständig" wie die Wahrheit: 54 von 54).
+Entwurf, Messung und Zahlen:
+`specs/2026-09-21-a16-zweiter-vollstaendigkeitsmassstab-design.md`,
+Skript `scraper/scripts/messung-a16-massstaebe.mts`.
+
+**Nicht der Schätzer war das Problem, sondern das Fenster.** Auch das
+Maximum über die letzten zehn Läufe fiel durch (43 Fail-open) — der flache
+Zustand hält länger an als zehn Läufe.
+
+Die vier oben gestellten Entwurfsfragen sind damit beantwortet: Die
+Historie braucht **keine** Mindestzahl an Läufen, sondern eine Marke über
+einer Ergebnisseite (45). Die Toleranz ist **10 %** und nicht 25 %. Der
+allererste Lauf hat keine Marke und gilt fail-closed als unvollständig.
+Eine mit `abgeschnitten=true` beendete Region gilt nie als vollständig.
+
+Die Sperre in `regionsLaufZeile` ist **ersetzt, nicht entfernt**: Sie
+lautet jetzt `massstab === "keiner" ? false : vollstaendig` und prüft damit
+die Sache statt des Stellvertreters. Der Beleg steht in derselben Zeile —
+`sweep_region_runs` trägt seit dem 2026-09-21 `massstab` und
+`referenz_menge`.
+
+**Offen geblieben, als Messauftrag und nicht als Vermutung:** Die Marke
+altert nicht. Schrumpft Immowelts Bestand echt, blockiert sie die Region
+dauerhaft — fail-closed, also sicher, aber nutzlos. Zu beobachten, ob eine
+Region über mehrere **tiefe** Läufe unter ihrer Marke bleibt.
 
 ## GEMESSEN am 2026-09-09 — und es ist keine der drei Vermutungen
 

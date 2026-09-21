@@ -1,3 +1,5 @@
+import type { MassstabArt } from "./regionsMassstab.js";
+
 /** Karenz zwischen Verschwinden und harter Loeschung. */
 export const KARENZ_TAGE = 2;
 
@@ -44,6 +46,10 @@ export interface RegionLauf {
   gesehene: number;
   gemeldeteTreffer: number | null;
   vollstaendig: boolean;
+  /** WORAN `vollstaendig` gemessen wurde. "keiner" heisst: gar nicht. */
+  massstab: MassstabArt;
+  /** Die Menge, gegen die geurteilt wurde; null bei massstab "keiner". */
+  referenzMenge: number | null;
 }
 
 export interface BekanntesListing {

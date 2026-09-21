@@ -337,20 +337,26 @@ export function regionsLaufZeile(source: string, lauf: RegionLauf): Record<strin
     partition: lauf.partition,
     gesehene_objekte: lauf.gesehene,
     gemeldete_treffer: lauf.gemeldeteTreffer,
-    // FAIL-CLOSED AN DER SCHREIBSTELLE, nicht nur beim Rechnen. Ohne
-    // Trefferzahl gibt es keinen Massstab, an dem Vollstaendigkeit zu messen
-    // waere -- die Kombination ist in sich widerspruechlich. Heute kann
-    // `istRegionVollstaendig` sie nicht mehr erzeugen (fail-closed seit
-    // Commit ed46f36, 2026-09-09 08:27 UTC); die acht Altzeilen in
-    // `sweep_region_runs` stammen saemtlich von davor, gemessen in
-    // specs/2026-09-16-vollstaendig-ohne-trefferzahl.md.
+    // FAIL-CLOSED AN DER SCHREIBSTELLE, nicht nur beim Rechnen:
+    // `vollstaendig` ist die Wache vor der Massenloeschung und darf nie ohne
+    // Massstab dastehen.
     //
-    // WARNUNG AN A16: Der zweite Vollstaendigkeitsmassstab fuer Regionen ohne
-    // ausgewiesene Menge laeuft hier gegen eine Sperre. Das ist Absicht. Wer
-    // ihn baut, muss diese Zeile AUSDRUECKLICH aufheben und dabei sagen,
-    // woran Vollstaendigkeit dann gemessen wird -- `vollstaendig` ist die
-    // Wache vor der Massenloeschung, sie darf nicht nebenbei aufgehen.
-    vollstaendig: lauf.gemeldeteTreffer === null ? false : lauf.vollstaendig,
+    // Bis zum 2026-09-21 stand hier `gemeldeteTreffer === null -> false`. Das
+    // war ein STELLVERTRETER fuer "ohne Massstab" und blieb richtig, solange
+    // es nur einen Massstab gab. Seit A16 gibt es einen zweiten -- die
+    // Hochwassermarke der eigenen Historie --, und genau die vier Regionen,
+    // fuer die er gebaut wurde (`nw`, `bw`, `mv`, `sh`), nennen ihre
+    // Trefferzahl nie. Der Stellvertreter wuerde sie weiterhin sperren.
+    //
+    // Die Regel selbst ist unveraendert und wird jetzt an der SACHE geprueft.
+    // Der Beleg steht in derselben Zeile: `massstab` und `referenz_menge`.
+    // Die acht Altzeilen vom 2026-09-08 (gemessen in
+    // specs/2026-09-16-vollstaendig-ohne-trefferzahl.md) tragen dort `null`
+    // und bleiben dadurch als das erkennbar, was sie sind -- Zeilen ohne
+    // Massstab.
+    vollstaendig: lauf.massstab === "keiner" ? false : lauf.vollstaendig,
+    massstab: lauf.massstab,
+    referenz_menge: lauf.referenzMenge,
   };
 }
 
@@ -429,4 +435,58 @@ export async function ladeLetzteRegionsSweeps(
     if (bisher === undefined || zeitpunkt > bisher) letzte.set(zeile.partition, zeitpunkt);
   }
   return letzte;
+}
+
+/**
+ * So viele Zeilen holt die Markenabfrage. Weil ABSTEIGEND NACH MENGE
+ * sortiert wird, steht das Maximum jeder Region zwangslaeufig unter den
+ * ersten Zeilen -- 16 Regionen brauchen 16 Zeilen, alles darueber ist
+ * Reserve. Das Limit kann die Marke damit nicht abschneiden.
+ */
+const HOCHWASSER_ZEILEN = 200;
+
+/**
+ * Die groesste je gesehene Menge je Region -- der zweite
+ * Vollstaendigkeitsmassstab aus BACKLOG A16, fuer Regionen, deren
+ * Trefferzahl das Portal nie nennt.
+ *
+ * SORTIERT NACH MENGE, NICHT NACH ZEIT, und das ist der Kern: Eine Abfrage
+ * der juengsten N Zeilen waere ein gleitendes Fenster, und ein Fenster faellt
+ * durch. Gemessen am 2026-09-21: Das Maximum ueber die letzten zehn Laeufe
+ * erzeugte 43 falsche Freigaben, weil der flache Zustand laenger anhaelt als
+ * zehn Laeufe. `ladeLetzteRegionsSweeps` mit REGIONS_HISTORIE_ZEILEN = 200
+ * deckt bei 492 Zeilen (Stand 2026-09-21) nur rund zwoelf je Region -- an
+ * dieser Abfrage darf die Marke deshalb NICHT haengen.
+ *
+ * `null` heisst "Historie nicht lesbar" und fuehrt fail-closed dazu, dass
+ * jede Region ohne Trefferzahl als unvollstaendig gilt. Eine leere Map heisst
+ * "noch nie gelaufen" und fuehrt zum selben Urteil, aber aus einem anderen
+ * Grund -- die beiden bleiben unterscheidbar.
+ */
+export async function ladeHochwassermarken(
+  supabase: SupabaseClient,
+  source: string
+): Promise<Map<string, number> | null> {
+  const { data, error } = await supabase
+    .from("sweep_region_runs")
+    .select("partition, gesehene_objekte")
+    .eq("source", source)
+    .order("gesehene_objekte", { ascending: false })
+    .limit(HOCHWASSER_ZEILEN);
+  if (error !== null || data === null) {
+    console.warn(
+      "sweep_region_runs: Marken nicht lesbar, jede Region ohne Trefferzahl bleibt unvollstaendig",
+      error
+    );
+    return null;
+  }
+  const marken = new Map<string, number>();
+  for (const zeile of data as { partition: string; gesehene_objekte: number }[]) {
+    if (!Number.isFinite(zeile.gesehene_objekte)) continue;
+    const bisher = marken.get(zeile.partition);
+    if (bisher === undefined || zeile.gesehene_objekte > bisher) {
+      marken.set(zeile.partition, zeile.gesehene_objekte);
+    }
+  }
+  return marken;
 }

@@ -36,6 +36,7 @@ import {
   speichereSweepLauf,
   speichereRegionsLaeufe,
   ladeLetzteRegionsSweeps,
+  ladeHochwassermarken,
   ladeSweepHistorie,
 } from "./lib/bestandDb.js";
 import {
@@ -568,8 +569,13 @@ async function main() {
   // Herleitung bei `sweepStartVersatz`). Scheitert die Abfrage, liefert sie
   // null und der Sweep faellt auf das alte Uhr-Verhalten zurueck.
   const letzteRegionsSweeps = await ladeLetzteRegionsSweeps(sb, "immowelt");
+  // Der zweite Vollstaendigkeitsmassstab (A16), fuer die vier Regionen, die
+  // ihre Trefferzahl nie nennen. EIGENE Abfrage, sortiert nach Menge statt
+  // nach Zeit -- ein Zeitfenster waere als Massstab durchgefallen, siehe
+  // `ladeHochwassermarken`.
+  const hochwassermarken = await ladeHochwassermarken(sb, "immowelt");
   console.log("Immowelt: Sweep gestartet...");
-  const immowelt = await sweepImmowelt(letzteRegionsSweeps);
+  const immowelt = await sweepImmowelt(letzteRegionsSweeps, hochwassermarken);
   await speichereSweepLauf(sb, immowelt.sweep);
   // Mengenhistorie je Region. Aendert am Loeschverhalten nichts -- sie sammelt
   // die Referenzlaeufe, die eine spaetere regionsgenaue Loeschhoheit braucht.

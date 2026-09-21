@@ -9,6 +9,7 @@ import {
   loescheAbgelaufene,
   quelleHatLoeschhoheit,
   ladeLetzteRegionsSweeps,
+  ladeHochwassermarken,
 } from "./bestandDb.js";
 
 /**
@@ -25,6 +26,8 @@ describe("regionsLaufZeile", () => {
       gesehene: 2719,
       gemeldeteTreffer: 2719,
       vollstaendig: true,
+      massstab: "gemeldete_treffer",
+      referenzMenge: 2719,
     });
     expect(zeile).toMatchObject({
       source: "immowelt",
@@ -43,27 +46,66 @@ describe("regionsLaufZeile", () => {
       gesehene: 0,
       gemeldeteTreffer: null,
       vollstaendig: false,
+      massstab: "keiner",
+      referenzMenge: null,
     });
     expect(zeile.vollstaendig).toBe(false);
     expect(zeile.gemeldete_treffer).toBeNull();
     expect(zeile.gesehene_objekte).toBe(0);
   });
 
-  it("schreibt nie vollstaendig=true ohne gemeldete Trefferzahl", () => {
+  it("schreibt nie vollstaendig=true ohne Massstab", () => {
     // Der Befund vom 2026-09-15: solche Zeilen stehen in der Datenbank -- acht
     // Stueck, aus `nw`, `mv`, `bw` und `sh`. Sie stammen alle von vor der
     // Fail-closed-Umstellung (Commit ed46f36, 2026-09-09 08:27 UTC; die
     // juengste Zeile liegt 16 Minuten davor, belegt in
-    // specs/2026-09-16-vollstaendig-ohne-trefferzahl.md). Dieser Test haelt
-    // fest, dass sie nicht wiederkommen koennen -- die Kombination ist in sich
-    // widerspruechlich: "vollstaendig" ohne Massstab.
+    // specs/2026-09-16-vollstaendig-ohne-trefferzahl.md).
+    //
+    // Bis zum 2026-09-21 hing diese Sperre an `gemeldeteTreffer === null`.
+    // Das war ein STELLVERTRETER: Gemeint war immer "ohne Massstab". Seit
+    // A16 gibt es einen zweiten Massstab, und die Regel wird jetzt an der
+    // Sache geprueft. Sie ist damit NICHT aufgeweicht -- der Beleg steht in
+    // derselben Zeile.
     const zeile = regionsLaufZeile("immowelt", {
       partition: "nw",
       gesehene: 1160,
       gemeldeteTreffer: null,
       vollstaendig: true,
+      massstab: "keiner",
+      referenzMenge: null,
     });
     expect(zeile.vollstaendig).toBe(false);
+  });
+
+  it("laesst vollstaendig=true durch, wenn die Marke der Massstab war", () => {
+    // Genau der Fall, den A16 herstellt: `nw` nennt nie eine Trefferzahl,
+    // hat aber eine Marke von 6807 aus der eigenen Historie.
+    const zeile = regionsLaufZeile("immowelt", {
+      partition: "nw",
+      gesehene: 6795,
+      gemeldeteTreffer: null,
+      vollstaendig: true,
+      massstab: "hochwassermarke",
+      referenzMenge: 6807,
+    });
+    expect(zeile).toMatchObject({
+      vollstaendig: true,
+      massstab: "hochwassermarke",
+      referenz_menge: 6807,
+      gemeldete_treffer: null,
+    });
+  });
+
+  it("schreibt den Massstab auch dann mit, wenn die Trefferzahl gilt", () => {
+    const zeile = regionsLaufZeile("immowelt", {
+      partition: "he",
+      gesehene: 2719,
+      gemeldeteTreffer: 2719,
+      vollstaendig: true,
+      massstab: "gemeldete_treffer",
+      referenzMenge: 2719,
+    });
+    expect(zeile).toMatchObject({ massstab: "gemeldete_treffer", referenz_menge: 2719 });
   });
 });
 
@@ -492,5 +534,41 @@ describe("ladeBekannteListings -- Blaetterung unter Zeilenbewegung", () => {
     const verschiedene = new Set(geladen.map((z) => z.id));
     expect(geladen.length).toBe(anzahl);
     expect(verschiedene.size).toBe(anzahl);
+  });
+});
+
+describe("ladeHochwassermarken", () => {
+  it("liefert je Region die groesste je gesehene Menge", async () => {
+    const { client, abfragen } = fakeRegionsHistorie({
+      zeilen: [
+        { partition: "nw", gesehene_objekte: 6807 },
+        { partition: "bw", gesehene_objekte: 4920 },
+        { partition: "nw", gesehene_objekte: 40 },
+        { partition: "bw", gesehene_objekte: 41 },
+      ],
+    });
+
+    const marken = await ladeHochwassermarken(client, "immowelt");
+
+    expect(marken).not.toBeNull();
+    expect(marken!.get("nw")).toBe(6807);
+    expect(marken!.get("bw")).toBe(4920);
+    expect(abfragen).toEqual([{ tabelle: "sweep_region_runs", source: "immowelt" }]);
+  });
+
+  it("liefert null, wenn die Historie nicht lesbar ist", async () => {
+    // Fail-closed: keine Marke heisst kein Massstab heisst unvollstaendig.
+    // Genauso handhabt es `ladeLetzteRegionsSweeps` schon heute.
+    const { client } = fakeRegionsHistorie({ fehler: true });
+    expect(await ladeHochwassermarken(client, "immowelt")).toBeNull();
+  });
+
+  it("liefert eine leere Map, wenn es noch keine Zeile gibt", async () => {
+    // Leer ist NICHT dasselbe wie nicht lesbar: hier hat noch nie ein Lauf
+    // stattgefunden, und jede Region bekommt korrekt keinen Massstab.
+    const { client } = fakeRegionsHistorie({ zeilen: [] });
+    const marken = await ladeHochwassermarken(client, "immowelt");
+    expect(marken).not.toBeNull();
+    expect(marken!.size).toBe(0);
   });
 });

@@ -7,6 +7,11 @@ import {
 import { parseImmoweltDetailPage, type ImmoweltDetailData } from "./detail.js";
 import { abbrechenNachProbe, PROBE_GROESSE } from "./probe.js";
 import {
+  waehleMassstab,
+  urteileGegenMassstab,
+  type MassstabRegeln,
+} from "../../lib/regionsMassstab.js";
+import {
   rotiereAuswahl,
   sweepStartVersatz,
   type RegionLauf,
@@ -191,13 +196,74 @@ export function istRegionVollstaendig(
    * ohne Vorgabewert: Ein drittes Argument mit stillem `false` waere genau
    * die Sorte Vorgabe, die einen unbekannten Zustand als "in Ordnung" liest.
    */
-  abgeschnitten: boolean
+  abgeschnitten: boolean,
+  /**
+   * Die groesste Menge, die diese Region je geliefert hat -- der zweite
+   * Massstab aus A16. Verpflichtend und ohne Vorgabewert, aus demselben
+   * Grund wie `abgeschnitten`: Ein stilles `null` waere die Sorte Vorgabe,
+   * die einen unbekannten Zustand als "in Ordnung" liest. `null` heisst
+   * hier ausdruecklich "keine Marke bekannt" und fuehrt fail-closed zum
+   * Verhalten von vor dem 2026-09-21.
+   */
+  hochwassermarke: number | null
 ): boolean {
-  if (abgeschnitten) return false;
-  if (gesammelt === 0) return false;
-  if (gemeldet === null) return false;
-  if (gemeldet === 0) return true;
-  return gesammelt >= gemeldet * (1 - REGION_FEHLBETRAG_TOLERANZ);
+  return urteileGegenMassstab(
+    gesammelt,
+    waehleMassstab(gemeldet, hochwassermarke, IMMOWELT_MASSSTAB_REGELN),
+    abgeschnitten
+  );
+}
+
+/**
+ * Die Marke einer einzelnen Region aus der geladenen Karte.
+ *
+ * Sieht nach einer Zeile aus, die man in die Blaetterschleife schreiben
+ * koennte -- und genau dort stand sie zuerst. Sie ist hier herausgezogen,
+ * weil ein Test, der den Ausdruck nur NACHBILDET, auch dann gruen bleibt,
+ * wenn im Sweep der falsche Schluessel steht. Der Sweep ruft diese Funktion
+ * auf; damit prueft der Test den Aufrufort und nicht seine Kopie.
+ *
+ * `null` (Historie nicht lesbar) und "Region nicht in der Karte" fallen
+ * bewusst auf dasselbe `null` zusammen: Beide heissen "keine Marke", und
+ * beide fuehren fail-closed zu `massstab: "keiner"`. Ein `undefined` waere
+ * hier gefaehrlich -- es saehe spaeter aus wie ein nicht gesetzter Wert.
+ */
+export function markeFuer(
+  hochwassermarken: Map<string, number> | null,
+  code: string
+): number | null {
+  return hochwassermarken?.get(code) ?? null;
+}
+
+/**
+ * Die fertige Protokollzeile einer Region.
+ *
+ * EIGENE FUNKTION, UND ZWAR WEGEN DES AUFRUFORTS: Die Falle vom 2026-09-21
+ * war, dass Unit-Tests die Funktion pruefen und nicht die Stelle, an der sie
+ * aufgerufen wird. Die Zusammensetzung aus Urteil, Massstab und Referenzmenge
+ * lag bis dahin mitten in der Blaetterschleife von `sweepImmowelt` und war
+ * nur mit einem Browser zu erreichen. Hier ist sie rein und unter Test.
+ *
+ * Der Massstab wird GENAU EINMAL gewaehlt und sowohl fuer das Urteil als auch
+ * fuer die Zeile benutzt. Zweimal waehlen hiesse, dass Urteil und Beleg
+ * auseinanderlaufen koennen.
+ */
+export function baueRegionLauf(
+  code: string,
+  gesammelt: number,
+  gemeldet: number | null,
+  abgeschnitten: boolean,
+  hochwassermarke: number | null
+): RegionLauf {
+  const massstab = waehleMassstab(gemeldet, hochwassermarke, IMMOWELT_MASSSTAB_REGELN);
+  return {
+    partition: code,
+    gesehene: gesammelt,
+    gemeldeteTreffer: gemeldet,
+    vollstaendig: urteileGegenMassstab(gesammelt, massstab, abgeschnitten),
+    massstab: massstab.art,
+    referenzMenge: massstab.referenz,
+  };
 }
 
 /** Wie viel vom Seitentitel ins Log darf. Genug, um Format und Sprache zu
@@ -247,6 +313,22 @@ export function regionUnvollstaendigMeldung(
  * 41. oder 42. ab, die der Sweep beim Blaettern doppelt sieht.
  */
 export const EINE_ERGEBNISSEITE = 45;
+
+/**
+ * Woran Immowelt-Regionen gemessen werden. An EINER Stelle, damit die
+ * Urteilsfunktion und die Zeilenbildung nie auseinanderlaufen koennen.
+ */
+export const IMMOWELT_MASSSTAB_REGELN: MassstabRegeln = {
+  // Eine Marke von hoechstens einer Ergebnisseite ist der Abdruck des
+  // Ausfalls, nicht sein Massstab.
+  untergrenze: EINE_ERGEBNISSEITE,
+  toleranzGemeldet: REGION_FEHLBETRAG_TOLERANZ,
+  // Enger als die 0,25 der Quelle, weil eine einzelne Region viel stabiler
+  // ist: `nw` steht bei 6823, 6895, 6965. 0,1 ist der engste Wert, der in
+  // der Messung vom 2026-09-21 fehlerfrei blieb (0,05 erzeugte zwei
+  // Fehlalarme, 0,02 acht).
+  toleranzMarke: 0.1,
+};
 
 /**
  * Ab so vielen bearbeiteten Regionen ist "alle blieben auf Seite 1" ein
@@ -543,7 +625,14 @@ export async function sweepImmowelt(
    * nicht lesbar" und faellt auf die Uhr zurueck; eine leere Map heisst "noch
    * nie gesweept" und startet an der ersten Region.
    */
-  letzteRegionsSweeps: Map<string, number> | null = null
+  letzteRegionsSweeps: Map<string, number> | null = null,
+  /**
+   * Die groesste je gesehene Menge je Region -- der zweite
+   * Vollstaendigkeitsmassstab fuer `nw`, `bw`, `mv` und `sh`, die ihre
+   * Trefferzahl nie nennen. `null` heisst "nicht lesbar" und fuehrt
+   * fail-closed dazu, dass diese Regionen unvollstaendig bleiben.
+   */
+  hochwassermarken: Map<string, number> | null = null
 ): Promise<{
   sweep: SweepErgebnis;
   zusammenfassungen: Map<string, ImmoweltListSummary>;
@@ -622,17 +711,18 @@ export async function sweepImmowelt(
         // Freigabe fuer eine Markierung. Sie faengt zwei Faelle ab: die
         // soft-geblockte Region, die lautlos [] liefert, und die am
         // Seitendeckel abgeschnittene.
-        const regionVollstaendig = istRegionVollstaendig(gesammelt, gemeldet, abgeschnitten);
-        if (!regionVollstaendig) {
+        const lauf = baueRegionLauf(
+          region.code,
+          gesammelt,
+          gemeldet,
+          abgeschnitten,
+          markeFuer(hochwassermarken, region.code)
+        );
+        if (!lauf.vollstaendig) {
           console.warn(regionUnvollstaendigMeldung(region.code, gesammelt, gemeldet, titel));
         }
         ausgaenge.push({ art: "erfasst", gemeldet });
-        regionLaeufe.push({
-          partition: region.code,
-          gesehene: gesammelt,
-          gemeldeteTreffer: gemeldet,
-          vollstaendig: regionVollstaendig,
-        });
+        regionLaeufe.push(lauf);
       } catch (err) {
         // Eine abgebrochene Region ist NICHT "null gemeldete Treffer". Sie ist
         // nicht beurteilbar, und das muss bis in die Trefferzahl durchschlagen.
@@ -646,6 +736,11 @@ export async function sweepImmowelt(
           gesehene: 0,
           gemeldeteTreffer: null,
           vollstaendig: false,
+          // Eine abgebrochene Region ist nicht beurteilbar. "keiner" ist hier
+          // die Wahrheit und nicht nur ein Platzhalter: Es wurde an nichts
+          // gemessen.
+          massstab: "keiner",
+          referenzMenge: null,
         });
         console.warn(`Immowelt-Sweep ${region.code}: Fehler`, err);
       }

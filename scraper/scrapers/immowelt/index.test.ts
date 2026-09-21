@@ -8,7 +8,10 @@ import {
   blaettereWeiter,
   beurteileDetailAntwort,
   laufZusammenfassung,
+  baueRegionLauf,
+  markeFuer,
 } from "./index.js";
+import type { MassstabArt } from "../../lib/regionsMassstab.js";
 
 describe("trefferzahlAusTitel", () => {
   it("liest die Zahl aus einem echten Bundesland-Titel", () => {
@@ -31,7 +34,7 @@ describe("istRegionVollstaendig", () => {
     // Signatur eines DataDome-Soft-Blocks: HTTP 200, aber leere Huelle --
     // kein parsebarer Titel, keine Karte. Ein echtes Bundesland hat weder
     // null Mehrfamilienhaeuser noch einen unlesbaren Titel.
-    expect(istRegionVollstaendig(0, null, false)).toBe(false);
+    expect(istRegionVollstaendig(0, null, false, null)).toBe(false);
   });
 
   it("gilt als unvollstaendig, wenn die Trefferzahl fehlt -- auch mit Objekten", () => {
@@ -47,32 +50,32 @@ describe("istRegionVollstaendig", () => {
     // Sweep-Ergebnis ohnehin hart `false`, es wird nichts geloescht. Es
     // verhindert nur, dass unbelegte Regionen als Referenzlaeufe zaehlen --
     // genau das, was der spaetere regionsgenaue Abgleich braucht.
-    expect(istRegionVollstaendig(41, null, false)).toBe(false);
+    expect(istRegionVollstaendig(41, null, false, null)).toBe(false);
   });
 
   it("ist unvollstaendig, wenn nichts eingesammelt wurde -- selbst bei 0 gemeldeten Treffern", () => {
     // 0/0 ist zwar in sich stimmig, aber null eingesammelte Objekte sind nie
     // ein Beleg fuer Vollstaendigkeit: eine geblockte Huelle kann einen Titel
     // tragen, der zu null Treffern parst. Null gesammelt -> immer false.
-    expect(istRegionVollstaendig(0, 0, false)).toBe(false);
+    expect(istRegionVollstaendig(0, 0, false, null)).toBe(false);
   });
 
   it("ist unvollstaendig, wenn nichts eingesammelt wurde, obwohl Treffer gemeldet sind", () => {
-    expect(istRegionVollstaendig(0, 120, false)).toBe(false);
+    expect(istRegionVollstaendig(0, 120, false, null)).toBe(false);
   });
 
   it("ist unvollstaendig, wenn die Menge weit unter der gemeldeten Zahl liegt", () => {
     // Bremen im Smoke-Test: 41 von 209 eingesammelt (nur Seite 1).
-    expect(istRegionVollstaendig(41, 209, false)).toBe(false);
+    expect(istRegionVollstaendig(41, 209, false, null)).toBe(false);
   });
 
   it("ist vollstaendig, wenn die Menge innerhalb der 25-%-Toleranz bleibt", () => {
     // 160 von 209 -> Fehlbetrag 23 %, noch im Rahmen.
-    expect(istRegionVollstaendig(160, 209, false)).toBe(true);
+    expect(istRegionVollstaendig(160, 209, false, null)).toBe(true);
   });
 
   it("ist vollstaendig, wenn mehr eingesammelt als gemeldet wurde", () => {
-    expect(istRegionVollstaendig(250, 209, false)).toBe(true);
+    expect(istRegionVollstaendig(250, 209, false, null)).toBe(true);
   });
 
   it("ist NIE vollstaendig, wenn die Blaetterung am Seitendeckel abgeschnitten wurde", () => {
@@ -88,8 +91,8 @@ describe("istRegionVollstaendig", () => {
     // abgeschnittenen Objekte waeren Abgaenge. Ein BEKANNTER
     // Unvollstaendigkeitsbefund darf nie in eine Vollstaendigkeitsaussage
     // muenden -- er schlaegt vor jeder Mengenrechnung durch.
-    expect(istRegionVollstaendig(160, 209, true)).toBe(false);
-    expect(istRegionVollstaendig(250, 209, true)).toBe(false);
+    expect(istRegionVollstaendig(160, 209, true, null)).toBe(false);
+    expect(istRegionVollstaendig(250, 209, true, null)).toBe(false);
   });
 });
 
@@ -326,7 +329,16 @@ describe("laufZusammenfassung", () => {
     gesehene: number,
     gemeldeteTreffer: number | null,
     vollstaendig: boolean
-  ) => ({ partition, gesehene, gemeldeteTreffer, vollstaendig });
+  ) => ({
+    partition,
+    gesehene,
+    gemeldeteTreffer,
+    vollstaendig,
+    // Abgeleitet wie in der Wirklichkeit: Wo eine Trefferzahl steht, ist sie
+    // der Massstab; wo keine steht, hat diese Zeile keinen.
+    massstab: (gemeldeteTreffer === null ? "keiner" : "gemeldete_treffer") as MassstabArt,
+    referenzMenge: gemeldeteTreffer,
+  });
 
   it("benennt den flachen Lauf, in dem jede Region auf Seite 1 stehenbleibt", () => {
     // Der gemessene Zustand vom 2026-09-21: 16 Regionen, je eine Seite.
@@ -376,5 +388,105 @@ describe("laufZusammenfassung", () => {
 
   it("sagt bei leerer Liste ausdruecklich, dass nichts gemessen wurde", () => {
     expect(laufZusammenfassung([])).toContain("keine Region");
+  });
+});
+
+describe("baueRegionLauf", () => {
+  it("misst gegen die Marke, wenn das Portal keine Trefferzahl nennt", () => {
+    // `nw`: 42 Zeilen Historie, nie eine Trefferzahl, Marke 6995.
+    const lauf = baueRegionLauf("nw", 6795, null, false, 6995);
+    expect(lauf).toEqual({
+      partition: "nw",
+      gesehene: 6795,
+      gemeldeteTreffer: null,
+      vollstaendig: true,
+      massstab: "hochwassermarke",
+      referenzMenge: 6995,
+    });
+  });
+
+  it("erklaert einen flachen Lauf fuer unvollstaendig -- mit Beleg", () => {
+    // Der Fall, den A16 abfangen muss. Wichtig ist nicht nur das `false`,
+    // sondern dass der Massstab mitgeschrieben wird: Ohne ihn saehe die
+    // Zeile aus wie eine ungemessene.
+    const lauf = baueRegionLauf("nw", 40, null, false, 6995);
+    expect(lauf.vollstaendig).toBe(false);
+    expect(lauf.massstab).toBe("hochwassermarke");
+    expect(lauf.referenzMenge).toBe(6995);
+  });
+
+  it("hat ohne Trefferzahl und ohne Marke keinen Massstab", () => {
+    const lauf = baueRegionLauf("nw", 6795, null, false, null);
+    expect(lauf.vollstaendig).toBe(false);
+    expect(lauf.massstab).toBe("keiner");
+    expect(lauf.referenzMenge).toBeNull();
+  });
+
+  it("nimmt die gemeldete Trefferzahl, wo es sie gibt", () => {
+    const lauf = baueRegionLauf("he", 2719, 2719, false, 2800);
+    expect(lauf.massstab).toBe("gemeldete_treffer");
+    expect(lauf.referenzMenge).toBe(2719);
+    expect(lauf.vollstaendig).toBe(true);
+  });
+
+  it("gilt am Seitendeckel nie als vollstaendig, behaelt aber den Massstab", () => {
+    const lauf = baueRegionLauf("nw", 6995, null, true, 6995);
+    expect(lauf.vollstaendig).toBe(false);
+    expect(lauf.massstab).toBe("hochwassermarke");
+  });
+});
+
+describe("istRegionVollstaendig mit Marke", () => {
+  it("laesst eine Region ohne Trefferzahl gelten, wenn sie ihre Marke erreicht", () => {
+    expect(istRegionVollstaendig(6795, null, false, 6995)).toBe(true);
+  });
+
+  it("bleibt ohne Marke beim alten Verhalten", () => {
+    // Fail-closed seit 2026-09-09. Das vierte Argument `null` ist genau der
+    // Zustand, in dem der Code bis zum 2026-09-21 immer war.
+    expect(istRegionVollstaendig(6795, null, false, null)).toBe(false);
+  });
+
+  it("verwirft eine Marke von hoechstens einer Ergebnisseite", () => {
+    expect(istRegionVollstaendig(40, null, false, 41)).toBe(false);
+  });
+});
+
+describe("markeFuer -- der Aufrufort selbst", () => {
+  // ERSTER ENTWURF DIESES TESTS WAR WERTLOS: Er bildete den Ausdruck aus der
+  // Blaetterschleife nach (`marken.get(region.code) ?? null`) und war sofort
+  // gruen. Damit haette er auch dann gehalten, wenn im Sweep der falsche
+  // Schluessel stuende -- er prueste eine Kopie, nicht den Aufrufort. Deshalb
+  // ist der Ausdruck jetzt eine eigene Funktion, die der Sweep WIRKLICH
+  // aufruft. Das ist die Falle vom 2026-09-21 in ihrer zweiten Gestalt.
+  const marken = new Map([
+    ["nw", 6995],
+    ["bw", 4920],
+  ]);
+
+  it("findet die Marke der Region unter ihrem Code", () => {
+    expect(markeFuer(marken, "nw")).toBe(6995);
+    expect(markeFuer(marken, "bw")).toBe(4920);
+  });
+
+  it("liefert null fuer eine Region ohne Marke", () => {
+    expect(markeFuer(marken, "mv")).toBeNull();
+  });
+
+  it("liefert null, wenn die Historie gar nicht lesbar war", () => {
+    // Fail-closed: `null` heisst "nicht lesbar" und darf nicht in ein
+    // versehentliches `undefined` kippen, das spaeter wie "keine Marke noetig"
+    // aussieht.
+    expect(markeFuer(null, "nw")).toBeNull();
+  });
+
+  it("traegt bis in die fertige Zeile durch", () => {
+    const lauf = baueRegionLauf("nw", 6795, null, false, markeFuer(marken, "nw"));
+    expect(lauf.referenzMenge).toBe(6995);
+    expect(lauf.vollstaendig).toBe(true);
+
+    const ohne = baueRegionLauf("mv", 619, null, false, markeFuer(marken, "mv"));
+    expect(ohne.massstab).toBe("keiner");
+    expect(ohne.vollstaendig).toBe(false);
   });
 });
