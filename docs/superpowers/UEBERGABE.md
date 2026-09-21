@@ -106,6 +106,22 @@ Der Kontrolllauf `35590195623` lief sauber und brachte zum ersten Mal
 `607 von 607 Kandidaten bearbeitet, keiner bleibt uebrig` — **aber genau
 deshalb beweist er nichts über den Deckel: Er hat nicht gegriffen.**
 
+## Aufgeraeumt am Ende der Sitzung
+
+**Der Arbeitsbaum ist zum ersten Mal seit dem 2026-09-20 wieder leer.**
+`.agents/`, `.claude/skills/` und `skills-lock.json` lagen seitdem untracked
+herum, weil nie entschieden war, wohin sie gehören. Sie sind jetzt
+**git-ignoriert**, mit der Begründung in der `.gitignore` selbst: Dieses Repo
+ist öffentlich, die 88 SKILL.md sind fremde Inhalte ohne eine einzige
+Lizenzdatei, und die Junctions in `.claude/skills/` tragen absolute Pfade
+(`/c/immo-radar/...`), wären auf jedem anderen Rechner also kaputt.
+Ignoriert wird `.claude/skills/` und nicht `.claude/` als Ganzes, damit eine
+spätere `settings.json` versionierbar bleibt. **Gelöscht wurde nichts.**
+
+Die Skills selbst sind Werkzeug des Entwicklers, nicht Teil von Scraper oder
+Dashboard — was sie können und wann sie greifen, steht im Gedächtnis, nicht
+hier.
+
 ## Was als Nächstes zu tun ist
 
 1. **Den Kontrolllauf auswerten** (oben) — steht die Zeile im Log?
