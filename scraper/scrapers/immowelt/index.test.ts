@@ -7,6 +7,7 @@ import {
   gemeldeteTrefferSumme,
   blaettereWeiter,
   beurteileDetailAntwort,
+  laufZusammenfassung,
 } from "./index.js";
 
 describe("trefferzahlAusTitel", () => {
@@ -316,5 +317,64 @@ describe("regionUnvollstaendigMeldung", () => {
   it("kuerzt einen ueberlangen Titel, statt das Log zu fluten", () => {
     const meldung = regionUnvollstaendigMeldung("bw", 500, null, "x".repeat(400));
     expect(meldung.length).toBeLessThan(300);
+  });
+});
+
+describe("laufZusammenfassung", () => {
+  const region = (
+    partition: string,
+    gesehene: number,
+    gemeldeteTreffer: number | null,
+    vollstaendig: boolean
+  ) => ({ partition, gesehene, gemeldeteTreffer, vollstaendig });
+
+  it("benennt den flachen Lauf, in dem jede Region auf Seite 1 stehenbleibt", () => {
+    // Der gemessene Zustand vom 2026-09-21: 16 Regionen, je eine Seite.
+    const laeufe = [
+      region("nw", 40, null, false),
+      region("by", 40, 5130, false),
+      region("bw", 40, null, false),
+      region("ni", 40, 3385, false),
+    ];
+    const zeile = laufZusammenfassung(laeufe);
+    expect(zeile).toContain("FLACH");
+    expect(zeile).toContain("4 von 4");
+    // Die Summe der ausgewiesenen Treffer gehoert dazu -- sie ist der Beleg,
+    // dass das Portal mehr kennt, als der Lauf bekommen hat.
+    expect(zeile).toContain("8515");
+  });
+
+  it("nennt Regionen ohne Trefferzahl getrennt, statt sie als Null zu zaehlen", () => {
+    const zeile = laufZusammenfassung([
+      region("nw", 40, null, false),
+      region("by", 40, 5130, false),
+    ]);
+    // NICHT GEMESSEN darf nicht wie "null Treffer" aussehen.
+    expect(zeile).toContain("1 ohne Trefferzahl");
+  });
+
+  it("meldet einen tiefen, vollstaendigen Lauf ohne Warnwort", () => {
+    const zeile = laufZusammenfassung([region("nw", 6807, 6800, true)]);
+    expect(zeile).not.toContain("FLACH");
+    expect(zeile).toContain("vollstaendig");
+  });
+
+  it("nennt einen tiefen Lauf NICHT flach, auch wenn er unvollstaendig ist", () => {
+    // nw liefert 6807 Karten, aber keine Trefferzahl im Titel -- fail-closed
+    // unvollstaendig. Das ist kein flacher Lauf und darf nicht so heissen.
+    const zeile = laufZusammenfassung([region("nw", 6807, null, false)]);
+    expect(zeile).not.toContain("FLACH");
+    expect(zeile).toContain("1 von 1");
+  });
+
+  it("behauptet bei einer einzigen Regionszeile keinen flachen Lauf", () => {
+    // Ein tiefer Lauf schafft oft nur eine Region. Bricht die ab, steht dort
+    // eine kleine Zahl -- daraus einen flachen Lauf zu machen waere geraten.
+    const zeile = laufZusammenfassung([region("hb", 40, 202, false)]);
+    expect(zeile).not.toContain("FLACH");
+  });
+
+  it("sagt bei leerer Liste ausdruecklich, dass nichts gemessen wurde", () => {
+    expect(laufZusammenfassung([])).toContain("keine Region");
   });
 });
