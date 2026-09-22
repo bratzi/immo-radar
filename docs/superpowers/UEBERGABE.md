@@ -1,3 +1,81 @@
+# Übergabe — Stand 2026-09-22 (Entscheidungssitzung + Fast Wins)
+
+## ZUERST LESEN: die nächste Aufgabe ist B13, und sie hat eine Falle
+
+**Diese Sitzung hat nichts Großes gebaut, sondern Entscheidungen geräumt.**
+Sieben offene Fragen wurden einzeln vorgelegt und beantwortet; sie stehen mit
+Begründung in `BACKLOG.md`, gleich oben unter „Sieben Entscheidungen des
+Nutzers vom 2026-09-22". Zwei davon sind bereits umgesetzt, der Rest ist
+sortiert.
+
+**Die nächste große Aufgabe ist B13 — „Immowelt-Abgänge wirklich löschen".**
+Der Nutzer hat sie ausdrücklich für eine *frische* Sitzung vorgesehen, weil
+sie die Wachen vor der Massenlöschung berührt. Sie braucht zuerst einen
+Entwurf (`superpowers:brainstorming`), dann einen Plan
+(`superpowers:writing-plans`), dann Subagenten — nicht direkt Code.
+
+**Die Falle steht vollständig in B13 und ist die halbe Aufgabe.** Kurzfassung:
+„immowelt" in `QUELLEN_MIT_LOESCHHOHEIT` einzutragen bewirkt **das Gegenteil**
+des Ziels. `ermittleMarkierungen` (`scraper/lib/bestand.ts:246`) verzweigt an
+einem einzigen Schalter, und Immowelts `quellenPruefungBestanden` ist
+dauerhaft `false`, weil `vollstaendig` im Immowelt-Scraper fest auf `false`
+steht. Der Eintrag schickt die Funktion also in `return []` — nach einer
+einmaligen Löschwelle wäre die Abgangserkennung für Immowelt **dauerhaft
+tot**. Der Schalter muss in zwei Merkmale zerlegt werden: markieren (bleibt am
+Regionsnachweis) und hart löschen (neu erlaubt). Karenz für Immowelt: **14
+Tage**, für ZVG unverändert 2.
+
+Größenordnung, lesend gemessen am 2026-09-22: **23.333** Immowelt-Zeilen,
+davon **1.455 abgängig markiert** und bisher nie gelöscht.
+
+## Was diese Sitzung geändert hat
+
+| Commit | Was |
+|---|---|
+| `2f8d037` | Meldesperre ab PLZ-Stufe; Zeitplan startet auf Minute 23 |
+| `dfcd485` | Sieben Entscheidungen, A6 geschlossen, A17 entsperrt, B13 neu |
+
+**Die Meldesperre** (`scraper/lib/meldung.ts`): verschickt wird nur noch bei
+`angegeben` oder `geschaetzt_regional`. Sie ist eine **Auswahlliste** — eine
+unbekannte Mietquelle meldet nicht. Sie blendet nichts aus dem Dashboard aus;
+dessen `trefferklasse` kommt aus `bestimmeTrefferklasse` und hängt nicht an
+der Meldeklasse. Das wurde vor der Änderung im Code geprüft, nicht vermutet.
+
+**Nebenwirkung, die jemand kennen muss:** `KONTINGENT_NUR_LANDESWEIT` in
+`lib/meldebudget.ts` läuft damit ins Leere — die Drosselung wird nie mehr
+gefragt. Sie bleibt absichtlich samt ihrer Messung stehen, als Wache für den
+Fall, dass die Sperre je gelockert wird. Die zwei Tests, die Zurückstellen und
+Nachholen prüften, sind durch ihr Gegenteil ersetzt (Sabotageprobe gelaufen:
+ohne die Sperre wird der neue Test rot).
+
+**Der Zeitplan** startet auf Minute 23 statt 0. Ob das die 43 % Ausfall senkt,
+ist **nicht belegt** — das zeigt erst eine erneute Messung über mindestens 20
+Soll-Termine nach dem 2026-09-22.
+
+Gate nach beiden Commits: `scraper` 610 Tests bestanden, `tsc --noEmit`
+sauber.
+
+## Was offen liegt, in der Reihenfolge des Nutzers
+
+1. **B13** — die große Aufgabe, frische Sitzung, siehe oben.
+2. **B7-1, Task 2 bis 6** — Task 2 ist in dieser Sitzung fertig geworden
+   (`0492cd3`, `leergrund`). Der Branch liegt weiter auf
+   `sdd/b7-1-filterzustand-url`. Details im Abschnitt darunter; die dort
+   genannten zwei Vorbereitungsschritte für den Worktree gelten unverändert.
+3. **Lokales Detailskript**, höchstens 200 Objekte (Entscheidung 1) — noch
+   nicht gebaut.
+4. **A17-Grenzfalltests** — jetzt beschreibbar, siehe A17.
+5. **Cloudflare-MCP** — zurückgestellt (Entscheidung 6).
+
+## Eine Messfalle, die Zeit kostet, wenn man sie nicht kennt
+
+`auction_at` steht **nicht** in `listings`, sondern in `listing_versions`.
+Eine PostgREST-Abfrage, die auf `listings.auction_at` filtert, liefert
+`count = null` **ohne Fehlermeldung**. Das liest sich wie „keine Treffer",
+heißt aber „nicht gemessen". In dieser Sitzung genau einmal hineingelaufen.
+
+---
+
 # Übergabe — Stand 2026-09-22 (B7-1 angefangen, Task 1 von 6 fertig)
 
 ## ZUERST LESEN: B7-1 läuft auf einem eigenen Branch, Task 1 von 6 ist fertig
