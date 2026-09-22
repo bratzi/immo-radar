@@ -18,10 +18,20 @@ on:
   #
   # Wer aus diesem Takt etwas ableitet -- Abdeckung je Tag, Abtragen von
   # Rueckstaenden, "bis zum naechsten Lauf ist das folgenlos" -- rechnet mit
-  # fuenf Stunden. Ob dichter getaktet wird, ist eine offene Entscheidung des
-  # Nutzers; der Wert unten ist bewusst unveraendert.
+  # fuenf Stunden.
+  #
+  # DIE MINUTE 23 IST ABSICHT (Entscheidung des Nutzers, 2026-09-22). Zur
+  # vollen Stunde startet ein Grossteil aller Zeitplaene auf GitHub
+  # gleichzeitig; der Andrang zu genau dieser Minute ist die einzige Ursache
+  # des Ausfalls, an die dieses Projekt ueberhaupt herankommt. Eine krumme
+  # Minute kostet nichts und aendert am Abstand von drei Stunden nichts.
+  #
+  # NOCH NICHT BELEGT: die 43 % oben sind zur Minute 0 gemessen. Ob die
+  # Verschiebung wirkt, zeigt erst eine erneute Messung ueber mindestens
+  # 20 Soll-Termine nach dem 2026-09-22. Bis dahin gilt weiter: ein Lauf je
+  # rund fuenf Stunden.
   schedule:
-    - cron: "0 */3 * * *"
+    - cron: "23 */3 * * *"
   workflow_dispatch: {}
 
 jobs:

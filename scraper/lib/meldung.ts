@@ -16,7 +16,10 @@ const KLASSEN_KINDS: Meldeklasse[] = ["pruefkandidat", "top_treffer"];
 export interface MeldeklassenEingabe {
   /** Ergebnis der reinen Schwellenpruefung aus metrics.ts (Feld topTreffer). */
   erfuelltSchwellen: boolean;
-  /** MietQuelle aus rentEstimate.ts. Nur "angegeben" gilt als belegt. */
+  /**
+   * MietQuelle aus rentEstimate.ts. Nur "angegeben" gilt als belegt,
+   * "geschaetzt_regional" (PLZ-genau) als gut genug fuer eine Nachricht.
+   */
   mietQuelle: string;
   /** ISO-Zeitpunkt des Versteigerungstermins, null bei Nicht-ZVG-Quellen. */
   auctionAt: string | null;
@@ -28,6 +31,17 @@ export interface MeldeklassenEingabe {
  * rechnerisch eher ein verkappter Quadratmeterpreis-Vergleich als eine
  * Rendite -- deshalb landen sie in einer eigenen Klasse, statt still
  * unterdrueckt oder wie belegte Zahlen behandelt zu werden.
+ *
+ * SEIT DEM 2026-09-22 gilt zusaetzlich eine Sperre ab PLZ-Stufe
+ * (Entscheidung des Nutzers): verschickt wird nur bei `angegeben` oder
+ * `geschaetzt_regional`. `geschaetzt_bundesland` und `geschaetzt_bundesweit`
+ * sind zu grob -- bundesweit ist EIN Wert fuer ganz Deutschland, und eine
+ * daraus gerechnete Rendite traegt keine Nachricht.
+ *
+ * WAS DIE SPERRE NICHT TUT: Sie blendet nichts aus dem Dashboard aus. Dessen
+ * `trefferklasse` kommt aus `bestimmeTrefferklasse` in lib/snapshot.ts und
+ * haengt an den Kennzahlen, nicht an dieser Funktion. Die Objekte bleiben
+ * sichtbar und auffindbar, sie klingeln nur nicht mehr.
  */
 export function bestimmeMeldeklasse(eingabe: MeldeklassenEingabe): Meldeklasse {
   if (!eingabe.erfuelltSchwellen) return "keine";
@@ -41,7 +55,11 @@ export function bestimmeMeldeklasse(eingabe: MeldeklassenEingabe): Meldeklasse {
     }
   }
 
-  return eingabe.mietQuelle === "angegeben" ? "top_treffer" : "pruefkandidat";
+  // MELDESPERRE AB PLZ-STUFE. Eine Auswahlliste, keine Ausschlussliste:
+  // eine Quelle, die hier nicht steht, meldet nicht.
+  if (eingabe.mietQuelle === "angegeben") return "top_treffer";
+  if (eingabe.mietQuelle === "geschaetzt_regional") return "pruefkandidat";
+  return "keine";
 }
 
 /** true, wenn `a` einen echten Aufstieg gegenueber `b` darstellt. */

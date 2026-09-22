@@ -87,6 +87,15 @@ export function mietstufeFuerQuelle(quelle: MietQuelle): Mietstufe {
  * Auf `MAX_MELDUNGEN_JE_LAUF` gesetzt verhaelt sich das Budget exakt wie vor
  * dieser Aenderung -- die Sicherheitsleine, unter Test in
  * meldebudget.test.ts.
+ *
+ * SEIT DEM 2026-09-22 LAEUFT HIER NICHTS MEHR AN. Der Nutzer hat entschieden,
+ * dass die Stufe `nur_landesweit` gar nicht mehr verschickt wird;
+ * `bestimmeMeldeklasse` in lib/meldung.ts gibt dafuer "keine" zurueck, lange
+ * bevor das Budget gefragt wird. Das Kontingent bleibt absichtlich stehen:
+ * Es ist die Drosselung, die greifen muss, falls die Sperre je gelockert
+ * wird -- die Masse (339 von 409 Kandidaten) verschwindet durch die Sperre
+ * nicht, sie wird nur nicht mehr verschickt. Wer die Sperre lockert, findet
+ * die Begruendung fuer das Mass hier und muss sie nicht neu messen.
  */
 export const KONTINGENT_NUR_LANDESWEIT = 5;
 

@@ -309,9 +309,17 @@ describe("processCandidate — Reihenfolge von Versand und Protokoll", () => {
    * jemand Produktionscode angefasst hatte. Ein Test, der am Kalender haengt,
    * meldet einen Fehler, den es nicht gibt, und verdeckt den, den es gibt.
    */
+  /**
+   * DIE PLZ IST PFLICHT, seit die Meldesperre ab PLZ-Stufe gilt (2026-09-22).
+   * Ohne sie schaetzt `ermittleJahreskaltmiete` nur bundeslandgenau, und
+   * `bestimmeMeldeklasse` gibt dann "keine" zurueck -- diese vier Tests
+   * pruefen die Reihenfolge von Versand und Protokoll und wuerden sonst
+   * gruen sein, ohne je gesendet zu haben.
+   */
   const MELDEWUERDIG: PipelineCandidate = {
     ...BASIS_KANDIDAT,
     priceCents: 150_000_00,
+    zipCode: "04103",
     auctionAt: new Date(Date.now() + 30 * 24 * 3_600_000).toISOString(),
   };
 
@@ -392,68 +400,59 @@ describe("processCandidate — Reihenfolge von Versand und Protokoll", () => {
   });
 
   /**
-   * Der Aufrufort des Kontingents (Abnahmekriterium D-5). Das Budget selbst
-   * ist in meldebudget.test.ts geprueft -- hier geht es allein darum, dass
-   * processCandidate die RICHTIGE Stufe herausreicht. Ohne diesen Test waere
-   * `darfSenden()` ohne Argument oder eine vertauschte Zuordnung eine gruene
-   * Suite: genau die Art Fehler, an der dieses Projekt schon einmal
-   * vorbeigelaufen ist.
-   *
    * Die beiden Kandidaten unterscheiden sich NUR im Ortsbezug:
    *  - ohne PLZ, aber mit Fundort "sn" -> MietQuelle geschaetzt_bundesland
    *  - mit PLZ 04103                   -> MietQuelle geschaetzt_regional
    */
-  const NUR_LANDESWEIT: PipelineCandidate = { ...MELDEWUERDIG, fundort: "sn" };
-  const PLZ_GENAU: PipelineCandidate = {
-    ...MELDEWUERDIG,
-    externalId: "sn-40909",
-    zipCode: "04103",
-  };
+  const NUR_LANDESWEIT: PipelineCandidate = { ...MELDEWUERDIG, fundort: "sn", zipCode: "" };
+  const PLZ_GENAU: PipelineCandidate = { ...MELDEWUERDIG, externalId: "sn-40909" };
 
-  it("stellt eine nur landesweit geschaetzte Meldung zurueck, waehrend eine PLZ-genaue durchgeht", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => telegramAntwort(200, { ok: true, result: { message_id: 4711 } }))
+  /**
+   * DIE MELDESPERRE AB PLZ-STUFE, am Aufrufort geprueft (2026-09-22).
+   *
+   * Bis zu diesem Tag stand hier das Gegenteil: eine nur landesweit
+   * geschaetzte Meldung wurde ZURUECKGESTELLT und am Laufende nachgeholt
+   * (Kontingent `KONTINGENT_NUR_LANDESWEIT`). Der Nutzer hat entschieden,
+   * dass diese Stufe gar nicht mehr verschickt wird -- ein einziger
+   * Mietwert fuer ein ganzes Bundesland traegt keine Nachricht. Damit ist
+   * die Drosselung nicht mehr die Wache, sondern `bestimmeMeldeklasse`.
+   *
+   * Das Budget ist hier bewusst WEIT OFFEN. Bliebe die Meldung nur wegen
+   * eines knappen Budgets aus, wuerde der Test die Sperre gar nicht pruefen.
+   */
+  it("verschickt eine nur landesweit geschaetzte Meldung ueberhaupt nicht", async () => {
+    const fetchSpy = vi.fn(async () =>
+      telegramAntwort(200, { ok: true, result: { message_id: 4711 } })
     );
-    // Kontingent 0: die landesweite Stufe hat keinen eigenen Platz, das
-    // Gesamtbudget dagegen ist weit offen. Sendet sie trotzdem, liest der
-    // Aufrufort die Stufe nicht.
-    const budget = erstelleMeldebudget(5, 0);
+    vi.stubGlobal("fetch", fetchSpy);
+    const budget = erstelleMeldebudget(5, 5);
     const protokoll: Record<string, unknown>[] = [];
 
     await processCandidate(meldeAttrappe(protokoll), TELEGRAM_ATTRAPPE, NUR_LANDESWEIT, budget);
 
     expect(protokoll).toEqual([]);
-    expect(budget.zurueckgestellt()).toBe(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    // Nicht zurueckgestellt, sondern verworfen: nichts wartet auf ein
+    // Nachholen am Laufende.
+    expect(budget.zurueckgestellt()).toBe(0);
     expect(budget.verbraucht()).toBe(0);
+
+    await budget.holeNach();
+    expect(protokoll).toEqual([]);
+  });
+
+  it("verschickt eine PLZ-genau geschaetzte Meldung weiterhin", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => telegramAntwort(200, { ok: true, result: { message_id: 4712 } }))
+    );
+    const budget = erstelleMeldebudget(5, 5);
+    const protokoll: Record<string, unknown>[] = [];
 
     await processCandidate(meldeAttrappe(protokoll), TELEGRAM_ATTRAPPE, PLZ_GENAU, budget);
 
     expect(protokoll).toHaveLength(1);
     expect(protokoll[0].kind).toBe("pruefkandidat");
     expect(budget.verbraucht()).toBe(1);
-  });
-
-  it("holt eine zurueckgestellte landesweite Meldung am Ende des Laufs nach", async () => {
-    // Kein Platz darf verfallen: bleibt das Gesamtbudget ungenutzt, geht die
-    // zurueckgestellte Meldung doch noch raus -- mit Zeile in
-    // `notifications`, sonst waere sie nur verschoben.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => telegramAntwort(200, { ok: true, result: { message_id: 4712 } }))
-    );
-    const budget = erstelleMeldebudget(5, 0);
-    const protokoll: Record<string, unknown>[] = [];
-
-    await processCandidate(meldeAttrappe(protokoll), TELEGRAM_ATTRAPPE, NUR_LANDESWEIT, budget);
-    expect(protokoll).toEqual([]);
-
-    await budget.holeNach();
-
-    expect(protokoll).toHaveLength(1);
-    expect(protokoll[0].kind).toBe("pruefkandidat");
-    expect(protokoll[0].detail).toMatchObject({ telegramMessageId: 4712 });
-    expect(budget.verbraucht()).toBe(1);
-    expect(budget.zurueckgestellt()).toBe(0);
   });
 });

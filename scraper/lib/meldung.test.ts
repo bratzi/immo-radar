@@ -26,7 +26,26 @@ describe("bestimmeMeldeklasse", () => {
     ).toBe("pruefkandidat");
   });
 
-  it("liefert pruefkandidat bei bundesweit geschaetzter Miete", () => {
+  // MELDESPERRE AB PLZ-STUFE (Entscheidung des Nutzers, 2026-09-22).
+  // Gemeldet wird nur, wenn die Miete belegt oder wenigstens PLZ-genau
+  // geschaetzt ist. `geschaetzt_bundesland` und `geschaetzt_bundesweit` sind
+  // zu grob, um eine Nachricht zu rechtfertigen -- bundesweit ist ein
+  // einziger Wert fuer ganz Deutschland. Die Objekte verschwinden dadurch
+  // NICHT: `trefferklasse` im Dashboard kommt aus `bestimmeTrefferklasse`
+  // und haengt nicht an der Meldeklasse. Sie werden nur nicht mehr
+  // verschickt.
+  it("meldet nicht, wenn die Miete nur bundeslandweit geschaetzt ist", () => {
+    expect(
+      bestimmeMeldeklasse({
+        erfuelltSchwellen: true,
+        mietQuelle: "geschaetzt_bundesland",
+        auctionAt: null,
+        jetzt: JETZT,
+      })
+    ).toBe("keine");
+  });
+
+  it("meldet nicht, wenn die Miete nur bundesweit geschaetzt ist", () => {
     expect(
       bestimmeMeldeklasse({
         erfuelltSchwellen: true,
@@ -34,7 +53,21 @@ describe("bestimmeMeldeklasse", () => {
         auctionAt: null,
         jetzt: JETZT,
       })
-    ).toBe("pruefkandidat");
+    ).toBe("keine");
+  });
+
+  it("meldet nicht bei einer unbekannten Mietquelle", () => {
+    // Fail-closed: eine Quelle, die diese Funktion nicht kennt, ist kein
+    // Grund zu melden. Waere die Sperre als Ausschlussliste gebaut, wuerde
+    // eine spaeter ergaenzte, noch groebere Schaetzstufe still durchrutschen.
+    expect(
+      bestimmeMeldeklasse({
+        erfuelltSchwellen: true,
+        mietQuelle: "geschaetzt_kontinental",
+        auctionAt: null,
+        jetzt: JETZT,
+      })
+    ).toBe("keine");
   });
 
   it("liefert keine, wenn die Schwellen nicht erfuellt sind", () => {
