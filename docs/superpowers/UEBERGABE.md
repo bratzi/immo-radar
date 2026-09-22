@@ -1,3 +1,105 @@
+# Übergabe — Stand 2026-09-22 (B7-1 angefangen, Task 1 von 6 fertig)
+
+## ZUERST LESEN: B7-1 läuft auf einem eigenen Branch, Task 1 von 6 ist fertig
+
+**Nichts davon ist in `main`.** Die Arbeit liegt auf dem Branch
+`sdd/b7-1-filterzustand-url` (auf `origin` gesichert), im Worktree
+`.worktrees/b7-1-filter-url`.
+
+| | |
+|---|---|
+| Spec | `docs/superpowers/specs/2026-09-22-filterzustand-in-der-url-design.md` |
+| Plan | `docs/superpowers/plans/2026-09-22-filterzustand-in-der-url.md` |
+| Fertig | **Task 1** (`5781379`, Fix `5953afa`) — Spec ✅, Prüfung sauber |
+| Offen | Task 2 bis 6 |
+| Stand im Worktree | 214 Tests bestanden, 1 übersprungen, `tsc` sauber |
+
+**Der Worktree ist nicht ohne Vorbereitung benutzbar.** Zwei Dinge fehlen
+dort, weil sie git-ignoriert sind:
+
+```bash
+# 1. node_modules (Junction, kein npm ci -- das hat zweimal das Heimnetz lahmgelegt)
+cd .worktrees/b7-1-filter-url && bash scripts/worktree-node-modules.sh
+```
+
+```powershell
+# 2. Die Snapshot-Datei, sonst ueberspringt der Vertragstest still 10 Faelle
+New-Item -ItemType HardLink `
+  -Path "C:/immo-radar/.worktrees/b7-1-filter-url/web/public/dashboard-snapshot.json" `
+  -Target "C:/immo-radar/web/public/dashboard-snapshot.json"
+```
+
+Ohne Schritt 2 meldet die Web-Suite **202 bestanden / 10 übersprungen** statt
+211 / 1 — und sieht dabei grün aus. Das war in dieser Sitzung gemessen, nicht
+vermutet.
+
+## Die Entscheidungen, die ich stellvertretend getroffen habe
+
+Sie standen im SDD-Ledger, und das ist git-ignoriert. Deshalb hier, mit dem,
+was sie kosten, falls sie falsch sind.
+
+1. **Task 5 nennt `objekteMitRang.length` — die Variable gibt es nicht.** Die
+   vier Bereiche bekommen `gliederung.top`, `.normal`, `.nichtBeurteilbar`,
+   `.abgaenge`. Es ist je Bereich die Länge **derselben** Liste zu übergeben,
+   die er als `objekte` erhält. *Kostet bei Irrtum:* Der Leertext spräche über
+   eine andere Menge, als der Bereich zeigt — fällt in der Handprobe auf.
+2. **`React.ReactNode` in Task 5 wird zu `import type { ReactNode }`**, weil
+   `App.tsx` React nicht importiert. *Kostet bei Irrtum:* nichts, `tsc` meldet
+   es sofort.
+3. **`ausSuchstring` baut den Filter mit `{ ...LEERER_FILTER }`** und kopiert
+   damit Referenzen auf dessen sechs Listen. Bleibt so, weil keine Stelle im
+   Bestand eine Filterliste an Ort und Stelle ändert. *Kostet bei Irrtum:* Wer
+   künftig in eine Filterliste hineinschreibt, verändert `LEERER_FILTER` für
+   die ganze Sitzung.
+4. **Der Brief-Code kompilierte nicht** — `Filter` ist ein Interface ohne
+   Index-Signatur, `as Record<string, unknown>` scheitert mit TS2352. Der
+   doppelte Umweg `as unknown as …` steht. *Kostet bei Irrtum:* nichts am
+   Verhalten; ein Prüfer darf den Umweg als Geruch melden.
+5. **Der Rot-Beleg des Plans war falsch begründet** — siehe den nächsten
+   Abschnitt. *Kostet bei Irrtum:* nichts am Code, aber ein späterer Leser
+   vertraute dem falschen Test.
+6. **Das Komma-Problem wurde behoben, nicht geparkt.** Ein Komma innerhalb
+   eines Listenwerts zerlegte den Rückweg; die `datenluecken`-Werte sind ganze
+   deutsche Sätze, ein Komma ist eine Formulierung entfernt. *Kostet bei
+   Irrtum:* Das Adressformat schreibt Leerzeichen als `%20` statt `+`. Heute
+   gratis, weil die Funktion nicht ausgeliefert ist.
+
+## Der Befund, der die Testbegründung umgeworfen hat
+
+Spec Abschnitt 9 und der Plan behaupten, der **Hin- und Rückweg** fange ein
+vergessenes Feld. **Er tut es nicht.** Der Testfilter `vollerFilter()` leitet
+sich aus derselben Tabelle `FELDER` ab, die er prüfen soll — fehlt dort ein
+Feld, verschwindet es auf beiden Seiten zugleich und der Vergleich bleibt
+zufällig konsistent. Belegt: Entfernt man `baujahrBis` aus `FELDER`, schlägt
+**nur** „kennt jedes Feld des Filters" fehl.
+
+Die tragende Wache ist der **Typprüfer** (`Record<keyof Filter, …>` meldet ein
+fehlendes Feld mit TS2741), dazu der Vollständigkeitstest. Beide sind
+vorhanden. **Nur die Begründung in Spec und Plan ist falsch und gehört in
+Task 6 richtiggestellt.**
+
+## Was als Nächstes zu tun ist
+
+1. **Task 2 fortsetzen.** Der Brief liegt unter
+   `.superpowers/sdd/2026-09-22-filterzustand-in-der-url/task-2-brief.md`
+   (git-ignoriert; neu erzeugbar mit dem `task-brief`-Skript des Skills
+   `superpowers:subagent-driven-development`). Basis für den nächsten Diff:
+   `5953afa`.
+2. Danach Task 3 bis 6 nach Plan. **Task 3 bis 5 haben keinen automatischen
+   Test** — `web/` hat keine Komponententests. Ihr Beweis sind `tsc`, die
+   Suite und die im Plan ausgeschriebenen Handproben.
+3. Beim Aufräumen des Worktrees: erst Prozesse beenden, dann die Junction
+   lösen, dann löschen.
+
+## Ein aufgeschobener Kleinbefund
+
+Eine von Hand in die Adresse getippte **rohe** `+` bleibt bei Listenfeldern
+ein literales Plus, während `URLSearchParams` sie bei den übrigen Feldarten
+als Leerzeichen liest. Das Modul erzeugt nie ein rohes `+` (immer `%2B`), der
+eigene Rundweg ist also dicht. Betrifft nur handbearbeitete Adressen.
+
+---
+
 # Übergabe — Stand 2026-09-21 (sechste Sitzung des Tages)
 
 ## ZUERST LESEN: A16 ist abgenommen — die Migration lief, der Beleg steht
