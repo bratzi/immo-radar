@@ -33,6 +33,74 @@ Gelten für **jede** Aufgabe hier, deshalb nur einmal genannt:
 
 ---
 
+## Sieben Entscheidungen des Nutzers vom 2026-09-22
+
+Sie wurden einzeln vorgelegt und einzeln beantwortet. Hier stehen sie mit der
+Begründung, damit niemand sie später aus dem Code zurückraten muss.
+
+| # | Frage | Entscheidung | Stand |
+|---|---|---|---|
+| 1 | Immowelt-Detailseiten lokal testen? | **Ja, lokal messen — höchstens 200 Objekte.** Nicht bundesweit: ein voller Lauf hat das Heimnetz zweimal lahmgelegt. | offen, Skript noch zu bauen |
+| 2 | Grob geschätzte Mieten weiter per Telegram melden? | **Nein.** Gemeldet wird nur ab PLZ-Stufe (`angegeben`, `geschaetzt_regional`). Gröberes ist nur noch im Dashboard sichtbar. | **umgesetzt** (`2f8d037`) |
+| 3 | Regionsrotation beibehalten? | **Ja** — aber erst nach Prüfung. Siehe unten. | geprüft, bleibt |
+| 4 | Objekte mit vergangenem Versteigerungstermin löschen? | **Ja, vollständig.** Für ZVG passiert das bereits; für Immowelt ist es **B13**. | teils erledigt, Rest B13 |
+| 5 | Die 169 Objekte unter 25.000 € korrigieren? | **Nein, erst messen.** Messung siehe unten. | **gemessen** |
+| 6 | Cloudflare-MCP jetzt freischalten? | **Später**, zuerst die großen Punkte. | zurückgestellt |
+| 7 | Deckt die Meldesperre auch `geschaetzt_bundesweit`? | **Ja, beide sperren.** Regel: ab PLZ-Stufe. | **umgesetzt** (`2f8d037`) |
+
+### Zu 3: Die Regionsrotation bleibt — aber aus einem anderen Grund als gedacht
+
+Der Nutzer hat die Vermutung geäußert, das CAPTCHA reagiere auf **Gesamtabrufe
+je Zeitfenster**, nicht auf die Regionsauswahl — und wenn die Rotation nur
+verkompliziere, solle sie raus. **Die Vermutung trifft zu.** Die Rotation
+ändert nur die *Reihenfolge* der Regionen, nicht die Zahl der Abrufe; sie kann
+zur CAPTCHA-Vermeidung nichts beitragen. Das Argument „Rotation schützt vor
+DataDome" ist damit hinfällig.
+
+**Sie bleibt trotzdem**, weil ihr belegter Nutzen ein anderer ist:
+`sweepStartVersatz` (`lib/bestand.ts:432`) wählt die am längsten nicht
+erfasste Region statt der Uhrzeit. Monte-Carlo über 3.000 Durchläufe: bis drei
+Referenzläufe je Region **5,7 statt 13,1 Tage** im Median, 90. Perzentil
+**7,6 statt 20,2** — **ohne einen einzigen zusätzlichen Abruf**. Faktor 2,3
+bei gleichen Kosten. Zusätzlich heilt sie sich selbst, wenn ein Cron-Termin
+ausfällt (43 % tun das, A10): die übersprungene Region steht beim nächsten
+Lauf ganz oben, statt bis zu ihrem nächsten Uhrzeit-Slot zu warten.
+
+### Zu 5: Die 169 Objekte unter 25.000 € sind **kein** Parserfehler
+
+Gemessen am 2026-09-22 gegen den Snapshot vom 2026-09-18 (21.897 Objekte):
+
+```
+unter 25.000 €                                   169   (immowelt 161, zvg 8)
+davon Preis im Titel == gespeicherter Preis      151
+davon kein Preis im Titel                         18
+davon Abweichung Titel/Feld                        0   <- entscheidend
+davon trefferklasse "top"                          0
+Verteilung: <1.000 € 14 | 1.000–5.000 € 14 | 5.000–10.000 € 32 | 10.000–25.000 € 109
+```
+
+**Null Abweichungen.** Der Scraper überträgt exakt das, was die Seite anzeigt
+— der falsche Betrag steht bereits bei Immowelt. Die Größenordnung verrät,
+was er meist ist: `595 € bei 141,4 m²` sind 4,21 €/m² **im Monat**, also eine
+Miete im Kaufpreisfeld. Auch der alte Bekannte aus dem Kommentar in
+`lib/metrics.ts` (`2.840 € für 198,8 m²`, Objekt `2f41102f`) steht so im
+Titel.
+
+**Zwei Folgerungen.** Erstens: An `parseGermanNumber` oder am Detailparser ist
+hier nichts zu reparieren — eine „Korrektur" hieße, eine Zahl zu erfinden, die
+die Quelle nicht hergibt. Zweitens: **Die vorhandene Wache greift bereits.**
+Keines der 169 Objekte trägt `trefferklasse: "top"`;
+`MIN_PLAUSIBLER_KAUFPREISFAKTOR` fängt sie ab. Der Vorfall vom 2026-09-07, bei
+dem so ein Objekt eine Meldung auslöste, kann sich nicht wiederholen.
+
+**Bleibt offen (klein, kein Vorrang):** Die 14 Objekte unter 1.000 € enthalten
+sichtbare Dubletten — „Mehrfamilienhaus zum Kauf - Höxter - 200 €" steht
+fünfmal da, „800 €" dreimal, jeweils ohne Wohnfläche. Ob das echte
+Doppelanzeigen bei Immowelt sind oder eine Eigenart der Erfassung, ist **nicht
+gemessen**.
+
+---
+
 # Teil A — Sofort ausführbar
 
 ## A1. Immowelt-Detailerfassung liefert nichts — ERLEDIGT (2026-09-08)
@@ -224,7 +292,7 @@ ein schlechteres Verhältnis als bei ZVG.
 
 ---
 
-## A6. ZVG-Verkehrswert: die Quelle nennt in 3 von 194 Fällen keine Zahl
+## A6. ZVG-Verkehrswert: die Quelle nennt in 3 von 194 Fällen keine Zahl — PHANTOMWERT ERLEDIGT (2026-09-22)
 
 **Gemessen am 2026-09-08 (Schritt 1). Der Verdacht „falsche Zelle" ist
 widerlegt.** Der Parser greift die richtige Zelle; in diesen drei Bekannt-
@@ -297,6 +365,33 @@ lügen. Der falsche Wert aus dem Lauf davor steht aber noch da und wird nie
 Nachgerechnet über alle 193 gespeicherten ZVG-Objekte: der heutige Parser
 liefert in **192** Fällen exakt den gespeicherten Wert. Der eine Abweichler
 ist genau dieser Phantomwert.
+
+**ERLEDIGT durch Zeitablauf — nachgemessen am 2026-09-22 (reine Lesequery
+gegen die Live-Datenbank).** Der Phantomwert ist **weg**. `zvg_id=13233`
+kommt in `listings` nicht mehr vor (0 Treffer auf `url ilike '%13233%'`), und
+auch im ausgelieferten Snapshot vom 2026-09-18 steht das Objekt nicht mehr.
+Die Begründung „wird nie überschrieben, weil das Objekt nie wieder erfasst
+wird" hat sich selbst überholt: der Termin am 23. September 2026 rückte in
+die Vergangenheit, das Objekt verschwand aus der Terminliste, wurde abgängig
+markiert und nach Ablauf der Karenz samt seinen `listing_versions` hart
+gelöscht — genau der Weg, den `loescheAbgelaufene` für Quellen mit
+Löschhoheit vorsieht.
+
+**Damit ist die Entscheidung, die A6 offen hatte, gegenstandslos**: es gibt
+keinen falschen Wert mehr zu korrigieren. Was bleibt, ist die
+*Quelleneigenschaft* — dass Gerichte den Verkehrswert gelegentlich auslassen
+—, und dafür ist der heutige Umgang bereits richtig: `parseZvgDetailPage`
+wirft, es wird nichts geschrieben, und nichts wird erfunden.
+
+Der Bestand an ZVG-Objekten steht am 2026-09-22 bei **188**; davon haben 183
+einen Termin in der Zukunft, 3 gar keinen und **2** einen vergangenen — die
+beiden sind in der Karenz und verschwinden von selbst.
+
+**Eine Falle bei dieser Messung, für den nächsten, der sie wiederholt:**
+`auction_at` steht **nicht** in `listings`, sondern in `listing_versions`.
+Eine PostgREST-Abfrage, die auf `listings.auction_at` filtert, liefert
+`count = null` **ohne Fehlermeldung** — also „kein Ergebnis", das sich wie
+„keine Treffer" liest. Wer so misst, misst nichts und merkt es nicht.
 
 ### Nebenbefund: die Verkehrswertzelle ist oft mehrteilig — und das trägt
 
@@ -1335,13 +1430,29 @@ Implementierungsrunde zu machen. Hierher geroutet, wie im Ledger vermerkt.
   demselben Muster wie die Nachbarn (eine gemerkte Variable statt einer Map,
   weil die Funktion kein Argument hat); Referenzgleichheits-Test (`toBe`)
   belegt, dass zwei Aufrufe jetzt dasselbe Objekt liefern.
-- [ ] **Ungenannte Grenzfälle der finalen Gesamtprüfung — OFFEN.** Der
-  Prüfbericht nennt in der Kurzfassung „Grenzfälle unfixiert", ohne sie im
-  Ledger einzeln auszuschreiben. Vor einer Bearbeitung zuerst das Diff
-  `.superpowers/sdd/2026-09-14-ranking-schritt2-abschluss/review-e4492a2..96f3528.diff`
-  und die Fundstelle im Sitzungsprotokoll der finalen Gesamtprüfung
-  nachschlagen — hier nicht aus der Erinnerung nacherzählt, um nichts zu
-  erfinden. Ohne den Originalbericht nicht bearbeitbar (Stand 2026-09-15).
+- [ ] **Ungenannte Grenzfälle der finalen Gesamtprüfung — OFFEN, aber
+  bearbeitbar.** Der Prüfbericht nennt in der Kurzfassung „Grenzfälle
+  unfixiert", ohne sie im Ledger einzeln auszuschreiben.
+
+  **Berichtigung vom 2026-09-22: Die Sperre „ohne den Originalbericht nicht
+  bearbeitbar (Stand 2026-09-15)" ist hinfällig — der Bericht liegt vor.** Er
+  steht in
+  `.superpowers/sdd/2026-09-14-ranking-schritt2-abschluss/final-fixwave-report.md`
+  und benennt die vier zurückgestellten Kleinigkeiten ausdrücklich (Zeilen
+  72–75): *unpinned boundary cases*, die `undefined`-vs-`null`-Behandlung von
+  `disappearedAt`, die fehlende Memoisierung von `mietSpanneBundesweit` und
+  die doppelte `1.3`. Drei davon sind oben abgehakt. **„Grenzfälle" meint
+  also allein den ersten Punkt: Schwellenwerte, die kein Test festnagelt.**
+
+  Damit ist die Aufgabe konkret: für jede Schwelle, an der die Bewertung
+  kippt (`MAX_PLAUSIBLER_KAUFPREISFAKTOR`, `MIN_PLAUSIBLER_KAUFPREISFAKTOR`,
+  `DSCR_MELDESCHWELLE`, die Karenzgrenze), je ein Test genau **auf** dem Wert
+  und je einer knapp darüber und darunter. Ohne solche Tests lässt sich ein
+  `<` gegen ein `<=` tauschen, ohne dass die Suite rot wird — dieselbe Art
+  Fehler, die A17 überhaupt ausgelöst hat.
+
+  `.superpowers/` ist git-ignoriert: der Bericht liegt nur lokal und ist nicht
+  Teil des Repositoriums.
 
 **Abnahme:** je Punkt ein eigener, zuerst rot gesehener Test, dann die
 minimale Behebung — wie überall in diesem Projekt. Für die drei erledigten
@@ -1501,6 +1612,11 @@ unter `docs/superpowers/specs/` → `superpowers:writing-plans` → Umsetzung.
 > reparierter Trefferzahl erlaubt die 25-%-Toleranz einen Lauf mit 75 %
 > Ausbeute — **bis zu 1.724** echte Objekte in einem Zug. Gelöschte Zeilen sind
 > weg, ausgegraute nicht.
+>
+> **ÜBERHOLT AM 2026-09-22 durch eine Entscheidung des Nutzers.** Immowelt
+> soll harte Löschhoheit bekommen. Der Weg dorthin ist aber **nicht** der
+> Eintrag in `QUELLEN_MIT_LOESCHHOHEIT` — siehe **B13**, wo auch steht, warum
+> genau dieser Eintrag das Gegenteil bewirkt hätte.
 >
 > **Alle drei Fail-open-Stellen sind geschlossen** (2026-09-09).
 > `istRegionVollstaendig`: `null` heißt jetzt **unvollständig** — die Folge
@@ -2517,6 +2633,80 @@ Browserstart. Vorher nicht.
 **Offen und ungeprüft:** Die Paginierung per POST. `&seite=` allein
 genügt nicht; das JavaScript der Seite reicht zusätzlich `l`, `r` und
 `all` mit, deren Herkunft nicht untersucht wurde.
+
+
+
+## B13. Immowelt-Abgänge wirklich löschen — Markierung und Löschhoheit trennen
+
+**Entscheidung des Nutzers vom 2026-09-22.** Abgängige Immowelt-Objekte sollen
+nach einer Karenz **hart gelöscht** werden, nicht dauerhaft als Karteileichen
+stehenbleiben. Gemessen am selben Tag gegen die Live-Datenbank: **23.333**
+Immowelt-Zeilen, davon **1.455 abgängig markiert** — keine davon wird je
+gelöscht. Bei ZVG (188 Zeilen, 5 markiert) passiert genau das Richtige, weil
+`zvg-portal` als einzige Quelle in der Erlaubnisliste steht.
+
+### Die Falle, die vor dem Entwurf steht
+
+Der naheliegende Griff — „immowelt" in `QUELLEN_MIT_LOESCHHOHEIT`
+(`lib/bestandDb.ts:238`) eintragen — bewirkt **das Gegenteil des Ziels**.
+`ermittleMarkierungen` (`lib/bestand.ts:246`) verzweigt heute an *einem*
+Schalter:
+
+```ts
+if (befugnis.hatLoeschhoheit) {
+  if (!befugnis.quellenPruefungBestanden) return [];   // <- hier landet Immowelt
+  return ermittleAbgaenge(sweep, bekannte);
+}
+return nichtMehrGesehen(sweep, bekannte);              // <- der heutige Immowelt-Weg
+```
+
+`quellenPruefungBestanden` kommt aus `pruefeMengenplausibilitaet`
+(`lib/plausibilitaet.ts:56`), und die antwortet für Immowelt **immer**
+`loeschenErlaubt: false`, weil `vollstaendig` in
+`scrapers/immowelt/index.ts` (Zeilen 738 und 778) fest auf `false` steht.
+Folge: `return []` — Immowelt bekäme **gar keine Markierungen mehr**. Nach
+einer einmaligen Löschwelle der heute markierten 1.455 Objekte wäre der
+Abgangserkennung für Immowelt dauerhaft der Boden entzogen.
+
+**Der Schalter trägt zwei Fragen, die nichts miteinander zu tun haben:**
+
+1. *Darf ich markieren, und woran erkenne ich einen Abgang?* Immowelt braucht
+   dafür den Regionsnachweis (`nichtMehrGesehen`: nicht gesehen **in einer
+   Region, die dieser Lauf vollständig erfasst hat**). Dieser Nachweis ist
+   die Wache und **bleibt unverändert**.
+2. *Darf eine bereits markierte Zeile nach Ablauf der Karenz verschwinden?*
+   Das ist die neue Freigabe — und sie hängt an der Markierung, die der
+   Regionsnachweis bereits gedeckt hat, nicht an einem zweiten Mengenurteil.
+
+### Was zu entwerfen ist
+
+- Die Befugnis in **zwei** Merkmale zerlegen, etwa `darfMarkieren` und
+  `darfHartLoeschen`. Immowelt: markieren wie bisher über den
+  Regionsnachweis, hart löschen **ja**. ZVG: unverändert.
+- **Karenz je Quelle.** `KARENZ_TAGE` (`lib/bestand.ts:4`) steht bei **2** und
+  passt zu ZVG, wo ein vergangener Termin das Objekt endgültig erledigt. Für
+  Immowelt hat der Nutzer **14 Tage** entschieden: eine Anzeige kann pausieren
+  und zurückkehren, und `ermittleRueckkehrer` nimmt die Markierung dann
+  zurück. Aus einer Konstanten wird damit eine Zuordnung Quelle → Tage.
+- Die Kaskade in `loescheAbgelaufene` (`lib/bestandDb.ts:270`) trifft
+  `listing_versions` und `notifications` mit. Bei 1.455 Zeilen in der ersten
+  Welle ist das kein Randfall: der Entwurf muss sagen, ob die erste Löschung
+  gedrosselt oder in einem Zug läuft.
+
+### Randbedingungen, die nicht verhandelbar sind
+
+- **Wer nicht urteilen kann, löscht nicht.** Ein unbekannter Zustand ist
+  `null`/`false`, nie „in Ordnung". Das gilt für beide neuen Merkmale.
+- **Zuerst der Test, ihn rot sehen, dann die Umsetzung.** Insbesondere ein
+  Test, der festnagelt, dass Immowelt nach der Umstellung **weiterhin
+  markiert** — genau die Regression, die der naive Eintrag ausgelöst hätte.
+- Eine **Sabotageprobe** gehört dazu: den Regionsnachweis probeweise
+  entfernen und sehen, dass die Suite rot wird. Sonst beweist sie nichts.
+
+**Verhältnis zu B1:** B1 will regionsgenaues Löschen über die
+Mengenplausibilität je Partition. B13 braucht das **nicht** — die Markierung
+trägt den Ortsbezug bereits. B13 ist der kleinere, näher liegende Schritt; B1
+bleibt davon unberührt offen.
 
 
 # Teil C — Bewusst zurückgestellt
