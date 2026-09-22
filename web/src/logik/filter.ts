@@ -279,3 +279,25 @@ export function zaehleOhneAngabe(objekte: SnapshotObjekt[]): OhneAngabe {
 export function schalteEintrag<T>(liste: readonly T[], eintrag: T): T[] {
   return liste.includes(eintrag) ? liste.filter((e) => e !== eintrag) : [...liste, eintrag];
 }
+
+/** Warum eine Liste leer ist. `null`, solange sie es nicht ist. */
+export type Leergrund = "kein_bestand" | "filter_trifft_nichts";
+
+/**
+ * Unterscheidet die beiden Gruende fuer eine leere Liste.
+ *
+ * WARUM ES DIESE FUNKTION GIBT (B7-1): Seit der Filterzustand in der Adresse
+ * steht, kann ein verschickter Link auf 0 Objekte zeigen. Der Empfaenger
+ * darf das nicht als leeren Bestand lesen. Die Entscheidung steht hier und
+ * nicht in der Komponente, damit sie ohne Browser pruefbar ist -- `web/`
+ * hat keine Komponententests.
+ */
+export function leergrund(
+  gefiltert: number,
+  gesamt: number,
+  filterAktiv: boolean
+): Leergrund | null {
+  if (gefiltert > 0) return null;
+  if (gesamt === 0) return "kein_bestand";
+  return filterAktiv ? "filter_trifft_nichts" : "kein_bestand";
+}

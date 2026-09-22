@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SnapshotObjekt } from "../daten/snapshot.ts";
-import { LEERER_FILTER, wendeFilterAn, zaehleOhneAngabe, istFilterAktiv, schalteEintrag, inBundeslandAuswahl, OHNE_REGION } from "./filter.ts";
+import { LEERER_FILTER, wendeFilterAn, zaehleOhneAngabe, istFilterAktiv, schalteEintrag, inBundeslandAuswahl, OHNE_REGION, leergrund } from "./filter.ts";
 
 function objekt(teil: Partial<SnapshotObjekt> = {}): SnapshotObjekt {
   return {
@@ -354,5 +354,34 @@ describe("wendeFilterAn — Objekte ohne Region", () => {
 
   it("zaehlt den Merkwert als aktiven Filter", () => {
     expect(istFilterAktiv({ ...LEERER_FILTER, bundeslaender: [OHNE_REGION] })).toBe(true);
+  });
+});
+
+describe("leergrund", () => {
+  // WARUM: Eine leere Liste hat zwei sehr verschiedene Gruende. "Es gibt
+  // nichts" und "deine Auswahl trifft nichts" duerfen nicht denselben Satz
+  // bekommen -- sonst sieht ein verschickter Link, der ins Leere zeigt, aus
+  // wie ein leerer Bestand.
+
+  it("nennt keinen Grund, solange etwas uebrig bleibt", () => {
+    expect(leergrund(3, 100, true)).toBeNull();
+  });
+
+  it("nennt den leeren Bestand, wenn es ueberhaupt nichts gibt", () => {
+    expect(leergrund(0, 0, false)).toBe("kein_bestand");
+  });
+
+  it("nennt den leeren Bestand auch dann, wenn ein Filter aktiv ist", () => {
+    // Bei null Objekten insgesamt ist der Filter nicht die Ursache.
+    expect(leergrund(0, 0, true)).toBe("kein_bestand");
+  });
+
+  it("nennt den Filter, wenn es Objekte gibt und die Auswahl nichts trifft", () => {
+    expect(leergrund(0, 100, true)).toBe("filter_trifft_nichts");
+  });
+
+  it("nennt den leeren Bestand, wenn ohne Filter nichts uebrig bleibt", () => {
+    // Kann der Bereich selbst ausschliessen (z. B. "nur mit Rangzahl").
+    expect(leergrund(0, 100, false)).toBe("kein_bestand");
   });
 });
