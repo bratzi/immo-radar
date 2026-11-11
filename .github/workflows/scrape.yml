@@ -1,68 +1,35 @@
 name: scrape
 
+# Muenchen-Miete (Spec 2026-11-11, Abschnitt 2 Entscheidung 5 und 11).
+# Takt nach Tageszeit, Zeiten in UTC (Winterzeit: Berlin = UTC+1; im Sommer
+# verschiebt sich alles um eine Stunde nach vorn, das ist hinnehmbar).
+# Minuten krumm gewaehlt, weil GitHub zur vollen Stunde ueberlastet ist und
+# geplante Laeufe nur nach bestem Bemuehen startet.
 on:
-  # Wieder aktiv seit dem Merge des Umbaus "vollstaendige Erfassung &
-  # Bestandsfuehrung" (2026-09-07). Waehrend des Umbaus war der Zeitplan
-  # pausiert, weil die Schema-Migration listings.is_active entfernt hatte und
-  # der damalige Code auf main das neue Schema noch nicht kannte.
-  #
-  # DREI STUNDEN SIND DAS SOLL, NICHT DAS IST. Gemessen ueber 23
-  # Soll-Termine (2026-09-05 bis 2026-09-08): 13 gelaufen, 10 ausgefallen --
-  # 43 % Ausfall; die gelaufenen kamen 8 bis 171 min zu spaet, Median rund
-  # 100. Real ist das ein Lauf je rund FUENF Stunden. Das ist kein Fehler
-  # dieses Projekts: GitHub fuehrt geplante Laeufe ausdruecklich nur nach
-  # bestem Bemuehen aus ("scheduled workflows ... best effort"). Dieselbe
-  # Groessenordnung unabhaengig gemessen in
-  # docs/superpowers/specs/2026-09-08-immowelt-abgaenge-optionen.md:
-  # 14 Laeufe in 70,1 h = 5,4 h je Lauf.
-  #
-  # Wer aus diesem Takt etwas ableitet -- Abdeckung je Tag, Abtragen von
-  # Rueckstaenden, "bis zum naechsten Lauf ist das folgenlos" -- rechnet mit
-  # fuenf Stunden.
-  #
-  # DIE MINUTE 23 IST ABSICHT (Entscheidung des Nutzers, 2026-09-22). Zur
-  # vollen Stunde startet ein Grossteil aller Zeitplaene auf GitHub
-  # gleichzeitig; der Andrang zu genau dieser Minute ist die einzige Ursache
-  # des Ausfalls, an die dieses Projekt ueberhaupt herankommt. Eine krumme
-  # Minute kostet nichts und aendert am Abstand von drei Stunden nichts.
-  #
-  # NOCH NICHT BELEGT: die 43 % oben sind zur Minute 0 gemessen. Ob die
-  # Verschiebung wirkt, zeigt erst eine erneute Messung ueber mindestens
-  # 20 Soll-Termine nach dem 2026-09-22. Bis dahin gilt weiter: ein Lauf je
-  # rund fuenf Stunden.
   schedule:
-    - cron: "23 */3 * * *"
+    # Mo-Fr 8-14 Uhr Berlin: alle 15 min (Hausverwaltungen)
+    - cron: "4,19,34,49 7-12 * * 1-5"
+    # taeglich 18-23 Uhr Berlin: alle 15 min (Privatvermieter)
+    - cron: "4,19,34,49 17-21 * * *"
+    # sonst 7-23 Uhr Berlin: alle 30 min
+    - cron: "4,34 6 * * *"
+    - cron: "4,34 13-16 * * 1-5"
+    - cron: "4,34 7-16 * * 0,6"
+    # nachts: alle 2 h
+    - cron: "4 22,0,2,4 * * *"
   workflow_dispatch: {}
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # Was einen Lauf an HEAD begrenzt (Immowelt 5 s je Fetch, ZVG 1 s):
-    #  * Immowelt-SWEEP: durch SWEEP_BUDGET_MS gedeckelt (12 min,
-    #    scraper/scrapers/immowelt/index.ts), NICHT unbegrenzt. Eine zum
-    #    Budget-Ende begonnene Region wird immer zu Ende geblaettert --
-    #    Nordrhein-Westfalen allein ~188 Seiten x 5 s ~16 min. Also <= ~28 min.
-    #  * Immowelt-DETAILS: DETAIL_BUDGET_MS / IMMOWELT_VERZOEGERUNG_MS
-    #    = 720 s / 5 s = 144 Seiten -> <= ~12 min. (Aus main.ts, per Import der
-    #    Drossel abgeleitet -- Budget und Drossel koennen nicht mehr driften.)
-    #  * ZVG-SWEEP: alle 16 Bundeslaender pro Lauf komplett, ~60 Seiten x 1 s
-    #    -> ~2 min.
-    #  * ZVG-DETAILS: DETAIL_BUDGET_MS / ZVG_VERZOEGERUNG_MS
-    #    = 720 s / 1 s = 720 Seiten -> <= ~12 min.
-    # Worst case ~28 + 12 + 2 + 12 = ~54 min, dazu Setup (npm ci, Playwright,
-    # xvfb ~5 min), Bestandsabgleich und Telegram-Meldungen. Ein in-process
-    # Wanduhr-Limit gibt es nicht (MAX_LAUFZEIT_MS ist mit dem Umbau entfallen);
-    # dieses Limit ist der einzige Notnagel. Es beendet den Job per SIGKILL, und
-    # der Kill trifft VOR dem Abgleichsblock am Ende von main() -- ein zu knappes
-    # Limit hiesse: Markieren, Entmarkieren und Karenz-Loeschung liefen stumm
-    # bei jedem Lauf nie. 75 min lassen auf die ~60 min Worst case rund 15 min
-    # Reserve.
-    timeout-minutes: 75
+    timeout-minutes: 25
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -74,20 +41,10 @@ jobs:
         working-directory: scraper
       - run: npx playwright install --with-deps chromium
         working-directory: scraper
-      # xvfb explizit nachziehen: `playwright install --with-deps` bringt die
-      # Chromium-Bibliotheken mit, aber nicht zwingend Xvfb selbst.
       - run: sudo apt-get update && sudo apt-get install -y xvfb
-      # Der Scraper faehrt Chromium bewusst headfull (headless: false), weil
-      # Immowelts DataDome-Schutz Headless-Chromium mit HTTP 403 abweist.
-      # Der GitHub-Runner hat keinen Bildschirm -- `xvfb-run` stellt ein
-      # virtuelles Display bereit, sonst kann kein Fenstermodus starten.
+      # Sichtbarer Chromium (headless: false) unter virtuellem Display.
       - run: xvfb-run --auto-servernum npm run scrape
         working-directory: scraper
-      # Der Snapshot ist ein Nebenprodukt des Laufs (scraper/main.ts, ganz am
-      # Ende, nur lesend). `if: always()` weil er auch dann brauchbar ist,
-      # wenn ein spaeterer Schritt scheitert -- und `if-no-files-found: warn`,
-      # weil ein fehlender Snapshot einen sonst erfolgreichen Lauf nicht rot
-      # faerben darf: Alles Wesentliche steht bereits in der Datenbank.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
