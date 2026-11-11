@@ -1,8 +1,9 @@
-/**
+﻿/**
  * Quelle Kleinanzeigen: Mietwohnungen Muenchen, neueste zuerst.
  *
- * Bewusst ohne Portalfilter in der URL: deren Schreibweise ist nicht belegt,
- * und jedes Feld wird im Code ohnehin erneut geprueft. Die Liste ist nach
+ * Portalfilter in der URL (im Browser belegt 2026-11-11: 819 Treffer, alle
+ * >= 45 m2, >= 2 Zi., <= 1.300 EUR kalt, nur Angebote). Vorauswahl, kein Beleg:
+ * jedes Feld wird im Code erneut geprueft. Die Liste ist nach
  * "neueste" sortiert, deshalb reichen wenige Seiten je Lauf; das Ende der
  * Liste wird dabei praktisch nie erreicht (vollstaendig = false), also wird
  * auch nichts als verschwunden markiert.
@@ -12,8 +13,10 @@ import type { Abrufer, DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.j
 import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseKleinanzeigenDetail, parseKleinanzeigenListe } from "./parse.js";
 
-export const KLEINANZEIGEN_SUCHE_URL =
-  "https://www.kleinanzeigen.de/s-wohnung-mieten/muenchen/sortierung:neuste/c203l6411";
+const BASIS = "https://www.kleinanzeigen.de/s-wohnung-mieten/muenchen/anzeige:angebote/preis::1300/sortierung:neuste";
+const KATEGORIE = "c203l6411+wohnung_mieten.qm_d:45%2C+wohnung_mieten.zimmer_d:2%2C";
+
+export const KLEINANZEIGEN_SUCHE_URL = `${BASIS}/${KATEGORIE}`;
 
 /** Listenseiten je Lauf (unter dem allgemeinen Deckel MAX_LISTENSEITEN). */
 export const KLEINANZEIGEN_LISTENSEITEN = Math.min(2, MAX_LISTENSEITEN);
@@ -21,7 +24,7 @@ export const KLEINANZEIGEN_LISTENSEITEN = Math.min(2, MAX_LISTENSEITEN);
 /** URL der n-ten Listenseite (1-basiert). */
 export function kleinanzeigenSeitenUrl(n: number): string {
   if (n <= 1) return KLEINANZEIGEN_SUCHE_URL;
-  return `https://www.kleinanzeigen.de/s-wohnung-mieten/muenchen/sortierung:neuste/seite:${n}/c203l6411`;
+  return `${BASIS}/seite:${n}/${KATEGORIE}`;
 }
 
 async function sweep(ab: Abrufer, budgetMs: number): Promise<SweepErgebnis> {
