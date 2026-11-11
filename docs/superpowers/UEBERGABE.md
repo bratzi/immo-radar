@@ -35,7 +35,7 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 
 1. ImmoScout beobachten. Lauf 43118553524 (Commit `150dd09`): 23 gesehen, 19 passend, 15 Exposés, keine Sperre. 4 Wohnungen warten noch auf ihr Exposé (Deckel 15 je Lauf). **Falle:** `gh workflow run` direkt nach dem Push läuft noch auf dem alten Commit — `headSha` des Laufs prüfen.
 2. Fehltreffer prüfen. Der WG-Filter am Titel erkennt seit 2026-11-12 auch Einzelzimmer ohne „WG“ („Ein privates Zimmer für …“).
-3. `lib/meldung.ts`, `lib/telegram.ts`, `deploy-dashboard.yml`, `setup-cloudflare-access.yml`, `web/` entfernen (Spec 11).
+3. Erledigt am 2026-11-12 (`5f71631`): Telegram, Meldung, `web/`, Snapshot und beide Cloudflare-Workflows sind entfernt. Noch offen und nur vom Nutzer lösbar: Die alte Seite `immo-radar-dashboard.pages.dev` bleibt mit dem letzten Stand online, bis sie in Cloudflare gelöscht wird. Die Secrets `TELEGRAM_*` und `CLOUDFLARE_*` in GitHub werden nicht mehr gebraucht.
 4. Immowelt, wenn CI nicht mehr gesperrt ist (Fredy liest dort die JSON-API `/serp-bff/search`, ungeprüft).
 5. Routine „Reparatur" (nur bei zwei Ausfällen in Folge) — Plan 2.
 
