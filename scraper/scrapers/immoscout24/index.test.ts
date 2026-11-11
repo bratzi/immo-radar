@@ -42,7 +42,7 @@ describe("ImmoScout24-Detail", () => {
     const f = fake([{ status: 200, json: fixture("expose-172539355.json") }]);
     const d = await baueImmoscoutQuelle(f.hole, async () => {}).ladeDetail(abrufer, basis);
     expect(f.urls[0]).toBe("https://api.mobile.immobilienscout24.de/expose/172539355");
-    expect(d).toMatchObject({ sperre: null, angebot: { warmmieteCents: 126_000, warmmieteQuelle: "angegeben" } });
+    expect(d).toMatchObject({ sperre: null, angebot: { warmmieteCents: 126_000, detailGeladen: true } });
   });
   it("429 beim Expose ist Sperre, Angebot bleibt", async () => {
     const d = await baueImmoscoutQuelle(fake([{ status: 429, json: null }]).hole, async () => {}).ladeDetail(abrufer, basis);

@@ -21,15 +21,15 @@ describe("parseImmoscoutListe", () => {
     expect(liste).toHaveLength(4);
   });
 
-  it("liest Forstenried: Listenpreis ist Kaltmiete, Warmmiete geschaetzt", () => {
+  it("liest Forstenried: Listenpreis ist Kaltmiete, Warmmiete bleibt leer (Pipeline schaetzt)", () => {
     const a = liste.find((x) => x.externalId === "172539355")!;
     expect(a).toMatchObject({
       quelle: "immoscout24",
       url: "https://www.immobilienscout24.de/expose/172539355",
       titel: "Zuhause mit 2 Zimmern in Forstenried",
       kaltmieteCents: 108_000,
-      warmmieteCents: 135_000,
-      warmmieteQuelle: "geschaetzt",
+      warmmieteCents: null,
+      nebenkostenCents: null,
       zimmer: 2,
       flaecheM2: 48,
       plz: "81476",
@@ -37,6 +37,13 @@ describe("parseImmoscoutListe", () => {
       detailGeladen: false,
     });
     expect(a.bildUrls).toHaveLength(1);
+  });
+
+  it("Befristung und Balkon im Titel werden erkannt", () => {
+    const [a] = parseImmoscoutListe({ resultListItems: [
+      { type: "EXPOSE_RESULT", item: { id: "1", title: "Befristete möblierte 2-Zimmer-Wohnung mit Balkon", attributes: [] } },
+    ] });
+    expect(a).toMatchObject({ befristet: true, balkon: "ja" });
   });
 
   it("liest Dezimalflaeche 48,6 m2", () => {
@@ -53,7 +60,6 @@ describe("parseImmoscoutExpose", () => {
       kaltmieteCents: 108_000,
       nebenkostenCents: 18_000,
       warmmieteCents: 126_000,
-      warmmieteQuelle: "angegeben",
       balkon: "ja",
       balkonBeleg: "Balkon/Terrasse",
       verfuegbarAb: "1.12.2026",

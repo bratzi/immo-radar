@@ -1,0 +1,146 @@
+{
+ "header": {},
+ "sections": [
+  {
+   "type": "TOP_ATTRIBUTES",
+   "attributes": [
+    {
+     "label": "Kaltmiete 14,71 €/m²",
+     "highlighted": true,
+     "text": "1.000 €",
+     "type": "TEXT"
+    },
+    {
+     "label": "Wohnfläche",
+     "text": "68 m²",
+     "type": "TEXT"
+    },
+    {
+     "label": "Zimmer",
+     "text": "3",
+     "type": "TEXT"
+    },
+    {
+     "label": "Warmmiete",
+     "text": "keine Angabe",
+     "type": "TEXT"
+    }
+   ]
+  },
+  {
+   "type": "TITLE",
+   "title": "Tauschwohnung: 3-Zimmer-Wohnung in München zum Tausch"
+  },
+  {
+   "type": "MAP",
+   "addressLine2": "80807 Milbertshofen, München"
+  },
+  {
+   "type": "ATTRIBUTE_LIST",
+   "title": "Hauptkriterien",
+   "attributes": [
+    {
+     "type": "TEXT",
+     "label": "Wohnungstyp:",
+     "text": "Erdgeschosswohnung"
+    },
+    {
+     "type": "TEXT",
+     "label": "Wohnfläche ca.:",
+     "text": "68 m²"
+    },
+    {
+     "type": "CHECK",
+     "label": "Keller:"
+    },
+    {
+     "type": "CHECK",
+     "label": "Einbauküche:"
+    },
+    {
+     "type": "LINK",
+     "label": "SCHUFA-BonitätsCheck:",
+     "reference": {
+      "type": "URL_LINK",
+      "label": "Online anfordern",
+      "url": "https://bonitaetscheck.immobilienscout24.de/?utm_medium=app&utm_source=ios&utm_campaign=solvency_check&utm_content=residential_expose_criteria",
+      "target": "WEB_INTERNAL",
+      "trackingConfig": {
+       "category": "expose",
+       "action": "consumerservices",
+       "label": "solvencycheck_criteria",
+       "event_name": "productintegration_click",
+       "event_product": "search",
+       "parameters": {
+        "event_parameter_1": "solvencycheck_criteria"
+       }
+      }
+     }
+    },
+    {
+     "type": "LINK",
+     "label": "Internet:",
+     "reference": {
+      "type": "URL_LINK",
+      "iconUrl": "https://www.immobilienscout24.de/content/dam/is24/expose-snippets/services/powered-by-telekom-new.png",
+      "label": "Tarife ansehen",
+      "secondaryLabel": "bis zu 100 MBit/s",
+      "additionalInfoText": "Die Geschwindigkeitsangabe ist eine unverbindliche Angabe auf Basis der Standortadresse. Verbindliche Verfügbarkeitsprüfungen werden erst bei einer Bestellung durchgeführt.",
+      "url": "https://rebrand.ly/speedcheckandroidapp",
+      "target": "WEB_INTERNAL",
+      "trackingConfig": {
+       "category": "clickout",
+       "action": "relocation",
+       "label": "internet_checkspeed_criteria",
+       "event_name": "expose_clickout",
+       "event_product": "search",
+       "parameters": {
+        "event_parameter_1": "internet_checkspeed_criteria"
+       }
+      },
+      "additionalInfoForIcon": {
+       "title": "Warum diese Werbung?",
+       "text": "Für die Bereitstellung von Informationen zur Internet-Verfügbarkeit am Standort des Inserats arbeiten wir mit der Telekom Deutschland GmbH zusammen.",
+       "buttonText": "Weitere Informationen",
+       "buttonUrl": "https://www.immobilienscout24.de/anbieten/dsa-info/telekom.html"
+      },
+      "onClickTrackingTag": "INTERNET_SPEED_CHECK"
+     }
+    }
+   ]
+  },
+  {
+   "type": "ATTRIBUTE_LIST",
+   "title": "Kosten",
+   "attributes": [
+    {
+     "type": "TEXT",
+     "label": "Kaltmiete (zzgl. Nebenkosten):",
+     "text": "1.000 €"
+    },
+    {
+     "type": "TEXT",
+     "label": "Preis/m²:",
+     "text": "14,71 €/m²",
+     "additionalInfoText": "Kalkuliert von ImmoScout24"
+    },
+    {
+     "type": "TEXT",
+     "label": "Gesamtmiete:",
+     "text": "1.000 € zzgl. Heiz- und Nebenkosten"
+    }
+   ]
+  },
+  {
+   "type": "ATTRIBUTE_LIST",
+   "title": "Bausubstanz & Energieausweis",
+   "attributes": [
+    {
+     "type": "TEXT",
+     "label": "Wesentliche Energieträger:",
+     "text": "Keine Angabe"
+    }
+   ]
+  }
+ ]
+}

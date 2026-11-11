@@ -1,0 +1,236 @@
+{
+ "totalResults": 56,
+ "pageSize": 50,
+ "pageNumber": 1,
+ "numberOfPages": 2,
+ "numberOfListings": 56,
+ "resultListItems": [
+  {
+   "type": "EXPOSE_RESULT",
+   "item": {
+    "id": "172561053",
+    "title": "Tauschwohnung: 3-Zimmer-Wohnung in München zum Tausch",
+    "address": {
+     "line": "80807 München, Milbertshofen (unvollständige Adresse)",
+     "postcode": "80807"
+    },
+    "titlePicture": {
+     "preview": "https://pictures.immobilienscout24.de/listings/7f551036-10a0-465a-88d5-dcfef704a68e-2128488694.png/ORIG/resize/800x600>/format/webp/quality/20",
+     "full": "https://pictures.immobilienscout24.de/listings/7f551036-10a0-465a-88d5-dcfef704a68e-2128488694.png/ORIG/resize/800x600>/format/webp/quality/80"
+    },
+    "published": "vor 8 Stunden",
+    "attributes": [
+     {
+      "label": "",
+      "value": "1.000 €"
+     },
+     {
+      "label": "",
+      "value": "68 m²"
+     },
+     {
+      "label": "",
+      "value": "3 Zi."
+     }
+    ],
+    "realEstateType": "apartmentrent",
+    "tags": []
+   }
+  },
+  {
+   "type": "EXPOSE_RESULT",
+   "item": {
+    "id": "172550965",
+    "title": "Tauschwohnung: München, Maxvorstadt: Gemütliche 2-Zimmer-Wohnung",
+    "address": {
+     "line": "80799 München, Maxvorstadt (unvollständige Adresse)",
+     "postcode": "80799"
+    },
+    "titlePicture": {
+     "preview": "https://pictures.immobilienscout24.de/listings/c4cc297c-46a4-4197-b943-04942de9ddae-2128297668.png/ORIG/resize/800x600>/format/webp/quality/20",
+     "full": "https://pictures.immobilienscout24.de/listings/c4cc297c-46a4-4197-b943-04942de9ddae-2128297668.png/ORIG/resize/800x600>/format/webp/quality/80"
+    },
+    "published": "vor 13 Stunden",
+    "attributes": [
+     {
+      "label": "",
+      "value": "780 €"
+     },
+     {
+      "label": "",
+      "value": "55 m²"
+     },
+     {
+      "label": "",
+      "value": "2 Zi."
+     }
+    ],
+    "realEstateType": "apartmentrent",
+    "tags": []
+   }
+  },
+  {
+   "type": "EXPOSE_RESULT",
+   "item": {
+    "id": "172539355",
+    "title": "Zuhause mit 2 Zimmern in Forstenried",
+    "address": {
+     "line": "Leonistr. 5, 81476 München Forstenried, Forstenried",
+     "lat": 48.09606,
+     "lon": 11.49957
+    },
+    "titlePicture": {
+     "preview": "https://pictures.immobilienscout24.de/listings/27bd5924-f965-47a2-b5f0-83d2c2e69183-2128038071.jpg/ORIG/resize/800x600>/format/webp/quality/20",
+     "full": "https://pictures.immobilienscout24.de/listings/27bd5924-f965-47a2-b5f0-83d2c2e69183-2128038071.jpg/ORIG/resize/800x600>/format/webp/quality/80"
+    },
+    "published": "vor einem Tag",
+    "attributes": [
+     {
+      "label": "",
+      "value": "1.080 €"
+     },
+     {
+      "label": "",
+      "value": "48 m²"
+     },
+     {
+      "label": "",
+      "value": "2 Zi."
+     }
+    ],
+    "realEstateType": "apartmentrent",
+    "tags": [
+     {
+      "tag": "paywall",
+      "value": {
+       "type": "NON_PLUS_USER",
+       "realEstateType": "apartmentrent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "type": "EXPOSE_RESULT",
+   "item": {
+    "id": "135462761",
+    "title": "Großzügige 2-Zimmer-Dachgeschosswohnung mit Wintergarten",
+    "address": {
+     "line": "81245 München, Obermenzing (unvollständige Adresse)",
+     "postcode": "81245"
+    },
+    "titlePicture": {
+     "preview": "https://pictures.immobilienscout24.de/listings/53a6f3dd-203c-4284-9771-e861ff26f00d-1547716368.jpg/ORIG/resize/800x600>/format/webp/quality/20",
+     "full": "https://pictures.immobilienscout24.de/listings/53a6f3dd-203c-4284-9771-e861ff26f00d-1547716368.jpg/ORIG/resize/800x600>/format/webp/quality/80"
+    },
+    "published": "vor einem Tag",
+    "attributes": [
+     {
+      "label": "",
+      "value": "970 €"
+     },
+     {
+      "label": "",
+      "value": "45 m²"
+     },
+     {
+      "label": "",
+      "value": "2 Zi."
+     }
+    ],
+    "realEstateType": "apartmentrent",
+    "tags": [
+     {
+      "tag": "paywall",
+      "value": {
+       "type": "NON_PLUS_USER",
+       "realEstateType": "apartmentrent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "type": "EXPOSE_RESULT",
+   "item": {
+    "id": "172529102",
+    "title": "2-Zimmer-Wohnung mit Garten in München-Aubing",
+    "address": {
+     "line": "Ilse-Fehling-Str. 26, 81245 München, Aubing",
+     "lat": 48.1558,
+     "lon": 11.42712
+    },
+    "titlePicture": {
+     "preview": "https://pictures.immobilienscout24.de/listings/aa1f8cd0-1fcd-4411-86a2-f8b267cd137e-2127864248.jpg/ORIG/resize/800x600>/format/webp/quality/20",
+     "full": "https://pictures.immobilienscout24.de/listings/aa1f8cd0-1fcd-4411-86a2-f8b267cd137e-2127864248.jpg/ORIG/resize/800x600>/format/webp/quality/80"
+    },
+    "published": "vor einem Tag",
+    "attributes": [
+     {
+      "label": "",
+      "value": "1.050 €"
+     },
+     {
+      "label": "",
+      "value": "54 m²"
+     },
+     {
+      "label": "",
+      "value": "2 Zi."
+     }
+    ],
+    "realEstateType": "apartmentrent",
+    "tags": [
+     {
+      "tag": "paywall",
+      "value": {
+       "type": "NON_PLUS_USER",
+       "realEstateType": "apartmentrent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "type": "EXPOSE_RESULT",
+   "item": {
+    "id": "172505926",
+    "title": "Schicke 2-Zimmer Wohnung direkt am Park und in Seenähe, sehr ruhig, teilmöbliert, ohne Provision!",
+    "address": {
+     "line": "Am Erdbeerschlag 3, 80935 München, Feldmoching",
+     "lat": 48.19557,
+     "lon": 11.54264
+    },
+    "titlePicture": {
+     "preview": "https://pictures.immobilienscout24.de/listings/01a99c7d-9774-4636-95f4-c3b339f44f84-2127854068.jpg/ORIG/resize/800x600>/format/webp/quality/20",
+     "full": "https://pictures.immobilienscout24.de/listings/01a99c7d-9774-4636-95f4-c3b339f44f84-2127854068.jpg/ORIG/resize/800x600>/format/webp/quality/80"
+    },
+    "published": "vor einem Tag",
+    "attributes": [
+     {
+      "label": "",
+      "value": "1.010 €"
+     },
+     {
+      "label": "",
+      "value": "48,6 m²"
+     },
+     {
+      "label": "",
+      "value": "2 Zi."
+     }
+    ],
+    "realEstateType": "apartmentrent",
+    "tags": [
+     {
+      "tag": "paywall",
+      "value": {
+       "type": "NON_PLUS_USER",
+       "realEstateType": "apartmentrent"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

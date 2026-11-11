@@ -7,13 +7,18 @@
  * Trefferliste ist die KALTmiete (Liste 1.080 EUR, Expose 1.080 kalt /
  * 1.260 warm), obwohl die Suche nach Gesamtmiete filtert. Die Liste wird
  * deshalb geschaetzt; die Warmmiete kommt erst aus dem Expose.
+ *
+ * Der Parser liefert nur ECHTE Angaben; warmmieteCents bleibt leer, wenn
+ * nichts angegeben ist. Die Schaetzung macht die Pipeline (bestimmeWarmmiete):
+ * eine vorab geschaetzte Zahl hielte sie fuer angegeben (Lauf 43116888561).
  */
 import type { Angebot } from "../../lib/typen.js";
 import { leeresAngebot } from "../../lib/typen.js";
-import { bestimmeWarmmiete } from "../../lib/warmmiete.js";
+import { erkenneBalkon } from "../../lib/balkon.js";
 
 export const EXPOSE_BASIS = "https://www.immobilienscout24.de/expose/";
 const TAUSCH = /tauschwohnung|wohnungs?tausch|zum tausch/i;
+const BEFRISTET = /\bbefristet|zwischenmiete|\bauf zeit\b/i;
 
 /** "1.080 €", "3.240,00", "48,6 m²" -> Zahl; sonst null. */
 function zahl(text: string | undefined | null): number | null {
@@ -55,17 +60,20 @@ export function parseImmoscoutListe(antwort: { resultListItems?: { type: string;
     const zimmer = werte.find((v) => /Zi\./.test(v));
     const kalt = euroCents(preis);
     const { plz, stadtteil } = plzUndStadtteil(item.address?.line);
+    const b = erkenneBalkon({ ausstattung: [], titel: item.title, beschreibung: "" });
     ergebnis.push(leeresAngebot({
       quelle: "immoscout24",
       externalId: String(item.id),
       url: EXPOSE_BASIS + item.id,
       titel: item.title,
       kaltmieteCents: kalt,
-      ...bestimmeWarmmiete({ kaltmieteCents: kalt, nebenkostenCents: null, warmmieteCents: null }),
       zimmer: zahl(zimmer),
       flaecheM2: zahl(flaeche),
       plz,
       stadtteil,
+      balkon: b.balkon,
+      balkonBeleg: b.beleg,
+      befristet: BEFRISTET.test(item.title) ? true : null,
       bildUrls: item.titlePicture?.full ? [item.titlePicture.full] : [],
     }));
   }
@@ -90,18 +98,21 @@ export function parseImmoscoutExpose(antwort: { sections?: Abschnitt[] }, basis:
   const warmText = text("Warmmiete");
   const warm = warmText && !/keine angabe/i.test(warmText) ? euroCents(warmText) : null;
   const balkonAttr = attr.get("Balkon/Terrasse");
+  const beschreibung = s.filter((x) => x.type === "TEXT_AREA").map((x) => x.text ?? "").join("\n");
+  const b = erkenneBalkon({ ausstattung: [], titel, beschreibung });
 
   return {
     ...basis,
     titel,
     kaltmieteCents: kalt,
     nebenkostenCents: nk,
-    ...bestimmeWarmmiete({ kaltmieteCents: kalt, nebenkostenCents: nk, warmmieteCents: warm }),
+    warmmieteCents: warm,
     zimmer: zahl(text("Zimmer")) ?? basis.zimmer,
     flaecheM2: zahl(text("Wohnfläche ca.")) ?? basis.flaecheM2,
     // Die API fuehrt nur vorhandene Merkmale als CHECK; fehlt der Eintrag, bleibt es unbekannt.
-    balkon: balkonAttr ? "ja" : basis.balkon,
-    balkonBeleg: balkonAttr ? "Balkon/Terrasse" : basis.balkonBeleg,
+    balkon: balkonAttr ? "ja" : b.balkon !== "unbekannt" ? b.balkon : basis.balkon,
+    balkonBeleg: balkonAttr ? "Balkon/Terrasse" : b.beleg ?? basis.balkonBeleg,
+    befristet: basis.befristet === true || BEFRISTET.test(titel) || BEFRISTET.test(text("Mietdauer") ?? "") ? true : basis.befristet,
     verfuegbarAb: text("Bezugsfrei ab") ?? basis.verfuegbarAb,
     detailGeladen: true,
   };
