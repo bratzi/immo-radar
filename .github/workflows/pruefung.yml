@@ -27,11 +27,12 @@ on:
           - diagnose-overlays
           - diagnose-netz
       quelle:
-        description: "Quelle fuer pruefe-quelle"
+        description: "Quelle fuer hole-fixtures und pruefe-quelle"
         required: false
-        default: immowelt
+        default: kleinanzeigen
         type: choice
         options:
+          - kleinanzeigen
           - immowelt
 
 jobs:
@@ -66,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           case "$SKRIPT" in
-            hole-fixtures)     xvfb-run --auto-servernum npx tsx scripts/hole-fixtures.mts ;;
+            hole-fixtures)     xvfb-run --auto-servernum npx tsx scripts/hole-fixtures.mts "$QUELLE" ;;
             pruefe-quelle)     xvfb-run --auto-servernum npx tsx scripts/pruefe-quelle.mts "$QUELLE" ;;
             diagnose-overlays) xvfb-run --auto-servernum npx tsx scripts/diagnose-overlays.mts ;;
             diagnose-netz)     npx tsx scripts/diagnose-netz.mts ;;
