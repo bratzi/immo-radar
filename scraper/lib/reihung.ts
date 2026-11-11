@@ -22,6 +22,7 @@ export function berechnePunkte(a: Angebot, jetzt: Date): number {
     if (alter >= 0 && alter < ZWEI_STUNDEN_MS) p += 10;
   }
   if (a.warmmieteQuelle === "angegeben") p += 5;
+  if (a.balkon === "ja") p += 15;
   return p;
 }
 

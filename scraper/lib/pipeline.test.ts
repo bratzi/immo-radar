@@ -52,13 +52,13 @@ describe("verarbeiteQuelle", () => {
     expect(db.tabelle("laeufe")).toHaveLength(1);
   });
 
-  it("unklares Angebot (Balkon unbekannt) laedt Detail und wird danach ja", async () => {
+  it("unklares Angebot (PLZ unbekannt) laedt Detail und wird danach ja", async () => {
     const { db, deps } = aufbau();
-    const liste = passend("b", { balkon: "unbekannt" });
-    const q = fakeQuelle(ok([liste]), { b: { ...liste, balkon: "ja", balkonBeleg: "Balkon", detailGeladen: true } });
+    const liste = passend("b", { plz: null });
+    const q = fakeQuelle(ok([liste]), { b: { ...liste, plz: "80802", detailGeladen: true } });
     const e = await verarbeiteQuelle(deps, q, abrufer);
     expect(q.detailAufrufe).toEqual(["b"]);
-    expect(db.tabelle("angebote")[0]).toMatchObject({ passt: "ja", balkon: "ja" });
+    expect(db.tabelle("angebote")[0]).toMatchObject({ passt: "ja", plz: "80802" });
     expect(e.lauf.passend).toBe(1);
   });
 
@@ -98,7 +98,7 @@ describe("verarbeiteQuelle", () => {
 
   it("Detail liefert null (Gesuch/Tausch): Angebot wird verworfen", async () => {
     const { db, deps } = aufbau();
-    await verarbeiteQuelle(deps, fakeQuelle(ok([passend("f", { balkon: "unbekannt" })]), { f: null }), abrufer);
+    await verarbeiteQuelle(deps, fakeQuelle(ok([passend("f", { plz: null })]), { f: null }), abrufer);
     expect(db.tabelle("angebote")).toHaveLength(0);
   });
 
@@ -112,7 +112,7 @@ describe("verarbeiteQuelle", () => {
 
   it("Sperre beim Detail stoppt weitere Details; bisher Gesehenes wird gespeichert", async () => {
     const { db, deps } = aufbau();
-    const q = fakeQuelle(ok([passend("g1", { balkon: "unbekannt" }), passend("g2", { balkon: "unbekannt" })]), { g1: "gesperrt" });
+    const q = fakeQuelle(ok([passend("g1", { plz: null }), passend("g2", { plz: null })]), { g1: "gesperrt" });
     const e = await verarbeiteQuelle(deps, q, abrufer);
     expect(q.detailAufrufe).toEqual(["g1"]);
     expect(e.lauf.status).toBe("gesperrt");
@@ -121,7 +121,7 @@ describe("verarbeiteQuelle", () => {
 
   it("hoechstens maxDetails Detailabrufe je Lauf", async () => {
     const { deps } = aufbau();
-    const liste = ["h1", "h2", "h3"].map((id) => passend(id, { balkon: "unbekannt" }));
+    const liste = ["h1", "h2", "h3"].map((id) => passend(id, { plz: null }));
     const q = fakeQuelle(ok(liste));
     await verarbeiteQuelle({ ...deps, maxDetails: 2 }, q, abrufer);
     expect(q.detailAufrufe).toEqual(["h1", "h2"]);

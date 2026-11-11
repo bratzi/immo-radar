@@ -31,8 +31,7 @@ export function pruefeProfil(a: Angebot): Profilurteil {
   if (a.flaecheM2 === null) unklar.push("flaeche_unbekannt");
   else if (a.flaecheM2 < PROFIL.flaecheMinM2) nein.push("flaeche_zu_klein");
 
-  if (a.balkon === "nein") nein.push("kein_balkon");
-  else if (a.balkon === "unbekannt") unklar.push("balkon_unbekannt");
+  // Balkon ist seit 2026-11-11 Wunsch, kein Muss: er zaehlt nur in der Reihung.
 
   if (a.plz === null) unklar.push("plz_unbekannt");
   else if (!istMuenchen(a.plz)) nein.push("ausserhalb_muenchen");

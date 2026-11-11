@@ -12,6 +12,10 @@ describe("berechnePunkte", () => {
   it("Basis ohne Bonus: 0 (27,8 Euro je m2, Ring 3, alt, geschaetzt)", () => {
     expect(berechnePunkte(basis(), JETZT)).toBe(0);
   });
+  it("Balkon ja +15, nein und unbekannt 0", () => {
+    const a = basis(); a.balkon = "ja"; expect(berechnePunkte(a, JETZT)).toBe(15);
+    a.balkon = "nein"; expect(berechnePunkte(a, JETZT)).toBe(0);
+  });
   it("3 Zimmer +30", () => { const a = basis(); a.zimmer = 3; expect(berechnePunkte(a, JETZT)).toBe(30); });
   it("unter 22 Euro je m2 +20, unter 25 +10", () => {
     const a = basis(); a.flaecheM2 = 60; // 20,83

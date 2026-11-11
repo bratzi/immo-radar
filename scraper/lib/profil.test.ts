@@ -47,11 +47,11 @@ describe("pruefeProfil", () => {
     const a = BASIS(); a.flaecheM2 = 44.5;
     expect(pruefeProfil(a).gruende).toEqual(["flaeche_zu_klein"]);
   });
-  it("Balkon nein ist raus, unbekannt ist unklar", () => {
+  it("Balkon ist Pluspunkt, kein Muss: nein und unbekannt passen", () => {
     const a = BASIS(); a.balkon = "nein";
-    expect(pruefeProfil(a).gruende).toEqual(["kein_balkon"]);
+    expect(pruefeProfil(a)).toEqual({ passt: "ja", gruende: [] });
     a.balkon = "unbekannt";
-    expect(pruefeProfil(a)).toEqual({ passt: "unklar", gruende: ["balkon_unbekannt"] });
+    expect(pruefeProfil(a)).toEqual({ passt: "ja", gruende: [] });
   });
   it("Umland-PLZ ist raus, nicht unklar", () => {
     const a = BASIS(); a.plz = "85521";
@@ -65,8 +65,8 @@ describe("pruefeProfil", () => {
     const a = BASIS(); a.befristet = true;
     expect(pruefeProfil(a).gruende).toEqual(["befristet"]);
   });
-  it("nein schlaegt unklar: zu teuer UND Balkon unbekannt ist nein mit beiden Gruenden", () => {
-    const a = BASIS(); a.warmmieteCents = 200_000; a.balkon = "unbekannt";
-    expect(pruefeProfil(a)).toEqual({ passt: "nein", gruende: ["warmmiete_zu_hoch", "balkon_unbekannt"] });
+  it("nein schlaegt unklar: zu teuer UND PLZ unbekannt ist nein mit beiden Gruenden", () => {
+    const a = BASIS(); a.warmmieteCents = 200_000; a.plz = null;
+    expect(pruefeProfil(a)).toEqual({ passt: "nein", gruende: ["warmmiete_zu_hoch", "plz_unbekannt"] });
   });
 });
