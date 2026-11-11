@@ -19,7 +19,9 @@ const KATEGORIE = "c203l6411+wohnung_mieten.qm_d:45%2C+wohnung_mieten.zimmer_d:2
 export const KLEINANZEIGEN_SUCHE_URL = `${BASIS}/${KATEGORIE}`;
 
 /** Listenseiten je Lauf (unter dem allgemeinen Deckel MAX_LISTENSEITEN). */
-export const KLEINANZEIGEN_LISTENSEITEN = Math.min(2, MAX_LISTENSEITEN);
+// Volle 5 Seiten: rund 90 % der gefilterten Karten sind Tauschwohnungen
+// (Browser 2026-11-11: 23 von 25), "swap_s:nein" laesst nur 11 von 819 uebrig.
+export const KLEINANZEIGEN_LISTENSEITEN = MAX_LISTENSEITEN;
 
 /** URL der n-ten Listenseite (1-basiert). */
 export function kleinanzeigenSeitenUrl(n: number): string {
