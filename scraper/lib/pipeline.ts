@@ -42,6 +42,11 @@ function bewerte(a: Angebot, jetzt: Date): Bewertet {
 function brauchtDetail(b: Bewertet): boolean {
   if (b.detailGeladen) return false;
   if (b.passt === "unklar") return true;
+  // Ein Nein, das allein an der geschaetzten Warmmiete haengt, ist kein Beleg.
+  if (b.passt === "nein" && b.warmmieteQuelle === "geschaetzt") {
+    const harte = b.gruende.filter((g) => !g.endsWith("_unbekannt"));
+    return harte.length === 1 && harte[0] === "warmmiete_zu_hoch";
+  }
   return b.passt === "ja" && (b.warmmieteQuelle === "geschaetzt" || b.bildUrls.length === 0);
 }
 

@@ -71,6 +71,15 @@ describe("verarbeiteQuelle", () => {
     expect(e.angebote[0]).toMatchObject({ warmmieteCents: 140_000, passt: "nein" });
   });
 
+  it("nein nur wegen geschaetzter Warmmiete: Detail wird geladen", async () => {
+    const { deps } = aufbau();
+    const liste = passend("c2", { warmmieteCents: null, kaltmieteCents: 105_000 }); // geschaetzt 1.312,50
+    const q = fakeQuelle(ok([liste]), { c2: { ...liste, warmmieteCents: 125_000, detailGeladen: true, bildUrls: ["b"] } });
+    const e = await verarbeiteQuelle(deps, q, abrufer);
+    expect(q.detailAufrufe).toEqual(["c2"]);
+    expect(e.angebote[0].passt).toBe("ja");
+  });
+
   it("zu teuer (ohne Detailbedarf) wird nicht gespeichert und nicht nachgeladen", async () => {
     const { db, deps } = aufbau();
     const q = fakeQuelle(ok([passend("d", { warmmieteCents: 200_000 })]));
