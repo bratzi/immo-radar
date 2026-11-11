@@ -391,3 +391,46 @@ keine Push-Meldung. Damit gilt:
 - Sperrwarnungen erscheinen als Status in der Betriebstafel des Artifacts.
 - Erfolg heißt jetzt: ein passendes Angebot steht innerhalb eines Laufs nach
   Veröffentlichung oben im Wohnungsradar, mit Balkonbeleg und Link.
+
+## 11. Schlanke Endfassung (2026-11-11, ersetzt widersprüchliche Teile von 4.10, 8, 9.2)
+
+Grundsatz: Jedes Teil muss entweder Wohnungen finden, sie zeigen oder den
+Betrieb ohne den Rechner des Nutzers sichern. Was keins davon tut, fällt weg.
+
+**Bleibt (5 Bausteine):**
+
+1. **GitHub Actions `scrape.yml`**: einziger Ort, an dem gecrawlt wird.
+   Sichtbarer Chromium unter xvfb, Takt nach Tageszeit, kein Sprachmodell,
+   null Token. Kleinanzeigen zuerst; Immowelt, sobald der Abruf aus Actions
+   nicht mehr gesperrt ist; WG-Gesucht; ImmoScout24 zuletzt.
+2. **Supabase**: `angebote` und `laeufe`. Einzige Datenquelle.
+3. **Artifact „Wohnungsradar"**: die Ansicht in der Claude-App (Handy und
+   Rechner), sortiert nach Punkten, Status je Wohnung in der Artifact-Datenbank.
+   Datenweg zum Artifact wird beim Bau geprüft (Fähigkeit „verbundene Daten");
+   bis dahin bleibt das Pages-Dashboard als Datenquelle stehen.
+4. **Eine Claude-Routine „Treffer"** (Sonnet, Cloud): wird nur ausgelöst,
+   wenn ein Lauf neue passende Treffer hat. Prüft sie kurz, schreibt eine
+   Zusammenfassung, Push über die Claude-App (Test 2026-11-11, Routine
+   `trig_01SXSzLqQdbxzU3bLD1c34yS`). Kommt kein Push an: Rückfall GitHub-Issue.
+5. **Eine Claude-Routine „Reparatur"** (Opus, Cloud): wird nur ausgelöst,
+   wenn eine Quelle zweimal in Folge 0 Angebote oder einen Parserfehler liefert.
+   Holt frische Fixtures, repariert den Parser, öffnet einen PR. Auto-fix
+   und Code-Review sichern den PR.
+
+**Fällt weg:**
+
+| Teil | Grund |
+|---|---|
+| Telegram, `meldung.ts`, `telegram.ts`, Meldebudget | ersetzt durch Routine „Treffer" + Artifact |
+| Wöchentliche Takt-Routine | kostet jede Woche Token für wenig Gewinn; Takt einmal nach vier Wochen von Hand prüfen |
+| Batch-Verarbeitung, Prompt-Caching als Planungspunkt | bei zwei kleinen, seltenen Routinen ohne Wirkung |
+| Claude Docs als Projektdoku | `UEBERGABE.md` im Repo genügt; ein zweiter Ort veraltet |
+| Claude in Chrome im Betrieb | der Betrieb braucht keine Anmeldung; nur noch für Einzelfälle |
+| Lokale Läufe, Windows-Aufgabenplanung | Betrieb läuft ohne Rechner |
+| Immonet, Aggregatoren, Münchner-Wohnen-Scraper | Dubletten, siehe Analyse |
+| `setup-cloudflare-access.yml`, Pages-Dashboard | fallen weg, sobald das Artifact die Daten selbst liest |
+| Vermieter-Anschreiben im Artifact | nett, aber kein Kern; frühestens nach dem ersten Monat |
+
+**Token-Bilanz:** Crawlen 0. Routine „Treffer" nur bei echten Treffern
+(geschätzt wenige Dutzend im Monat, je Lauf kurz, Sonnet). Routine
+„Reparatur" nur bei Brüchen. Entwicklung über Subagenten wie bisher.
