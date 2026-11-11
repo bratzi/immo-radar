@@ -1,4 +1,4 @@
-# immo-radar 2.0 — Mietwohnung in München (Entwurf)
+﻿# immo-radar 2.0 — Mietwohnung in München (Entwurf)
 
 **Stand:** 2026-11-11. **Status:** Entwurf, vom Nutzer in der Sitzung
 beauftragt; die Entscheidungen unten sind seine Antworten.
@@ -408,10 +408,7 @@ Betrieb ohne den Rechner des Nutzers sichern. Was keins davon tut, fällt weg.
    Rechner), sortiert nach Punkten, Status je Wohnung in der Artifact-Datenbank.
    Datenweg zum Artifact wird beim Bau geprüft (Fähigkeit „verbundene Daten");
    bis dahin bleibt das Pages-Dashboard als Datenquelle stehen.
-4. **Eine Claude-Routine „Treffer"** (Sonnet, Cloud): wird nur ausgelöst,
-   wenn ein Lauf neue passende Treffer hat. Prüft sie kurz, schreibt eine
-   Zusammenfassung, Push über die Claude-App (Test 2026-11-11, Routine
-   `trig_01SXSzLqQdbxzU3bLD1c34yS`). Kommt kein Push an: Rückfall GitHub-Issue.
+4. **Benachrichtigung per GitHub-Issue**: Hat ein Lauf neue passende Treffer, legt `scrape.yml` ein Issue „N neue Treffer" mit Links an (GITHUB_TOKEN, kein Modell, null Token). Die GitHub-App pusht aufs Handy. Claude-Routine als Push-Weg verworfen: Testlauf 2026-11-11 (`trig_01SXSzLqQdbxzU3bLD1c34yS`) lief, aber kein Push kam an.
 5. **Eine Claude-Routine „Reparatur"** (Opus, Cloud): wird nur ausgelöst,
    wenn eine Quelle zweimal in Folge 0 Angebote oder einen Parserfehler liefert.
    Holt frische Fixtures, repariert den Parser, öffnet einen PR. Auto-fix
