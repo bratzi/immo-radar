@@ -36,15 +36,15 @@ sind der Hauptfehler, den der Entwurf vermeidet.
 | 1 | Budget kalt oder warm | **Warm, 1.300 €.** Fehlt die Warmmiete, wird sie als Kaltmiete + Nebenkosten gerechnet; fehlt auch das, gilt Kaltmiete × 1,25 als Schätzung und der Treffer wird als „Warmmiete geschätzt" markiert. |
 | 2 | Quellen | **Immowelt, Kleinanzeigen, WG-Gesucht, ImmoScout24.** Reihenfolge: Immowelt (vorhanden), Kleinanzeigen, WG-Gesucht, ImmoScout24 (stärkster Schutz, zuletzt; zusätzlich per Suchauftrag-Mail abgesichert). Immonet und Aggregatoren (Wohnungsbörse.net, Immobilo, SZ, meinestadt, immo.de) entfallen: Dubletten. Münchner Wohnen inseriert frei finanziert über IS24/Immowelt, kein eigener Scraper. Begründung: `docs/analyse/2026-11-11-portale-muenchen.md`. |
 | 3 | Datenbank | **Alle alten Tabellen löschen**, neues Schema. Telegram-Bot, Supabase-Projekt und Cloudflare-Pages-Projekt bleiben. |
-| 4 | Ausführungsort | **Lokal** auf dem Windows-11-Rechner des Nutzers (Nachtrag 2026-11-11). Ein München-Lauf sind wenige hundert Seiten, nicht 23.000; die Drossel schützt das Heimnetz. GitHub Actions bleibt nur für Tests und Dashboard-Deploy. |
+| 4 | Ausführungsort | **Online, automatisiert** (Nachtrag 2026-11-11, ersetzt „lokal"). Crawl in **GitHub Actions** mit sichtbarem Chromium unter `xvfb-run`: bewährt gegen Immowelt, Secrets vorhanden, kostenlos im Rahmen. Geprüft und verworfen: Cloudflare Browser Rendering (nur headless, scheitert an DataDome), Apify/Firecrawl (Kosten, fremde Proxy-Infrastruktur). Agentische Aufgaben laufen als **Claude-Routinen** in der Cloud (Abschnitt 8). Lokal nur Tests. |
 | 5 | Takt | **Nach Tageszeit** (Messung und Studien, siehe Analyse): Mo–Fr 8–14 Uhr alle 15 min; täglich 18–23 Uhr alle 15 min (Privatvermieter); sonst 7–23 Uhr alle 30 min; 23–7 Uhr alle 2 h. Nach vier Wochen aus eigenen Daten neu einstellen. |
 
 ## 3. Was bleibt, was geht
 
 **Bleibt (Infrastruktur, bewährt):**
 
-- Playwright mit sichtbarem Chromium, jetzt lokal: `launchPersistentContext` mit eigenem Profilordner je Quelle (Cookies, Consent bleiben). Immowelt sperrt headless (HTTP 403, DataDome). Ein CAPTCHA wird nicht gelöst, sondern als Sperrsignal gewertet.
-- `lib/nurInCi.ts` wird ersetzt durch `lib/laufsperre.ts`: Sperrdatei gegen überlappende Läufe plus Drossel-Obergrenzen (siehe 4.11). Gestartet wird über die Windows-Aufgabenplanung.
+- Playwright mit sichtbarem Chromium unter `xvfb-run` in GitHub Actions; Browserprofil je Quelle per `actions/cache` zwischen Läufen erhalten (Cookies, Consent). Immowelt sperrt headless (HTTP 403, DataDome). Ein CAPTCHA wird nicht gelöst, sondern als Sperrsignal gewertet.
+- `lib/nurInCi.ts` bleibt (keine Live-Läufe am privaten Anschluss). `concurrency` im Workflow verhindert überlappende Läufe; Drossel nach 4.11. Takt aus Entscheidung 5 als mehrere `cron`-Zeilen.
 - Supabase als Datenbank, Zugriff nur mit `service_role`, RLS ohne Policies.
 - Telegram-Versand (`lib/telegram.ts`: `sendTelegramMessage`, `sendTelegramPhotos`, Mediengruppen).
 - Consent- und Overlay-Behandlung (`scrapers/consent.ts`, `scrapers/overlays.ts`).
@@ -301,3 +301,26 @@ Regeln für alle Quellen, fest im Code (`lib/laufsperre.ts`, `scrapers/sperre.ts
 - 4–8 s zufälliger Abstand je Seite; höchstens 5 Listenseiten und 15 Detailseiten je Quelle und Lauf.
 - Sperrerkennung je Antwort: HTTP 401/403/429, DataDome-, Akamai- oder WAF-Challenge, CAPTCHA-Seite. Dann: Quelle sofort stoppen, `laeufe.status = 'gesperrt'`, Pause 2 h, beim zweiten Mal 6 h, beim dritten Mal Telegram-Hinweis und Pause bis zum nächsten Tag.
 - Nicht eingesetzt: Proxys, Fingerprint-Veränderung, CAPTCHA-Löser, Umgehung von Challenges.
+
+## 8. Neu gedacht mit den aktuellen Claude-Funktionen
+
+Das Projekt nutzt nicht nur Claude Code als Programmierwerkzeug, sondern die
+agentischen Funktionen als Teil des Betriebs. Feste Arbeit (Crawlen, Filtern,
+Melden) bleibt deterministischer Code ohne Sprachmodell; Claude übernimmt,
+was Urteil braucht.
+
+| Funktion | Einsatz im Projekt |
+|---|---|
+| **Claude-Routinen** (geplante Cloud-Agenten, Skill `schedule`) | Wöchentlich: Takt aus `erstmals_gesehen` je Stunde/Wochentag neu ausrechnen und als PR vorschlagen. Täglich: `laeufe` prüfen; fällt eine Quelle 3× aus oder liefert 0, Parser gegen frische Seite reparieren und PR öffnen. |
+| **Subagenten und parallele Agenten** | Je Quelle ein Agent für Parser, Fixtures und Tests; Recherche-Agenten für neue Portale. Modellwahl: Opus für Architektur und Parser-Reparatur, Sonnet für Routine. |
+| **Skills (Superpowers u. a.)** | `brainstorming` → `writing-plans` → `subagent-driven-development` → `test-driven-development` → `requesting-code-review` → `verification-before-completion` als feste Kette; `investigate-first` bei Parserbrüchen. |
+| **Artifact mit Datenbank** (`db`-Fähigkeit) | Ergänzt das Pages-Dashboard: privates Artifact „Wohnungsradar" mit Trefferliste und Merkliste. Der Nutzer markiert „angefragt / Besichtigung / abgesagt"; der Status liegt in der Artifact-Datenbank und fließt in die Reihung zurück (Abgesagtes nicht erneut melden). |
+| **Artifact fragt Claude** | Knopf „Anschreiben entwerfen" je Treffer: Claude schreibt eine Anfrage an den Vermieter aus Inserat und Nutzerprofil. Versendet wird nie automatisch, nur vom Nutzer. |
+| **Claude Docs** | Lebende Projektdoku (Übergabe, Stand, Entscheidungen) statt verstreuter Markdown-Dateien; Kommentare des Nutzers dort steuern die nächste Sitzung. |
+| **Eingebauter Browser** | Recherche, Fixtures aufnehmen, Dashboard prüfen, Messungen wie die Kleinanzeigen-Zeitstempel. |
+| **Claude in Chrome** | Nur wo die echte Anmeldung des Nutzers nötig ist (Suchaufträge, Konto bei ImmoScout24). |
+| **PR-Auto-fix und Code-Review** | Jede Änderung als PR; CI-Fehler und Review-Kommentare behebt Claude automatisch. |
+| **Telegram** | Bleibt der schnelle Meldeweg (Push in Sekunden). |
+
+Grenze: Claude-Funktionen kommen nie in den 15-Minuten-Lauf selbst. Der Lauf
+bleibt schnell, billig und testbar; Claude wirkt um ihn herum.
