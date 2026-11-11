@@ -5,10 +5,10 @@ beauftragt; die Entscheidungen unten sind seine Antworten.
 
 ## 1. Ziel
 
-Der Nutzer sucht eine Mietwohnung in München. Das Projekt soll neue Angebote
-schnell finden, hart filtern und sofort per Telegram melden. Das bisherige
-Ziel (Mehrfamilienhäuser mit Rendite, Zwangsversteigerungen) entfällt
-vollständig.
+Der Nutzer sucht **privat** eine Mietwohnung in München für sich selbst. Das
+Projekt soll neue Angebote schnell finden, hart filtern und sofort per
+Telegram melden. Alles zu Kauf, Hausobjekten, Mehrfamilienhäusern, Rendite
+und Zwangsversteigerungen entfällt vollständig, Code und Doku eingeschlossen.
 
 **Suchprofil (Pflicht):**
 
@@ -34,16 +34,17 @@ sind der Hauptfehler, den der Entwurf vermeidet.
 | # | Frage | Entscheidung |
 |---|---|---|
 | 1 | Budget kalt oder warm | **Warm, 1.300 €.** Fehlt die Warmmiete, wird sie als Kaltmiete + Nebenkosten gerechnet; fehlt auch das, gilt Kaltmiete × 1,25 als Schätzung und der Treffer wird als „Warmmiete geschätzt" markiert. |
-| 2 | Quellen | **Immowelt, ImmoScout24, Kleinanzeigen, WG-Gesucht.** Reihenfolge der Umsetzung: Immowelt (vorhanden), Kleinanzeigen, WG-Gesucht, ImmoScout24 (höchstes Sperr-Risiko, zuletzt). |
+| 2 | Quellen | **Immowelt, Kleinanzeigen, WG-Gesucht, ImmoScout24.** Reihenfolge: Immowelt (vorhanden), Kleinanzeigen, WG-Gesucht, ImmoScout24 (stärkster Schutz, zuletzt; zusätzlich per Suchauftrag-Mail abgesichert). Immonet und Aggregatoren (Wohnungsbörse.net, Immobilo, SZ, meinestadt, immo.de) entfallen: Dubletten. Münchner Wohnen inseriert frei finanziert über IS24/Immowelt, kein eigener Scraper. Begründung: `docs/analyse/2026-11-11-portale-muenchen.md`. |
 | 3 | Datenbank | **Alle alten Tabellen löschen**, neues Schema. Telegram-Bot, Supabase-Projekt und Cloudflare-Pages-Projekt bleiben. |
-| 4 | Takt | **Alle 30 Minuten.** GitHub-Cron ist Bemühen, real eher 45 bis 60 Minuten. |
+| 4 | Ausführungsort | **Lokal** auf dem Windows-11-Rechner des Nutzers (Nachtrag 2026-11-11). Ein München-Lauf sind wenige hundert Seiten, nicht 23.000; die Drossel schützt das Heimnetz. GitHub Actions bleibt nur für Tests und Dashboard-Deploy. |
+| 5 | Takt | **Nach Tageszeit** (Messung und Studien, siehe Analyse): Mo–Fr 8–14 Uhr alle 15 min; täglich 18–23 Uhr alle 15 min (Privatvermieter); sonst 7–23 Uhr alle 30 min; 23–7 Uhr alle 2 h. Nach vier Wochen aus eigenen Daten neu einstellen. |
 
 ## 3. Was bleibt, was geht
 
 **Bleibt (Infrastruktur, bewährt):**
 
-- Playwright mit sichtbarem Chromium unter `xvfb-run` in GitHub Actions. Immowelt sperrt headless (HTTP 403, DataDome). Ein CAPTCHA wird nicht gelöst, sondern als Drosselsignal gewertet.
-- Sperre gegen Live-Läufe am privaten Anschluss (`lib/nurInCi.ts`). Lokal laufen nur `npm test` und `tsc`.
+- Playwright mit sichtbarem Chromium, jetzt lokal: `launchPersistentContext` mit eigenem Profilordner je Quelle (Cookies, Consent bleiben). Immowelt sperrt headless (HTTP 403, DataDome). Ein CAPTCHA wird nicht gelöst, sondern als Sperrsignal gewertet.
+- `lib/nurInCi.ts` wird ersetzt durch `lib/laufsperre.ts`: Sperrdatei gegen überlappende Läufe plus Drossel-Obergrenzen (siehe 4.11). Gestartet wird über die Windows-Aufgabenplanung.
 - Supabase als Datenbank, Zugriff nur mit `service_role`, RLS ohne Policies.
 - Telegram-Versand (`lib/telegram.ts`: `sendTelegramMessage`, `sendTelegramPhotos`, Mediengruppen).
 - Consent- und Overlay-Behandlung (`scrapers/consent.ts`, `scrapers/overlays.ts`).
@@ -117,10 +118,10 @@ interface Angebot {
 
 ### 4.2 Datenfluss je Lauf
 
-1. **Sweep je Quelle**, nacheinander, Drossel je Quelle (Immowelt 5 s, andere 3 s). Die Suchfilter der Portale übernehmen Ort, Miete, Zimmer, Fläche vorab; der Code prüft trotzdem jedes Feld selbst. Portalfilter sind Vorauswahl, nicht Beleg.
+1. **Sweep je Quelle**, nacheinander, Drossel nach 4.11. Gelesen wird zuerst eingebettetes JSON (JSON-LD, Next.js-Daten, Kleinanzeigen-Detail-JSON mit `sortingDate`, `commercial`), Selektoren nur als Rückfall. Die Suchfilter der Portale übernehmen Ort, Miete, Zimmer, Fläche vorab; der Code prüft trotzdem jedes Feld selbst. Portalfilter sind Vorauswahl, nicht Beleg.
 2. **Profilprüfung auf Listendaten.** Eindeutig raus (zu teuer, zu klein, 1 Zimmer): verwerfen, nicht speichern. Eindeutig rein: weiter. Unklar (Balkon unbekannt, Warmmiete fehlt): Detailseite laden.
 3. **Detailseiten** nur für Unklare und für neue Treffer (Bilder, Beschreibung). Budget 10 Minuten je Lauf.
-4. **Abgleich mit `angebote`:** neu, bekannt, Preis gesunken, nicht mehr gesehen. Ein Angebot, das in zwei aufeinanderfolgenden vollständigen Sweeps seiner Quelle fehlt, bekommt `verschwunden_am`. Keine harte Löschung im Lauf; ein Monatsjob räumt Verschwundenes älter als 60 Tage.
+4. **Abgleich mit `angebote`:** „neu" heißt ausschließlich: `(quelle, external_id)` noch nicht in der Tabelle. Zeitstempel der Portale entscheiden das nie, weil Kleinanzeigen gewerbliche Inserate stündlich hochschiebt (Messung: alte Inserate mit Zeit :05–:07). Sonst: bekannt, Preis gesunken, nicht mehr gesehen. Ein Angebot, das in zwei aufeinanderfolgenden vollständigen Sweeps seiner Quelle fehlt, bekommt `verschwunden_am`. Keine harte Löschung im Lauf; ein Monatsjob räumt Verschwundenes älter als 60 Tage.
 5. **Meldung:** jeder neue Treffer sofort, höchstens 15 je Lauf (Rest im nächsten Lauf, Reihung entscheidet). Preissenkung bei bekanntem Treffer: eine Zeile. Kein Abgangsalarm per Telegram, Abgang nur im Dashboard.
 6. **Lauf protokollieren**, Snapshot schreiben.
 
@@ -282,3 +283,21 @@ Quelle, Status, gesehen und gemeldet.
 5. Kleinanzeigen, WG-Gesucht, ImmoScout24 nacheinander, jede mit eigenem Prüflauf.
 
 Ab Schritt 3 liefert das Projekt Nutzen; Schritt 5 ist Ausbau.
+
+### 4.11 Schutzmaßnahmen der Portale und unser Umgang damit
+
+Erkannt per Messung 2026-11-11 (Details in der Analyse):
+
+| Quelle | Schutz | Umgang |
+|---|---|---|
+| ImmoScout24 | AWS CloudFront + WAF, 401 ohne Browser | sichtbarer Browser; bei Sperre Abbruch; Suchauftrag-Mail als Rückfall |
+| Immowelt | CloudFront + DataDome | sichtbarer Browser, eigenes Profil |
+| Kleinanzeigen | Akamai Bot Manager | sichtbarer Browser, eigenes Profil |
+| WG-Gesucht | eigenes CAPTCHA bei schnellem Takt | sichtbarer Browser, langsamer Takt |
+
+Regeln für alle Quellen, fest im Code (`lib/laufsperre.ts`, `scrapers/sperre.ts`):
+
+- Ein Tab, keine Parallelität je Quelle; Quellen nacheinander.
+- 4–8 s zufälliger Abstand je Seite; höchstens 5 Listenseiten und 15 Detailseiten je Quelle und Lauf.
+- Sperrerkennung je Antwort: HTTP 401/403/429, DataDome-, Akamai- oder WAF-Challenge, CAPTCHA-Seite. Dann: Quelle sofort stoppen, `laeufe.status = 'gesperrt'`, Pause 2 h, beim zweiten Mal 6 h, beim dritten Mal Telegram-Hinweis und Pause bis zum nächsten Tag.
+- Nicht eingesetzt: Proxys, Fingerprint-Veränderung, CAPTCHA-Löser, Umgehung von Challenges.
