@@ -1,6 +1,6 @@
 /**
  * Produktionslauf (scrape.yml): je aktive Quelle ein Lauf, Ergebnis in
- * Supabase (`angebote`, `laeufe`) und als Snapshot fuers Dashboard.
+ * Supabase (`angebote`, `laeufe`); das Artifact liest dort live.
  * Kein Telegram (Nutzerentscheidung 2026-11-11). Eine Sperre stoppt nur die
  * betroffene Quelle; die Pausenregel steckt in verarbeiteQuelle.
  */
@@ -9,7 +9,6 @@ import { chromium } from "playwright";
 import { sb } from "./lib/supabase.js";
 import { nurInCiAusfuehren } from "./lib/nurInCi.js";
 import { verarbeiteQuelle } from "./lib/pipeline.js";
-import { schreibeSnapshot } from "./lib/snapshot.js";
 import { QUELLEN } from "./scrapers/quellen.js";
 import { playwrightAbrufer } from "./scrapers/abrufer.js";
 import { MAX_DETAILSEITEN } from "./scrapers/sperre.js";
@@ -36,4 +35,3 @@ try {
 } finally {
   await browser.close();
 }
-await schreibeSnapshot(sb, "snapshot/dashboard-snapshot.json", new Date());

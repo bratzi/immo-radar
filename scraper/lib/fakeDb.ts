@@ -1,7 +1,7 @@
 /**
  * In-Memory-Ersatz fuer den Supabase-Client: gerade genug Query-Kette
  * (select/eq/is/in/order/limit/single, upsert/update/insert) fuer
- * angebote.ts, lauf.ts und snapshot.ts. Fuer den Pipeline-Test und das
+ * angebote.ts und lauf.ts. Fuer den Pipeline-Test und das
  * Pruefskript (das nie in die echte Datenbank schreibt).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";

@@ -45,10 +45,3 @@ jobs:
       # Sichtbarer Chromium (headless: false) unter virtuellem Display.
       - run: xvfb-run --auto-servernum npm run scrape
         working-directory: scraper
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: dashboard-snapshot
-          path: scraper/snapshot/dashboard-snapshot.json
-          if-no-files-found: warn
-          retention-days: 7
