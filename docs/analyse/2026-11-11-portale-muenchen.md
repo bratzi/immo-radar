@@ -69,10 +69,31 @@ den Anteilen oben.
 ### Folgerung für den Takt
 
 - **Mo–Fr 8–14 Uhr:** alle 15 Minuten (Hauptfenster Gewerbe, inkl. Münchner Wohnen).
-- **Mo–Fr 14–22 Uhr, Sa/So 10–20 Uhr:** alle 30 Minuten (Privatanbieter).
-- **22–7 Uhr:** alle 2 Stunden.
+- **Mo–Fr 14–18 Uhr, Sa/So 10–18 Uhr:** alle 30 Minuten.`n- **täglich 18–23 Uhr:** alle 15 Minuten (Privatvermieter, Kleinanzeigen-Messung).
+- **23–7 Uhr:** alle 2 Stunden.
 - Münchner Wohnen braucht keinen eigenen Scraper: kommt über ImmoScout24/Immowelt.
   Filter „Anbieter = Münchner Wohnen" als Bonuspunkte (+15) in der Reihung.
 - Zusätzlich: Projektbörse mitbauzentrale einmal täglich auf Neues prüfen.
 - Der Takt wird nach vier Wochen eigener Daten (`erstmals_gesehen` je Stunde und
   Wochentag) neu eingestellt.
+
+## Messung Kleinanzeigen München (2026-11-11, ca. 22 Uhr, eingebauter Browser)
+
+20 neueste Inserate („sortierung:neuste“), Zeitstempel `sortingDate` aus dem
+eingebetteten JSON der Detailseiten:
+
+- **Privat (10):** 8 davon am selben Abend, 19:59 bis 21:45 Uhr, einzeln verteilt.
+- **Gewerblich (10):** Minuten fast immer :05 bis :07, Ursprung oft Wochen alt
+  (25.09., 13.10., 19.10.). Das sind **Hochschiebungen** (bezahltes „nach oben“),
+  keine neuen Inserate.
+
+Folgerungen:
+- „Neueste zuerst“ zeigt bei Kleinanzeigen auch alte, hochgeschobene Inserate.
+  Neu ist ein Inserat nur, wenn seine Anzeigen-ID noch nicht in `angebote` steht.
+  Der Zeitstempel allein taugt nicht.
+- Privatvermieter inserieren bei Kleinanzeigen abends. Das Abendfenster
+  (18–23 Uhr) bekommt deshalb ebenfalls den 15-Minuten-Takt.
+- Die Daten stehen als eingebettetes JSON in der Detailseite
+  (`sortingDate`, `commercial`, Merkmale). Lesbar ohne Selektoren.
+- Hinweis zum Zweck: Das System dient der privaten Wohnungssuche des Nutzers.
+  „Gewerblich“ meint hier nur den Anbieter des Inserats.
