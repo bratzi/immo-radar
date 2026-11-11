@@ -32,7 +32,7 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 
 ## Offen, in dieser Reihenfolge
 
-1. Erste ImmoScout-Läufe prüfen (Tauschfilter, Warmmiete aus Exposé, Sperren).
+1. ImmoScout beobachten. Lauf 43118553524 (Commit `150dd09`): 23 gesehen, 19 passend, 15 Exposés, keine Sperre. 4 Wohnungen warten noch auf ihr Exposé (Deckel 15 je Lauf). **Falle:** `gh workflow run` direkt nach dem Push läuft noch auf dem alten Commit — `headSha` des Laufs prüfen.
 2. Erste echte Treffer abwarten; Fehlmeldungen prüfen (WG-Filter am Titel seit `profil.ts`, 2026-11-11).
 3. `lib/meldung.ts`, `lib/telegram.ts`, `deploy-dashboard.yml`, `setup-cloudflare-access.yml`, `web/` entfernen (Spec 11).
 4. WG-Gesucht als zweite Quelle, dann Immowelt, wenn CI nicht mehr gesperrt ist.
