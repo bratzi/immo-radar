@@ -8,7 +8,17 @@ export const PROFIL = {
   flaecheMinM2: 45,
 } as const;
 
+/** WG-Zimmer im Titel; "WG-geeignet" bleibt eine ganze Wohnung. */
+const WG = /\bwg[- ]?zimmer\b|\d\s*-?\s*er[- ]?wg\b|wohngemeinschaft|\bwg\b(?![- ]?(geeignet|tauglich|f[äa]hig))/i;
+const WG_GEEIGNET = /\bwg[- ]?(geeignet|tauglich|f[äa]hig)|als wg geeignet/i;
+
+export function istWgAngebot(titel: string): boolean {
+  if (WG_GEEIGNET.test(titel) && !/wg[- ]?zimmer|er[- ]?wg\b/i.test(titel)) return false;
+  return WG.test(titel);
+}
+
 export function pruefeProfil(a: Angebot): Profilurteil {
+  if (istWgAngebot(a.titel)) return { passt: "nein", gruende: ["wg_zimmer"] };
   const nein: string[] = [];
   const unklar: string[] = [];
 

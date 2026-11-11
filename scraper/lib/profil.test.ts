@@ -12,6 +12,21 @@ describe("pruefeProfil", () => {
   it("passt bei allen Pflichtmerkmalen", () => {
     expect(pruefeProfil(BASIS())).toEqual({ passt: "ja", gruende: [] });
   });
+  it.each([
+    "***NEUHAUSEN*** 3 möblierte WG-Zimmer in modernisierter 4er-WG",
+    "Neugründung einer zentralen 4er-WG in München-Neuhausen",
+    "4-er WG Eschenbachstr. 3, 81549München",
+    "Zimmer in Wohngemeinschaft, Schwabing",
+    "WG Zimmer frei ab Dezember",
+  ])("WG-Angebot ist raus: %s", (titel) => {
+    const a = BASIS(); a.titel = titel;
+    expect(pruefeProfil(a)).toEqual({ passt: "nein", gruende: ["wg_zimmer"] });
+  });
+  it.each(["WG-geeignete 3-Zimmer-Wohnung", "Wohnung, auch als WG geeignet", "2-Zimmer-Wohnung mit Balkon"])(
+    "WG-geeignete Wohnung bleibt drin: %s", (titel) => {
+      const a = BASIS(); a.titel = titel;
+      expect(pruefeProfil(a).passt).toBe("ja");
+    });
   it("Grenzwerte sind einschliessend", () => {
     const a = BASIS(); a.warmmieteCents = PROFIL.warmmieteMaxCents; a.zimmer = 2; a.flaecheM2 = 45;
     expect(pruefeProfil(a).passt).toBe("ja");
