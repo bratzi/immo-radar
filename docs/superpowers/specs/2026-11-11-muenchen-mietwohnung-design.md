@@ -324,3 +324,53 @@ was Urteil braucht.
 
 Grenze: Claude-Funktionen kommen nie in den 15-Minuten-Lauf selbst. Der Lauf
 bleibt schnell, billig und testbar; Claude wirkt um ihn herum.
+
+## 9. Gemini-Vorlage, übersetzt und eingeordnet
+
+Der Nutzer hatte vorab mit Gemini eine Agenten-Instruktion entworfen. Hier jeder
+Punkt in Klartext und was davon im Projekt gilt.
+
+| Gemini sagt | Gemeint ist | Im Projekt |
+|---|---|---|
+| Autonomer Lead-Entwickler, Plan-Act-Observe | Claude plant, baut, prüft selbst in Schleifen | **übernommen**: Spec → Plan → Subagenten → Tests → Review, je Task ein Commit |
+| `planning.md` vor dem Code bestätigen | erst Plan, dann bauen | **übernommen** als Spec + Plan in `docs/superpowers/` |
+| `progress.md` für Folgesitzungen | Übergabe zwischen Sitzungen | **übernommen** als `UEBERGABE.md`, später Claude Docs |
+| Sonnet für Scraping/Extraktion, Opus für Architektur | Modell nach Schwere wählen | **übernommen**, siehe 9.1 |
+| MCP-Server und Skills einbinden, auch von GitHub | Werkzeuge erweitern | **teilweise**: nur geprüfte Skills; crawl4ai-MCP und Firecrawl verworfen (Kosten, Python, Stealth-Kern) |
+| Lokale Chrome-Instanz steuern | echter Browser statt Bot | **angepasst**: sichtbarer Chromium in Actions; eingebauter Browser für Analyse; Claude in Chrome nur mit Anmeldung |
+| MCP 2.0, lange Läufe im Hintergrund | nicht blockieren | **übernommen** als Hintergrund-Agenten, Routinen, Actions |
+| HTML → Markdown, token-sparend | Seiten fürs Modell kürzen | **besser gelöst**: im Lauf gar kein Modell; JSON/Selektoren lesen, null Token |
+| JSON-First statt CSS-Selektoren | eingebettete Daten lesen | **übernommen** (4.2, Plan-Nachtrag 3) |
+| Pydantic-Schemata | festes Datenmodell | **übernommen** als TypeScript `Angebot` (4.1) |
+| SQLite/DuckDB lokal | Datenbank | **ersetzt** durch Supabase, weil der Lauf online ist |
+| Hash-Matching über Portale | Dubletten erkennen | **teilweise**: Dubletten werden nur markiert („auch bei …"), nicht zusammengeführt (Abschnitt 5) |
+| Suchprofile als JSON, Match-Score | Profil und Reihung | **übernommen**: `profil.ts` + `reihung.ts`; Profil als JSON in Plan 2 |
+| Artifacts / Claude Data / Sheets als Dashboard | Ansicht in der Claude-App | **übernommen** als Artifact „Wohnungsradar" mit Datenbank (Abschnitt 8) |
+| WAF-Bypass, Residential-Proxys, Tarnung | Bot-Schutz umgehen | **nicht übernommen**. Stattdessen Drossel, Sperrerkennung, Pause (4.11) |
+
+### 9.1 Modellwahl je Aufgabe
+
+| Aufgabe | Modell | Warum |
+|---|---|---|
+| Spec, Architektur, Schema, Parser-Reparatur bei unbekanntem Bruch | **Opus 5.5** | braucht Urteil über viele Dateien |
+| Routine-Tasks aus fertigem Plan, Tests, Doku, Fixture-Updates | **Sonnet 5.5** | Plan ist eindeutig, schnell und günstig |
+| Recherche-Agenten (Portale, Markt) | **Sonnet 5.5**, bei Widersprüchen Opus | viel Lesen, wenig Urteil |
+| Wöchentliche Takt-Routine | **Sonnet 5.5** | Rechnen + PR |
+| Anschreiben an Vermieter (Artifact) | **Sonnet 5.5** | kurzer Text |
+| 15-Minuten-Lauf | **kein Modell** | deterministischer Code |
+
+Haiku wird nicht eingesetzt (Nutzervorgabe).
+
+### 9.2 Token sparen
+
+- **Kein Modell im Lauf.** Größter Hebel: tausende Seiten pro Tag kosten null Token.
+- **Subagenten** lesen große Dateien und Seiten in eigenem Kontext und liefern nur
+  den Bericht zurück; der Hauptkontext bleibt klein.
+- **Skills laden erst bei Bedarf** statt Anleitungen in jeden Prompt.
+- **Prompt-Caching** für Routinen und das Artifact: fester Systemteil (Profil,
+  Regeln) wird gecacht, nur das Inserat ist neu.
+- **Batch-Verarbeitung** für nicht eilige Routinen (wöchentliche Analyse): halbe
+  Kosten, Ergebnis in Stunden reicht.
+- **Strukturierte Ausgaben** (JSON-Schema) statt Freitext, wo Code weiterliest.
+- **Kurze Berichte**: Agentenaufträge mit Wortlimit; Kommunikationsstil knapp.
+- **Fixtures statt Live-Seiten** für Tests und Reparatur: einmal holen, oft lesen.
