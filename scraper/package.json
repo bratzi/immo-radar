@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "generate:plz": "tsx scripts/generate-plz-table.mts",
     "scrape": "tsx main.ts"
   },
   "dependencies": {
