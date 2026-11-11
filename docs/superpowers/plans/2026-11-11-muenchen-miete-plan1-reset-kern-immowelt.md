@@ -1621,3 +1621,14 @@ git push
 - Spec 4.10 Betrieb: Task 11, 14. ✔
 - Spec 5 Fehlerbehandlung: gesperrte Quelle Task 13; Warnung nach drei gesperrten Läufen und Monatsjob stehen im BACKLOG (Task 1), bewusst nicht in Plan 1.
 - Spec 6 Tests: je Task.
+
+## Nachtrag 2026-11-11 (Spec-Stand 7053e78)
+
+Die Spec wurde nach dem Plan geändert. Diese Punkte gehen den Tasks oben vor:
+
+1. **Task 9 (`angebote`):** „neu" heißt nur `(quelle, external_id)` unbekannt. Portal-Zeitstempel werden gespeichert, entscheiden aber nie über „neu". Testfall: bekanntes Angebot mit jüngerem `veroeffentlichtAm` gilt nicht als neu.
+2. **Neuer Task 12b, `scrapers/sperre.ts`:** reine Funktion `erkenneSperre({status, html, url}) -> null | "http" | "datadome" | "akamai" | "waf" | "captcha"`, dazu `naechsterVersuch(sperrenInFolge, jetzt)` mit 2 h, 6 h, nächster Tag. Tabellentests mit kurzen HTML-Schnipseln. Konstanten: 4–8 s Seitenabstand, max. 5 Listen- und 15 Detailseiten je Quelle und Lauf.
+3. **Task 12 (Parser):** zuerst JSON-LD oder eingebettetes Next.js-JSON lesen, Selektoren nur als Rückfall. Fixture-Test für beide Wege.
+4. **Task 13 (`main.ts`):** vor jeder Quelle `naechsterVersuch` aus `laeufe` prüfen; Sperre stoppt nur diese Quelle. Dritte Sperre in Folge: eine Telegram-Warnung.
+5. **Task 14 (Workflows):** statt `17,47 * * * *` Takt nach Tageszeit (UTC beachten, Sommer- und Winterzeit über doppelte Zeilen grob abdecken): Mo–Fr 8–14 und täglich 18–23 Uhr alle 15 min, sonst 7–23 Uhr alle 30 min, nachts alle 2 h. `concurrency: scrape` mit `cancel-in-progress: false`. Browserprofil je Quelle per `actions/cache` (Schlüssel `profil-<quelle>-<run_id>`, `restore-keys: profil-<quelle>-`).
+6. **Abschnitt 8 der Spec (Claude-Routinen, Artifact „Wohnungsradar")** ist Plan 2, nicht Plan 1.
