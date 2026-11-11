@@ -1,0 +1,68 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { parseImmoscoutListe, parseImmoscoutExpose, euroCents } from "./parse.js";
+
+const fixture = (n: string) => JSON.parse(readFileSync(new URL(`../../test/fixtures/immoscout24/${n}`, import.meta.url), "utf8"));
+
+describe("euroCents", () => {
+  it("liest deutsche Betraege", () => {
+    expect(euroCents("1.080 €")).toBe(108_000);
+    expect(euroCents("3.240,00")).toBe(324_000);
+    expect(euroCents("keine Angabe")).toBeNull();
+    expect(euroCents(undefined)).toBeNull();
+  });
+});
+
+describe("parseImmoscoutListe", () => {
+  const liste = parseImmoscoutListe(fixture("liste.json"));
+
+  it("wirft Tauschwohnungen raus", () => {
+    expect(liste.some((a) => /tausch/i.test(a.titel))).toBe(false);
+    expect(liste).toHaveLength(4);
+  });
+
+  it("liest Forstenried: Listenpreis ist Kaltmiete, Warmmiete geschaetzt", () => {
+    const a = liste.find((x) => x.externalId === "172539355")!;
+    expect(a).toMatchObject({
+      quelle: "immoscout24",
+      url: "https://www.immobilienscout24.de/expose/172539355",
+      titel: "Zuhause mit 2 Zimmern in Forstenried",
+      kaltmieteCents: 108_000,
+      warmmieteCents: 135_000,
+      warmmieteQuelle: "geschaetzt",
+      zimmer: 2,
+      flaecheM2: 48,
+      plz: "81476",
+      balkon: "unbekannt",
+      detailGeladen: false,
+    });
+    expect(a.bildUrls).toHaveLength(1);
+  });
+
+  it("liest Dezimalflaeche 48,6 m2", () => {
+    expect(liste.some((a) => a.flaecheM2 === 48.6)).toBe(true);
+  });
+});
+
+describe("parseImmoscoutExpose", () => {
+  const basis = parseImmoscoutListe(fixture("liste.json")).find((x) => x.externalId === "172539355")!;
+
+  it("Forstenried: Warmmiete angegeben, Nebenkosten, Balkon ja, bezugsfrei", () => {
+    const a = parseImmoscoutExpose(fixture("expose-172539355.json"), basis)!;
+    expect(a).toMatchObject({
+      kaltmieteCents: 108_000,
+      nebenkostenCents: 18_000,
+      warmmieteCents: 126_000,
+      warmmieteQuelle: "angegeben",
+      balkon: "ja",
+      balkonBeleg: "Balkon/Terrasse",
+      verfuegbarAb: "1.12.2026",
+      stadtteil: "Forstenried",
+      detailGeladen: true,
+    });
+  });
+
+  it("Tauschwohnung im Exposetitel ergibt null", () => {
+    expect(parseImmoscoutExpose(fixture("expose-tausch.json"), basis)).toBeNull();
+  });
+});

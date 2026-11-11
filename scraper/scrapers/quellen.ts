@@ -1,9 +1,10 @@
 import type { Quelle } from "./quelle.js";
 import { kleinanzeigenQuelle } from "./kleinanzeigen/index.js";
 import { immoweltQuelle } from "./immowelt/index.js";
+import { immoscoutQuelle } from "./immoscout24/index.js";
 
 /** Alle verdrahteten Quellen; `aktiv: false` wird im Lauf uebersprungen. */
-export const QUELLEN: Quelle[] = [kleinanzeigenQuelle, immoweltQuelle];
+export const QUELLEN: Quelle[] = [kleinanzeigenQuelle, immoscoutQuelle, immoweltQuelle];
 
 export function waehleQuelle(name: string): Quelle {
   const q = QUELLEN.find((x) => x.name === name);
