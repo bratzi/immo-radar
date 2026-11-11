@@ -15,14 +15,14 @@ function fakeAbrufer(seiten: Record<string, Antwort>): Abrufer & { geholt: strin
 }
 
 describe("kleinanzeigenQuelle.sweep", () => {
-  it("liest zwei Listenseiten, Abstand dazwischen, nicht vollstaendig", async () => {
+  it("blaettert weiter, Abstand zwischen den Seiten, hoert bei fehlender Seite auf", async () => {
     const ab = fakeAbrufer({
       [kleinanzeigenSeitenUrl(1)]: { status: 200, html: fixture("liste-1.html"), url: kleinanzeigenSeitenUrl(1) },
       [kleinanzeigenSeitenUrl(2)]: { status: 200, html: fixture("liste-2.html"), url: kleinanzeigenSeitenUrl(2) },
     });
     const e = await kleinanzeigenQuelle.sweep(ab, 60_000);
-    expect(ab.geholt).toEqual([KLEINANZEIGEN_SUCHE_URL, kleinanzeigenSeitenUrl(2)]);
-    expect(ab.gewartet.length).toBe(1);
+    expect(ab.geholt).toEqual([KLEINANZEIGEN_SUCHE_URL, kleinanzeigenSeitenUrl(2), kleinanzeigenSeitenUrl(3)]);
+    expect(ab.gewartet.length).toBe(2);
     expect(e.status).toBe("ok");
     expect(e.vollstaendig).toBe(false);
     const ids = e.angebote.map((a) => a.externalId);
