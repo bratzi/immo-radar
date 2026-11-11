@@ -18,11 +18,18 @@ describe("pruefeProfil", () => {
     "4-er WG Eschenbachstr. 3, 81549München",
     "Zimmer in Wohngemeinschaft, Schwabing",
     "WG Zimmer frei ab Dezember",
+    "Ein privates Zimmer für eine Frau mit KVR",
+    "1 Zimmer frei in 3 Zimmer Wohnung",
+    "Zimmer zu vermieten in Pasing",
+    "Möbliertes Zimmer in ruhiger Lage",
   ])("WG-Angebot ist raus: %s", (titel) => {
     const a = BASIS(); a.titel = titel;
     expect(pruefeProfil(a)).toEqual({ passt: "nein", gruende: ["wg_zimmer"] });
   });
-  it.each(["WG-geeignete 3-Zimmer-Wohnung", "Wohnung, auch als WG geeignet", "2-Zimmer-Wohnung mit Balkon"])(
+  it.each([
+    "WG-geeignete 3-Zimmer-Wohnung", "Wohnung, auch als WG geeignet", "2-Zimmer-Wohnung mit Balkon",
+    "Helle 2 Zimmer Wohnung in Laim", "Zuhause mit 2 Zimmern in Forstenried", "3 Zimmer, Küche, Bad in Giesing",
+  ])(
     "WG-geeignete Wohnung bleibt drin: %s", (titel) => {
       const a = BASIS(); a.titel = titel;
       expect(pruefeProfil(a).passt).toBe("ja");
