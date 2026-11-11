@@ -374,3 +374,20 @@ Haiku wird nicht eingesetzt (Nutzervorgabe).
 - **Strukturierte Ausgaben** (JSON-Schema) statt Freitext, wo Code weiterliest.
 - **Kurze Berichte**: Agentenaufträge mit Wortlimit; Kommunikationsstil knapp.
 - **Fixtures statt Live-Seiten** für Tests und Reparatur: einmal holen, oft lesen.
+
+## 10. Nachtrag: kein Telegram (Nutzer, 2026-11-11)
+
+Telegram entfällt vollständig, wie in der Gemini-Vorlage: dort ist das
+Ergebnis eine **Übersicht in der Claude-App, sortiert nach Match-Score**,
+keine Push-Meldung. Damit gilt:
+
+- Ausgabe jedes Laufs: `angebote` in Supabase, `laeufe`-Protokoll, Snapshot-JSON.
+- **Hauptansicht ist das Artifact „Wohnungsradar"** (Abschnitt 8): Trefferliste
+  nach Punkten, Filter, Profilverwaltung, Status je Wohnung. Es liest den
+  aktuellen Snapshot; das Pages-Dashboard bleibt als Rückfall.
+- „Neu seit letztem Besuch" wird im Artifact markiert statt gemeldet.
+- `lib/meldung.ts`, `lib/telegram.ts`, Abschnitt 4.8 und Meldebudget (4.2
+  Schritt 5) entfallen; Telegram-Secrets werden nicht mehr genutzt.
+- Sperrwarnungen erscheinen als Status in der Betriebstafel des Artifacts.
+- Erfolg heißt jetzt: ein passendes Angebot steht innerhalb eines Laufs nach
+  Veröffentlichung oben im Wohnungsradar, mit Balkonbeleg und Link.
