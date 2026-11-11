@@ -408,7 +408,7 @@ Betrieb ohne den Rechner des Nutzers sichern. Was keins davon tut, fällt weg.
    Rechner), sortiert nach Punkten, Status je Wohnung in der Artifact-Datenbank.
    Datenweg zum Artifact wird beim Bau geprüft (Fähigkeit „verbundene Daten");
    bis dahin bleibt das Pages-Dashboard als Datenquelle stehen.
-4. **Benachrichtigung per GitHub-Issue**: Hat ein Lauf neue passende Treffer, legt `scrape.yml` ein Issue „N neue Treffer" mit Links an (GITHUB_TOKEN, kein Modell, null Token). Die GitHub-App pusht aufs Handy. Claude-Routine als Push-Weg verworfen: Testlauf 2026-11-11 (`trig_01SXSzLqQdbxzU3bLD1c34yS`) lief, aber kein Push kam an.
+4. **Keine Benachrichtigung vorerst** (Nutzer, 2026-11-11). Treffer stehen nur im Wohnungsradar. Später möglich: Issue je Lauf mit neuen Treffern (GitHub-App pusht, null Token). Routine-Push verworfen: Test `trig_01SXSzLqQdbxzU3bLD1c34yS` lief, kein Push kam an.
 5. **Eine Claude-Routine „Reparatur"** (Opus, Cloud): wird nur ausgelöst,
    wenn eine Quelle zweimal in Folge 0 Angebote oder einen Parserfehler liefert.
    Holt frische Fixtures, repariert den Parser, öffnet einen PR. Auto-fix
