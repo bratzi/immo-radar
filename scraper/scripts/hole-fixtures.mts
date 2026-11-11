@@ -55,7 +55,7 @@ async function kleinanzeigen(page: Page): Promise<void> {
     if (!(await holeSeite(page, kleinanzeigenSeitenUrl(n), `liste-${n}`))) return;
     if (n === 1) {
       await page.screenshot({ path: "fixtures-out/liste-1.png", fullPage: true });
-      const hrefs = await page.locator("article.aditem[data-href]").evaluateAll((as) =>
+      const hrefs = await page.locator("article[data-adid][data-href]").evaluateAll((as) =>
         as.map((a) => a.getAttribute("data-href") ?? "")
       );
       for (const h of hrefs) if (h && !links.includes(h)) links.push(new URL(h, "https://www.kleinanzeigen.de").href);
