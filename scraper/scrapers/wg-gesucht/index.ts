@@ -12,8 +12,10 @@ import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseWgGesuchtListe, WGG_BASIS } from "./parse.js";
 import { FANGNETZ } from "../../lib/profil.js";
 
+// Format der Blaetter-Links der Seite selbst (2026-11-12): mit offer_filter=1
+// liefert jede Seite Seite 0. Ohne Anmeldung zeigt WG-Gesucht nur 2 Seiten.
 const FILTER =
-  "?offer_filter=1&city_id=90&sort_order=0&noDeact=1&categories%5B%5D=2&rent_types%5B%5D=2" +
+  "?city_id=90&sort_order=0&noDeact=1&categories%5B0%5D=2&rent_types%5B0%5D=2" +
   `&rMax=${FANGNETZ.warmmieteMaxEuro}&sMin=${FANGNETZ.flaecheMinM2}` +
   // rmMin=1 liefert 3 statt 103 Treffer (2026-11-12); "ab 1 Zimmer" ist kein Filter.
   (FANGNETZ.zimmerMin > 1 ? `&rmMin=${FANGNETZ.zimmerMin}` : "");
@@ -44,8 +46,10 @@ async function sweep(ab: Abrufer, budgetMs: number): Promise<SweepErgebnis> {
     if (karten === 0) {
       return { angebote: alle(), vollstaendig: n > 1, status: n === 1 ? "fehler" : "ok", hinweis: n === 1 ? "keine Karten auf Seite 1" : null };
     }
-    for (const a of parseWgGesuchtListe(antwort.html)) if (!gesehen.has(a.externalId)) gesehen.set(a.externalId, a);
-    if (karten < KARTEN_JE_SEITE) return { angebote: alle(), vollstaendig: true, status: "ok", hinweis: null };
+    const neu = parseWgGesuchtListe(antwort.html).filter((a) => !gesehen.has(a.externalId));
+    for (const a of neu) gesehen.set(a.externalId, a);
+    // Keine neuen Inserate: die Seite wiederholt sich, das Ende ist erreicht.
+    if (neu.length === 0 || karten < KARTEN_JE_SEITE) return { angebote: alle(), vollstaendig: true, status: "ok", hinweis: null };
   }
   return { angebote: alle(), vollstaendig: false, status: "ok", hinweis: null };
 }

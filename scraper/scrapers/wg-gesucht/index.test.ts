@@ -23,6 +23,24 @@ describe("wgGesuchtSeitenUrl", () => {
     expect(u1).not.toContain("rmMin=");
     expect(wgGesuchtSeitenUrl(2)).toContain(".90.2.1.1.html");
   });
+  it("Format der Blaetter-Links der Seite: ohne offer_filter, categories[0] (sonst liefert jede Seite Seite 0)", () => {
+    for (const u of [wgGesuchtSeitenUrl(1), wgGesuchtSeitenUrl(2)]) {
+      expect(u).not.toContain("offer_filter");
+      expect(u).toContain("categories%5B0%5D=2");
+      expect(u).toContain("rent_types%5B0%5D=2");
+    }
+  });
+});
+
+describe("WG-Gesucht-Sweep: Ende der Liste", () => {
+  it("eine volle Seite ohne neue Inserate beendet den Lauf als vollstaendig", async () => {
+    const voll = html.repeat(5); // 25 Karten, aber nur 5 verschiedene
+    const ab = fake([{ status: 200, html: voll, url: "u" }, { status: 200, html: voll, url: "u" }]);
+    const e = await wgGesuchtQuelle.sweep(ab, 60_000);
+    expect(ab.urls).toHaveLength(2);
+    expect(e).toMatchObject({ status: "ok", vollstaendig: true });
+    expect(e.angebote).toHaveLength(5);
+  });
 });
 
 describe("WG-Gesucht-Sweep", () => {
