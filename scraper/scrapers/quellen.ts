@@ -3,9 +3,10 @@ import { kleinanzeigenQuelle } from "./kleinanzeigen/index.js";
 import { immoweltQuelle } from "./immowelt/index.js";
 import { immoscoutQuelle } from "./immoscout24/index.js";
 import { wgGesuchtQuelle } from "./wg-gesucht/index.js";
+import { ohneMaklerQuelle } from "./ohne-makler/index.js";
 
 /** Alle verdrahteten Quellen; `aktiv: false` wird im Lauf uebersprungen. */
-export const QUELLEN: Quelle[] = [kleinanzeigenQuelle, immoscoutQuelle, wgGesuchtQuelle, immoweltQuelle];
+export const QUELLEN: Quelle[] = [kleinanzeigenQuelle, immoscoutQuelle, wgGesuchtQuelle, ohneMaklerQuelle, immoweltQuelle];
 
 export function waehleQuelle(name: string): Quelle {
   const q = QUELLEN.find((x) => x.name === name);

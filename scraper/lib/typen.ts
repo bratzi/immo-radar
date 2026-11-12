@@ -1,4 +1,4 @@
-export type Quelle = "immowelt" | "kleinanzeigen" | "wg-gesucht" | "immoscout24";
+export type Quelle = "immowelt" | "kleinanzeigen" | "wg-gesucht" | "immoscout24" | "ohne-makler";
 export type Balkonbefund = "ja" | "nein" | "unbekannt";
 export type WarmmieteQuelle = "angegeben" | "kalt_plus_nk" | "geschaetzt" | "unbekannt";
 export type Passt = "ja" | "nein" | "unklar";
