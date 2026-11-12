@@ -25,6 +25,13 @@ describe("ImmoScout24-Sweep", () => {
     expect(f.urls[1]).toContain("pagenumber=2");
   });
 
+  it("liest bis zu 16 Seiten, damit das ganze Fangnetz (~720 Inserate) in einen Lauf passt", async () => {
+    const f = fake(Array.from({ length: 15 }, (_, i) => ({ status: 200, json: seite(i + 1, 15) })));
+    const e = await baueImmoscoutQuelle(f.hole, async () => {}).sweep(abrufer, 600_000);
+    expect(f.urls).toHaveLength(15);
+    expect(e).toMatchObject({ status: "ok", vollstaendig: true });
+  });
+
   it("403 auf Seite 1 ist gesperrt", async () => {
     const e = await baueImmoscoutQuelle(fake([{ status: 403, json: null }]).hole, async () => {}).sweep(abrufer, 60_000);
     expect(e).toMatchObject({ status: "gesperrt", vollstaendig: false, hinweis: "http" });

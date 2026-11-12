@@ -11,7 +11,7 @@
 import type { Angebot } from "../../lib/typen.js";
 import { FANGNETZ } from "../../lib/profil.js";
 import type { DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.js";
-import { seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
+import { seitenabstandMs } from "../sperre.js";
 import { parseImmoscoutExpose, parseImmoscoutListe } from "./parse.js";
 
 const API = "https://api.mobile.immobilienscout24.de";
@@ -28,6 +28,13 @@ export interface JsonAntwort { status: number; json: unknown }
 export type JsonHoler = (url: string) => Promise<JsonAntwort>;
 
 const SPERRSTATUS = new Set([401, 403, 412, 429]);
+
+/**
+ * Eigener Seitendeckel: das Fangnetz umfasst ~720 Inserate (2026-11-12), bei
+ * 50 je Seite braucht ein vollstaendiger Lauf 15 Seiten. Nur ein
+ * vollstaendiger Lauf markiert Abgaenge. Die API antwortet ohne Browser.
+ */
+export const IMMOSCOUT_MAX_SEITEN = 16;
 
 export const netzHoler: JsonHoler = async (url) => {
   const expose = url.includes("/expose/");
@@ -50,7 +57,7 @@ export function baueImmoscoutQuelle(hole: JsonHoler = netzHoler, pause: (ms: num
     const ende = Date.now() + budgetMs;
     const gesehen = new Map<string, Angebot>();
     const alle = () => [...gesehen.values()];
-    for (let n = 1; n <= MAX_LISTENSEITEN; n++) {
+    for (let n = 1; n <= IMMOSCOUT_MAX_SEITEN; n++) {
       if (n > 1) {
         if (Date.now() >= ende) return { angebote: alle(), vollstaendig: false, status: "ok", hinweis: "Budget erschoepft" };
         await pause(seitenabstandMs());
