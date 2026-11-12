@@ -20,7 +20,7 @@ describe("wgGesuchtSeitenUrl", () => {
     expect(u1).toContain("/wohnungen-in-Muenchen.90.2.1.0.html");
     expect(u1).toContain("rMax=1800");
     expect(u1).toContain("sMin=30");
-    expect(u1).toContain("rmMin=1");
+    expect(u1).not.toContain("rmMin=");
     expect(wgGesuchtSeitenUrl(2)).toContain(".90.2.1.1.html");
   });
 });

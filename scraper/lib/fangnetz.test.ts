@@ -29,6 +29,8 @@ describe("Fangnetz der Portalfilter", () => {
     const u = wgGesuchtSeitenUrl(1);
     expect(u).toContain(`rMax=${FANGNETZ.warmmieteMaxEuro}`);
     expect(u).toContain(`sMin=${FANGNETZ.flaecheMinM2}`);
-    expect(u).toContain(`rmMin=${FANGNETZ.zimmerMin}`);
+    // rmMin=1 filtert bei WG-Gesucht auf 3 statt 103 Treffer (2026-11-12); ab 1 Zimmer heisst: kein Filter.
+    if (FANGNETZ.zimmerMin <= 1) expect(u).not.toContain("rmMin=");
+    else expect(u).toContain(`rmMin=${FANGNETZ.zimmerMin}`);
   });
 });

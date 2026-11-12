@@ -14,7 +14,9 @@ import { FANGNETZ } from "../../lib/profil.js";
 
 const FILTER =
   "?offer_filter=1&city_id=90&sort_order=0&noDeact=1&categories%5B%5D=2&rent_types%5B%5D=2" +
-  `&rMax=${FANGNETZ.warmmieteMaxEuro}&sMin=${FANGNETZ.flaecheMinM2}&rmMin=${FANGNETZ.zimmerMin}`;
+  `&rMax=${FANGNETZ.warmmieteMaxEuro}&sMin=${FANGNETZ.flaecheMinM2}` +
+  // rmMin=1 liefert 3 statt 103 Treffer (2026-11-12); "ab 1 Zimmer" ist kein Filter.
+  (FANGNETZ.zimmerMin > 1 ? `&rmMin=${FANGNETZ.zimmerMin}` : "");
 /** WG-Gesucht zeigt 20 Karten je Seite; weniger heisst: letzte Seite. */
 const KARTEN_JE_SEITE = 20;
 
