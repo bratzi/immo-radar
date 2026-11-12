@@ -38,6 +38,20 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
   Ansicht Karten oder Tabelle. **Falle:** Elemente außerhalb des eigenen `data-draw` anzuhängen
   (Tooltip an `parentNode`) meldet `check` als `stray_write`.
 - Offen: Spec `specs/2026-11-12-routine-reparatur-design.md` wartet auf die Freigabe des Nutzers.
+- **Takt ist unzuverlässig:** GitHub startet `schedule` nur etwa 3-mal am Tag statt ~50-mal
+  (gemessen 2026-11-03 bis 2026-11-12). Entwurf liegt beim Nutzer: `starte_lauf()` in Supabase
+  (`pg_net` ruft workflow_dispatch, Token im Vault `github_actions_token`, höchstens 1× je 5 min),
+  `pg_cron` mit dem bisherigen Takt, Status-Tabelle „läuft seit / fertig um“, Knopf „Jetzt scannen“
+  im Radar. Wartet auf Freigabe und den Token, den der Nutzer selbst anlegt.
+- Exposé-Daten bleiben seit `a82c62d` erhalten, solange die Kaltmiete gleich ist; das
+  Detailbudget (15) geht zuerst an passende, dann an knapp zu teure Angebote.
+- ImmoScout liest seit `9c65d30` bis 16 Seiten (Fangnetz ~720 Inserate), Lauf 43191744692:
+  614 gesehen, 19 passend, vollständig, gut 3 min — nahe am Sweep-Budget von 3 min.
+- „Online seit“: Kleinanzeigen genau, ImmoScout („vor 8 Stunden“) und WG-Gesucht („2 T.“ oder Datum)
+  seit `634d683`; der früheste Wert bleibt. Ohne-Makler nennt nichts.
+- **Falle WG-Gesucht:** `rmMin=1` filtert auf 3 statt 103 Treffer; bei „ab 1 Zimmer“ weglassen (`0286478`).
+- Der Laufbericht „passend“ zählt nur, was der Lauf selbst gesehen hat; bei unvollständigen Läufen
+  (Kleinanzeigen, Ohne-Makler) stehen ältere Treffer weiter in der Datenbank.
 
 ## Stand der Quellen
 
