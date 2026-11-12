@@ -11,6 +11,12 @@ describe("istMuenchen", () => {
     expect(istMuenchen("85521")).toBe(false); // Ottobrunn
     expect(istMuenchen("80330")).toBe(false);
   });
+  it("nimmt das Umland in der Suedwest-Bucht der Stadtgrenze an (Nutzer 2026-11-12)", () => {
+    expect(istMuenchen("82061")).toBe(true); // Neuried
+    expect(istMuenchen("82152")).toBe(true); // Planegg, Martinsried
+    expect(istMuenchen("82166")).toBe(true); // Graefelfing
+    expect(ringFuerPlz("82061")).toBe(3);
+  });
 });
 
 describe("ringFuerPlz", () => {

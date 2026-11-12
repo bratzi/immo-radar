@@ -12,6 +12,13 @@ describe("plzFuerStadtteil", () => {
     expect(plzFuerStadtteil("Sendling-Westpark")).toBe("81373");
     expect(plzFuerStadtteil("Schwabing")).toBe("80796");
   });
+  it("Fuerstenried, Fuerstenried West, Forstenried und Solln liegen im Sueden, nicht in Obersendling", () => {
+    expect(plzFuerStadtteil("Fürstenried West")).toBe("81476");
+    expect(plzFuerStadtteil("Fuerstenried")).toBe("81476");
+    expect(plzFuerStadtteil("Forstenried")).toBe("81476");
+    expect(plzFuerStadtteil("Solln")).toBe("81479");
+    expect(plzFuerStadtteil("Obersendling")).toBe("81379");
+  });
   it("unbekannter Ort bleibt null", () => {
     expect(plzFuerStadtteil("Emmering")).toBeNull();
     expect(plzFuerStadtteil(null)).toBeNull();

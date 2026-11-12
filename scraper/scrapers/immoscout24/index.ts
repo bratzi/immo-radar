@@ -21,7 +21,9 @@ const UA_EXPOSE = "ImmoScout_27.3_26.0_._";
 
 export const IMMOSCOUT_SUCHE =
   "searchType=region&realestatetype=apartmentrent&pricetype=calculatedtotalrent" +
-  `&geocodes=%2Fde%2Fbayern%2Fmuenchen&price=-${FANGNETZ.warmmieteMaxEuro}.0` +
+  // Stadt plus die Suedwest-Bucht (Neuried, Planegg, Graefelfing), siehe UMLAND_SUEDWEST.
+  `&geocodes=${["muenchen", "muenchen-kreis/neuried", "muenchen-kreis/planegg", "muenchen-kreis/graefelfing"]
+    .map((g) => encodeURIComponent(`/de/bayern/${g}`)).join("%2C")}&price=-${FANGNETZ.warmmieteMaxEuro}.0` +
   `&numberofrooms=${FANGNETZ.zimmerMin}.0-&livingspace=${FANGNETZ.flaecheMinM2}.0-`;
 
 export interface JsonAntwort { status: number; json: unknown }

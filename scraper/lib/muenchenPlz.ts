@@ -1,5 +1,16 @@
-/** Muenchner Stadtgebiet: PLZ 80331 bis 81929. Umland (82xxx, 85xxx) nicht. */
+/**
+ * Umland in der Suedwest-Bucht der Stadtgrenze (zwischen Hadern, Pasing und
+ * Fuerstenried), auf Wunsch des Nutzers seit 2026-11-12 mit im Suchgebiet.
+ */
+export const UMLAND_SUEDWEST: Record<string, string> = {
+  "82061": "Neuried",
+  "82152": "Planegg, Martinsried",
+  "82166": "Graefelfing",
+};
+
+/** Suchgebiet: Stadtgebiet (PLZ 80331 bis 81929) plus UMLAND_SUEDWEST. Sonstiges Umland nicht. */
 export function istMuenchen(plz: string): boolean {
+  if (plz in UMLAND_SUEDWEST) return true;
   const n = Number(plz);
   return Number.isInteger(n) && n >= 80331 && n <= 81929;
 }
