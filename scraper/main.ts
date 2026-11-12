@@ -12,8 +12,13 @@ import { verarbeiteQuelle } from "./lib/pipeline.js";
 import { QUELLEN } from "./scrapers/quellen.js";
 import { playwrightAbrufer } from "./scrapers/abrufer.js";
 import { MAX_DETAILSEITEN } from "./scrapers/sperre.js";
+import { meldeLaufStart, meldeLaufEnde, laufUrlAusUmgebung } from "./lib/laufStatus.js";
 
 nurInCiAusfuehren("scrape");
+
+// Status fuer den Radar-Knopf; ein Fehler hier stoppt den Lauf nicht.
+const melde = async (was: string, f: () => Promise<void>) => { try { await f(); } catch (e) { console.error(`Laufstatus ${was}:`, e); } };
+await melde("Start", () => meldeLaufStart(sb, new Date(), laufUrlAusUmgebung(process.env)));
 
 const browser = await chromium.launch({ headless: false });
 try {
@@ -34,4 +39,5 @@ try {
   }
 } finally {
   await browser.close();
+  await melde("Ende", () => meldeLaufEnde(sb, new Date()));
 }
