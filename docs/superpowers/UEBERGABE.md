@@ -14,7 +14,13 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 - `scrape.yml` auf `main`, Takt nach Tageszeit (Mo–Fr 8–14 und täglich 18–23 Uhr
   alle 15 min, sonst 30 min, nachts 2 h). Quellen: **Kleinanzeigen** (Portalfilter in der URL, 5 Listenseiten je Lauf)
   , **ImmoScout24** (Mobil-API, kein Browser, alle Seiten, ~56 Treffer, gut die Hälfte Tausch)
-  und **WG-Gesucht** (Kategorie Wohnungen, Liste ohne Detailabruf, ~5 Treffer).
+  , **WG-Gesucht** (Kategorie Wohnungen, Liste ohne Detailabruf, ~5 Treffer)
+  und **Ohne-Makler.net** (seit 2026-11-12, `?page=N`, Kartenpreis kalt; verteilt selbst an die großen
+  Portale, liefert deshalb vor allem Dubletten; die hinteren Seiten zeigen auch Umland, ~120 Karten).
+- **Dubletten** filtert die Abfrage `treffer` des Artifacts, nicht die Datenbank: andere Quelle,
+  gleiche Zimmerzahl, Fläche ±1 m², gleiche PLZ (bei WG-Gesucht die ersten 3 Ziffern), Kalt- oder
+  angegebene Warmmiete ±3 %. Es bleibt ImmoScout vor Kleinanzeigen vor WG-Gesucht vor Ohne-Makler;
+  die Karte zeigt „auch auf …“. Positiv geprüft mit einer nachgebauten Kopie, am 2026-11-12 keine echten Paare.
 - Supabase-Projekt `rvzaljjbyiooqisajcxp`: Tabellen `angebote`, `laeufe`
   (Reset am 2026-11-11, Run 43104908057).
 - Artifact **Wohnungsradar München** (Typ „Data"):
