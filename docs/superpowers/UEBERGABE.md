@@ -1,5 +1,7 @@
 # Übergabe — Stand 2026-11-12, 13:30 Uhr
 
+**Arbeitsweise:** `CLAUDE.md` (Caveman und Credit-Regeln, lädt automatisch).
+
 **Zweck:** private Mietwohnungssuche des Nutzers in München (≤ 1.300 € warm,
 ≥ 2 Zi., ≥ 45 m²; Balkon seit 2026-11-12 nur Pluspunkt, +15 in der Reihung). Kein Kauf, keine Hausobjekte, kein Telegram,
 vorerst keine Push-Benachrichtigung.
@@ -90,7 +92,7 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 3. Erledigt am 2026-11-12 (`5f71631`): Telegram, Meldung, `web/`, Snapshot und beide Cloudflare-Workflows sind entfernt. Noch offen und nur vom Nutzer lösbar: Die alte Seite `immo-radar-dashboard.pages.dev` bleibt mit dem letzten Stand online, bis sie in Cloudflare gelöscht wird. Die Secrets `TELEGRAM_*` und `CLOUDFLARE_*` in GitHub werden nicht mehr gebraucht.
 4. Immowelt: am 2026-11-12 erneut geprüft (Run 43123724920). Schon der erste Aufruf der Suchseite im sichtbaren Browser bekommt **403 DataDome**. Fredys Weg (DataDome-Cookie per Seitenaufruf holen, dann die interne API) ist Umgehung einer Bot-Erkennung und wird bewusst nicht gebaut. Mögliche legitime Wege: Suchauftrag-Mails auslesen oder ein Abruf vom Rechner des Nutzers; beides braucht seine Entscheidung.
 5. Erledigt: Routine „Reparatur“. Offen beim Nutzer: Secret `ANTHROPIC_API_KEY`.
-6. Prüfen: WG-Gesucht ~42 statt 22 gesehen (Fix `1f5b6f0`). ImmoScout mit Umland (mehr Seiten, Sweep-Budget 3 min liegt knapp bei ~181 s; ggf. `IMMOSCOUT_MAX_SEITEN` oder Budget anpassen).
+6. WG-Gesucht bestätigt: 42 gesehen, vollständig (Läufe 12:08–12:53). Noch prüfen: ImmoScout mit Umland, erster Lauf ab 13:04 auf `91a4ecc` oder neuer. Ohne Umland lag der Lauf schon bei 182–195 s, das Sweep-Budget ist 3 min. Steigt `gesehen` nicht über 614 oder wird `vollstaendig` false, dann `IMMOSCOUT_MAX_SEITEN` oder das Budget anpassen.
 
 ## Fallen
 
