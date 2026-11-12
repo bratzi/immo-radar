@@ -80,12 +80,13 @@ describe("verarbeiteQuelle", () => {
     expect(e.angebote[0].passt).toBe("ja");
   });
 
-  it("zu teuer (ohne Detailbedarf) wird nicht gespeichert und nicht nachgeladen", async () => {
+  it("zu teuer wird als nein gespeichert (fuer lockerere Radar-Filter), aber nicht nachgeladen", async () => {
     const { db, deps } = aufbau();
     const q = fakeQuelle(ok([passend("d", { warmmieteCents: 200_000 })]));
     await verarbeiteQuelle(deps, q, abrufer);
     expect(q.detailAufrufe).toEqual([]);
-    expect(db.tabelle("angebote")).toHaveLength(0);
+    expect(db.tabelle("angebote")).toHaveLength(1);
+    expect(db.tabelle("angebote")[0]).toMatchObject({ passt: "nein", warmmiete_cents: 200_000 });
   });
 
   it("bekanntes Angebot, das jetzt nein ist, wird aktualisiert gespeichert", async () => {

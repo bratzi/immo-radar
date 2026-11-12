@@ -108,8 +108,10 @@ export async function verarbeiteQuelle(deps: PipelineDeps, quelle: Quelle, ab: A
     ergebnis.push(b);
   }
 
-  const zuSpeichern = ergebnis.filter((b) => b.passt !== "nein" || bekannte.has(b.externalId));
-  await speichereAngebote(sb, zuSpeichern.map((b) => zuZeile(b, b, b.punkte, jetzt)));
+  // Seit 2026-11-12 wird alles Gesehene gespeichert, auch "nein": der Radar
+  // filtert selbst und soll das Profil lockern koennen. Gesuch und Tausch
+  // (Detail null) fallen oben schon heraus.
+  await speichereAngebote(sb, ergebnis.map((b) => zuZeile(b, b, b.punkte, jetzt)));
   if (sweep.vollstaendig && status === "ok") {
     await markiereVerschwunden(sb, quelle.name, new Set(sweep.angebote.map((a) => a.externalId)), jetzt);
   }
