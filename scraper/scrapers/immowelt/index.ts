@@ -8,7 +8,7 @@ import type { Quelle } from "../quelle.js";
  * sortiert spaeter nach Warmmiete aus.
  */
 export const IMMOWELT_SUCHE_URL =
-  "https://www.immowelt.de/classified-search?distributionTypes=Rent&estateTypes=Apartment&locations=AD08DE8634&numberOfRoomsMin=2&livingSpaceMin=45&priceMax=1300&order=DateDesc";
+  "https://www.immowelt.de/classified-search?distributionTypes=Rent&estateTypes=Apartment&locations=AD08DE6345&numberOfRoomsMin=2&livingSpaceMin=45&priceMax=1300&order=DateDesc";
 
 
 /**
