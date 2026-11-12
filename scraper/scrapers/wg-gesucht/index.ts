@@ -10,9 +10,11 @@ import type { Angebot } from "../../lib/typen.js";
 import type { Abrufer, DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.js";
 import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseWgGesuchtListe, WGG_BASIS } from "./parse.js";
+import { FANGNETZ } from "../../lib/profil.js";
 
 const FILTER =
-  "?offer_filter=1&city_id=90&sort_order=0&noDeact=1&categories%5B%5D=2&rent_types%5B%5D=2&rMax=1300&sMin=45&rmMin=2";
+  "?offer_filter=1&city_id=90&sort_order=0&noDeact=1&categories%5B%5D=2&rent_types%5B%5D=2" +
+  `&rMax=${FANGNETZ.warmmieteMaxEuro}&sMin=${FANGNETZ.flaecheMinM2}&rmMin=${FANGNETZ.zimmerMin}`;
 /** WG-Gesucht zeigt 20 Karten je Seite; weniger heisst: letzte Seite. */
 const KARTEN_JE_SEITE = 20;
 

@@ -8,6 +8,17 @@ export const PROFIL = {
   flaecheMinM2: 45,
 } as const;
 
+/**
+ * Fangnetz der Portalfilter in den Such-URLs (seit 2026-11-12): bewusst
+ * weiter als das Profil. Gespeichert wird alles darin; der Radar filtert
+ * selbst und kann das Profil bis an diese Grenzen lockern.
+ */
+export const FANGNETZ = {
+  warmmieteMaxEuro: 1800,
+  zimmerMin: 1,
+  flaecheMinM2: 30,
+} as const;
+
 /** WG-Zimmer im Titel; "WG-geeignet" bleibt eine ganze Wohnung. */
 const WG = /\bwg[- ]?zimmer\b|\d\s*-?\s*er[- ]?wg\b|wohngemeinschaft|\bwg\b(?![- ]?(geeignet|tauglich|f[äa]hig))/i;
 const WG_GEEIGNET = /\bwg[- ]?(geeignet|tauglich|f[äa]hig)|als wg geeignet/i;

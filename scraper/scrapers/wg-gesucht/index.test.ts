@@ -18,9 +18,9 @@ describe("wgGesuchtSeitenUrl", () => {
   it("Filter in der URL, Seiten 0-basiert im Pfad", () => {
     const u1 = wgGesuchtSeitenUrl(1);
     expect(u1).toContain("/wohnungen-in-Muenchen.90.2.1.0.html");
-    expect(u1).toContain("rMax=1300");
-    expect(u1).toContain("sMin=45");
-    expect(u1).toContain("rmMin=2");
+    expect(u1).toContain("rMax=1800");
+    expect(u1).toContain("sMin=30");
+    expect(u1).toContain("rmMin=1");
     expect(wgGesuchtSeitenUrl(2)).toContain(".90.2.1.1.html");
   });
 });

@@ -9,12 +9,13 @@
  * auch nichts als verschwunden markiert.
  */
 import type { Angebot } from "../../lib/typen.js";
+import { FANGNETZ } from "../../lib/profil.js";
 import type { Abrufer, DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.js";
 import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseKleinanzeigenDetail, parseKleinanzeigenListe } from "./parse.js";
 
-const BASIS = "https://www.kleinanzeigen.de/s-wohnung-mieten/muenchen/anzeige:angebote/preis::1300/sortierung:neuste";
-const KATEGORIE = "c203l6411+wohnung_mieten.qm_d:45%2C+wohnung_mieten.zimmer_d:2%2C";
+const BASIS = `https://www.kleinanzeigen.de/s-wohnung-mieten/muenchen/anzeige:angebote/preis::${FANGNETZ.warmmieteMaxEuro}/sortierung:neuste`;
+const KATEGORIE = `c203l6411+wohnung_mieten.qm_d:${FANGNETZ.flaecheMinM2}%2C+wohnung_mieten.zimmer_d:${FANGNETZ.zimmerMin}%2C`;
 
 export const KLEINANZEIGEN_SUCHE_URL = `${BASIS}/${KATEGORIE}`;
 

@@ -20,7 +20,7 @@ describe("ImmoScout24-Sweep", () => {
     expect(e.angebote).toHaveLength(4);
     expect(f.urls).toHaveLength(2);
     expect(f.urls[0]).toContain("geocodes=%2Fde%2Fbayern%2Fmuenchen");
-    expect(f.urls[0]).toContain("price=-1300.0");
+    expect(f.urls[0]).toContain("price=-1800.0");
     expect(f.urls[0]).not.toContain("balcony");
     expect(f.urls[1]).toContain("pagenumber=2");
   });

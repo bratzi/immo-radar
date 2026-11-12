@@ -5,10 +5,11 @@
  * API inoffiziell ist und jederzeit wegbrechen kann.
  *
  * Filter in der URL (Vorauswahl, kein Beleg; der Code prueft erneut):
- * Muenchen, bis 1.300 EUR Gesamtmiete, ab 2 Zi., ab 45 m2. Kein
- * Balkonfilter: der Balkon ist seit 2026-11-11 nur noch ein Pluspunkt.
+ * Muenchen im Fangnetz (lib/profil.ts FANGNETZ). Kein Balkonfilter: der
+ * Balkon ist seit 2026-11-11 nur noch ein Pluspunkt.
  */
 import type { Angebot } from "../../lib/typen.js";
+import { FANGNETZ } from "../../lib/profil.js";
 import type { DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.js";
 import { seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseImmoscoutExpose, parseImmoscoutListe } from "./parse.js";
@@ -20,7 +21,8 @@ const UA_EXPOSE = "ImmoScout_27.3_26.0_._";
 
 export const IMMOSCOUT_SUCHE =
   "searchType=region&realestatetype=apartmentrent&pricetype=calculatedtotalrent" +
-  "&geocodes=%2Fde%2Fbayern%2Fmuenchen&price=-1300.0&numberofrooms=2.0-&livingspace=45.0-";
+  `&geocodes=%2Fde%2Fbayern%2Fmuenchen&price=-${FANGNETZ.warmmieteMaxEuro}.0` +
+  `&numberofrooms=${FANGNETZ.zimmerMin}.0-&livingspace=${FANGNETZ.flaecheMinM2}.0-`;
 
 export interface JsonAntwort { status: number; json: unknown }
 export type JsonHoler = (url: string) => Promise<JsonAntwort>;
