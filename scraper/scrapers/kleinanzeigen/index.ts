@@ -14,8 +14,28 @@ import type { Abrufer, DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.j
 import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseKleinanzeigenDetail, parseKleinanzeigenListe } from "./parse.js";
 
-const BASIS = `https://www.kleinanzeigen.de/s-wohnung-mieten/muenchen/anzeige:angebote/preis::${FANGNETZ.warmmieteMaxEuro}/sortierung:neuste`;
-const KATEGORIE = `c203l6411+wohnung_mieten.qm_d:${FANGNETZ.flaecheMinM2}%2C+wohnung_mieten.zimmer_d:${FANGNETZ.zimmerMin}%2C`;
+const pfad = (slug: string) => `https://www.kleinanzeigen.de/s-wohnung-mieten/${slug}/anzeige:angebote/preis::${FANGNETZ.warmmieteMaxEuro}/sortierung:neuste`;
+const kategorie = (ortId: string) => `c203l${ortId}+wohnung_mieten.qm_d:${FANGNETZ.flaecheMinM2}%2C+wohnung_mieten.zimmer_d:${FANGNETZ.zimmerMin}%2C`;
+const BASIS = pfad("muenchen");
+const KATEGORIE = kategorie("6411");
+
+/**
+ * Umland Suedwest (lib/muenchenPlz.ts UMLAND_SUEDWEST). Kleinanzeigen bindet die
+ * Suche an eine Ortskennung; die Stadt (l6411) enthaelt diese Gemeinden nicht.
+ * Kennungen aus s-ort-empfehlungen.json, abgefragt 2026-11-12.
+ */
+export interface KleinanzeigenOrt { name: string; slug: string; id: string }
+export const KLEINANZEIGEN_UMLAND: readonly KleinanzeigenOrt[] = [
+  { name: "Neuried", slug: "neuried", id: "15726" },
+  { name: "Planegg", slug: "planegg", id: "10516" },
+  { name: "Graefelfing", slug: "graefelfing", id: "12962" },
+];
+/** Erste Listenseite eines Umland-Orts; dort gibt es selten mehr als eine Seite. */
+export function kleinanzeigenOrtUrl(o: KleinanzeigenOrt): string {
+  return `${pfad(o.slug)}/${kategorie(o.id)}`;
+}
+/** Volle Listenseite; weniger Karten heisst, der Ort ist vollstaendig gelesen. */
+const KARTEN_JE_SEITE = 25;
 
 export const KLEINANZEIGEN_SUCHE_URL = `${BASIS}/${KATEGORIE}`;
 
@@ -30,25 +50,44 @@ export function kleinanzeigenSeitenUrl(n: number): string {
   return `${BASIS}/seite:${n}/${KATEGORIE}`;
 }
 
-async function sweep(ab: Abrufer, budgetMs: number): Promise<SweepErgebnis> {
-  const ende = Date.now() + budgetMs;
-  const gesehen = new Map<string, Angebot>();
+async function sweepMuenchen(ab: Abrufer, ende: number, gesehen: Map<string, Angebot>): Promise<Omit<SweepErgebnis, "angebote">> {
   for (let n = 1; n <= KLEINANZEIGEN_LISTENSEITEN; n++) {
     if (n > 1) {
-      if (Date.now() >= ende) return { angebote: [...gesehen.values()], vollstaendig: false, status: "ok", hinweis: "Budget erschoepft" };
+      if (Date.now() >= ende) return { vollstaendig: false, status: "ok", hinweis: "Budget erschoepft" };
       await ab.warte(seitenabstandMs());
     }
     const antwort = await ab.hole(kleinanzeigenSeitenUrl(n));
     const sperre = erkenneSperre(antwort);
-    if (sperre) return { angebote: [...gesehen.values()], vollstaendig: false, status: "gesperrt", hinweis: sperre };
-    if (antwort.status !== 200) {
-      return { angebote: [...gesehen.values()], vollstaendig: false, status: n === 1 ? "fehler" : "ok", hinweis: `HTTP ${antwort.status} auf Seite ${n}` };
-    }
+    if (sperre) return { vollstaendig: false, status: "gesperrt", hinweis: sperre };
+    if (antwort.status !== 200) return { vollstaendig: false, status: n === 1 ? "fehler" : "ok", hinweis: `HTTP ${antwort.status} auf Seite ${n}` };
     const karten = (antwort.html.match(/<article[^>]*data-adid=/g) ?? []).length;
-    if (karten === 0) return { angebote: [...gesehen.values()], vollstaendig: n > 1, status: n === 1 ? "fehler" : "ok", hinweis: n === 1 ? "keine Karten auf Seite 1" : null };
+    if (karten === 0) return { vollstaendig: n > 1, status: n === 1 ? "fehler" : "ok", hinweis: n === 1 ? "keine Karten auf Seite 1" : null };
     for (const a of parseKleinanzeigenListe(antwort.html)) if (!gesehen.has(a.externalId)) gesehen.set(a.externalId, a);
   }
-  return { angebote: [...gesehen.values()], vollstaendig: false, status: "ok", hinweis: null };
+  return { vollstaendig: false, status: "ok", hinweis: null };
+}
+
+async function sweep(ab: Abrufer, budgetMs: number): Promise<SweepErgebnis> {
+  const ende = Date.now() + budgetMs;
+  const gesehen = new Map<string, Angebot>();
+  const alle = () => [...gesehen.values()];
+  const m = await sweepMuenchen(ab, ende, gesehen);
+  // Bei Sperre oder kaputter Stadtsuche das Umland nicht mehr anfragen.
+  if (m.status !== "ok") return { angebote: alle(), ...m };
+  let vollstaendig = m.vollstaendig;
+  const hinweise: string[] = m.hinweis ? [m.hinweis] : [];
+  for (const o of KLEINANZEIGEN_UMLAND) {
+    if (Date.now() >= ende) { vollstaendig = false; hinweise.push(`Budget erschoepft vor ${o.name}`); break; }
+    await ab.warte(seitenabstandMs());
+    const antwort = await ab.hole(kleinanzeigenOrtUrl(o));
+    const sperre = erkenneSperre(antwort);
+    if (sperre) return { angebote: alle(), vollstaendig: false, status: "gesperrt", hinweis: `${sperre} bei ${o.name}` };
+    if (antwort.status !== 200) { vollstaendig = false; hinweise.push(`HTTP ${antwort.status} bei ${o.name}`); continue; }
+    const karten = (antwort.html.match(/<article[^>]*data-adid=/g) ?? []).length;
+    if (karten >= KARTEN_JE_SEITE) vollstaendig = false;
+    for (const a of parseKleinanzeigenListe(antwort.html)) if (!gesehen.has(a.externalId)) gesehen.set(a.externalId, a);
+  }
+  return { angebote: alle(), vollstaendig, status: "ok", hinweis: hinweise.length ? hinweise.join("; ") : null };
 }
 
 async function ladeDetail(ab: Abrufer, a: Angebot): Promise<DetailErgebnis> {

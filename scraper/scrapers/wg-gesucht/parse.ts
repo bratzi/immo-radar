@@ -20,6 +20,10 @@ const BEFRISTET = /\bbefristet|zwischenmiete|\bauf zeit\b/i;
 
 /** Stadtbezirk (oder bekannter Teil davon) -> repraesentative PLZ. */
 const BEZIRKE: [RegExp, string][] = [
+  // Umland Suedwest (UMLAND_SUEDWEST): WG-Gesucht fuehrt diese Orte als Stadtteil von Muenchen.
+  [/neuried/i, "82061"],
+  [/planegg|martinsried/i, "82152"],
+  [/gr(ä|ae)felfing|lochham/i, "82166"],
   [/altstadt|lehel/i, "80331"],
   [/ludwigsvorstadt|isarvorstadt|glockenbach/i, "80469"],
   [/maxvorstadt/i, "80799"],

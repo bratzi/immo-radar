@@ -19,6 +19,14 @@ describe("plzFuerStadtteil", () => {
     expect(plzFuerStadtteil("Solln")).toBe("81479");
     expect(plzFuerStadtteil("Obersendling")).toBe("81379");
   });
+  it("Umland Suedwest (WG-Gesucht fuehrt es als Stadtteil von Muenchen) bekommt seine PLZ", () => {
+    expect(plzFuerStadtteil("Neuried")).toBe("82061");
+    expect(plzFuerStadtteil("Planegg")).toBe("82152");
+    expect(plzFuerStadtteil("Martinsried")).toBe("82152");
+    expect(plzFuerStadtteil("Gräfelfing")).toBe("82166");
+    expect(plzFuerStadtteil("Graefelfing")).toBe("82166");
+    expect(plzFuerStadtteil("Lochham")).toBe("82166");
+  });
   it("unbekannter Ort bleibt null", () => {
     expect(plzFuerStadtteil("Emmering")).toBeNull();
     expect(plzFuerStadtteil(null)).toBeNull();
