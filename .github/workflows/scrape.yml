@@ -23,6 +23,11 @@ concurrency:
   group: scrape
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  issues: write
+  actions: write
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -45,3 +50,10 @@ jobs:
       # Sichtbarer Chromium (headless: false) unter virtuellem Display.
       - run: xvfb-run --auto-servernum npm run scrape
         working-directory: scraper
+      # Routine "Reparatur": Bruch oder Dauersperre -> Issue; Bruch startet reparatur.yml.
+      - name: Bruch pruefen
+        if: always()
+        working-directory: scraper
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npx tsx scripts/pruefe-brueche.mts
