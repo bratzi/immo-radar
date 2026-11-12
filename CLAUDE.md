@@ -21,3 +21,16 @@ Credits sparen:
 - Keine Wiederholung von bereits Festgestelltem; kein erneutes Lesen gerade bearbeiteter Dateien.
 
 Umschalten: "/caveman lite|ultra", "normal mode" schaltet ab.
+
+## Skill-Auswahl (nur bei Auslöser laden, nie alle)
+
+| Auslöser | Skill |
+|---|---|
+| UI/UX am Radar-Artifact (Karten, Layout, Filter) | `artifact-design` zuerst (Seitenvertrag), dann `C:\immo-radar\.agents\skills\frontend-design-direction\SKILL.md` direkt lesen (Richtung, Zustände, Prüfliste; das Skript `check-evidence.js` fehlt bewusst) |
+| Diagramme, Kennzahl-Kacheln, Kartenfarben | `dataviz` |
+| Abschluss einer UI-Änderung | `web-design-guidelines`, bei Farben/Kontrast `design-accessibility-review` |
+| Beschriftungen, Leertexte, Fehlermeldungen in der Oberfläche | `ux-copy-refiner` |
+| Bug, unerwartetes Verhalten | `superpowers:systematic-debugging` |
+| Neue Funktion | `superpowers:brainstorming`, danach `lean-build` |
+
+Quelle der Auswahl: verified-skill.com, Design-Rangliste (Stand 2026-11-12). Die anderen zertifizierten Design-Skills sind hier schon installiert oder passen nicht (z. B. `quickdesign` ist Video-KI, `build-dashboard` baut eigenständige HTML-Dateien statt eines Data-Artifacts).
