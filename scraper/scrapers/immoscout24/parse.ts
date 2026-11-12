@@ -84,7 +84,7 @@ export function parseImmoscoutListe(antwort: { resultListItems?: { type: string;
   return ergebnis;
 }
 
-interface Abschnitt { type: string; title?: string; attributes?: Attribut[]; text?: string; addressLine2?: string }
+interface Abschnitt { type: string; title?: string; attributes?: Attribut[]; text?: string; addressLine2?: string; media?: { type?: string; previewImageUrl?: string }[] }
 
 /** Expose ergaenzt das Listenangebot; `null` heisst ausschliessen (Tausch). */
 export function parseImmoscoutExpose(antwort: { sections?: Abschnitt[] }, basis: Angebot): Angebot | null {
@@ -105,9 +105,13 @@ export function parseImmoscoutExpose(antwort: { sections?: Abschnitt[] }, basis:
   const beschreibung = s.filter((x) => x.type === "TEXT_AREA").map((x) => x.text ?? "").join("\n");
   const b = erkenneBalkon({ ausstattung: [], titel, beschreibung });
 
+  // Alle Bilder des Exposes (die Liste kennt nur das Titelbild); 800x600 reicht fuer die Vorschau.
+  const bilder = s.filter((x) => x.type === "MEDIA").flatMap((x) => x.media ?? [])
+    .filter((m) => m.type === "PICTURE" && m.previewImageUrl).map((m) => m.previewImageUrl!);
   return {
     ...basis,
     titel,
+    bildUrls: bilder.length ? bilder : basis.bildUrls,
     kaltmieteCents: kalt,
     nebenkostenCents: nk,
     warmmieteCents: warm,

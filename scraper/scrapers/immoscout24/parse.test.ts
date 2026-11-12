@@ -68,6 +68,18 @@ describe("parseImmoscoutExpose", () => {
     });
   });
 
+  it("Bilder kommen aus dem MEDIA-Abschnitt (nur PICTURE), sonst bleibt das Titelbild", () => {
+    const roh = fixture("expose-172539355.json");
+    const ohne = parseImmoscoutExpose(roh, basis)!;
+    expect(ohne.bildUrls).toEqual(basis.bildUrls);
+    roh.sections.unshift({ type: "MEDIA", media: [
+      { type: "PICTURE", previewImageUrl: "https://pictures.example/1.jpg", fullImageUrl: "https://pictures.example/1-gross.jpg" },
+      { type: "VIDEO", previewImageUrl: "https://pictures.example/video.jpg" },
+      { type: "PICTURE", previewImageUrl: "https://pictures.example/2.jpg" },
+    ] });
+    expect(parseImmoscoutExpose(roh, basis)!.bildUrls).toEqual(["https://pictures.example/1.jpg", "https://pictures.example/2.jpg"]);
+  });
+
   it("Tauschwohnung im Exposetitel ergibt null", () => {
     expect(parseImmoscoutExpose(fixture("expose-tausch.json"), basis)).toBeNull();
   });

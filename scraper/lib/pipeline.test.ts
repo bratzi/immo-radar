@@ -97,6 +97,16 @@ describe("verarbeiteQuelle", () => {
     });
   });
 
+  it("Bilder aus dem Expose bleiben, wenn die Liste spaeter nur das Titelbild liefert", async () => {
+    const { db, deps } = aufbau();
+    const liste = passend("k", { kaltmieteCents: 100_000, warmmieteCents: null, bildUrls: ["titel.jpg"] });
+    const expose = { ...liste, warmmieteCents: 128_000, bildUrls: ["a.jpg", "b.jpg", "c.jpg"], detailGeladen: true };
+    await verarbeiteQuelle(deps, fakeQuelle(ok([liste]), { k: expose }), abrufer);
+    expect(db.tabelle("angebote")[0].bild_urls).toEqual(["a.jpg", "b.jpg", "c.jpg"]);
+    await verarbeiteQuelle({ ...deps, jetzt: new Date("2026-11-11T13:00:00Z") }, fakeQuelle(ok([liste]), { k: expose }), abrufer);
+    expect(db.tabelle("angebote")[0].bild_urls).toEqual(["a.jpg", "b.jpg", "c.jpg"]);
+  });
+
   it("bekanntes Angebot mit geaenderter Kaltmiete: Expose wird neu geladen", async () => {
     const { db, deps } = aufbau();
     const liste = passend("m", { kaltmieteCents: 100_000, warmmieteCents: null });

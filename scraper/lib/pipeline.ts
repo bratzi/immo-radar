@@ -68,6 +68,8 @@ function mitGespeichertemExpose(a: Angebot, b: Bekannt | undefined): Angebot {
     balkonBeleg: a.balkonBeleg ?? e.balkonBeleg,
     verfuegbarAb: a.verfuegbarAb ?? e.verfuegbarAb,
     befristet: a.befristet ?? e.befristet,
+    // Mehr Bilder aus dem Expose schlagen das Titelbild der Liste.
+    bildUrls: (e.bildUrls?.length ?? 0) > a.bildUrls.length ? e.bildUrls! : a.bildUrls,
     detailGeladen: true,
     detailGeladenAm: e.am,
   };

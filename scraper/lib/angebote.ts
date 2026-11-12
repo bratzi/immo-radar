@@ -15,6 +15,8 @@ export interface AngebotZeile {
 export interface GespeichertesExpose {
   am: string; kaltmieteCents: number | null; nebenkostenCents: number | null; warmmieteCents: number | null;
   warmmieteQuelle: string; balkon: string; balkonBeleg: string | null; verfuegbarAb: string | null; befristet: boolean | null;
+  /** Bilder aus dem Expose; die Liste kennt oft nur das Titelbild. */
+  bildUrls?: string[];
 }
 
 export interface Bekannt {
@@ -45,7 +47,7 @@ export function entscheideMeldung(bekannt: Bekannt | undefined, warmmieteCents: 
 
 export async function ladeBekannte(sb: SupabaseClient, quelle: Quelle): Promise<Map<string, Bekannt>> {
   const { data, error } = await sb.from("angebote")
-    .select("id, external_id, gemeldet_am, letzte_warmmiete_gemeldet_cents, verschwunden_am, passt, detail_geladen_am, kaltmiete_cents, nebenkosten_cents, warmmiete_cents, warmmiete_quelle, balkon, balkon_beleg, verfuegbar_ab, befristet, veroeffentlicht_am")
+    .select("id, external_id, gemeldet_am, letzte_warmmiete_gemeldet_cents, verschwunden_am, passt, detail_geladen_am, kaltmiete_cents, nebenkosten_cents, warmmiete_cents, warmmiete_quelle, balkon, balkon_beleg, verfuegbar_ab, befristet, veroeffentlicht_am, bild_urls")
     .eq("quelle", quelle);
   if (error) throw new Error(`ladeBekannte ${quelle}: ${error.message}`);
   const map = new Map<string, Bekannt>();
@@ -56,6 +58,7 @@ export async function ladeBekannte(sb: SupabaseClient, quelle: Quelle): Promise<
       am: z.detail_geladen_am, kaltmieteCents: z.kaltmiete_cents, nebenkostenCents: z.nebenkosten_cents,
       warmmieteCents: z.warmmiete_cents, warmmieteQuelle: z.warmmiete_quelle, balkon: z.balkon,
       balkonBeleg: z.balkon_beleg, verfuegbarAb: z.verfuegbar_ab, befristet: z.befristet,
+      bildUrls: z.bild_urls ?? [],
     } : null,
   });
   return map;
