@@ -38,11 +38,17 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
   Ansicht Karten oder Tabelle. **Falle:** Elemente außerhalb des eigenen `data-draw` anzuhängen
   (Tooltip an `parentNode`) meldet `check` als `stray_write`.
 - Offen: Spec `specs/2026-11-12-routine-reparatur-design.md` wartet auf die Freigabe des Nutzers.
-- **Takt ist unzuverlässig:** GitHub startet `schedule` nur etwa 3-mal am Tag statt ~50-mal
-  (gemessen 2026-11-03 bis 2026-11-12). Entwurf liegt beim Nutzer: `starte_lauf()` in Supabase
-  (`pg_net` ruft workflow_dispatch, Token im Vault `github_actions_token`, höchstens 1× je 5 min),
-  `pg_cron` mit dem bisherigen Takt, Status-Tabelle „läuft seit / fertig um“, Knopf „Jetzt scannen“
-  im Radar. Wartet auf Freigabe und den Token, den der Nutzer selbst anlegt.
+- **Takt:** GitHub startet `schedule` nur etwa 3-mal am Tag statt ~50-mal (gemessen 2026-11-03
+  bis 2026-11-12). Seit `0c01274` stößt Supabase den Lauf selbst an: `pg_cron` (6 Jobs `radar-*`,
+  gleicher Takt in UTC) → `public.starte_lauf()` → `pg_net` → workflow_dispatch. Höchstens 1×
+  je 5 min, nicht während ein Lauf läuft. SQL: `scripts/sql/2026-11-12-lauf-starten.sql`.
+  `lauf_status` (eine Zeile) schreibt `main.ts`, `lauf_anfragen` protokolliert jeden Versuch.
+  Radar: Knopf „Jetzt scannen“ setzt `anfrage` (Ziffern), Datenquelle `betrieb` ruft
+  `radar_betrieb('{{anfrage}}')`; neue Nummer = ein Start, gleiche Nummer = nichts.
+  **Offen beim Nutzer:** GitHub-Token (fine-grained, `bratzi/immo-radar`, Actions: Read and write)
+  im Supabase-Vault als `github_actions_token`. Bis dahin meldet jeder Versuch „kein Token“,
+  und es laufen nur die ~3 GitHub-Läufe am Tag. Beide Funktionen sind für `anon`/`authenticated`
+  gesperrt.
 - Exposé-Daten bleiben seit `a82c62d` erhalten, solange die Kaltmiete gleich ist; das
   Detailbudget (15) geht zuerst an passende, dann an knapp zu teure Angebote.
 - ImmoScout liest seit `9c65d30` bis 16 Seiten (Fangnetz ~720 Inserate), Lauf 43191744692:
