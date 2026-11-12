@@ -29,8 +29,14 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
   Balkon, offene Angaben, befristet, Quellen; nur in der Seite, `dash/params` als Startwerte),
   Karte nach PLZ-Mittelpunkt (`files/plz.js`, WZB-Datensatz), je Wohnung „online seit“
   (falls die Quelle es nennt), „im Radar seit“ und „zuletzt gesehen“. Die Pipeline speichert seit
-  `2157904` alles Gesehene, auch „nein“, damit sich das Profil lockern lässt — aber nur innerhalb
-  der Portalfilter in den Such-URLs (bis 1.300 €, ab 2 Zi., ab 45 m²).
+  `2157904` alles Gesehene, auch „nein“, damit sich das Profil lockern lässt. Die Such-URLs nutzen
+  seit `826b3b7` das **Fangnetz** `FANGNETZ` in `lib/profil.ts` (bis 1.800 €, ab 1 Zi., ab 30 m²);
+  das Profil selbst bleibt 1.300 € / 2 Zi. / 45 m².
+- Radar seit 2026-11-12 außerdem: Karte der 25 Stadtbezirke (`files/bezirke.js`, opendata.muenchen.de,
+  dl-de/by-2-0; Ringe für d3 im Uhrzeigersinn gedreht), Klick auf Bezirk filtert; Filter €/m², Bezirk,
+  „nur neu 24 Std.“, Sortierung; Diagramme Mietverteilung, Fläche gegen Miete, neu je Tag;
+  Ansicht Karten oder Tabelle. **Falle:** Elemente außerhalb des eigenen `data-draw` anzuhängen
+  (Tooltip an `parentNode`) meldet `check` als `stray_write`.
 - Offen: Spec `specs/2026-11-12-routine-reparatur-design.md` wartet auf die Freigabe des Nutzers.
 
 ## Stand der Quellen
