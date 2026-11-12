@@ -46,6 +46,18 @@ create table angebote (
 create index angebote_passt_idx on angebote (passt, punkte desc);
 create index angebote_verschwunden_idx on angebote (verschwunden_am) where verschwunden_am is not null;
 
+-- Kleine WebP-Vorschaubilder (data:-URLs) nur fuer passende Angebote.
+-- Das Radar darf keine fremden Bildserver laden; scraper/lib/vorschau.ts schreibt.
+create table vorschaubilder (
+  quelle text not null,
+  external_id text not null,
+  bilder text[] not null default '{}',
+  quell_urls text[] not null default '{}',
+  aktualisiert_am timestamptz not null default now(),
+  primary key (quelle, external_id)
+);
+alter table vorschaubilder enable row level security;
+
 create table laeufe (
   id uuid primary key default gen_random_uuid(),
   gestartet_am timestamptz not null default now(),

@@ -13,6 +13,7 @@ import { QUELLEN } from "./scrapers/quellen.js";
 import { playwrightAbrufer } from "./scrapers/abrufer.js";
 import { MAX_DETAILSEITEN } from "./scrapers/sperre.js";
 import { meldeLaufStart, meldeLaufEnde, laufUrlAusUmgebung } from "./lib/laufStatus.js";
+import { aktualisiereVorschau, supabaseVorschauSpeicher, holeBild, verkleinere } from "./lib/vorschau.js";
 
 nurInCiAusfuehren("scrape");
 
@@ -36,6 +37,13 @@ try {
     } finally {
       await page.close();
     }
+  }
+  // Vorschaubilder fuer das Radar; ein Fehler hier stoppt den Lauf nicht.
+  try {
+    const v = await aktualisiereVorschau(supabaseVorschauSpeicher(sb), { hole: holeBild, verkleinere, budgetMs: 60_000 });
+    console.log(`vorschau: ${JSON.stringify(v)}`);
+  } catch (fehler) {
+    console.error("vorschau: Fehler", fehler);
   }
 } finally {
   await browser.close();
