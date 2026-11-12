@@ -9,9 +9,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Angebot, Profilurteil } from "./typen.js";
 import { bestimmeWarmmiete } from "./warmmiete.js";
-import { pruefeProfil } from "./profil.js";
+import { pruefeProfil, PROFIL } from "./profil.js";
 import { berechnePunkte } from "./reihung.js";
-import { ladeBekannte, markiereVerschwunden, speichereAngebote, zuZeile } from "./angebote.js";
+import { ladeBekannte, markiereVerschwunden, speichereAngebote, zuZeile, type Bekannt } from "./angebote.js";
 import { ladeLetzteLaeufe, speichereLauf, type LaufZeile } from "./lauf.js";
 import { naechsterVersuch } from "../scrapers/sperre.js";
 import type { Abrufer, Quelle } from "../scrapers/quelle.js";
@@ -48,6 +48,37 @@ function brauchtDetail(b: Bewertet): boolean {
     return harte.length === 1 && harte[0] === "warmmiete_zu_hoch";
   }
   return b.passt === "ja" && (b.warmmieteQuelle === "geschaetzt" || b.bildUrls.length === 0);
+}
+
+/**
+ * Uebernimmt die Daten eines frueher geladenen Exposes, solange die Kaltmiete
+ * gleich ist. Sonst wuerde jeder Lauf das Expose verwerfen, und bei mehr
+ * Inseraten als Detailbudget fielen passende Wohnungen auf die Schaetzung
+ * zurueck (Lauf 43188804756: ImmoScout 18 -> 4 passend).
+ */
+function mitGespeichertemExpose(a: Angebot, b: Bekannt | undefined): Angebot {
+  const e = b?.expose;
+  if (!e || a.detailGeladen || e.kaltmieteCents !== a.kaltmieteCents) return a;
+  // Gespeichertes fuellt nur Luecken: eine Angabe aus der Liste ist neuer.
+  return {
+    ...a,
+    nebenkostenCents: a.nebenkostenCents ?? e.nebenkostenCents,
+    warmmieteCents: a.warmmieteCents ?? (e.warmmieteQuelle === "angegeben" ? e.warmmieteCents : null),
+    balkon: a.balkon === "unbekannt" ? (e.balkon as Angebot["balkon"]) : a.balkon,
+    balkonBeleg: a.balkonBeleg ?? e.balkonBeleg,
+    verfuegbarAb: a.verfuegbarAb ?? e.verfuegbarAb,
+    befristet: a.befristet ?? e.befristet,
+    detailGeladen: true,
+    detailGeladenAm: e.am,
+  };
+}
+
+/** Rang fuer das knappe Detailbudget: passend vor unklar vor knapp zu teuer. */
+function detailRang(b: Bewertet): number {
+  if (b.passt === "ja") return 0;
+  if (b.passt === "unklar") return 1;
+  const ueber = b.warmmieteCents === null ? 1 : (b.warmmieteCents - PROFIL.warmmieteMaxCents) / PROFIL.warmmieteMaxCents;
+  return 2 + Math.max(0, ueber);
 }
 
 /** Wie viele der juengsten Laeufe in Folge gesperrt waren, und wann der letzte war. */
@@ -89,24 +120,26 @@ export async function verarbeiteQuelle(deps: PipelineDeps, quelle: Quelle, ab: A
   const bekannte = await ladeBekannte(sb, quelle.name);
   let status: LaufZeile["status"] = "ok";
   let hinweis = sweep.hinweis;
-  let details = 0;
-  const ergebnis: Bewertet[] = [];
-  for (const roh of sweep.angebote) {
-    let b = bewerte(roh, jetzt);
-    if (status === "ok" && details < deps.maxDetails && brauchtDetail(b)) {
-      details++;
-      const d = await quelle.ladeDetail(ab, roh);
-      if (d.sperre) {
-        status = "gesperrt";
-        hinweis = [hinweis, `Detail gesperrt (${d.sperre})`].filter(Boolean).join("; ");
-      } else if (d.angebot === null) {
-        continue;
-      } else {
-        b = bewerte(d.angebot, jetzt);
-      }
+  const roh = sweep.angebote.map((a) => mitGespeichertemExpose(a, bekannte.get(a.externalId)));
+  const bewertet: (Bewertet | null)[] = roh.map((a) => bewerte(a, jetzt));
+  const kandidaten = bewertet
+    .map((b, i) => ({ b: b!, i }))
+    .filter(({ b }) => brauchtDetail(b))
+    .sort((x, y) => detailRang(x.b) - detailRang(y.b) || x.i - y.i)
+    .slice(0, deps.maxDetails);
+  for (const { i } of kandidaten) {
+    if (status !== "ok") break;
+    const d = await quelle.ladeDetail(ab, roh[i]);
+    if (d.sperre) {
+      status = "gesperrt";
+      hinweis = [hinweis, `Detail gesperrt (${d.sperre})`].filter(Boolean).join("; ");
+    } else if (d.angebot === null) {
+      bewertet[i] = null;
+    } else {
+      bewertet[i] = bewerte(d.angebot, jetzt);
     }
-    ergebnis.push(b);
   }
+  const ergebnis = bewertet.filter((b): b is Bewertet => b !== null);
 
   // Seit 2026-11-12 wird alles Gesehene gespeichert, auch "nein": der Radar
   // filtert selbst und soll das Profil lockern koennen. Gesuch und Tausch

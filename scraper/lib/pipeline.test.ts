@@ -80,6 +80,44 @@ describe("verarbeiteQuelle", () => {
     expect(e.angebote[0].passt).toBe("ja");
   });
 
+  it("bekanntes Angebot mit Expose und gleicher Kaltmiete: kein neuer Detailabruf, Expose-Daten bleiben", async () => {
+    const { db, deps } = aufbau();
+    const liste = passend("k", { kaltmieteCents: 100_000, warmmieteCents: null, balkon: "unbekannt" });
+    const expose = { ...liste, nebenkostenCents: 28_000, warmmieteCents: 128_000, balkon: "ja" as const, balkonBeleg: "Balkon", verfuegbarAb: "1.12.2026", detailGeladen: true };
+    const q1 = fakeQuelle(ok([liste]), { k: expose });
+    await verarbeiteQuelle(deps, q1, abrufer);
+    expect(q1.detailAufrufe).toEqual(["k"]);
+    const q2 = fakeQuelle(ok([liste]), { k: expose });
+    await verarbeiteQuelle({ ...deps, jetzt: new Date("2026-11-11T13:00:00Z") }, q2, abrufer);
+    expect(q2.detailAufrufe).toEqual([]);
+    expect(db.tabelle("angebote")).toHaveLength(1);
+    expect(db.tabelle("angebote")[0]).toMatchObject({
+      warmmiete_cents: 128_000, warmmiete_quelle: "angegeben", nebenkosten_cents: 28_000, balkon: "ja",
+      verfuegbar_ab: "1.12.2026", detail_geladen_am: JETZT.toISOString(), passt: "ja",
+    });
+  });
+
+  it("bekanntes Angebot mit geaenderter Kaltmiete: Expose wird neu geladen", async () => {
+    const { db, deps } = aufbau();
+    const liste = passend("m", { kaltmieteCents: 100_000, warmmieteCents: null });
+    await verarbeiteQuelle(deps, fakeQuelle(ok([liste]), { m: { ...liste, warmmieteCents: 128_000, detailGeladen: true } }), abrufer);
+    const billiger = { ...liste, kaltmieteCents: 95_000 };
+    const q2 = fakeQuelle(ok([billiger]), { m: { ...billiger, warmmieteCents: 122_000, detailGeladen: true } });
+    await verarbeiteQuelle(deps, q2, abrufer);
+    expect(q2.detailAufrufe).toEqual(["m"]);
+    expect(db.tabelle("angebote")[0]).toMatchObject({ warmmiete_cents: 122_000, kaltmiete_cents: 95_000 });
+  });
+
+  it("knappes Detailbudget geht zuerst an passende, dann an knapp zu teure Angebote", async () => {
+    const { deps } = aufbau();
+    const teuer = passend("t1", { kaltmieteCents: 140_000, warmmieteCents: null });   // 1.750 geschaetzt
+    const knapp = passend("t2", { kaltmieteCents: 108_000, warmmieteCents: null });   // 1.350 geschaetzt
+    const pass = passend("p1", { kaltmieteCents: 100_000, warmmieteCents: null });    // 1.250 geschaetzt
+    const q = fakeQuelle(ok([teuer, knapp, pass]));
+    await verarbeiteQuelle({ ...deps, maxDetails: 2 }, q, abrufer);
+    expect(q.detailAufrufe).toEqual(["p1", "t2"]);
+  });
+
   it("zu teuer wird als nein gespeichert (fuer lockerere Radar-Filter), aber nicht nachgeladen", async () => {
     const { db, deps } = aufbau();
     const q = fakeQuelle(ok([passend("d", { warmmieteCents: 200_000 })]));

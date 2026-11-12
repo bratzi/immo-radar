@@ -23,6 +23,8 @@ export interface Angebot {
   bildUrls: string[];
   veroeffentlichtAm: string | null;
   detailGeladen: boolean;
+  /** Zeitpunkt eines frueher geladenen Exposes, das weiterverwendet wird. */
+  detailGeladenAm?: string | null;
 }
 
 export interface Profilurteil {
