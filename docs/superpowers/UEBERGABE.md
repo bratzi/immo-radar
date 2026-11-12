@@ -45,7 +45,9 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
   `lauf_status` (eine Zeile) schreibt `main.ts`, `lauf_anfragen` protokolliert jeden Versuch.
   Radar: Knopf „Jetzt scannen“ setzt `anfrage` (Ziffern), Datenquelle `betrieb` ruft
   `radar_betrieb('{{anfrage}}')`; neue Nummer = ein Start, gleiche Nummer = nichts.
-  **Offen beim Nutzer:** GitHub-Token (fine-grained, `bratzi/immo-radar`, Actions: Read and write)
+  **Token liegt seit 2026-11-12 im Vault** (fine-grained `immo-radar-scrape-start`, nur `bratzi/immo-radar`,
+  Actions: Read and write, läuft am 2027-02-10 ab — vorher erneuern). Erster Start: Run 43201166311, GitHub 204.
+  Früher: GitHub-Token (fine-grained, `bratzi/immo-radar`, Actions: Read and write)
   im Supabase-Vault als `github_actions_token`. Bis dahin meldet jeder Versuch „kein Token“,
   und es laufen nur die ~3 GitHub-Läufe am Tag. Beide Funktionen sind für `anon`/`authenticated`
   gesperrt.
