@@ -22,6 +22,8 @@ describe("pruefeProfil", () => {
     "1 Zimmer frei in 3 Zimmer Wohnung",
     "Zimmer zu vermieten in Pasing",
     "Möbliertes Zimmer in ruhiger Lage",
+    "***Wunderschönes Balkonzimmer mit Aussicht über ganz München ab sofort verfügbar*** - Ramersdorf-Perlach",
+    "Einzelzimmer in Schwabing frei",
   ])("WG-Angebot ist raus: %s", (titel) => {
     const a = BASIS(); a.titel = titel;
     expect(pruefeProfil(a)).toEqual({ passt: "nein", gruende: ["wg_zimmer"] });
@@ -29,6 +31,7 @@ describe("pruefeProfil", () => {
   it.each([
     "WG-geeignete 3-Zimmer-Wohnung", "Wohnung, auch als WG geeignet", "2-Zimmer-Wohnung mit Balkon",
     "Helle 2 Zimmer Wohnung in Laim", "Zuhause mit 2 Zimmern in Forstenried", "3 Zimmer, Küche, Bad in Giesing",
+    "2-Zimmer-Wohnung mit großem Wohnzimmer", "Altbau mit Wohnzimmer und Balkon, 2 Zimmer",
   ])(
     "WG-geeignete Wohnung bleibt drin: %s", (titel) => {
       const a = BASIS(); a.titel = titel;

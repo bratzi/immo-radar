@@ -18,9 +18,23 @@ const WG_GEEIGNET = /\bwg[- ]?(geeignet|tauglich|f[äa]hig)|als wg geeignet/i;
  */
 const EINZELZIMMER = /^\W*(ein|1)\s+(\p{L}+\s+)?zimmer\b(?!-)|\bzimmer\s+(frei|zu vermieten|f(ü|ue)r)\b|^\W*(m(ö|oe)blierte?s?|private?s?|helle?s?|sch(ö|oe)ne?s?|gro(ß|ss)e?s?)\s+zimmer\b/iu;
 
+/**
+ * Zimmer als zusammengesetztes Wort ("Balkonzimmer", "Einzelzimmer";
+ * Ohne-Makler 2026-11-12). Raumnamen einer Wohnung zaehlen nicht, und ein
+ * Titel, der eine Wohnung oder eine Zimmerzahl ab 2 nennt, bleibt Wohnung.
+ */
+const ZIMMER_KOMPOSITUM = /\p{L}+zimmer\b/giu;
+const RAUMNAME = /^(wohn|schlaf|kinder|ess|bade?|arbeits|gaeste|gäste|ankleide)zimmer$/i;
+const WOHNUNG_IM_TITEL = /wohnung|apartment|appartement|\b([2-9]|zwei|drei|vier)[\s,.-]*(½|,5)?\s*-?\s*zimmer/i;
+
+function istZimmerKompositum(titel: string): boolean {
+  if (WOHNUNG_IM_TITEL.test(titel)) return false;
+  return (titel.match(ZIMMER_KOMPOSITUM) ?? []).some((w) => !RAUMNAME.test(w));
+}
+
 export function istWgAngebot(titel: string): boolean {
   if (WG_GEEIGNET.test(titel) && !/wg[- ]?zimmer|er[- ]?wg\b/i.test(titel)) return false;
-  return WG.test(titel) || EINZELZIMMER.test(titel);
+  return WG.test(titel) || EINZELZIMMER.test(titel) || istZimmerKompositum(titel);
 }
 
 export function pruefeProfil(a: Angebot): Profilurteil {
