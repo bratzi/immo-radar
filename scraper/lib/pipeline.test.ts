@@ -118,6 +118,14 @@ describe("verarbeiteQuelle", () => {
     expect(q.detailAufrufe).toEqual(["p1", "t2"]);
   });
 
+  it("online seit: der frueheste bekannte Zeitpunkt bleibt, auch wenn ein Lauf nichts oder Spaeteres liest", async () => {
+    const { db, deps } = aufbau();
+    await verarbeiteQuelle(deps, fakeQuelle(ok([passend("o", { veroeffentlichtAm: "2026-11-10T10:00:00.000Z" })])), abrufer);
+    await verarbeiteQuelle(deps, fakeQuelle(ok([passend("o", { veroeffentlichtAm: "2026-11-10T13:00:00.000Z" })])), abrufer);
+    await verarbeiteQuelle(deps, fakeQuelle(ok([passend("o", { veroeffentlichtAm: null })])), abrufer);
+    expect(db.tabelle("angebote")[0].veroeffentlicht_am).toBe("2026-11-10T10:00:00.000Z");
+  });
+
   it("zu teuer wird als nein gespeichert (fuer lockerere Radar-Filter), aber nicht nachgeladen", async () => {
     const { db, deps } = aufbau();
     const q = fakeQuelle(ok([passend("d", { warmmieteCents: 200_000 })]));

@@ -15,6 +15,7 @@
 import type { Angebot } from "../../lib/typen.js";
 import { leeresAngebot } from "../../lib/typen.js";
 import { erkenneBalkon } from "../../lib/balkon.js";
+import { onlineSeitAusText } from "../../lib/onlineSeit.js";
 
 export const EXPOSE_BASIS = "https://www.immobilienscout24.de/expose/";
 const TAUSCH = /tauschwohnung|wohnungs?tausch|zum tausch/i;
@@ -40,6 +41,8 @@ interface ListenItem {
   address?: { line?: string };
   titlePicture?: { full?: string };
   attributes?: Attribut[];
+  /** "vor 8 Stunden", "vor einem Tag" */
+  published?: string;
 }
 
 function plzUndStadtteil(zeile: string | undefined): { plz: string | null; stadtteil: string | null } {
@@ -50,7 +53,7 @@ function plzUndStadtteil(zeile: string | undefined): { plz: string | null; stadt
   return { plz, stadtteil: letzter && !/\d{5}/.test(letzter) ? letzter : null };
 }
 
-export function parseImmoscoutListe(antwort: { resultListItems?: { type: string; item: ListenItem }[] }): Angebot[] {
+export function parseImmoscoutListe(antwort: { resultListItems?: { type: string; item: ListenItem }[] }, jetzt: Date = new Date()): Angebot[] {
   const ergebnis: Angebot[] = [];
   for (const { type, item } of antwort.resultListItems ?? []) {
     if (type !== "EXPOSE_RESULT" || !item?.id || TAUSCH.test(item.title ?? "")) continue;
@@ -75,6 +78,7 @@ export function parseImmoscoutListe(antwort: { resultListItems?: { type: string;
       balkonBeleg: b.beleg,
       befristet: BEFRISTET.test(item.title) ? true : null,
       bildUrls: item.titlePicture?.full ? [item.titlePicture.full] : [],
+      veroeffentlichtAm: onlineSeitAusText(item.published, jetzt),
     }));
   }
   return ergebnis;

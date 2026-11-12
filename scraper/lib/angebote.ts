@@ -20,6 +20,8 @@ export interface GespeichertesExpose {
 export interface Bekannt {
   id: string; gemeldetAm: string | null; letzteWarmmieteGemeldetCents: number | null;
   verschwundenAm: string | null; passt: Passt; expose: GespeichertesExpose | null;
+  /** Fruehester bisher gelesener Zeitpunkt "online seit". */
+  veroeffentlichtAm?: string | null;
 }
 
 export function zuZeile(a: Angebot, urteil: Profilurteil, punkte: number, jetzt: Date): AngebotZeile {
@@ -43,13 +45,13 @@ export function entscheideMeldung(bekannt: Bekannt | undefined, warmmieteCents: 
 
 export async function ladeBekannte(sb: SupabaseClient, quelle: Quelle): Promise<Map<string, Bekannt>> {
   const { data, error } = await sb.from("angebote")
-    .select("id, external_id, gemeldet_am, letzte_warmmiete_gemeldet_cents, verschwunden_am, passt, detail_geladen_am, kaltmiete_cents, nebenkosten_cents, warmmiete_cents, warmmiete_quelle, balkon, balkon_beleg, verfuegbar_ab, befristet")
+    .select("id, external_id, gemeldet_am, letzte_warmmiete_gemeldet_cents, verschwunden_am, passt, detail_geladen_am, kaltmiete_cents, nebenkosten_cents, warmmiete_cents, warmmiete_quelle, balkon, balkon_beleg, verfuegbar_ab, befristet, veroeffentlicht_am")
     .eq("quelle", quelle);
   if (error) throw new Error(`ladeBekannte ${quelle}: ${error.message}`);
   const map = new Map<string, Bekannt>();
   for (const z of data ?? []) map.set(z.external_id, {
     id: z.id, gemeldetAm: z.gemeldet_am, letzteWarmmieteGemeldetCents: z.letzte_warmmiete_gemeldet_cents,
-    verschwundenAm: z.verschwunden_am, passt: z.passt,
+    verschwundenAm: z.verschwunden_am, passt: z.passt, veroeffentlichtAm: z.veroeffentlicht_am,
     expose: z.detail_geladen_am ? {
       am: z.detail_geladen_am, kaltmieteCents: z.kaltmiete_cents, nebenkostenCents: z.nebenkosten_cents,
       warmmieteCents: z.warmmiete_cents, warmmieteQuelle: z.warmmiete_quelle, balkon: z.balkon,

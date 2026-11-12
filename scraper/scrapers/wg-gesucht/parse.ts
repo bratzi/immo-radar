@@ -12,6 +12,7 @@
 import type { Angebot } from "../../lib/typen.js";
 import { leeresAngebot } from "../../lib/typen.js";
 import { erkenneBalkon } from "../../lib/balkon.js";
+import { onlineSeitAusText } from "../../lib/onlineSeit.js";
 
 export const WGG_BASIS = "https://www.wg-gesucht.de";
 const TAUSCH = /tauschwohnung|wohnungs?tausch|zum tausch/i;
@@ -73,7 +74,7 @@ function karten(html: string): string[] {
   return starts.map((s, i) => html.slice(s, i + 1 < starts.length ? starts[i + 1] : undefined));
 }
 
-export function parseWgGesuchtListe(html: string): Angebot[] {
+export function parseWgGesuchtListe(html: string, jetzt: Date = new Date()): Angebot[] {
   const ergebnis: Angebot[] = [];
   for (const roh of karten(html)) {
     const k = roh.replace(/<script[\s\S]*?<\/script>/g, "").replace(/\s+/g, " ");
@@ -88,6 +89,7 @@ export function parseWgGesuchtListe(html: string): Angebot[] {
     const details = entschluessle(k.match(/card-offer-details-text[^"]*" title="([^"]*)"/)?.[1] ?? "");
     const zimmer = details.match(/(\d+(?:,\d)?)-Zimmer-Wohnung/)?.[1];
     const stadtteil = entschluessle(k.match(/>map<\/span>[^<]*<\/span>([^<]*)<span/)?.[1] ?? "") || null;
+    const online = k.match(/online-since-icon[^>]*>update<\/span>\s*<span class="card-subtitle">([^<]+)</)?.[1];
     const frei = k.match(/calendar_today<\/span>\s*<span>\s*([\d.]+)\s*</)?.[1] ?? null;
     const bilder = [...new Set([...k.matchAll(/data-src="(https:\/\/img\.wg-gesucht\.de\/[^"]+)"/g)].map((m) => m[1]))];
     const warm = zahl(preis);
@@ -108,6 +110,7 @@ export function parseWgGesuchtListe(html: string): Angebot[] {
       balkon: b.balkon,
       balkonBeleg: b.beleg,
       bildUrls: bilder,
+      veroeffentlichtAm: onlineSeitAusText(online, jetzt),
     }));
   }
   return ergebnis;

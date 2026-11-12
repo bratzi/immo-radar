@@ -73,6 +73,14 @@ function mitGespeichertemExpose(a: Angebot, b: Bekannt | undefined): Angebot {
   };
 }
 
+/** Relative Angaben ("vor 2 Tagen") wandern mit jedem Lauf; der frueheste Wert gilt. */
+function mitFruehestemOnlineSeit(a: Angebot, b: Bekannt | undefined): Angebot {
+  const alt = b?.veroeffentlichtAm ?? null;
+  if (!alt) return a;
+  if (!a.veroeffentlichtAm || new Date(alt).getTime() < new Date(a.veroeffentlichtAm).getTime()) return { ...a, veroeffentlichtAm: alt };
+  return a;
+}
+
 /** Rang fuer das knappe Detailbudget: passend vor unklar vor knapp zu teuer. */
 function detailRang(b: Bewertet): number {
   if (b.passt === "ja") return 0;
@@ -120,7 +128,7 @@ export async function verarbeiteQuelle(deps: PipelineDeps, quelle: Quelle, ab: A
   const bekannte = await ladeBekannte(sb, quelle.name);
   let status: LaufZeile["status"] = "ok";
   let hinweis = sweep.hinweis;
-  const roh = sweep.angebote.map((a) => mitGespeichertemExpose(a, bekannte.get(a.externalId)));
+  const roh = sweep.angebote.map((a) => mitFruehestemOnlineSeit(mitGespeichertemExpose(a, bekannte.get(a.externalId)), bekannte.get(a.externalId)));
   const bewertet: (Bewertet | null)[] = roh.map((a) => bewerte(a, jetzt));
   const kandidaten = bewertet
     .map((b, i) => ({ b: b!, i }))

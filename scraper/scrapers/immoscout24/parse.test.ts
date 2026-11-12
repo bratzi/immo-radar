@@ -72,3 +72,11 @@ describe("parseImmoscoutExpose", () => {
     expect(parseImmoscoutExpose(fixture("expose-tausch.json"), basis)).toBeNull();
   });
 });
+
+describe("ImmoScout24 online seit", () => {
+  it("liest 'vor einem Tag' aus der Liste relativ zum Lauf", () => {
+    const jetzt = new Date("2026-11-12T10:00:00Z");
+    const a = parseImmoscoutListe(fixture("liste.json"), jetzt).find((x) => x.externalId === "172539355")!;
+    expect(a.veroeffentlichtAm).toBe("2026-11-11T10:00:00.000Z");
+  });
+});

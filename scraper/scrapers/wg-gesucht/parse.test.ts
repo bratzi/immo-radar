@@ -60,3 +60,12 @@ describe("parseWgGesuchtListe", () => {
     expect(JSON.stringify(liste)).not.toMatch(/user-name/);
   });
 });
+
+describe("WG-Gesucht online seit", () => {
+  it("liest Datum und '2 T.' von der Karte", () => {
+    const jetzt = new Date("2026-11-12T10:00:00Z");
+    const l = parseWgGesuchtListe(html, jetzt);
+    expect(l.find((x) => x.externalId === "10526015")!.veroeffentlichtAm).toBe("2026-11-04T23:00:00.000Z");
+    expect(l.find((x) => x.externalId === "14327734")!.veroeffentlichtAm).toBe("2026-11-10T10:00:00.000Z");
+  });
+});
