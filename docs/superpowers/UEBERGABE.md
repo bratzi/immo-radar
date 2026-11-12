@@ -53,6 +53,7 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
   - WG-Gesucht ordnet Fürstenried/Forstenried jetzt 81476 und Solln 81479 zu, statt 81379.
   - Radar: `files/plz.js` v2 mit `PLZ_UMLAND`; `index.html` v17 lässt „ausserhalb_muenchen“ für diese PLZ durch.
 - `pruefung.yml` bietet jetzt alle Quellen zur Auswahl.
+- **Radar-Redesign (`index.html` v19, 2026-11-12):** vier Kennzahlen oben (passen, neu online 24 Std., günstigste, Median €/m²); Filter als Pillen, Selteneres unter „Weitere Filter“; ab 1000 px Liste links, Karte rechts mitlaufend; Karten mit großem Preis, drei Eckdaten-Kacheln, Statusleiste links, „Neu“ nach frühestem Zeitpunkt (online seit, sonst im Radar seit; gilt auch für den Filter „nur neu“). Auswertung und Läufe klappbar. Vorlage v17 steht nicht im Repo; `files/index.html` Version 18 = erste Fassung.
 - **Takt:** GitHub startet `schedule` nur etwa 3-mal am Tag statt ~50-mal (gemessen 2026-11-03
   bis 2026-11-12). Seit `0c01274` stößt Supabase den Lauf selbst an: `pg_cron` (6 Jobs `radar-*`,
   gleicher Takt in UTC) → `public.starte_lauf()` → `pg_net` → workflow_dispatch. Höchstens 1×
@@ -92,7 +93,7 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 3. Erledigt am 2026-11-12 (`5f71631`): Telegram, Meldung, `web/`, Snapshot und beide Cloudflare-Workflows sind entfernt. Noch offen und nur vom Nutzer lösbar: Die alte Seite `immo-radar-dashboard.pages.dev` bleibt mit dem letzten Stand online, bis sie in Cloudflare gelöscht wird. Die Secrets `TELEGRAM_*` und `CLOUDFLARE_*` in GitHub werden nicht mehr gebraucht.
 4. Immowelt: am 2026-11-12 erneut geprüft (Run 43123724920). Schon der erste Aufruf der Suchseite im sichtbaren Browser bekommt **403 DataDome**. Fredys Weg (DataDome-Cookie per Seitenaufruf holen, dann die interne API) ist Umgehung einer Bot-Erkennung und wird bewusst nicht gebaut. Mögliche legitime Wege: Suchauftrag-Mails auslesen oder ein Abruf vom Rechner des Nutzers; beides braucht seine Entscheidung.
 5. Erledigt: Routine „Reparatur“. Offen beim Nutzer: Secret `ANTHROPIC_API_KEY`.
-6. WG-Gesucht bestätigt: 42 gesehen, vollständig (Läufe 12:08–12:53). Noch prüfen: ImmoScout mit Umland, erster Lauf ab 13:04 auf `91a4ecc` oder neuer. Ohne Umland lag der Lauf schon bei 182–195 s, das Sweep-Budget ist 3 min. Steigt `gesehen` nicht über 614 oder wird `vollstaendig` false, dann `IMMOSCOUT_MAX_SEITEN` oder das Budget anpassen.
+6. Erledigt: WG-Gesucht 42 gesehen, vollständig. ImmoScout mit Umland (Lauf 13:08, `f10d656`): 624 gesehen, 23 passend, vollständig, 182 s. Budget reicht noch.
 
 ## Fallen
 
