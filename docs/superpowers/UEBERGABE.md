@@ -1,4 +1,4 @@
-# Übergabe — Stand 2026-11-12, 01:00 Uhr
+# Übergabe — Stand 2026-11-12, 13:30 Uhr
 
 **Zweck:** private Mietwohnungssuche des Nutzers in München (≤ 1.300 € warm,
 ≥ 2 Zi., ≥ 45 m²; Balkon seit 2026-11-12 nur Pluspunkt, +15 in der Reihung). Kein Kauf, keine Hausobjekte, kein Telegram,
@@ -37,7 +37,20 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
   „nur neu 24 Std.“, Sortierung; Diagramme Mietverteilung, Fläche gegen Miete, neu je Tag;
   Ansicht Karten oder Tabelle. **Falle:** Elemente außerhalb des eigenen `data-draw` anzuhängen
   (Tooltip an `parentNode`) meldet `check` als `stray_write`.
-- Offen: Spec `specs/2026-11-12-routine-reparatur-design.md` wartet auf die Freigabe des Nutzers.
+- **Routine „Reparatur“ gebaut** (`9d7874f`, Plan `plans/2026-11-12-routine-reparatur.md`):
+  - `lib/brueche.ts` enthält die reinen Regeln (13 Tests).
+  - `scripts/pruefe-brueche.mts` ist der letzte Schritt in `scrape.yml` (`if: always()`, Fehler werden nur geloggt). Es legt die Issues an: „Reparatur: <quelle>“ mit Label `reparatur` bei 2× fehler oder 0 gesehen, „Sperre: <quelle>“ bei 3× gesperrt.
+  - Bei Erholung kommentiert es das offene Issue einmal.
+  - **Falle:** Issues vom GITHUB_TOKEN starten keine `issues`-Workflows. Deshalb startet das Skript `reparatur.yml` selbst per workflow_dispatch.
+  - `reparatur.yml` nutzt claude-code-action mit Opus, PR „Fixes #n“, kein Merge. Es ist **ungetestet, bis der Nutzer `ANTHROPIC_API_KEY` anlegt**; ohne das Secret bricht es mit einem Hinweis ab.
+- **Suchgebiet seit `91a4ecc`:**
+  - Stadt plus die Südwest-Bucht der Stadtgrenze (`UMLAND_SUEDWEST`: 82061 Neuried, 82152 Planegg/Martinsried, 82166 Gräfelfing), auf Wunsch des Nutzers („Leerraum unten links“).
+  - Fürstenried war schon drin (8147x, ~63 Inserate).
+  - ImmoScout fragt alle vier Geocodes kommagetrennt ab. Probelauf `pruefung.yml` pruefe-quelle immoscout24: Run 43213437738.
+  - Kleinanzeigen (`l6411`) und WG-Gesucht (`city_id=90`) suchen weiter nur die Stadt. Ohne-Makler liefert das Umland ohnehin.
+  - WG-Gesucht ordnet Fürstenried/Forstenried jetzt 81476 und Solln 81479 zu, statt 81379.
+  - Radar: `files/plz.js` v2 mit `PLZ_UMLAND`; `index.html` v17 lässt „ausserhalb_muenchen“ für diese PLZ durch.
+- `pruefung.yml` bietet jetzt alle Quellen zur Auswahl.
 - **Takt:** GitHub startet `schedule` nur etwa 3-mal am Tag statt ~50-mal (gemessen 2026-11-03
   bis 2026-11-12). Seit `0c01274` stößt Supabase den Lauf selbst an: `pg_cron` (6 Jobs `radar-*`,
   gleicher Takt in UTC) → `public.starte_lauf()` → `pg_net` → workflow_dispatch. Höchstens 1×
@@ -76,7 +89,8 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 2. Fehltreffer prüfen. Der WG-Filter am Titel erkennt seit 2026-11-12 auch Einzelzimmer ohne „WG“ („Ein privates Zimmer für …“).
 3. Erledigt am 2026-11-12 (`5f71631`): Telegram, Meldung, `web/`, Snapshot und beide Cloudflare-Workflows sind entfernt. Noch offen und nur vom Nutzer lösbar: Die alte Seite `immo-radar-dashboard.pages.dev` bleibt mit dem letzten Stand online, bis sie in Cloudflare gelöscht wird. Die Secrets `TELEGRAM_*` und `CLOUDFLARE_*` in GitHub werden nicht mehr gebraucht.
 4. Immowelt: am 2026-11-12 erneut geprüft (Run 43123724920). Schon der erste Aufruf der Suchseite im sichtbaren Browser bekommt **403 DataDome**. Fredys Weg (DataDome-Cookie per Seitenaufruf holen, dann die interne API) ist Umgehung einer Bot-Erkennung und wird bewusst nicht gebaut. Mögliche legitime Wege: Suchauftrag-Mails auslesen oder ein Abruf vom Rechner des Nutzers; beides braucht seine Entscheidung.
-5. Routine „Reparatur" (nur bei zwei Ausfällen in Folge) — Plan 2.
+5. Erledigt: Routine „Reparatur“. Offen beim Nutzer: Secret `ANTHROPIC_API_KEY`.
+6. Prüfen: WG-Gesucht ~42 statt 22 gesehen (Fix `1f5b6f0`). ImmoScout mit Umland (mehr Seiten, Sweep-Budget 3 min liegt knapp bei ~181 s; ggf. `IMMOSCOUT_MAX_SEITEN` oder Budget anpassen).
 
 ## Fallen
 
