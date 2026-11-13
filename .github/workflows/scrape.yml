@@ -35,6 +35,8 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      IMMOWELT_IMAP_USER: ${{ secrets.IMMOWELT_IMAP_USER }}
+      IMMOWELT_IMAP_PASS: ${{ secrets.IMMOWELT_IMAP_PASS }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

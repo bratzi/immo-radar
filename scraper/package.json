@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^22",
     "adm-zip": "^0.5",
     "tsx": "^4",
