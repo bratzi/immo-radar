@@ -87,6 +87,8 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 | ImmoScout24 | live seit 2026-11-12 über die inoffizielle Mobil-API (`api.mobile.immobilienscout24.de`, App-User-Agent, Wissen aus Fredy). Vom Nutzer ausdrücklich freigegeben; der Auto-Modus blockt solche Aufrufe sonst als Bot-Umgehung. Listenpreis ist **kalt**, Warmmiete kommt aus dem Exposé |
 | WG-Gesucht | live seit 2026-11-12, Browser-Abrufer, Filter in der URL. Kartenpreis ist **Gesamtmiete**. Keine PLZ auf der Karte: eine repräsentative PLZ je Stadtbezirk (`plzFuerStadtteil`), unbekannter Ort bleibt „unklar“. Kein Detailabruf, weil die Detailseite aus CI ohne Eckdaten kam. Testseite ohne Namen der Inserierenden |
 
+- **Radar v30 (2026-11-13):** Abzeichen und Filter „nur Nachmieter“ (Spalte `angebote.nachmieter`, Abfrage `treffer` liefert sie). Die Seite wertet eine geschätzte Warmmiete über der Grenze als offen, solange die Kaltmiete darunter liegt (vorher blendete sie solche Wohnungen aus). `tauschwohnung` ist wie `wg_zimmer` immer raus. Kleinanzeigen sucht seit `abb441b` mit `swap_s:nein` und ist damit meist vollständig; drei gelöschte Inserate wurden am 2026-11-13 von Hand als verschwunden markiert.
+
 ## Offen, in dieser Reihenfolge
 
 1. Erledigt am 2026-11-13: Alle 25 aktiven passenden ImmoScout-Wohnungen haben Exposé und Bilder, keine wartet mehr. Zur Historie: ImmoScout beobachten. Lauf 43118553524 (Commit `150dd09`): 23 gesehen, 19 passend, 15 Exposés, keine Sperre. 4 Wohnungen warten noch auf ihr Exposé (Deckel 15 je Lauf). **Falle:** `gh workflow run` direkt nach dem Push läuft noch auf dem alten Commit — `headSha` des Laufs prüfen.
