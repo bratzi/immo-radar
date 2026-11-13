@@ -54,6 +54,10 @@ describe("pruefeProfil", () => {
     a.kaltmieteCents = 151_000; a.warmmieteCents = 188_750;
     expect(pruefeProfil(a).passt).toBe("nein");
   });
+  it("Tauschwohnung ist raus", () => {
+    const a = BASIS(); a.titel = "Wohnung zur Miete · Tauschwohnung";
+    expect(pruefeProfil(a)).toEqual({ passt: "nein", gruende: ["tauschwohnung"] });
+  });
   it("Warmmiete unbekannt ist unklar, nicht raus", () => {
     const a = BASIS(); a.warmmieteCents = null; a.warmmieteQuelle = "unbekannt";
     expect(pruefeProfil(a)).toEqual({ passt: "unklar", gruende: ["warmmiete_unbekannt"] });

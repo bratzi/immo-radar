@@ -50,6 +50,8 @@ export function istWgAngebot(titel: string): boolean {
 
 export function pruefeProfil(a: Angebot): Profilurteil {
   if (istWgAngebot(a.titel)) return { passt: "nein", gruende: ["wg_zimmer"] };
+  // A swap needs a Munich flat to give up in return; Immowelt marks it in the title.
+  if (/tauschwohnung|wohnungstausch/i.test(a.titel)) return { passt: "nein", gruende: ["tauschwohnung"] };
   const nein: string[] = [];
   const unklar: string[] = [];
 
