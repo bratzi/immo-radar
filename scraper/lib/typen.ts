@@ -22,6 +22,8 @@ export interface Angebot {
   befristet: boolean | null;
   bildUrls: string[];
   veroeffentlichtAm: string | null;
+  /** Tenant looks for a successor ("Nachmieter gesucht"); seen in the listing text. */
+  nachmieter?: boolean;
   detailGeladen: boolean;
   /** Zeitpunkt eines frueher geladenen Exposes, das weiterverwendet wird. */
   detailGeladenAm?: string | null;

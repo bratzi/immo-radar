@@ -9,7 +9,11 @@ export interface AngebotZeile {
   verfuegbar_ab: string | null; befristet: boolean | null; bild_urls: string[];
   veroeffentlicht_am: string | null; passt: Passt; gruende: string[]; punkte: number;
   zuletzt_gesehen: string; verschwunden_am: null; detail_geladen_am: string | null;
+  nachmieter: boolean;
 }
+
+/** Outgoing tenant offers the flat ("Nachmieter gesucht", "Nachfolgemieter"). */
+export const NACHMIETER = /nach(folge)?mieter/i;
 
 /** Was ein frueher geladenes Expose beigetragen hat; null, wenn keins geladen wurde. */
 export interface GespeichertesExpose {
@@ -36,6 +40,7 @@ export function zuZeile(a: Angebot, urteil: Profilurteil, punkte: number, jetzt:
     verfuegbar_ab: a.verfuegbarAb, befristet: a.befristet, bild_urls: a.bildUrls,
     veroeffentlicht_am: a.veroeffentlichtAm, passt: urteil.passt, gruende: urteil.gruende, punkte,
     zuletzt_gesehen: iso, verschwunden_am: null, detail_geladen_am: a.detailGeladen ? (a.detailGeladenAm ?? iso) : null,
+    nachmieter: a.nachmieter === true || NACHMIETER.test(a.titel),
   };
 }
 

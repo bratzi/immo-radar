@@ -15,6 +15,7 @@ import * as cheerio from "cheerio";
 import type { Angebot } from "../../lib/typen.js";
 import { leeresAngebot } from "../../lib/typen.js";
 import { erkenneBalkon } from "../../lib/balkon.js";
+import { NACHMIETER } from "../../lib/angebote.js";
 
 export const KLEINANZEIGEN_BASIS = "https://www.kleinanzeigen.de";
 
@@ -92,6 +93,7 @@ export function parseKleinanzeigenListe(html: string): Angebot[] {
       // Kartentext ist zu kurz fuer eine Verneinung: hoechstens "ja".
       balkon: b.balkon === "ja" ? "ja" : "unbekannt",
       balkonBeleg: b.balkon === "ja" ? b.beleg : null,
+      nachmieter: NACHMIETER.test(kartentext),
     }));
   });
   return ergebnis;
@@ -225,6 +227,7 @@ export function parseKleinanzeigenDetail(html: string, kontext: { externalId: st
     befristet: /(?<!un)befristet/i.test(r.beschreibung) ? true : null,
     bildUrls: r.bildUrls,
     veroeffentlichtAm: r.gewerblich === false ? r.datum : null,
+    nachmieter: NACHMIETER.test(`${r.titel}\n${r.beschreibung}`),
     detailGeladen: true,
   });
 }

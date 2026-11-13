@@ -5,6 +5,9 @@ import { zuZeile, entscheideMeldung } from "./angebote.js";
 describe("zuZeile", () => {
   it("bildet Spaltennamen und setzt zuletzt_gesehen", () => {
     const a = leeresAngebot({ quelle: "immowelt", externalId: "e1", url: "u", titel: "t", warmmieteCents: 100_000, warmmieteQuelle: "angegeben", flaecheM2: 50.5 });
+    expect(zuZeile(a, { passt: "ja", gruende: [] }, 0, new Date()).nachmieter).toBe(false);
+    expect(zuZeile({ ...a, titel: "Nachmieter gesucht – 2 Zimmer" }, { passt: "ja", gruende: [] }, 0, new Date()).nachmieter).toBe(true);
+    expect(zuZeile({ ...a, nachmieter: true }, { passt: "ja", gruende: [] }, 0, new Date()).nachmieter).toBe(true);
     const z = zuZeile(a, { passt: "ja", gruende: [] }, 15, new Date("2026-11-11T12:00:00Z"));
     expect(z).toMatchObject({ quelle: "immowelt", external_id: "e1", warmmiete_cents: 100_000, warmmiete_quelle: "angegeben", flaeche_m2: 50.5, passt: "ja", gruende: [], punkte: 15, zuletzt_gesehen: "2026-11-11T12:00:00.000Z", verschwunden_am: null });
   });

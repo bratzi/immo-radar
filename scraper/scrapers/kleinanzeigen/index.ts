@@ -15,7 +15,11 @@ import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseKleinanzeigenDetail, parseKleinanzeigenListe } from "./parse.js";
 
 const pfad = (slug: string) => `https://www.kleinanzeigen.de/s-wohnung-mieten/${slug}/anzeige:angebote/preis::${FANGNETZ.warmmieteMaxEuro}/sortierung:neuste`;
-const kategorie = (ortId: string) => `c203l${ortId}+wohnung_mieten.qm_d:${FANGNETZ.flaecheMinM2}%2C+wohnung_mieten.zimmer_d:${FANGNETZ.zimmerMin}%2C`;
+// swap_s:nein drops flat swaps (about 90 % of the unfiltered hits). Checked
+// 2026-11-13: the filtered list holds ~11 Munich flats plus nearby places on
+// one page, 6 of 8 Munich private offers were missing from the newest-5-pages
+// sweep because swaps crowded them out.
+const kategorie = (ortId: string) => `c203l${ortId}+wohnung_mieten.qm_d:${FANGNETZ.flaecheMinM2}%2C+wohnung_mieten.swap_s:nein+wohnung_mieten.zimmer_d:${FANGNETZ.zimmerMin}%2C`;
 const BASIS = pfad("muenchen");
 const KATEGORIE = kategorie("6411");
 
@@ -40,8 +44,8 @@ const KARTEN_JE_SEITE = 25;
 export const KLEINANZEIGEN_SUCHE_URL = `${BASIS}/${KATEGORIE}`;
 
 /** Listenseiten je Lauf (unter dem allgemeinen Deckel MAX_LISTENSEITEN). */
-// Volle 5 Seiten: rund 90 % der gefilterten Karten sind Tauschwohnungen
-// (Browser 2026-11-11: 23 von 25), "swap_s:nein" laesst nur 11 von 819 uebrig.
+// Up to 5 pages; without swaps the list usually ends on page 1, which makes
+// the sweep complete.
 export const KLEINANZEIGEN_LISTENSEITEN = MAX_LISTENSEITEN;
 
 /** URL der n-ten Listenseite (1-basiert). */
@@ -63,6 +67,7 @@ async function sweepMuenchen(ab: Abrufer, ende: number, gesehen: Map<string, Ang
     const karten = (antwort.html.match(/<article[^>]*data-adid=/g) ?? []).length;
     if (karten === 0) return { vollstaendig: n > 1, status: n === 1 ? "fehler" : "ok", hinweis: n === 1 ? "keine Karten auf Seite 1" : null };
     for (const a of parseKleinanzeigenListe(antwort.html)) if (!gesehen.has(a.externalId)) gesehen.set(a.externalId, a);
+    if (karten < KARTEN_JE_SEITE) return { vollstaendig: true, status: "ok", hinweis: null };
   }
   return { vollstaendig: false, status: "ok", hinweis: null };
 }
