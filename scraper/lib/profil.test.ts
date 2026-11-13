@@ -48,6 +48,12 @@ describe("pruefeProfil", () => {
     const a = BASIS(); a.warmmieteCents = 130_001;
     expect(pruefeProfil(a)).toEqual({ passt: "nein", gruende: ["warmmiete_zu_hoch"] });
   });
+  it("geschaetzte Warmmiete ueber der Grenze ist unklar, Kaltmiete darueber bleibt raus", () => {
+    const a = BASIS(); a.kaltmieteCents = 108_000; a.warmmieteCents = 135_000; a.warmmieteQuelle = "geschaetzt";
+    expect(pruefeProfil(a)).toEqual({ passt: "unklar", gruende: ["warmmiete_geschaetzt_zu_hoch"] });
+    a.kaltmieteCents = 151_000; a.warmmieteCents = 188_750;
+    expect(pruefeProfil(a).passt).toBe("nein");
+  });
   it("Warmmiete unbekannt ist unklar, nicht raus", () => {
     const a = BASIS(); a.warmmieteCents = null; a.warmmieteQuelle = "unbekannt";
     expect(pruefeProfil(a)).toEqual({ passt: "unklar", gruende: ["warmmiete_unbekannt"] });

@@ -54,7 +54,13 @@ export function pruefeProfil(a: Angebot): Profilurteil {
   const unklar: string[] = [];
 
   if (a.warmmieteCents === null) unklar.push("warmmiete_unbekannt");
-  else if (a.warmmieteCents > PROFIL.warmmieteMaxCents) nein.push("warmmiete_zu_hoch");
+  else if (a.warmmieteCents > PROFIL.warmmieteMaxCents) {
+    // A guessed warm rent is no proof: only a known warm rent or a cold rent
+    // above the limit rules the flat out.
+    const kaltZuHoch = a.kaltmieteCents !== null && a.kaltmieteCents > PROFIL.warmmieteMaxCents;
+    if (a.warmmieteQuelle === "geschaetzt" && !kaltZuHoch) unklar.push("warmmiete_geschaetzt_zu_hoch");
+    else nein.push("warmmiete_zu_hoch");
+  }
 
   if (a.zimmer === null) unklar.push("zimmer_unbekannt");
   else if (a.zimmer < PROFIL.zimmerMin) nein.push("zu_wenig_zimmer");
