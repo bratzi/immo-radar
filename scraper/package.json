@@ -10,6 +10,8 @@
     "@supabase/supabase-js": "^2",
     "cheerio": "^1",
     "dotenv": "^17",
+    "imapflow": "^1.0.196",
+    "mailparser": "^3.7.4",
     "playwright": "^1.63.0",
     "sharp": "^0.34.4"
   },

@@ -1,0 +1,28 @@
+name: immowelt-mail-probe
+# Einmalige Probe: IMAP-Zugang pruefen und Immowelt-Mails als Vorlage fuer den Parser sichern.
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scraper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scraper/package-lock.json
+      - run: npm ci
+      - run: npx tsx scripts/immowelt-mail-probe.mts
+        env:
+          IMMOWELT_IMAP_USER: ${{ secrets.IMMOWELT_IMAP_USER }}
+          IMMOWELT_IMAP_PASS: ${{ secrets.IMMOWELT_IMAP_PASS }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mail-probe
+          path: scraper/mail-probe/
+          retention-days: 1
