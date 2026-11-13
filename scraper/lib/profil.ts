@@ -21,13 +21,13 @@ export const FANGNETZ = {
 
 /** WG-Zimmer im Titel; "WG-geeignet" bleibt eine ganze Wohnung. */
 const WG = /\bwg[- ]?zimmer\b|\d\s*-?\s*er[- ]?wg\b|wohngemeinschaft|\bwg\b(?![- ]?(geeignet|tauglich|f[äa]hig))/i;
-const WG_GEEIGNET = /\bwg[- ]?(geeignet|tauglich|f[äa]hig)|als wg geeignet/i;
+const WG_GEEIGNET = /\bwg[- ]?(geeignet|tauglich|f[äa]hig)|als wg geeignet|f(ü|ue)r\s+(eine\s+)?wg\b/i;
 
 /**
  * Einzelnes Zimmer ohne das Wort WG (WG-Gesucht 2026-11-12: "Ein privates
  * Zimmer fuer eine Frau"). Eine Zimmerzahl >= 2 vor "Zimmer" bleibt Wohnung.
  */
-const EINZELZIMMER = /^\W*(ein|1)\s+(\p{L}+\s+)?zimmer\b(?!-)|\bzimmer\s+(frei|zu vermieten|f(ü|ue)r)\b|^\W*(m(ö|oe)blierte?s?|private?s?|helle?s?|sch(ö|oe)ne?s?|gro(ß|ss)e?s?)\s+zimmer\b/iu;
+const EINZELZIMMER = /^\W*(ein|1)\s+(\p{L}+\s+)?zimmer\b(?!-)|(?<!\b([2-9]|zwei|drei|vier)[\s-]*)\bzimmer\s+(frei|zu vermieten|f(ü|ue)r)\b|^\W*(m(ö|oe)blierte?s?|private?s?|helle?s?|sch(ö|oe)ne?s?|gro(ß|ss)e?s?)\s+zimmer\b/iu;
 
 /**
  * Zimmer als zusammengesetztes Wort ("Balkonzimmer", "Einzelzimmer";
