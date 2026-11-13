@@ -83,7 +83,7 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 | Quelle | Stand |
 |---|---|
 | Kleinanzeigen | live, CI ohne Sperre. 5 Seiten, ~90 % Tauschangebote, Code filtert sie |
-| Immowelt | Parser fehlt. CI wird per DataDome gesperrt (Run 43101998784); Fixture aus dem Browser liegt in `scraper/test/fixtures/immowelt/liste-karten.html` |
+| Immowelt | live seit 2026-11-13 über Suchauftrag-Mails (`scraper/scrapers/immowelt/mail.ts`): IMAP auf das Gmail-Radar-Postfach (Secrets `IMMOWELT_IMAP_USER`/`IMMOWELT_IMAP_PASS`), Klick-Links per 302 zur Exposé-ID. immowelt.de wird nicht aufgerufen. Nur Kaltmiete, keine Bilder, nie vollständig. Parser nur an der Bestätigungsmail getestet |
 | ImmoScout24 | live seit 2026-11-12 über die inoffizielle Mobil-API (`api.mobile.immobilienscout24.de`, App-User-Agent, Wissen aus Fredy). Vom Nutzer ausdrücklich freigegeben; der Auto-Modus blockt solche Aufrufe sonst als Bot-Umgehung. Listenpreis ist **kalt**, Warmmiete kommt aus dem Exposé |
 | WG-Gesucht | live seit 2026-11-12, Browser-Abrufer, Filter in der URL. Kartenpreis ist **Gesamtmiete**. Keine PLZ auf der Karte: eine repräsentative PLZ je Stadtbezirk (`plzFuerStadtteil`), unbekannter Ort bleibt „unklar“. Kein Detailabruf, weil die Detailseite aus CI ohne Eckdaten kam. Testseite ohne Namen der Inserierenden |
 
@@ -92,7 +92,7 @@ Abschnitt 11 (schlanke Endfassung, fünf Bausteine) und 10 (kein Telegram).
 1. ImmoScout beobachten. Lauf 43118553524 (Commit `150dd09`): 23 gesehen, 19 passend, 15 Exposés, keine Sperre. 4 Wohnungen warten noch auf ihr Exposé (Deckel 15 je Lauf). **Falle:** `gh workflow run` direkt nach dem Push läuft noch auf dem alten Commit — `headSha` des Laufs prüfen.
 2. Fehltreffer prüfen. Der WG-Filter am Titel erkennt seit 2026-11-12 auch Einzelzimmer ohne „WG“ („Ein privates Zimmer für …“).
 3. Erledigt am 2026-11-12 (`5f71631`): Telegram, Meldung, `web/`, Snapshot und beide Cloudflare-Workflows sind entfernt. Noch offen und nur vom Nutzer lösbar: Die alte Seite `immo-radar-dashboard.pages.dev` bleibt mit dem letzten Stand online, bis sie in Cloudflare gelöscht wird. Die Secrets `TELEGRAM_*` und `CLOUDFLARE_*` in GitHub werden nicht mehr gebraucht.
-4. Immowelt: am 2026-11-12 erneut geprüft (Run 43123724920). Schon der erste Aufruf der Suchseite im sichtbaren Browser bekommt **403 DataDome**. Fredys Weg (DataDome-Cookie per Seitenaufruf holen, dann die interne API) ist Umgehung einer Bot-Erkennung und wird bewusst nicht gebaut. Mögliche legitime Wege: Suchauftrag-Mails auslesen oder ein Abruf vom Rechner des Nutzers; beides braucht seine Entscheidung.
+4. Immowelt-Mailweg beobachten (Commit `9ae62a6`, Radar v29 mit Immowelt-Pill). Lauf 43388345258: 5 gesehen, 0 passend. Prüfen, ob der Parser echte Treffer-Mails (nicht nur die Bestätigung) liest. `.env.example` ist lokal geändert und enthält Zugangsdaten: nie committen, nicht lesen.
 5. Erledigt: Routine „Reparatur“. Offen beim Nutzer: Secret `ANTHROPIC_API_KEY`.
 6. Erledigt: WG-Gesucht 42 gesehen, vollständig. ImmoScout mit Umland (Lauf 13:08, `f10d656`): 624 gesehen, 23 passend, vollständig, 182 s. Budget reicht noch.
 
