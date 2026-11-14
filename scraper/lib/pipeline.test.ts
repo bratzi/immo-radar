@@ -83,7 +83,7 @@ describe("verarbeiteQuelle", () => {
   it("bekanntes Angebot mit Expose und gleicher Kaltmiete: kein neuer Detailabruf, Expose-Daten bleiben", async () => {
     const { db, deps } = aufbau();
     const liste = passend("k", { kaltmieteCents: 100_000, warmmieteCents: null, balkon: "unbekannt" });
-    const expose = { ...liste, nebenkostenCents: 28_000, warmmieteCents: 128_000, balkon: "ja" as const, balkonBeleg: "Balkon", verfuegbarAb: "1.12.2026", detailGeladen: true };
+    const expose = { ...liste, nebenkostenCents: 28_000, warmmieteCents: 128_000, balkon: "ja" as const, balkonBeleg: "Balkon", verfuegbarAb: "1.12.2026", kautionCents: 300_000, detailGeladen: true };
     const q1 = fakeQuelle(ok([liste]), { k: expose });
     await verarbeiteQuelle(deps, q1, abrufer);
     expect(q1.detailAufrufe).toEqual(["k"]);

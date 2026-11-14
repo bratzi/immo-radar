@@ -40,6 +40,10 @@ function bewerte(a: Angebot, jetzt: Date): Bewertet {
 
 /** Detail lohnt, wenn das Urteil offen ist oder nur auf geschaetzter Warmmiete beruht. */
 function brauchtDetail(b: Bewertet): boolean {
+  // A shown flat without a deposit gets its expose again once a day, so the deposit appears.
+  if (b.detailGeladen && b.kautionCents == null && b.passt !== "nein"
+    && (b.quelle === "immoscout24" || b.quelle === "kleinanzeigen")
+    && Date.now() - new Date(b.detailGeladenAm ?? 0).getTime() > 24 * 3600_000) return true;
   if (b.detailGeladen) return false;
   if (b.passt === "unklar") return true;
   // Ein Nein, das allein an der geschaetzten Warmmiete haengt, ist kein Beleg.
