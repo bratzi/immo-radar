@@ -41,14 +41,14 @@ describe("kleinanzeigenQuelle.sweep", () => {
     expect(ab.geholt).toEqual([url]);
   });
 
-  it("leere Seite 2 heisst Ende der Liste: vollstaendig", async () => {
+  it("leere Seite 2: Ende der gefilterten Liste, Lauf trotzdem nie vollstaendig (ungefilterte Liste)", async () => {
     const ab = fakeAbrufer({
       [kleinanzeigenSeitenUrl(1)]: { status: 200, html: fixture("liste-1.html"), url: kleinanzeigenSeitenUrl(1) },
       [kleinanzeigenSeitenUrl(2)]: { status: 200, html: "<html><body></body></html>", url: kleinanzeigenSeitenUrl(2) },
       ...umlandLeer(),
     });
     const e = await kleinanzeigenQuelle.sweep(ab, 60_000);
-    expect(e.vollstaendig).toBe(true);
+    expect(e.vollstaendig).toBe(false);
   });
 });
 

@@ -16,11 +16,14 @@ import { pruefeSeite } from "../online.js";
 import { parseKleinanzeigenDetail, parseKleinanzeigenListe } from "./parse.js";
 
 const pfad = (slug: string) => `https://www.kleinanzeigen.de/s-wohnung-mieten/${slug}/anzeige:angebote/preis::${FANGNETZ.warmmieteMaxEuro}/sortierung:neuste`;
-// swap_s:nein drops flat swaps (about 90 % of the unfiltered hits). Checked
-// 2026-11-13: the filtered list holds ~11 Munich flats plus nearby places on
-// one page, 6 of 8 Munich private offers were missing from the newest-5-pages
-// sweep because swaps crowded them out.
-const kategorie = (ortId: string) => `c203l${ortId}+wohnung_mieten.qm_d:${FANGNETZ.flaecheMinM2}%2C+wohnung_mieten.swap_s:nein+wohnung_mieten.zimmer_d:${FANGNETZ.zimmerMin}%2C`;
+// swap_s:nein drops flat swaps (about 90 % of the unfiltered hits), but also
+// every ad that leaves the swap field empty: on 2026-11-14 six online private
+// offers were missing from it. So the sweep reads the filtered list to its
+// end and then the newest pages of the unfiltered list.
+const kategorie = (ortId: string, ohneTausch = true) => `c203l${ortId}+wohnung_mieten.qm_d:${FANGNETZ.flaecheMinM2}%2C${ohneTausch ? "+wohnung_mieten.swap_s:nein" : ""}+wohnung_mieten.zimmer_d:${FANGNETZ.zimmerMin}%2C`;
+const KATEGORIE_ALLE = kategorie("6411", false);
+/** Newest pages of the unfiltered list, for ads without the swap field. */
+export const KLEINANZEIGEN_SEITEN_ALLE = 3;
 const BASIS = pfad("muenchen");
 const KATEGORIE = kategorie("6411");
 
@@ -45,16 +48,28 @@ const KARTEN_JE_SEITE = 25;
 export const KLEINANZEIGEN_SUCHE_URL = `${BASIS}/${KATEGORIE}`;
 
 /** Listenseiten je Lauf (unter dem allgemeinen Deckel MAX_LISTENSEITEN). */
-// Up to 5 pages; without swaps the list usually ends on page 1, which makes
-// the sweep complete.
 // Without swaps the Munich list held 131 offers on 2026-11-14, about five pages
 // of 27 cards (25 plus top ads), so five pages never reached the end.
 export const KLEINANZEIGEN_LISTENSEITEN = MAX_LISTENSEITEN + 3;
 
 /** URL der n-ten Listenseite (1-basiert). */
-export function kleinanzeigenSeitenUrl(n: number): string {
-  if (n <= 1) return KLEINANZEIGEN_SUCHE_URL;
-  return `${BASIS}/seite:${n}/${KATEGORIE}`;
+export function kleinanzeigenSeitenUrl(n: number, alle = false): string {
+  const k = alle ? KATEGORIE_ALLE : KATEGORIE;
+  return n <= 1 ? `${BASIS}/${k}` : `${BASIS}/seite:${n}/${k}`;
+}
+
+/** Newest unfiltered pages; never complete, so the sweep is never complete either. */
+async function sweepOhneTauschfeld(ab: Abrufer, ende: number, gesehen: Map<string, Angebot>): Promise<Omit<SweepErgebnis, "angebote">> {
+  for (let n = 1; n <= KLEINANZEIGEN_SEITEN_ALLE; n++) {
+    if (Date.now() >= ende) return { vollstaendig: false, status: "ok", hinweis: "Budget erschoepft" };
+    await ab.warte(seitenabstandMs());
+    const antwort = await ab.hole(kleinanzeigenSeitenUrl(n, true));
+    const sperre = erkenneSperre(antwort);
+    if (sperre) return { vollstaendig: false, status: "gesperrt", hinweis: sperre };
+    if (antwort.status !== 200) return { vollstaendig: false, status: "ok", hinweis: `HTTP ${antwort.status} auf Seite ${n} ohne Filter` };
+    for (const a of parseKleinanzeigenListe(antwort.html)) if (!gesehen.has(a.externalId)) gesehen.set(a.externalId, a);
+  }
+  return { vollstaendig: false, status: "ok", hinweis: null };
 }
 
 async function sweepMuenchen(ab: Abrufer, ende: number, gesehen: Map<string, Angebot>): Promise<Omit<SweepErgebnis, "angebote">> {
@@ -84,8 +99,12 @@ async function sweep(ab: Abrufer, budgetMs: number): Promise<SweepErgebnis> {
   const m = await sweepMuenchen(ab, ende, gesehen);
   // Bei Sperre oder kaputter Stadtsuche das Umland nicht mehr anfragen.
   if (m.status !== "ok") return { angebote: alle(), ...m };
-  let vollstaendig = m.vollstaendig;
-  const hinweise: string[] = m.hinweis ? [m.hinweis] : [];
+  const o2 = await sweepOhneTauschfeld(ab, ende, gesehen);
+  if (o2.status !== "ok") return { angebote: alle(), ...o2 };
+  // Removal of gone ads runs through the per-run check (lib/bestand.ts), since
+  // the unfiltered list is never read to its end.
+  let vollstaendig = false;
+  const hinweise: string[] = [m.hinweis, o2.hinweis].filter((x): x is string => !!x);
   for (const o of KLEINANZEIGEN_UMLAND) {
     if (Date.now() >= ende) { vollstaendig = false; hinweise.push(`Budget erschoepft vor ${o.name}`); break; }
     await ab.warte(seitenabstandMs());
