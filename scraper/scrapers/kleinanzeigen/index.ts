@@ -47,7 +47,9 @@ export const KLEINANZEIGEN_SUCHE_URL = `${BASIS}/${KATEGORIE}`;
 /** Listenseiten je Lauf (unter dem allgemeinen Deckel MAX_LISTENSEITEN). */
 // Up to 5 pages; without swaps the list usually ends on page 1, which makes
 // the sweep complete.
-export const KLEINANZEIGEN_LISTENSEITEN = MAX_LISTENSEITEN;
+// Without swaps the Munich list held 131 offers on 2026-11-14, about five pages
+// of 27 cards (25 plus top ads), so five pages never reached the end.
+export const KLEINANZEIGEN_LISTENSEITEN = MAX_LISTENSEITEN + 3;
 
 /** URL der n-ten Listenseite (1-basiert). */
 export function kleinanzeigenSeitenUrl(n: number): string {
@@ -67,8 +69,10 @@ async function sweepMuenchen(ab: Abrufer, ende: number, gesehen: Map<string, Ang
     if (antwort.status !== 200) return { vollstaendig: false, status: n === 1 ? "fehler" : "ok", hinweis: `HTTP ${antwort.status} auf Seite ${n}` };
     const karten = (antwort.html.match(/<article[^>]*data-adid=/g) ?? []).length;
     if (karten === 0) return { vollstaendig: n > 1, status: n === 1 ? "fehler" : "ok", hinweis: n === 1 ? "keine Karten auf Seite 1" : null };
+    const vorher = gesehen.size;
     for (const a of parseKleinanzeigenListe(antwort.html)) if (!gesehen.has(a.externalId)) gesehen.set(a.externalId, a);
-    if (karten < KARTEN_JE_SEITE) return { vollstaendig: true, status: "ok", hinweis: null };
+    // End of list: a short page, or a page past the end that repeats the last one.
+    if (karten < KARTEN_JE_SEITE || (n > 1 && gesehen.size === vorher)) return { vollstaendig: true, status: "ok", hinweis: null };
   }
   return { vollstaendig: false, status: "ok", hinweis: null };
 }
