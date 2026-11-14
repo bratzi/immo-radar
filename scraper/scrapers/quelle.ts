@@ -24,10 +24,15 @@ export interface SweepErgebnis {
 /** `angebot: null` heisst ausschliessen (z. B. Gesuch, Tausch). */
 export interface DetailErgebnis { angebot: Angebot | null; sperre: Sperre | null }
 
+/** "weg" only on clear evidence (404/410, redirect away from the listing). */
+export type OnlineStatus = "online" | "weg" | "unklar" | "gesperrt";
+
 export interface Quelle {
   name: QuellenName;
   /** Deaktivierte Quellen bleiben verdrahtet, werden aber nicht abgerufen. */
   aktiv: boolean;
   sweep(ab: Abrufer, budgetMs: number): Promise<SweepErgebnis>;
+  /** Is a listing that this run did not see still online? Optional per source. */
+  pruefeOnline?(ab: Abrufer, a: Angebot): Promise<OnlineStatus>;
   ladeDetail(ab: Abrufer, a: Angebot): Promise<DetailErgebnis>;
 }

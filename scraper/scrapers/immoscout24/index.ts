@@ -10,7 +10,7 @@
  */
 import type { Angebot } from "../../lib/typen.js";
 import { FANGNETZ } from "../../lib/profil.js";
-import type { DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.js";
+import type { DetailErgebnis, OnlineStatus, Quelle, SweepErgebnis } from "../quelle.js";
 import { seitenabstandMs } from "../sperre.js";
 import { parseImmoscoutExpose, parseImmoscoutListe } from "./parse.js";
 
@@ -84,7 +84,15 @@ export function baueImmoscoutQuelle(hole: JsonHoler = netzHoler, pause: (ms: num
     return { angebot: parseImmoscoutExpose(a.json as Parameters<typeof parseImmoscoutExpose>[0], basis), sperre: null };
   }
 
-  return { name: "immoscout24", aktiv: true, sweep, ladeDetail };
+  async function pruefeOnline(_ab: unknown, basis: Angebot): Promise<OnlineStatus> {
+    await pause(seitenabstandMs());
+    const a = await hole(`${API}/expose/${basis.externalId}`);
+    if (SPERRSTATUS.has(a.status)) return "gesperrt";
+    if (a.status === 404 || a.status === 410) return "weg";
+    return a.status === 200 && a.json ? "online" : "unklar";
+  }
+
+  return { name: "immoscout24", aktiv: true, sweep, ladeDetail, pruefeOnline };
 }
 
 export const immoscoutQuelle = baueImmoscoutQuelle();

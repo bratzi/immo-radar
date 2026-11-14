@@ -16,6 +16,7 @@ import type { Angebot } from "../../lib/typen.js";
 import { leeresAngebot } from "../../lib/typen.js";
 import { erkenneBalkon } from "../../lib/balkon.js";
 import { onlineSeitAusText } from "../../lib/onlineSeit.js";
+import { kautionCents } from "../../lib/kaution.js";
 
 export const EXPOSE_BASIS = "https://www.immobilienscout24.de/expose/";
 const TAUSCH = /tauschwohnung|wohnungs?tausch|zum tausch/i;
@@ -122,6 +123,7 @@ export function parseImmoscoutExpose(antwort: { sections?: Abschnitt[] }, basis:
     balkonBeleg: balkonAttr ? "Balkon/Terrasse" : b.beleg ?? basis.balkonBeleg,
     befristet: basis.befristet === true || BEFRISTET.test(titel) || BEFRISTET.test(text("Mietdauer") ?? "") ? true : basis.befristet,
     verfuegbarAb: text("Bezugsfrei ab") ?? basis.verfuegbarAb,
+    kautionCents: kautionCents(text("Kaution oder Genossenschaftsanteile") ?? text("Kaution"), kalt),
     detailGeladen: true,
   };
 }

@@ -12,6 +12,7 @@ import type { Angebot } from "../../lib/typen.js";
 import { FANGNETZ } from "../../lib/profil.js";
 import type { Abrufer, DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.js";
 import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
+import { pruefeSeite } from "../online.js";
 import { parseKleinanzeigenDetail, parseKleinanzeigenListe } from "./parse.js";
 
 const pfad = (slug: string) => `https://www.kleinanzeigen.de/s-wohnung-mieten/${slug}/anzeige:angebote/preis::${FANGNETZ.warmmieteMaxEuro}/sortierung:neuste`;
@@ -106,4 +107,8 @@ async function ladeDetail(ab: Abrufer, a: Angebot): Promise<DetailErgebnis> {
   return { angebot: d && d.bildUrls.length === 0 ? { ...d, bildUrls: a.bildUrls } : d, sperre: null };
 }
 
-export const kleinanzeigenQuelle: Quelle = { name: "kleinanzeigen", aktiv: true, sweep, ladeDetail };
+export const kleinanzeigenQuelle: Quelle = {
+  name: "kleinanzeigen", aktiv: true, sweep, ladeDetail,
+  // A deleted ad redirects to its category page (checked 2026-11-13).
+  pruefeOnline: (ab, a) => pruefeSeite(ab, a.url, /\/s-anzeige\//, /id="viewad-title"/),
+};

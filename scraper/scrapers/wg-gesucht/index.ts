@@ -11,6 +11,7 @@ import type { Abrufer, DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.j
 import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseWgGesuchtListe, WGG_BASIS } from "./parse.js";
 import { FANGNETZ } from "../../lib/profil.js";
+import { pruefeSeite } from "../online.js";
 
 // Format der Blaetter-Links der Seite selbst (2026-11-12): mit offer_filter=1
 // liefert jede Seite Seite 0. Ohne Anmeldung zeigt WG-Gesucht nur 2 Seiten.
@@ -58,4 +59,7 @@ async function ladeDetail(_ab: Abrufer, a: Angebot): Promise<DetailErgebnis> {
   return { angebot: a, sperre: null };
 }
 
-export const wgGesuchtQuelle: Quelle = { name: "wg-gesucht", aktiv: true, sweep, ladeDetail };
+export const wgGesuchtQuelle: Quelle = {
+  name: "wg-gesucht", aktiv: true, sweep, ladeDetail,
+  pruefeOnline: (ab, a) => pruefeSeite(ab, a.url, /\.\d+\.html/),
+};

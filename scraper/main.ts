@@ -14,6 +14,7 @@ import { playwrightAbrufer } from "./scrapers/abrufer.js";
 import { MAX_DETAILSEITEN } from "./scrapers/sperre.js";
 import { meldeLaufStart, meldeLaufEnde, laufUrlAusUmgebung } from "./lib/laufStatus.js";
 import { sendeMeldungen, gmailSender } from "./lib/meldung.js";
+import { pruefeBestand } from "./lib/bestand.js";
 import { aktualisiereVorschau, supabaseVorschauSpeicher, holeBild, verkleinere } from "./lib/vorschau.js";
 
 nurInCiAusfuehren("scrape");
@@ -22,16 +23,26 @@ nurInCiAusfuehren("scrape");
 const melde = async (was: string, f: () => Promise<void>) => { try { await f(); } catch (e) { console.error(`Laufstatus ${was}:`, e); } };
 await melde("Start", () => meldeLaufStart(sb, new Date(), laufUrlAusUmgebung(process.env)));
 
+const laufStart = new Date();
 const browser = await chromium.launch({ headless: false });
 try {
   for (const quelle of QUELLEN.filter((q) => q.aktiv)) {
     const page = await browser.newPage();
     try {
+      const ab = playwrightAbrufer(page);
       const e = await verarbeiteQuelle(
         { sb, sweepBudgetMs: 3 * 60_000, maxDetails: MAX_DETAILSEITEN, jetzt: new Date() },
-        quelle, playwrightAbrufer(page),
+        quelle, ab,
       );
       console.log(`${quelle.name}: ${JSON.stringify(e.lauf)}${e.pausiertBis ? ` (pausiert bis ${e.pausiertBis})` : ""}`);
+      // Removal sweep for shown listings this run did not see; skipped after a block.
+      if (e.lauf.status !== "gesperrt" && !e.pausiertBis) {
+        try {
+          console.log(`${quelle.name} bestand: ${JSON.stringify(await pruefeBestand(sb, quelle, ab, laufStart))}`);
+        } catch (fehler) {
+          console.error(`${quelle.name} bestand: Fehler`, fehler);
+        }
+      }
     } catch (fehler) {
       console.error(`${quelle.name}: Fehler`, fehler);
       process.exitCode = 1;

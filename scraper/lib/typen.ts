@@ -24,6 +24,8 @@ export interface Angebot {
   veroeffentlichtAm: string | null;
   /** Tenant looks for a successor ("Nachmieter gesucht"); seen in the listing text. */
   nachmieter?: boolean;
+  /** Deposit in cents, from the expose; null when the listing does not say. */
+  kautionCents?: number | null;
   detailGeladen: boolean;
   /** Zeitpunkt eines frueher geladenen Exposes, das weiterverwendet wird. */
   detailGeladenAm?: string | null;

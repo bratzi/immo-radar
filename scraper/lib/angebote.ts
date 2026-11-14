@@ -10,6 +10,7 @@ export interface AngebotZeile {
   veroeffentlicht_am: string | null; passt: Passt; gruende: string[]; punkte: number;
   zuletzt_gesehen: string; verschwunden_am: null; detail_geladen_am: string | null;
   nachmieter: boolean;
+  kaution_cents?: number | null;
 }
 
 /** Outgoing tenant offers the flat ("Nachmieter gesucht", "Nachfolgemieter"). */
@@ -21,6 +22,7 @@ export interface GespeichertesExpose {
   warmmieteQuelle: string; balkon: string; balkonBeleg: string | null; verfuegbarAb: string | null; befristet: boolean | null;
   /** Bilder aus dem Expose; die Liste kennt oft nur das Titelbild. */
   bildUrls?: string[];
+  kautionCents?: number | null;
 }
 
 export interface Bekannt {
@@ -41,6 +43,7 @@ export function zuZeile(a: Angebot, urteil: Profilurteil, punkte: number, jetzt:
     veroeffentlicht_am: a.veroeffentlichtAm, passt: urteil.passt, gruende: urteil.gruende, punkte,
     zuletzt_gesehen: iso, verschwunden_am: null, detail_geladen_am: a.detailGeladen ? (a.detailGeladenAm ?? iso) : null,
     nachmieter: a.nachmieter === true || NACHMIETER.test(a.titel),
+    kaution_cents: a.kautionCents ?? null,
   };
 }
 
@@ -52,7 +55,7 @@ export function entscheideMeldung(bekannt: Bekannt | undefined, warmmieteCents: 
 
 export async function ladeBekannte(sb: SupabaseClient, quelle: Quelle): Promise<Map<string, Bekannt>> {
   const { data, error } = await sb.from("angebote")
-    .select("id, external_id, gemeldet_am, letzte_warmmiete_gemeldet_cents, verschwunden_am, passt, detail_geladen_am, kaltmiete_cents, nebenkosten_cents, warmmiete_cents, warmmiete_quelle, balkon, balkon_beleg, verfuegbar_ab, befristet, veroeffentlicht_am, bild_urls")
+    .select("id, external_id, gemeldet_am, letzte_warmmiete_gemeldet_cents, verschwunden_am, passt, detail_geladen_am, kaltmiete_cents, nebenkosten_cents, warmmiete_cents, warmmiete_quelle, balkon, balkon_beleg, verfuegbar_ab, befristet, veroeffentlicht_am, bild_urls, kaution_cents")
     .eq("quelle", quelle);
   if (error) throw new Error(`ladeBekannte ${quelle}: ${error.message}`);
   const map = new Map<string, Bekannt>();
@@ -63,7 +66,7 @@ export async function ladeBekannte(sb: SupabaseClient, quelle: Quelle): Promise<
       am: z.detail_geladen_am, kaltmieteCents: z.kaltmiete_cents, nebenkostenCents: z.nebenkosten_cents,
       warmmieteCents: z.warmmiete_cents, warmmieteQuelle: z.warmmiete_quelle, balkon: z.balkon,
       balkonBeleg: z.balkon_beleg, verfuegbarAb: z.verfuegbar_ab, befristet: z.befristet,
-      bildUrls: z.bild_urls ?? [],
+      bildUrls: z.bild_urls ?? [], kautionCents: z.kaution_cents ?? null,
     } : null,
   });
   return map;

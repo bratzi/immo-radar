@@ -11,6 +11,7 @@ import type { Angebot } from "../../lib/typen.js";
 import type { Abrufer, DetailErgebnis, Quelle, SweepErgebnis } from "../quelle.js";
 import { erkenneSperre, seitenabstandMs, MAX_LISTENSEITEN } from "../sperre.js";
 import { parseOhneMaklerListe, OM_BASIS } from "./parse.js";
+import { pruefeSeite } from "../online.js";
 
 const LISTE = `${OM_BASIS}/immobilien/wohnung-mieten/bayern/munchen/`;
 
@@ -46,4 +47,7 @@ async function ladeDetail(_ab: Abrufer, a: Angebot): Promise<DetailErgebnis> {
   return { angebot: a, sperre: null };
 }
 
-export const ohneMaklerQuelle: Quelle = { name: "ohne-makler", aktiv: true, sweep, ladeDetail };
+export const ohneMaklerQuelle: Quelle = {
+  name: "ohne-makler", aktiv: true, sweep, ladeDetail,
+  pruefeOnline: (ab, a) => pruefeSeite(ab, a.url, /\/immobilie\/\d+/),
+};
