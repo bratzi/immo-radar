@@ -13,6 +13,7 @@ import { QUELLEN } from "./scrapers/quellen.js";
 import { playwrightAbrufer } from "./scrapers/abrufer.js";
 import { MAX_DETAILSEITEN } from "./scrapers/sperre.js";
 import { meldeLaufStart, meldeLaufEnde, laufUrlAusUmgebung } from "./lib/laufStatus.js";
+import { sendeMeldungen, gmailSender } from "./lib/meldung.js";
 import { aktualisiereVorschau, supabaseVorschauSpeicher, holeBild, verkleinere } from "./lib/vorschau.js";
 
 nurInCiAusfuehren("scrape");
@@ -44,6 +45,16 @@ try {
     console.log(`vorschau: ${JSON.stringify(v)}`);
   } catch (fehler) {
     console.error("vorschau: Fehler", fehler);
+  }
+  // Push via Gmail; a failure here does not stop the run and is retried next time.
+  const mailUser = process.env.IMMOWELT_IMAP_USER, mailPass = process.env.IMMOWELT_IMAP_PASS;
+  if (mailUser && mailPass) {
+    try {
+      const m = await sendeMeldungen(sb, await gmailSender(mailUser, mailPass, process.env.MELDUNG_AN || mailUser), new Date());
+      console.log(`meldung: ${JSON.stringify(m)}`);
+    } catch (fehler) {
+      console.error("meldung: Fehler", fehler);
+    }
   }
 } finally {
   await browser.close();
